@@ -43,6 +43,7 @@ const WorkspaceSelection = lazy(() => import("./pages/WorkspaceSelection.tsx"));
 const ProjectDashboard = lazy(() => import("./pages/ProjectDashboard.tsx"));
 const IssueDetails = lazy(() => import("./pages/Account/Project/IssueDetails.tsx"));
 const BranchIssues = lazy(() => import("./pages/Account/Project/BranchIssues.tsx"));
+const IntegrationSuccess = lazy(() => import("./pages/Account/Integrations/IntegrationSuccess.tsx"));
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -106,6 +107,7 @@ const App = () => (
                       <Route path="workspace" element={<WorkspaceManagementPage />} />
                       <Route path="tasks" element={<TaskSettings />} />
                       <Route path="billing" element={<BillingSettings />} />
+                      <Route path="hosting/:provider/success" element={<IntegrationSuccess />} />
                     </Route>
                   </Routes>
                 </WorkspaceGuard>
