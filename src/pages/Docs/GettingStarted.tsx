@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, ArrowRight, Clock, BookOpen, Briefcase, GitBranch, Cpu, FolderGit2, Key, Workflow, GitPullRequest, MousePointer, Settings, Github, AlertCircle } from "lucide-react";
+import { Zap, ArrowRight, Clock, BookOpen, Briefcase, GitBranch, FolderGit2, Key, Workflow, GitPullRequest, MousePointer, Settings, Github, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,34 +37,27 @@ export default function GettingStarted() {
     },
     {
       number: 3,
-      title: "AI Connection",
-      description: "Configure AI provider (OpenAI, Anthropic, or OpenRouter) for intelligent code analysis.",
-      path: "/docs/ai-connection",
-      icon: Cpu,
-    },
-    {
-      number: 4,
       title: "Create Project",
-      description: "Set up a new project and link it to your repository for automated code reviews.",
+      description: "Import repositories and configure AI connection in a step-by-step wizard.",
       path: "/docs/first-project",
       icon: FolderGit2,
     },
     {
-      number: 5,
+      number: 4,
       title: "Generate Token",
       description: "Create an authentication token for secure webhook integration.",
       path: "/docs/project-token",
       icon: Key,
     },
     {
-      number: 6,
+      number: 5,
       title: "Setup Pipelines",
       description: "Configure CI/CD pipeline to trigger automatic code reviews on pull requests.",
       path: "/docs/bitbucket-pipelines",
       icon: Workflow,
     },
     {
-      number: 7,
+      number: 6,
       title: "Create Pull Request",
       description: "Submit your first pull request and watch CodeCrow analyze your code.",
       path: "/docs/pull-request",
@@ -82,20 +75,13 @@ export default function GettingStarted() {
     },
     {
       number: 3,
-      title: "Select AI Connection",
-      description: "Choose or configure AI provider during the installation flow.",
-      path: "/docs/ai-connection",
-      icon: Cpu,
-    },
-    {
-      number: 4,
-      title: "Select Repositories",
-      description: "Choose which repositories to enable for automated code review.",
+      title: "Select Repositories & AI",
+      description: "Choose repositories to import and configure AI connection in a 2-step wizard.",
       path: "/docs/first-project",
       icon: FolderGit2,
     },
     {
-      number: 5,
+      number: 4,
       title: "Create Pull Request",
       description: "Submit your first pull request and watch CodeCrow analyze your code.",
       path: "/docs/pull-request",

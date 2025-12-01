@@ -1,13 +1,26 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Plus } from "lucide-react";
+import { 
+  ArrowLeft, 
+  ArrowRight, 
+  Plus, 
+  GitBranch, 
+  FileText, 
+  Brain, 
+  Loader2, 
+  Zap,
+  CheckCircle 
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import { projectService } from "@/api_service/project/projectService.ts";
+import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
 export default function NewProjectPage() {
@@ -16,17 +29,42 @@ export default function NewProjectPage() {
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
 
+  // Current step: 1 = connection/repo selection, 2 = project details, 3 = AI connection
+  const [currentStep, setCurrentStep] = useState(1);
+
   const [connections, setConnections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  
+  // Project details
   const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null);
   const [selectedRepo, setSelectedRepo] = useState<any | null>(null);
+  
+  // AI Connection state
+  const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
+  const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<number | null>(null);
+  const [isLoadingAi, setIsLoadingAi] = useState(false);
+  const [showCreateAi, setShowCreateAi] = useState(false);
+  const [newAiConnection, setNewAiConnection] = useState<CreateAIConnectionRequest>({
+    providerKey: 'OPENROUTER',
+    aiModel: '',
+    apiKey: '',
+    tokenLimitation: '150000'
+  });
 
   useEffect(() => {
     // read selection returned from repo selector
     if (location.state && (location.state as any).selectedRepo) {
       setSelectedRepo((location.state as any).selectedRepo);
+      // Auto-set project name from repo name
+      const repo = (location.state as any).selectedRepo;
+      if (!projectName) {
+        setProjectName(repo.name || repo.slug || '');
+      }
+      // Move to step 2 if we have a repo selected
+      setCurrentStep(2);
     }
     if (location.state && (location.state as any).connectionId) {
       setSelectedConnectionId(Number((location.state as any).connectionId));
@@ -56,16 +94,95 @@ export default function NewProjectPage() {
   };
 
   const handleOpenRepoSelector = (connectionId: number) => {
-    if (!projectName) {
+    navigate(`/dashboard/projects/new/select-repo/${connectionId}`, { state: { projectName } });
+  };
+  
+  const loadAiConnections = async () => {
+    if (!currentWorkspace) return;
+    
+    try {
+      setIsLoadingAi(true);
+      const connections = await aiConnectionService.listWorkspaceConnections(currentWorkspace.slug);
+      setAiConnections(connections);
+      if (connections.length > 0 && !selectedAiConnectionId) {
+        setSelectedAiConnectionId(connections[0].id);
+      }
+    } catch (error: any) {
+      console.error("Failed to load AI connections:", error);
+    } finally {
+      setIsLoadingAi(false);
+    }
+  };
+  
+  const handleCreateAiConnection = async () => {
+    if (!currentWorkspace) return;
+    
+    if (!newAiConnection.aiModel || !newAiConnection.apiKey) {
       toast({
-        title: "Name required",
-        description: "Please enter a project name before selecting a repository",
-        variant: "destructive"
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
       });
       return;
     }
-    // keep projectName in state; navigate to selector and pass it along
-    navigate(`/dashboard/projects/new/select-repo/${connectionId}`, { state: { projectName } });
+    
+    try {
+      setIsLoadingAi(true);
+      const created = await aiConnectionService.createConnection(currentWorkspace.slug, newAiConnection);
+      setAiConnections(prev => [...prev, created]);
+      setSelectedAiConnectionId(created.id);
+      setShowCreateAi(false);
+      setNewAiConnection({
+        providerKey: 'OPENROUTER',
+        aiModel: '',
+        apiKey: '',
+        tokenLimitation: '150000'
+      });
+      toast({
+        title: "AI Connection Created",
+        description: "Your AI connection has been created successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to create AI connection",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAi(false);
+    }
+  };
+  
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      // For step 1, user should select a repo first
+      if (!selectedRepo) {
+        toast({
+          title: "No repository selected",
+          description: "Please select a repository to continue",
+          variant: "destructive",
+        });
+        return;
+      }
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (!projectName.trim()) {
+        toast({
+          title: "Name required",
+          description: "Please enter a project name",
+          variant: "destructive",
+        });
+        return;
+      }
+      setCurrentStep(3);
+      loadAiConnections();
+    }
+  };
+  
+  const handlePreviousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleCreate = async () => {
@@ -83,16 +200,19 @@ export default function NewProjectPage() {
 
       const payload: any = {
         name: projectName,
-        description: "",
-        creationMode: "IMPORT" // using import when binding a repo; fallback is MANUAL
+        description: projectDescription,
+        creationMode: selectedRepo ? "IMPORT" : "MANUAL"
       };
 
       if (selectedConnectionId) {
         payload.connectionId = selectedConnectionId;
       }
+      
+      if (selectedAiConnectionId) {
+        payload.aiConnectionId = selectedAiConnectionId;
+      }
 
       if (selectedRepo) {
-        // attempt to include repo-specific fields if available
         payload.workspaceId = selectedRepo.workspace?.slug || selectedRepo.workspaceId || selectedRepo.workspace;
         payload.repositorySlug = selectedRepo.full_name || selectedRepo.slug || selectedRepo.name;
         payload.repositoryId = selectedRepo.id || selectedRepo.uuid || undefined;
@@ -103,7 +223,6 @@ export default function NewProjectPage() {
         title: "Project created",
         description: "Project was created successfully"
       });
-      // Redirect to setup instructions with the project namespace
       navigate(`/dashboard/projects/${createdProject.namespace}/setup`);
     } catch (err: any) {
       toast({
@@ -117,115 +236,360 @@ export default function NewProjectPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/projects")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Create New Project</h1>
-            <p className="text-muted-foreground">Choose a code-hosting connection and repository, then create the project</p>
+    <div className="container mx-auto p-6 max-w-4xl space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/projects")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Create New Project</h1>
+          <p className="text-muted-foreground">
+            Set up a new project by connecting a repository
+          </p>
+        </div>
+      </div>
+      
+      {/* Step indicator */}
+      <div className="flex items-center justify-center gap-4">
+        <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+            {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : '1'}
           </div>
+          <span className="hidden sm:inline font-medium">Select Repository</span>
+        </div>
+        <div className={`w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+            {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : '2'}
+          </div>
+          <span className="hidden sm:inline font-medium">Project Details</span>
+        </div>
+        <div className={`w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+            3
+          </div>
+          <span className="hidden sm:inline font-medium">AI Connection</span>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Project Details</CardTitle>
-          <CardDescription>Enter a name for the new project (required)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div>
-            <Label htmlFor="project-name">Project Name</Label>
-            <Input
-              id="project-name"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="Enter project name"
-            />
-          </div>
-
-          <div className="mt-4">
-            <Label>Selected Connection</Label>
-            <div className="mt-2">
-              {selectedConnectionId ? (
-                <div className="text-sm text-muted-foreground">Connection ID: {selectedConnectionId}</div>
-              ) : (
-                <div className="text-sm text-muted-foreground">No connection selected</div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <Label>Selected Repository</Label>
-            <div className="mt-2">
-              {selectedRepo ? (
-                <>
-                  <div className="font-medium">{selectedRepo.full_name || selectedRepo.name || selectedRepo.slug}</div>
-                  <div className="text-sm text-muted-foreground">{selectedRepo.id}</div>
-                </>
-              ) : (
-                <div className="text-sm text-muted-foreground">No repository selected</div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Available Connections</CardTitle>
-          <CardDescription>Select a connection to browse its repositories</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading connections...</div>
-          ) : connections.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No connections found</p>
-              <div className="mt-4 flex justify-center">
-                <Button onClick={() => navigate("/dashboard/hosting")}>
-                  Manage Connections
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {connections.map((c: any) => (
-                <div key={c.id} className="flex items-center justify-between border rounded p-4">
-                  <div>
-                    <div className="font-medium">{c.connectionName || c.name || `Connection ${c.id}`}</div>
-                    <div className="text-sm text-muted-foreground">{c.workspaceId || c.workspace || ""}</div>
-                    <div className="text-sm text-muted-foreground">Repos: {c.repoCount ?? "-"}</div>
+      {/* Step 1: Connection & Repository Selection */}
+      {currentStep === 1 && (
+        <>
+          {/* Selected Repository Display */}
+          {selectedRepo && (
+            <Card className="border-primary/50 bg-primary/5">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <GitBranch className="h-5 w-5 text-primary" />
+                    <div>
+                      <div className="font-medium">{selectedRepo.full_name || selectedRepo.name || selectedRepo.slug}</div>
+                      <div className="text-sm text-muted-foreground">Selected repository</div>
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      onClick={() => handleOpenRepoSelector(Number(c.id))}
-                      disabled={creating}
-                      className="flex items-center"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Choose repository
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedRepo(null)}>
+                    Change
+                  </Button>
                 </div>
-              ))}
-            </div>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
 
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={() => navigate("/dashboard/projects")}>
-          Close
-        </Button>
-        <Button onClick={handleCreate} disabled={creating} className="flex items-center">
-          <Plus className="mr-2 h-4 w-4" />
-          Create Project
-        </Button>
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GitBranch className="h-5 w-5" />
+                Available Connections
+              </CardTitle>
+              <CardDescription>Select a connection to browse its repositories</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span>Loading connections...</span>
+                </div>
+              ) : connections.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">No connections found</p>
+                  <Button onClick={() => navigate("/dashboard/hosting")}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add VCS Connection
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {connections.map((c: any) => (
+                    <div key={c.id} className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                      <div>
+                        <div className="font-medium">{c.connectionName || c.name || `Connection ${c.id}`}</div>
+                        <div className="text-sm text-muted-foreground">{c.workspaceId || c.workspace || ""}</div>
+                        <div className="text-sm text-muted-foreground">Repos: {c.repoCount ?? "-"}</div>
+                      </div>
+                      <Button
+                        onClick={() => handleOpenRepoSelector(Number(c.id))}
+                        variant="outline"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Choose repository
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Step 1 Actions */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={() => navigate('/dashboard/projects')}>
+              Cancel
+            </Button>
+            <Button onClick={handleNextStep} disabled={!selectedRepo}>
+              Continue
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </>
+      )}
+      
+      {/* Step 2: Project Details */}
+      {currentStep === 2 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Project Details
+              </CardTitle>
+              <CardDescription>
+                Configure the project name and description
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Selected repo info */}
+              {selectedRepo && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="text-sm text-muted-foreground">Selected repository</div>
+                  <div className="font-medium">{selectedRepo.full_name || selectedRepo.name || selectedRepo.slug}</div>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="project-name">Project Name *</Label>
+                <Input
+                  id="project-name"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="Enter project name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="project-description">Description (optional)</Label>
+                <Textarea
+                  id="project-description"
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  placeholder="Enter project description"
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Step 2 Actions */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePreviousStep}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <Button onClick={handleNextStep} disabled={!projectName.trim()}>
+              Continue
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </>
+      )}
+      
+      {/* Step 3: AI Connection */}
+      {currentStep === 3 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                Configure AI Connection
+              </CardTitle>
+              <CardDescription>
+                Select or create an AI connection for code analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {isLoadingAi ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span>Loading AI connections...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Existing connections */}
+                  {aiConnections.length > 0 && !showCreateAi && (
+                    <div className="space-y-3">
+                      <Label>Select an existing AI connection</Label>
+                      <div className="space-y-2">
+                        {aiConnections.map((conn) => (
+                          <div
+                            key={conn.id}
+                            className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                              selectedAiConnectionId === conn.id ? 'border-primary bg-primary/5' : ''
+                            }`}
+                            onClick={() => setSelectedAiConnectionId(conn.id)}
+                          >
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                              selectedAiConnectionId === conn.id ? 'border-primary' : 'border-muted-foreground'
+                            }`}>
+                              {selectedAiConnectionId === conn.id && (
+                                <div className="w-2 h-2 rounded-full bg-primary" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <Zap className="h-4 w-4 text-primary" />
+                                <span className="font-medium">{conn.providerKey}</span>
+                                <span className="text-sm text-muted-foreground">- {conn.aiModel}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowCreateAi(true)}
+                        className="w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create New AI Connection
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Create new connection form */}
+                  {(showCreateAi || aiConnections.length === 0) && (
+                    <div className="space-y-4">
+                      {aiConnections.length > 0 && (
+                        <div className="flex items-center justify-between">
+                          <Label className="text-base font-semibold">Create New AI Connection</Label>
+                          <Button variant="ghost" size="sm" onClick={() => setShowCreateAi(false)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                      {aiConnections.length === 0 && (
+                        <Label className="text-base font-semibold">Create Your First AI Connection</Label>
+                      )}
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="ai-provider">AI Provider</Label>
+                          <Select
+                            value={newAiConnection.providerKey}
+                            onValueChange={(value) => setNewAiConnection(prev => ({ ...prev, providerKey: value as 'OPENAI' | 'OPENROUTER' | 'ANTHROPIC' }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select provider" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="OPENROUTER">OpenRouter</SelectItem>
+                              <SelectItem value="OPENAI">OpenAI</SelectItem>
+                              <SelectItem value="ANTHROPIC">Anthropic</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="ai-model">Model Name</Label>
+                          <Input
+                            id="ai-model"
+                            value={newAiConnection.aiModel}
+                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, aiModel: e.target.value }))}
+                            placeholder={newAiConnection.providerKey === 'OPENROUTER' ? 'anthropic/claude-sonnet-4' : 'gpt-4o'}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="ai-api-key">API Key</Label>
+                          <Input
+                            id="ai-api-key"
+                            type="password"
+                            value={newAiConnection.apiKey}
+                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, apiKey: e.target.value }))}
+                            placeholder="Enter your API key"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="ai-token-limit">Token Limitation</Label>
+                          <Input
+                            id="ai-token-limit"
+                            value={newAiConnection.tokenLimitation}
+                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, tokenLimitation: e.target.value }))}
+                            placeholder="150000"
+                          />
+                        </div>
+                        
+                        <Button
+                          onClick={handleCreateAiConnection}
+                          disabled={isLoadingAi}
+                          className="w-full"
+                        >
+                          {isLoadingAi ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Plus className="h-4 w-4 mr-2" />
+                          )}
+                          Create AI Connection
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Step 3 Actions */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePreviousStep}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCreate}
+                disabled={creating}
+              >
+                Skip AI Setup
+              </Button>
+              <Button
+                onClick={handleCreate}
+                disabled={creating}
+              >
+                {creating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Create Project
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

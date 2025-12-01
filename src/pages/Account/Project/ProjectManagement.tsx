@@ -1,14 +1,24 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Settings, GitBranch, Zap, Trash2, Info, Search, FolderKanban, ArrowRight } from "lucide-react";
+import { Plus, Settings, GitBranch, Zap, Trash2, Info, Search, FolderKanban, ArrowRight, Download, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast.ts";
 import { projectService } from "@/api_service/project/projectService.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
+import { integrationService } from "@/api_service/integration/integrationService.ts";
+import { VcsConnection, VcsConnectionType, PROVIDERS } from "@/api_service/integration/integration.interface.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import ProjectStats, { ProjectStatsData } from "@/components/ProjectStats";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -49,6 +59,15 @@ interface TaskManagementConfig {
   workspace: string;
 }
 
+// Bitbucket logo SVG component
+function BitbucketIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z"/>
+    </svg>
+  );
+}
+
 export default function ProjectSettings() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -67,6 +86,9 @@ export default function ProjectSettings() {
   const { currentWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(true);
   const { canManageWorkspace } = usePermissions();
+  
+  // VCS connections grouped by provider for import dropdown
+  const [vcsConnections, setVcsConnections] = useState<VcsConnection[]>([]);
 
   const loadData = async () => {
     if (!currentWorkspace) return;
@@ -81,6 +103,10 @@ export default function ProjectSettings() {
               bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => [])
           ]);
       }
+      
+      // Also fetch all VCS connections for the import dropdown
+      const allVcsConnections = await integrationService.getAllConnections(currentWorkspace.slug).catch(() => []);
+      setVcsConnections(allVcsConnections);
 
 
       const mappedProjects: Project[] = (projList || []).map((p: any) => ({
@@ -215,6 +241,25 @@ export default function ProjectSettings() {
   const handleProjectSettings = (namespace: string) => {
     navigate(`/dashboard/projects/${namespace}/settings`);
   };
+  
+  const handleImportFromConnection = (connection: VcsConnection) => {
+    if (connection.connectionType === 'APP') {
+      // For APP connections, redirect to the success page flow (repo selection + AI)
+      navigate(`/dashboard/hosting/${connection.provider}/success?connectionId=${connection.id}`);
+    } else {
+      // For manual OAuth connections, use the step-by-step new project flow
+      navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=${connection.provider}`);
+    }
+  };
+  
+  // Group connections by provider
+  const connectionsByProvider = vcsConnections.reduce((acc, conn) => {
+    if (!acc[conn.provider]) {
+      acc[conn.provider] = [];
+    }
+    acc[conn.provider].push(conn);
+    return acc;
+  }, {} as Record<string, VcsConnection[]>);
 
   if (loading) {
     return (
@@ -244,10 +289,68 @@ export default function ProjectSettings() {
                 Manage your projects and their configurations
               </p>
             </div>
-            <Button onClick={() => navigate('/dashboard/projects/new')}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
+            <div className="flex gap-2">
+              {/* Import Project Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Import Project
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  {Object.keys(connectionsByProvider).length === 0 ? (
+                    <>
+                      <DropdownMenuLabel className="text-muted-foreground font-normal">
+                        No VCS connections configured
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate('/dashboard/hosting')}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add VCS Connection
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      {Object.entries(connectionsByProvider).map(([provider, connections]) => (
+                        <div key={provider}>
+                          <DropdownMenuLabel className="flex items-center gap-2">
+                            {provider === 'bitbucket-cloud' && <BitbucketIcon className="h-4 w-4" />}
+                            {PROVIDERS.find(p => p.id === provider)?.name || provider}
+                          </DropdownMenuLabel>
+                          {connections.map((conn) => (
+                            <DropdownMenuItem
+                              key={conn.id}
+                              onClick={() => handleImportFromConnection(conn)}
+                              className="pl-6"
+                            >
+                              <div className="flex flex-col">
+                                <span>{conn.connectionName}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {conn.connectionType === 'APP' ? 'App Installation' : 'OAuth'} • {conn.repoCount} repos
+                                </span>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                        </div>
+                      ))}
+                      <DropdownMenuItem onClick={() => navigate('/dashboard/hosting')}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add New Connection
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              {/* New Project Button */}
+              <Button onClick={() => navigate('/dashboard/projects/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Project
+              </Button>
+            </div>
           </div>
         </div>
       </div>

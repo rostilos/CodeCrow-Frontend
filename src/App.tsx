@@ -48,6 +48,7 @@ const TaskSettings = lazy(() => import("./pages/Account/TaskSettings/TaskSetting
 const AISettings = lazy(() => import("./pages/Account/AI/AISettings.tsx"));
 const NewProjectPage = lazy(() => import("./pages/Account/Project/NewProject.tsx"));
 const SelectRepoPage = lazy(() => import("./pages/Account/Project/SelectRepo.tsx"));
+const ImportProjectPage = lazy(() => import("./pages/Account/Project/ImportProject.tsx"));
 const BillingSettings = lazy(() => import("./pages/Account/Billing/BillingSettings.tsx"));
 const WorkspaceSelection = lazy(() => import("./pages/WorkspaceSelection.tsx"));
 const ProjectDashboard = lazy(() => import("./pages/ProjectDashboard.tsx"));
@@ -114,6 +115,7 @@ const App = () => (
                       <Route path="projects" element={<ProjectManagement />} />
                       <Route path="projects/new" element={<NewProjectPage />} />
                       <Route path="projects/new/select-repo/:connectionId" element={<SelectRepoPage />} />
+                      <Route path="projects/import" element={<ImportProjectPage />} />
                       <Route path="projects/:namespace" element={<ProjectDashboard />} />
                       <Route path="projects/:namespace/setup" element={<ProjectSetupInstructions />} />
                       <Route path="projects/:namespace/branches/:branchName/issues" element={<BranchIssues />} />

@@ -81,7 +81,7 @@ export function AppSidebar() {
     >
       <SidebarContent className="bg-sidebar flex flex-col overflow-x-hidden">
         {/* Logo Header */}
-        <div className={`border-b border-sidebar-border/50 ${collapsed ? "p-2 flex justify-center" : "p-4"}`}>
+        <div className={`border-b border-sidebar-border/50 p-3 max-h-[63px]`}>
           <button 
             onClick={() => navigate("/")}
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
