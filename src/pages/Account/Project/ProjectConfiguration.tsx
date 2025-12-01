@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -16,6 +16,7 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProjectTokenManagement from "@/components/ProjectTokenManagement";
 import DefaultBranchSelector from "@/components/DefaultBranchSelector";
+import BranchPatternConfig from "@/components/BranchPatternConfig";
 
 interface ProjectCodeHostingConfig {
   id: string | number;
@@ -327,6 +328,7 @@ export default function ProjectConfiguration() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="codehosting">Code Hosting</TabsTrigger>
           <TabsTrigger value="branches">Branches</TabsTrigger>
+          <TabsTrigger value="analysis-scope">Analysis Scope</TabsTrigger>
           <TabsTrigger value="ai">AI Connections</TabsTrigger>
           <TabsTrigger value="tasks">Task Management</TabsTrigger>
           {canGenerateTokens() && (
@@ -581,6 +583,13 @@ export default function ProjectConfiguration() {
         <TabsContent value="branches" className="space-y-4">
           <DefaultBranchSelector 
             project={project} 
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        </TabsContent>
+
+        <TabsContent value="analysis-scope" className="space-y-4">
+          <BranchPatternConfig
+            project={project}
             onUpdate={(updatedProject) => setProject(updatedProject)}
           />
         </TabsContent>

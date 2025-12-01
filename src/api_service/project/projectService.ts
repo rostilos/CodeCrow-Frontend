@@ -82,6 +82,16 @@ export interface SetDefaultBranchRequest {
   branchName?: string;
 }
 
+export interface BranchAnalysisConfig {
+  prTargetBranches: string[] | null;
+  branchPushPatterns: string[] | null;
+}
+
+export interface UpdateBranchAnalysisConfigRequest {
+  prTargetBranches: string[];
+  branchPushPatterns: string[];
+}
+
 class ProjectService extends ApiService {
   async listProjects(workspaceSlug: string): Promise<ProjectDTO[]> {
     return this.request<ProjectDTO[]>(`/${workspaceSlug}/project/project_list`, {}, true);
@@ -172,6 +182,17 @@ class ProjectService extends ApiService {
 
   async setDefaultBranch(workspaceSlug: string, namespace: string, request: SetDefaultBranchRequest): Promise<ProjectDTO> {
     return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/default-branch`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    }, true);
+  }
+
+  async getBranchAnalysisConfig(workspaceSlug: string, namespace: string): Promise<BranchAnalysisConfig | null> {
+    return this.request<BranchAnalysisConfig | null>(`/${workspaceSlug}/project/${namespace}/branch-analysis-config`, {}, true);
+  }
+
+  async updateBranchAnalysisConfig(workspaceSlug: string, namespace: string, request: UpdateBranchAnalysisConfigRequest): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/branch-analysis-config`, {
       method: 'PUT',
       body: JSON.stringify(request),
     }, true);

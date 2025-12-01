@@ -153,19 +153,22 @@ export default function DetailedProjectStats({
 
     return (
         <div className="space-y-6">
+            {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {onViewAllIssues && (
                     <Card
-                        className="border-l-4 border-l-primary cursor-pointer hover:shadow-lg transition-shadow"
+                        className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
                         onClick={onViewAllIssues}
                     >
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm font-medium text-muted-foreground">All Issues</p>
-                                    <p className="text-2xl font-bold">{stats.totalIssues}</p>
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">All Issues</p>
+                                    <p className="text-2xl font-bold mt-1">{stats.totalIssues}</p>
                                 </div>
-                                <Activity className="h-8 w-8 text-primary"/>
+                                <div className="p-2 rounded-lg bg-primary/10">
+                                    <Activity className="h-5 w-5 text-primary"/>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -173,17 +176,19 @@ export default function DetailedProjectStats({
                 <Card
                     className={cn(
                         "border-l-4 border-l-destructive/80",
-                        onSeverityClick && "cursor-pointer hover:shadow-lg transition-shadow"
+                        onSeverityClick && "cursor-pointer hover:shadow-md transition-all duration-200 hover:border-destructive/30"
                     )}
                     onClick={() => onSeverityClick?.('HIGH')}
                 >
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">High</p>
-                                <p className="text-2xl font-bold">{stats.highIssues}</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">High</p>
+                                <p className="text-2xl font-bold mt-1">{stats.highIssues}</p>
                             </div>
-                            {getSeverityIcon('high', 'h-8 w-8')}
+                            <div className="p-2 rounded-lg bg-destructive/10">
+                                {getSeverityIcon('high', 'h-5 w-5')}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -191,138 +196,153 @@ export default function DetailedProjectStats({
                 <Card
                     className={cn(
                         "border-l-4 border-l-warning",
-                        onSeverityClick && "cursor-pointer hover:shadow-lg transition-shadow"
+                        onSeverityClick && "cursor-pointer hover:shadow-md transition-all duration-200 hover:border-warning/30"
                     )}
                     onClick={() => onSeverityClick?.('MEDIUM')}
                 >
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Medium</p>
-                                <p className="text-2xl font-bold">{stats.mediumIssues}</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Medium</p>
+                                <p className="text-2xl font-bold mt-1">{stats.mediumIssues}</p>
                             </div>
-                            {getSeverityIcon('medium', 'h-8 w-8')}
+                            <div className="p-2 rounded-lg bg-warning/10">
+                                {getSeverityIcon('medium', 'h-5 w-5')}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card
                     className={cn(
-                        "border-l-4 border-l-muted",
-                        onSeverityClick && "cursor-pointer hover:shadow-lg transition-shadow"
+                        "border-l-4 border-l-muted-foreground/30",
+                        onSeverityClick && "cursor-pointer hover:shadow-md transition-all duration-200"
                     )}
                     onClick={() => onSeverityClick?.('LOW')}
                 >
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Low</p>
-                                <p className="text-2xl font-bold">{stats.lowIssues}</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Low</p>
+                                <p className="text-2xl font-bold mt-1">{stats.lowIssues}</p>
                             </div>
-                            {getSeverityIcon('low', 'h-8 w-8')}
+                            <div className="p-2 rounded-lg bg-muted">
+                                {getSeverityIcon('low', 'h-5 w-5')}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
+            {/* Analysis Overview Card */}
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                        <BarChart3 className="h-5 w-5"/>
-                        <span>Analysis Overview</span>
-                    </CardTitle>
-                    <CardDescription>
-                        Total of {stats.totalIssues} issues found across all branches
-                    </CardDescription>
+                <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-muted">
+                            <BarChart3 className="h-4 w-4"/>
+                        </div>
+                        <div>
+                            <CardTitle className="text-base">Analysis Overview</CardTitle>
+                            <CardDescription className="text-xs mt-0.5">
+                                {stats.totalIssues} issues found across all branches
+                            </CardDescription>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid md:grid-cols-2 gap-8">
                         {/* Severity Distribution */}
                         <div>
-                            <h4 className="font-medium mb-3">Severity Distribution</h4>
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">High Issues</span>
-                                    <span className="font-medium">{stats.highIssues}</span>
+                            <h4 className="text-sm font-medium mb-4">Severity Distribution</h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-sm text-muted-foreground">High Issues</span>
+                                        <span className="text-sm font-medium">{stats.highIssues}</span>
+                                    </div>
+                                    <Progress
+                                        value={stats.totalIssues > 0 ? (stats.highIssues / stats.totalIssues) * 100 : 0}
+                                        className="h-2"
+                                    />
                                 </div>
-                                <Progress
-                                    value={stats.totalIssues > 0 ? (stats.highIssues / stats.totalIssues) * 100 : 0}
-                                    className="h-2"
-                                />
 
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Medium Issues</span>
-                                    <span className="font-medium">{stats.mediumIssues}</span>
+                                <div>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-sm text-muted-foreground">Medium Issues</span>
+                                        <span className="text-sm font-medium">{stats.mediumIssues}</span>
+                                    </div>
+                                    <Progress
+                                        value={stats.totalIssues > 0 ? (stats.mediumIssues / stats.totalIssues) * 100 : 0}
+                                        className="h-2"
+                                    />
                                 </div>
-                                <Progress
-                                    value={stats.totalIssues > 0 ? (stats.mediumIssues / stats.totalIssues) * 100 : 0}
-                                    className="h-2"
-                                />
 
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm">Low Issues</span>
-                                    <span className="font-medium">{stats.lowIssues}</span>
+                                <div>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-sm text-muted-foreground">Low Issues</span>
+                                        <span className="text-sm font-medium">{stats.lowIssues}</span>
+                                    </div>
+                                    <Progress
+                                        value={stats.totalIssues > 0 ? (stats.lowIssues / stats.totalIssues) * 100 : 0}
+                                        className="h-2"
+                                    />
                                 </div>
-                                <Progress
-                                    value={stats.totalIssues > 0 ? (stats.lowIssues / stats.totalIssues) * 100 : 0}
-                                    className="h-2"
-                                />
                             </div>
                         </div>
 
                         {/* Issue Types */}
                         <div>
-                            <h4 className="font-medium mb-3">Issue Types</h4>
-                            <div className="space-y-3">
+                            <h4 className="text-sm font-medium mb-4">Issue Types</h4>
+                            <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm">Security</span>
-                                    <div className="flex items-center space-x-2">
-                                        <span className="font-medium">{stats.securityIssues || 0}</span>
-                                        <div className="w-16 bg-muted rounded-full h-2">
+                                    <span className="text-sm text-muted-foreground">Security</span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-20 bg-muted rounded-full h-2 overflow-hidden">
                                             <div
-                                                className="bg-destructive h-2 rounded-full"
+                                                className="bg-destructive h-2 rounded-full transition-all"
                                                 style={{width: `${totalIssuesByType > 0 ? ((stats.securityIssues || 0) / totalIssuesByType) * 100 : 0}%`}}
                                             />
                                         </div>
+                                        <span className="text-sm font-medium w-8 text-right">{stats.securityIssues || 0}</span>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm">Quality</span>
-                                    <div className="flex items-center space-x-2">
-                                        <span className="font-medium">{stats.qualityIssues || 0}</span>
-                                        <div className="w-16 bg-muted rounded-full h-2">
+                                    <span className="text-sm text-muted-foreground">Quality</span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-20 bg-muted rounded-full h-2 overflow-hidden">
                                             <div
-                                                className="bg-warning h-2 rounded-full"
+                                                className="bg-warning h-2 rounded-full transition-all"
                                                 style={{width: `${totalIssuesByType > 0 ? ((stats.qualityIssues || 0) / totalIssuesByType) * 100 : 0}%`}}
                                             />
                                         </div>
+                                        <span className="text-sm font-medium w-8 text-right">{stats.qualityIssues || 0}</span>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm">Performance</span>
-                                    <div className="flex items-center space-x-2">
-                                        <span className="font-medium">{stats.performanceIssues || 0}</span>
-                                        <div className="w-16 bg-muted rounded-full h-2">
+                                    <span className="text-sm text-muted-foreground">Performance</span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-20 bg-muted rounded-full h-2 overflow-hidden">
                                             <div
-                                                className="bg-primary h-2 rounded-full"
+                                                className="bg-primary h-2 rounded-full transition-all"
                                                 style={{width: `${totalIssuesByType > 0 ? ((stats.performanceIssues || 0) / totalIssuesByType) * 100 : 0}%`}}
                                             />
                                         </div>
+                                        <span className="text-sm font-medium w-8 text-right">{stats.performanceIssues || 0}</span>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm">Style</span>
-                                    <div className="flex items-center space-x-2">
-                                        <span className="font-medium">{stats.styleIssues || 0}</span>
-                                        <div className="w-16 bg-muted rounded-full h-2">
+                                    <span className="text-sm text-muted-foreground">Style</span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-20 bg-muted rounded-full h-2 overflow-hidden">
                                             <div
-                                                className="bg-muted-foreground h-2 rounded-full"
+                                                className="bg-muted-foreground h-2 rounded-full transition-all"
                                                 style={{width: `${totalIssuesByType > 0 ? ((stats.styleIssues || 0) / totalIssuesByType) * 100 : 0}%`}}
                                             />
                                         </div>
+                                        <span className="text-sm font-medium w-8 text-right">{stats.styleIssues || 0}</span>
                                     </div>
                                 </div>
                             </div>
@@ -333,30 +353,30 @@ export default function DetailedProjectStats({
 
             {/* Detailed Tabs */}
             <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-                <TabsList>
+                <TabsList className="bg-muted/50">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="history">History</TabsTrigger>
                     <TabsTrigger value="files">Top Files</TabsTrigger>
                     <TabsTrigger value="branches">Branches</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview" className="space-y-4">
+                <TabsContent value="overview" className="mt-4 space-y-4">
                     <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
+                        <CardHeader className="pb-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
-                                    <CardTitle className="flex items-center space-x-2">
-                                        <BarChart3 className="h-5 w-5"/>
-                                        <span>Recent Analysis Trend</span>
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <BarChart3 className="h-4 w-4"/>
+                                        Recent Analysis Trend
                                     </CardTitle>
-                                    <CardDescription>
+                                    <CardDescription className="text-xs mt-1">
                                         {chartType === 'resolved' ? 'Issue resolution rates over time' : 'Total issues breakdown by severity'}
                                     </CardDescription>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                     <Select value={chartType}
                                             onValueChange={(value: 'resolved' | 'issues') => setChartType(value)}>
-                                        <SelectTrigger className="w-[180px]">
+                                        <SelectTrigger className="w-[140px] h-9">
                                             <SelectValue/>
                                         </SelectTrigger>
                                         <SelectContent>
@@ -366,7 +386,7 @@ export default function DetailedProjectStats({
                                     </Select>
                                     <Select value={timeframe.toString()}
                                             onValueChange={(value) => setTimeframe(Number(value))}>
-                                        <SelectTrigger className="w-[130px]">
+                                        <SelectTrigger className="w-[120px] h-9">
                                             <SelectValue/>
                                         </SelectTrigger>
                                         <SelectContent>
@@ -571,8 +591,8 @@ export default function DetailedProjectStats({
                             )}
 
                             <div className="grid md:grid-cols-2 gap-4 mt-6">
-                                <div className="flex items-center justify-between p-3 border rounded">
-                                    <div className="flex items-center space-x-2">
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+                                    <div className="flex items-center gap-2">
                                         <TrendingUp
                                             className={`h-4 w-4 ${
                                                 stats.trend === 'up' ? 'text-destructive' :
@@ -582,19 +602,19 @@ export default function DetailedProjectStats({
                                         />
                                         <span className="text-sm font-medium">Trend</span>
                                     </div>
-                                    <span className="text-sm">
+                                    <span className="text-sm text-muted-foreground">
                     {stats.trend === 'up' ? 'Issues increasing' :
                         stats.trend === 'down' ? 'Issues decreasing' :
                             'Issues stable'}
                   </span>
                                 </div>
 
-                                <div className="flex items-center justify-between p-3 border rounded">
-                                    <div className="flex items-center space-x-2">
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+                                    <div className="flex items-center gap-2">
                                         <Calendar className="h-4 w-4 text-muted-foreground"/>
                                         <span className="text-sm font-medium">Last Analysis</span>
                                     </div>
-                                    <span className="text-sm">
+                                    <span className="text-sm text-muted-foreground">
                     {stats.lastAnalysisDate ?
                         new Date(stats.lastAnalysisDate).toLocaleDateString() :
                         'No analysis yet'
@@ -606,11 +626,11 @@ export default function DetailedProjectStats({
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="history">
+                <TabsContent value="history" className="mt-4">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Analysis History</CardTitle>
-                            <CardDescription>Recent analysis runs and their results</CardDescription>
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-base">Analysis History</CardTitle>
+                            <CardDescription className="text-xs">Recent analysis runs and their results</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2">
@@ -619,18 +639,20 @@ export default function DetailedProjectStats({
                                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                         .map((analysis, index) => (
                                             <div key={index}
-                                                 className="flex items-center justify-between p-3 border rounded">
-                                                <div className="flex items-center space-x-3">
-                                                    <GitBranch className="h-4 w-4 text-muted-foreground"/>
+                                                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-1.5 rounded-md bg-muted">
+                                                        <GitBranch className="h-3.5 w-3.5 text-muted-foreground"/>
+                                                    </div>
                                                     <div>
-                                                        <p className="font-medium">
+                                                        <p className="text-sm font-medium">
                                                             {analysis.sourceBranch
                                                                 ? `${analysis.sourceBranch} → ${analysis.targetBranch}`
                                                                 : analysis.targetBranch
                                                             }
                                                         </p>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            {new Date(analysis.date).toLocaleDateString()} - {analysis.totalIssues} issues
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {new Date(analysis.date).toLocaleDateString()} • {analysis.totalIssues} issues
                                                         </p>
                                                     </div>
                                                 </div>
@@ -638,9 +660,11 @@ export default function DetailedProjectStats({
                                             </div>
                                         ))
                                 ) : (
-                                    <div className="text-center py-4 text-muted-foreground">
-                                        <Activity className="h-8 w-8 mx-auto mb-2"/>
-                                        <p>No analysis history available</p>
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-muted mb-3">
+                                            <Activity className="h-6 w-6"/>
+                                        </div>
+                                        <p className="text-sm">No analysis history available</p>
                                     </div>
                                 )}
                             </div>
@@ -648,11 +672,11 @@ export default function DetailedProjectStats({
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="files">
+                <TabsContent value="files" className="mt-4">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Files with Most Issues</CardTitle>
-                            <CardDescription>Files that need the most attention</CardDescription>
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-base">Files with Most Issues</CardTitle>
+                            <CardDescription className="text-xs">Files that need the most attention</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2">
@@ -661,29 +685,34 @@ export default function DetailedProjectStats({
                                         <div 
                                             key={index}
                                             className={cn(
-                                                "flex items-center justify-between p-3 border rounded",
-                                                onFileClick && "cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
+                                                "flex items-center justify-between p-3 rounded-lg border",
+                                                onFileClick && "cursor-pointer hover:bg-muted/30 hover:border-primary/30 transition-all"
                                             )}
                                             onClick={() => onFileClick?.(fileData.file)}
                                         >
-                                            <div className="flex items-center space-x-3">
-                                                {getSeverityIcon(fileData.severity)}
-                                                <div className="flex-1">
-                                                    <p className="font-mono text-sm">{fileData.file}</p>
-                                                    <p className="text-sm text-muted-foreground">{fileData.issues} issues</p>
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className="p-1.5 rounded-md bg-muted shrink-0">
+                                                    {getSeverityIcon(fileData.severity, 'h-3.5 w-3.5')}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-mono text-sm truncate">{fileData.file}</p>
+                                                    <p className="text-xs text-muted-foreground">{fileData.issues} issues</p>
                                                 </div>
                                             </div>
                                             <Badge
-                                                variant={fileData.severity === 'critical' || fileData.severity === 'high' ? 'destructive' : 'outline'}
+                                                variant={fileData.severity === 'critical' || fileData.severity === 'high' ? 'destructive' : 'secondary'}
+                                                className="shrink-0 ml-2"
                                             >
                                                 {fileData.severity}
                                             </Badge>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="text-center py-4 text-muted-foreground">
-                                        <Activity className="h-8 w-8 mx-auto mb-2"/>
-                                        <p>No file data available</p>
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-muted mb-3">
+                                            <Activity className="h-6 w-6"/>
+                                        </div>
+                                        <p className="text-sm">No file data available</p>
                                     </div>
                                 )}
                             </div>
@@ -691,16 +720,18 @@ export default function DetailedProjectStats({
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="branches">
+                <TabsContent value="branches" className="mt-4">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Branch Analysis</CardTitle>
-                            <CardDescription>Analysis results by branch</CardDescription>
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-base">Branch Analysis</CardTitle>
+                            <CardDescription className="text-xs">Analysis results by branch</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-center py-4 text-muted-foreground">
-                                <GitBranch className="h-8 w-8 mx-auto mb-2"/>
-                                <p>Branch statistics not available yet</p>
+                            <div className="text-center py-8 text-muted-foreground">
+                                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-muted mb-3">
+                                    <GitBranch className="h-6 w-6"/>
+                                </div>
+                                <p className="text-sm">Branch statistics not available yet</p>
                             </div>
                         </CardContent>
                     </Card>

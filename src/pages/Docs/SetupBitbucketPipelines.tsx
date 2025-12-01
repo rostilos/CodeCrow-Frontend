@@ -152,6 +152,52 @@ export default function SetupBitbucketPipelines() {
               <AlertDescription>
                 <strong>Branch Targeting:</strong> The example above only triggers analysis for pull requests targeting the "develop" branch.
                 Modify <code className="text-xs">BITBUCKET_PR_DESTINATION_BRANCH</code> check to match your workflow (e.g., "main", "master", or remove to analyze all PRs).
+                <br /><br />
+                <strong>Server-Side Filtering:</strong> Alternatively, configure branch patterns in <strong>Project Settings → Analysis Scope</strong> to filter analysis on the server side.
+                This allows the pipeline to run for all PRs while CodeCrow determines which ones to analyze based on configured patterns.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Analysis Scope Configuration</CardTitle>
+            <CardDescription>Server-side filtering for automated analysis</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground">
+              Instead of filtering branches in the pipeline script, you can configure branch patterns in CodeCrow 
+              to control which branches trigger analysis. This provides centralized control without modifying pipeline configuration.
+            </p>
+            
+            <div className="border-l-2 border-primary pl-4">
+              <h4 className="font-semibold mb-2">Configure in Project Settings</h4>
+              <p className="text-sm text-muted-foreground mb-2">
+                Navigate to <strong>Project Settings → Analysis Scope</strong> and configure:
+              </p>
+              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                <li>• <strong>PR Target Branches</strong>: Patterns for PR target branches (e.g., <code className="bg-muted px-1 rounded">main</code>, <code className="bg-muted px-1 rounded">develop</code>, <code className="bg-muted px-1 rounded">release/*</code>)</li>
+                <li>• <strong>Branch Push Patterns</strong>: Patterns for branch push/merge analysis</li>
+              </ul>
+            </div>
+
+            <div className="border-l-2 border-primary pl-4">
+              <h4 className="font-semibold mb-2">Pattern Syntax</h4>
+              <div className="bg-muted/50 p-3 rounded-lg text-sm">
+                <ul className="space-y-1">
+                  <li><code className="text-primary">main</code> - Exact match</li>
+                  <li><code className="text-primary">release/*</code> - Matches <code>release/1.0</code>, <code>release/2.0</code></li>
+                  <li><code className="text-primary">feature/**</code> - Matches <code>feature/auth</code>, <code>feature/auth/oauth</code></li>
+                </ul>
+              </div>
+            </div>
+
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Default Behavior:</strong> If no patterns are configured, all branches are analyzed. 
+                This maintains backward compatibility with existing pipelines.
               </AlertDescription>
             </Alert>
           </CardContent>

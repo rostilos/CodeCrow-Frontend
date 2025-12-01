@@ -3,9 +3,10 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, Search, Code, User, Brain, GitBranch, Users, BookOpen, FileCode, Rocket, Settings as SettingsIcon } from "lucide-react";
+import { Search, Code, User, Brain, GitBranch, Users, BookOpen, FileCode, Rocket, Settings as SettingsIcon, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { authUtils } from "@/lib/auth";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
@@ -29,7 +30,6 @@ export default function DashboardLayout() {
     }
   }, [navigate]);
 
-  // Keyboard shortcut for search
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -43,7 +43,6 @@ export default function DashboardLayout() {
   }, []);
 
   const searchItems = [
-    // Main navigation
     { title: "Projects", url: "/dashboard/projects", icon: Code, group: "Navigation" },
     { title: "User Settings", url: "/dashboard/user", icon: User, group: "Navigation" },
     ...(canManageWorkspace() ? [
@@ -51,8 +50,6 @@ export default function DashboardLayout() {
       { title: "Code Hosting", url: "/dashboard/hosting", icon: GitBranch, group: "Navigation" },
       { title: "Workspace", url: "/dashboard/workspace", icon: Users, group: "Navigation" },
     ] : []),
-    
-    // Documentation
     { title: "Getting Started", url: "/docs", icon: Rocket, group: "Documentation" },
     { title: "Create Workspace", url: "/docs/workspace", icon: Users, group: "Documentation" },
     { title: "Create VCS Connection", url: "/docs/vcs-connection", icon: GitBranch, group: "Documentation" },
@@ -84,37 +81,46 @@ export default function DashboardLayout() {
         
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Header */}
-          <header className="h-16 border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/20 min-h-[65px]">
-            <div className="flex items-center justify-between px-6 h-full">
-              <div className="flex items-center space-x-4">
-                <SidebarTrigger className="hover:bg-accent hover:text-accent-foreground" />
+          <header className="sticky top-0 z-40 h-16 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex items-center justify-between px-4 lg:px-6 h-full gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <SidebarTrigger className="hover:bg-accent/50 hover:text-accent-foreground h-9 w-9 rounded-lg" />
                 <WorkspaceSwitcher />
                 <div 
-                  className="relative cursor-pointer"
+                  className="relative cursor-pointer hidden sm:block"
                   onClick={() => setSearchOpen(true)}
                 >
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Search settings..." 
-                    className="text-ellipsis text-xs md:text-sm overflow-hidden pl-10 w-24 lg:w-80 bg-background/50 border-border cursor-pointer"
+                    placeholder="Search..." 
+                    className="text-sm pl-9 w-48 lg:w-64 bg-muted/50 border-transparent focus:border-border cursor-pointer h-9 rounded-lg"
                     readOnly
                   />
-                  <kbd className="hidden lg:block absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                  <kbd className="hidden lg:flex absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none h-5 select-none items-center gap-0.5 rounded-md border border-border/50 bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="sm:hidden"
+                  onClick={() => setSearchOpen(true)}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
               </div>
               
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-3">
-                  <div className="h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center">
-                    <span className="text-xs md:text-sm font-medium text-primary-foreground">
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                <div className="flex items-center gap-3 pl-3 border-l border-border/40">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <span className="text-xs font-semibold text-primary">
                       {getUserInitials(user?.username)}
                     </span>
                   </div>
-                  <div className="text-xs md:text-sm">
-                    <p className="font-medium">{getDisplayName(user?.username)}</p>
-                    <p className="text-muted-foreground">{user?.email || 'User'}</p>
+                  <div className="hidden md:block text-sm">
+                    <p className="font-medium text-foreground leading-tight">{getDisplayName(user?.username)}</p>
+                    <p className="text-muted-foreground text-xs leading-tight">{user?.email || 'User'}</p>
                   </div>
                 </div>
               </div>

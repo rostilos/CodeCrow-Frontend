@@ -26,8 +26,30 @@ export default function CreateVCSConnection() {
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">
               A Version Control System (VCS) connection allows CodeCrow to securely access your code repositories.
-              Currently, CodeCrow supports Bitbucket Cloud with OAuth2 authentication.
+              Currently, CodeCrow supports Bitbucket Cloud with multiple authentication methods.
             </p>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">Connection Types</h4>
+              <div className="grid gap-3">
+                <div className="p-3 border rounded-lg bg-primary/5 border-primary/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="default" className="text-xs">Recommended</Badge>
+                    <span className="font-medium">App Installation</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    One-click installation via Bitbucket Marketplace. Automatic token refresh, webhook setup, and workspace-level access.
+                  </p>
+                </div>
+                <div className="p-3 border rounded-lg">
+                  <span className="font-medium">Manual OAuth</span>
+                  <p className="text-sm text-muted-foreground">
+                    Create your own OAuth consumer for granular control. Requires manual webhook configuration.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             <ul className="space-y-2 text-muted-foreground">
               <li className="flex items-start">
                 <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
@@ -40,6 +62,10 @@ export default function CreateVCSConnection() {
               <li className="flex items-start">
                 <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
                 <span>Reuse connections across multiple CodeCrow projects</span>
+              </li>
+              <li className="flex items-start">
+                <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                <span>Automatic token refresh for uninterrupted service (App installations)</span>
               </li>
             </ul>
           </CardContent>

@@ -21,6 +21,8 @@ export interface PullRequestSummary {
   commitHash: string;
   sourceBranchName: string | null;
   targetBranchName: string;
+  title?: string;
+  description?: string;
 }
 
 export interface PullRequestsByBranchResponse {

@@ -2,8 +2,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Code, BookOpen, GitBranch, Settings, Zap, Terminal, FileCode, AlertCircle, Home } from "lucide-react";
+import { BookOpen, GitBranch, Settings, Zap, Terminal, FileCode, AlertCircle, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 
 export default function Documentation() {
   const navigate = useNavigate();
@@ -11,35 +12,30 @@ export default function Documentation() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border sticky top-0 bg-background/95 backdrop-blur z-10">
-        <div className="container mx-auto px-6 py-4">
-          <nav className="flex items-center justify-between">
-            <button 
-              onClick={() => navigate("/")}
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-            >
-              <Code className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                CodeCrow Docs
-              </h1>
-            </button>
-            <Button variant="outline" onClick={() => navigate("/")}>
-              <Home className="mr-2 h-4 w-4" />
-              Back to Home
-            </Button>
-          </nav>
+      <header className="border-b border-border/40 sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
+        <div className="container mx-auto px-4 lg:px-6 h-14 flex items-center justify-between">
+          <button 
+            onClick={() => navigate("/")}
+            className="hover:opacity-80 transition-opacity"
+          >
+            <CodeCrowLogo size="md" />
+          </button>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+            <Home className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 lg:px-6 py-12">
         {/* Hero */}
         <div className="text-center mb-16">
-          <Badge className="mb-6 bg-primary/20 text-primary border-primary/30">
-            <BookOpen className="mr-2 h-4 w-4 inline" />
+          <Badge className="mb-6" variant="secondary">
+            <BookOpen className="mr-2 h-3 w-3" />
             Documentation
           </Badge>
-          <h1 className="text-4xl font-bold mb-4">CodeCrow Documentation</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <h1 className="text-3xl lg:text-4xl font-bold mb-4">CodeCrow Documentation</h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Everything you need to know to get started with CodeCrow and master AI-powered code reviews
           </p>
         </div>
@@ -310,15 +306,15 @@ export default function Documentation() {
 
         {/* Support CTA */}
         <section className="text-center py-12">
-          <Card className="border-border bg-gradient-to-br from-card via-card to-primary/5 inline-block">
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-primary/5 via-background to-accent/5 inline-block">
             <CardContent className="p-8">
-              <h3 className="text-2xl font-bold mb-4">Need More Help?</h3>
-              <p className="text-muted-foreground mb-6">
+              <h3 className="text-xl font-bold mb-3">Need More Help?</h3>
+              <p className="text-muted-foreground mb-6 text-sm">
                 Can't find what you're looking for? Our support team is here to help.
               </p>
-              <div className="flex gap-4 justify-center">
-                <Button variant="outline">Contact Support</Button>
-                <Button variant="gradient" onClick={() => navigate("/register")}>
+              <div className="flex gap-3 justify-center">
+                <Button variant="outline" size="sm">Contact Support</Button>
+                <Button size="sm" onClick={() => navigate("/register")}>
                   Start Using CodeCrow
                 </Button>
               </div>

@@ -123,6 +123,19 @@ export default function CreateFirstProject() {
                   <strong> Project Settings</strong>.
                 </p>
               </div>
+
+              <div className="border-l-2 border-primary pl-4">
+                <h4 className="font-semibold mb-2">6. Configure Analysis Scope (Optional)</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  In <strong>Project Settings → Analysis Scope</strong>, configure which branches trigger analysis:
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                  <li>• <strong>PR Target Branches</strong>: Only analyze PRs targeting specific branches (e.g., <code className="bg-muted px-1 rounded">main</code>, <code className="bg-muted px-1 rounded">develop</code>)</li>
+                  <li>• <strong>Branch Push Patterns</strong>: Only analyze pushes to specific branches</li>
+                  <li>• Supports wildcards: <code className="bg-muted px-1 rounded">release/*</code> matches <code className="bg-muted px-1 rounded">release/1.0</code></li>
+                  <li>• Leave empty to analyze all branches (default)</li>
+                </ul>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -156,6 +169,17 @@ export default function CreateFirstProject() {
               <pre className="text-xs overflow-x-auto">
 {`{
   "aiConnectionId": number
+}`}
+              </pre>
+            </div>
+
+            <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
+              <div className="text-primary font-semibold">PUT /{'{workspaceId}'}/project/{'{namespace}'}/branch-analysis-config</div>
+              <div className="text-muted-foreground">Request Body:</div>
+              <pre className="text-xs overflow-x-auto">
+{`{
+  "prTargetBranches": ["main", "develop", "release/*"],
+  "branchPushPatterns": ["main", "develop"]
 }`}
               </pre>
             </div>
