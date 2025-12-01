@@ -25,11 +25,13 @@ interface CurrentUserData {
     username: string;
     email: string;
     company: string;
+    avatarUrl?: string;
 }
 
 export default function ProfileInformation() {
     const [isLoading, setIsLoading] = useState(false);
     const [isFetchingData, setIsFetchingData] = useState(true);
+    const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
     const navigate = useNavigate();
     const {toast} = useToast();
 
@@ -53,6 +55,8 @@ export default function ProfileInformation() {
                     email: userData.email || "",
                     company: userData.company || ""
                 });
+                
+                setAvatarUrl(userData.avatarUrl);
 
             } catch (error: any) {
                 toast({
@@ -126,17 +130,11 @@ export default function ProfileInformation() {
 
                         <div className="flex items-center space-x-4">
                             <Avatar className="h-20 w-20">
-                                <AvatarImage src="/placeholder-user.jpg"/>
+                                <AvatarImage src={avatarUrl} alt={form.watch('username')} referrerPolicy="no-referrer" />
                                 <AvatarFallback className="bg-gradient-primary text-2xl">
                                     {form.watch('username')?.charAt(0)?.toUpperCase() || 'U'}
                                 </AvatarFallback>
                             </Avatar>
-                            <div>
-                                <Button variant="outline" size="sm">Change Photo</Button>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    JPG, PNG up to 10MB
-                                </p>
-                            </div>
                         </div>
 
                         <FormField

@@ -14,6 +14,7 @@ import { authService } from "@/api_service/auth/authService.ts";
 import { authUtils } from "@/lib/auth";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { GoogleSignInButtonCustom, GoogleCredentialResponse } from "@/components/GoogleSignInButton";
 
 const loginSchema = z.object({
   username: z.string(),
@@ -24,6 +25,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -62,18 +64,7 @@ export default function Login() {
         description: "Welcome to CodeCrow!",
       });
 
-      const intendedDestination = localStorage.getItem('intendedDestination');
-      if (intendedDestination) {
-        localStorage.removeItem('intendedDestination');
-        navigate(intendedDestination);
-      } else {
-        const savedWorkspaceSlug = localStorage.getItem('currentWorkspaceSlug');
-        if (savedWorkspaceSlug) {
-          navigate("/dashboard/projects");
-        } else {
-          navigate("/workspace");
-        }
-      }
+      handleSuccessfulAuth();
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -82,6 +73,51 @@ export default function Login() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (response: GoogleCredentialResponse) => {
+    setIsGoogleLoading(true);
+    try {
+      const result = await authService.googleAuth({ credential: response.credential });
+
+      toast({
+        title: "Login successful",
+        description: "Welcome to CodeCrow!",
+      });
+
+      handleSuccessfulAuth();
+    } catch (error: any) {
+      toast({
+        title: "Google login failed",
+        description: error.message || "Unable to sign in with Google",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = (error: Error) => {
+    toast({
+      title: "Google login failed",
+      description: error.message || "Unable to sign in with Google",
+      variant: "destructive",
+    });
+  };
+
+  const handleSuccessfulAuth = () => {
+    const intendedDestination = localStorage.getItem('intendedDestination');
+    if (intendedDestination) {
+      localStorage.removeItem('intendedDestination');
+      navigate(intendedDestination);
+    } else {
+      const savedWorkspaceSlug = localStorage.getItem('currentWorkspaceSlug');
+      if (savedWorkspaceSlug) {
+        navigate("/dashboard/projects");
+      } else {
+        navigate("/workspace");
+      }
     }
   };
 
@@ -166,13 +202,35 @@ export default function Login() {
                   <Button
                     type="submit"
                     className="w-full h-11"
-                    disabled={isLoading}
+                    disabled={isLoading || isGoogleLoading}
                   >
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign In
                   </Button>
                 </form>
               </Form>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              {/* Google Sign-In */}
+              <GoogleSignInButtonCustom
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                isLoading={isGoogleLoading}
+                disabled={isLoading}
+              >
+                Sign in with Google
+              </GoogleSignInButtonCustom>
 
               <div className="mt-6 text-center text-sm">
                 <span className="text-muted-foreground">Don't have an account? </span>

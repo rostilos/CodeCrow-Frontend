@@ -7,6 +7,11 @@ export interface RegisterRequest {
     email: string;
     password: string;
     username?: string;
+    company?: string;
+}
+
+export interface GoogleAuthRequest {
+    credential: string;
 }
 
 export interface AuthResponse {
@@ -15,5 +20,6 @@ export interface AuthResponse {
         id: string;
         email: string;
         username?: string;
+        avatarUrl?: string;
     };
 }

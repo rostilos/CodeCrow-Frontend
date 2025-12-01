@@ -124,6 +124,28 @@ codecrow.bitbucket.app.client-secret=<your-oauth-consumer-secret>`}</pre>
                   </code>
                 </p>
               </div>
+
+              {/* Google OAuth */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  Google OAuth (Optional)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Enable Google Sign-In for user authentication:
+                </p>
+                <div className="bg-muted/50 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                  <pre className="text-xs">{`# Google OAuth Client ID
+codecrow.oauth.google.client-id=<your-google-client-id>.apps.googleusercontent.com`}</pre>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Create OAuth 2.0 credentials at{" "}
+                  <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    Google Cloud Console
+                  </a>
+                  . Add your frontend URL to authorized JavaScript origins.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -234,8 +256,15 @@ TOP_K_RESULTS=10`}</pre>
 VITE_API_URL=https://codecrow.example.com/api
 
 # Webhook URL for Bitbucket configuration
-VITE_WEBHOOK_URL=https://codecrow.example.com/webhook`}</pre>
+VITE_WEBHOOK_URL=https://codecrow.example.com/webhook
+
+# Google OAuth Client ID (optional - enables Google Sign-In)
+VITE_GOOGLE_CLIENT_ID=<your-google-client-id>.apps.googleusercontent.com`}</pre>
               </div>
+              <p className="text-sm text-muted-foreground">
+                <strong>Note:</strong> The Google Client ID must match the backend configuration. 
+                Google Sign-In button only appears when <code className="bg-muted px-1 py-0.5 rounded text-xs">VITE_GOOGLE_CLIENT_ID</code> is set.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>

@@ -13,10 +13,12 @@ import { Loader2, Shield, Zap, GitBranch } from "lucide-react";
 import {authService} from "@/api_service/auth/authService.ts";
 import { authUtils } from "@/lib/auth";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
+import { GoogleSignInButtonCustom, GoogleCredentialResponse } from "@/components/GoogleSignInButton";
 
 const registerSchema = z.object({
   username: z.string().min(2, "Userame must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
+  company: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -28,6 +30,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -48,6 +51,7 @@ export default function Register() {
     defaultValues: {
       username: "",
       email: "",
+      company: "",
       password: "",
       confirmPassword: "",
     },
@@ -60,6 +64,7 @@ export default function Register() {
         username: data.username,
         email: data.email,
         password: data.password,
+        company: data.company,
       });
       
       // Store JWT token if provided on registration
@@ -84,6 +89,43 @@ export default function Register() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (response: GoogleCredentialResponse) => {
+    setIsGoogleLoading(true);
+    try {
+      const result = await authService.googleAuth({ credential: response.credential });
+
+      // Store JWT token
+      if (result.accessToken) {
+        localStorage.setItem('codecrow_token', result.accessToken);
+        localStorage.setItem('codecrow_user', JSON.stringify(result.user || {}));
+      }
+
+      toast({
+        title: "Sign up successful",
+        description: "Welcome to CodeCrow!",
+      });
+
+      // After registration, redirect to workspace selection
+      navigate("/workspace");
+    } catch (error: any) {
+      toast({
+        title: "Google sign up failed",
+        description: error.message || "Unable to sign up with Google",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = (error: Error) => {
+    toast({
+      title: "Google sign up failed",
+      description: error.message || "Unable to sign up with Google",
+      variant: "destructive",
+    });
   };
 
   return (
@@ -192,6 +234,24 @@ export default function Register() {
 
                   <FormField
                     control={form.control}
+                    name="company"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Your company name"
+                            className="h-11"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="password"
                     render={({ field }) => (
                       <FormItem>
@@ -231,13 +291,35 @@ export default function Register() {
                   <Button
                     type="submit"
                     className="w-full h-11"
-                    disabled={isLoading}
+                    disabled={isLoading || isGoogleLoading}
                   >
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
                 </form>
               </Form>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              {/* Google Sign-Up */}
+              <GoogleSignInButtonCustom
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                isLoading={isGoogleLoading}
+                disabled={isLoading}
+              >
+                Sign up with Google
+              </GoogleSignInButtonCustom>
 
               <div className="mt-6 text-center text-sm">
                 <span className="text-muted-foreground">Already have an account? </span>

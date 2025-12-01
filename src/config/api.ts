@@ -7,6 +7,7 @@ export const API_CONFIG = {
   ENDPOINTS: {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
+    GOOGLE_AUTH: '/auth/google',
     GET_USER_DATA: '/user_info/current',
     SAVE_USER_DATA: '/user_info/update',
     CHANGE_PASSWORD: '/user_info/change-password',

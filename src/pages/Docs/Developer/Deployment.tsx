@@ -75,6 +75,10 @@ export default function Deployment() {
                   <CheckCircle className="h-4 w-4 text-green-500" />
                   Bitbucket workspace access
                 </li>
+                <li className="flex items-center gap-2 text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                  Google OAuth Client ID (optional - for social login)
+                </li>
               </ul>
             </div>
           </div>

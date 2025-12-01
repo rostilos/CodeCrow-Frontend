@@ -9,6 +9,7 @@ import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { authUtils } from "@/lib/auth";
 import { usePermissions } from "@/hooks/usePermissions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   CommandDialog,
   CommandEmpty,
@@ -113,11 +114,12 @@ export default function DashboardLayout() {
               <div className="flex items-center gap-3">
                 <ThemeToggle />
                 <div className="flex items-center gap-3 pl-3 border-l border-border/40">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-semibold text-primary">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatarUrl} alt={user?.username} referrerPolicy="no-referrer" />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                       {getUserInitials(user?.username)}
-                    </span>
-                  </div>
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="hidden md:block text-sm">
                     <p className="font-medium text-foreground leading-tight">{getDisplayName(user?.username)}</p>
                     <p className="text-muted-foreground text-xs leading-tight">{user?.email || 'User'}</p>
