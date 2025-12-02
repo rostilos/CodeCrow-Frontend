@@ -57,11 +57,11 @@ export default function CreateFirstProject() {
               </li>
               <li className="flex items-start">
                 <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                <span>Created a VCS connection (Step 2)</span>
+                <span>Created a VCS connection (Step 2) - either via App installation or manual OAuth</span>
               </li>
               <li className="flex items-start">
                 <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                <span>Created an AI connection (Step 3)</span>
+                <span>Have an AI connection ready (can be created during project setup)</span>
               </li>
             </ul>
           </CardContent>
@@ -70,58 +70,91 @@ export default function CreateFirstProject() {
         <Card>
           <CardHeader>
             <CardTitle>Step-by-Step Instructions</CardTitle>
-            <CardDescription>Create and configure your first project</CardDescription>
+            <CardDescription>Create and configure your project using the step-by-step wizard</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-4">
               <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">1. Navigate to Projects</h4>
-                <p className="text-sm text-muted-foreground">
-                  From your workspace dashboard, click <strong>"New Project"</strong> or navigate to
-                  <strong> Account → Projects → Create Project</strong>.
-                </p>
-              </div>
-
-              <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">2. Enter Project Details</h4>
+                <h4 className="font-semibold mb-2">Option A: Import from VCS Connection (Recommended)</h4>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Provide basic project information:
+                  Use the "Import Project" button on the Projects page to start a guided wizard:
                 </p>
                 <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• <strong>Name</strong>: Descriptive project name (e.g., "Backend API", "Mobile App")</li>
-                  <li>• <strong>Namespace</strong>: Unique identifier (lowercase, no spaces, e.g., "backend-api")</li>
-                  <li>• <strong>Description</strong>: Brief description of the project (optional)</li>
-                  <li>• <strong>Creation Mode</strong>: Choose IMPORT (to link existing repo) or MANUAL</li>
+                  <li>• <strong>Step 1</strong>: Select repository from your connected VCS account</li>
+                  <li>• <strong>Step 2</strong>: Enter project name and description (for manual OAuth connections)</li>
+                  <li>• <strong>Step 3</strong>: Select or create an AI connection</li>
                 </ul>
               </div>
 
-              <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">3. Link Repository</h4>
+              <div className="border-l-2 border-muted pl-4">
+                <h4 className="font-semibold mb-2">Option B: App Installation Flow</h4>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Connect your Bitbucket repository:
+                  When installing via Bitbucket App, you'll be guided through:
                 </p>
                 <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• Select your VCS connection from the dropdown</li>
-                  <li>• Choose <strong>VCS Provider</strong>: BITBUCKET_CLOUD</li>
-                  <li>• Enter <strong>Repository Slug</strong>: The repository identifier (e.g., "my-repo")</li>
-                  <li>• Optionally provide <strong>Repository UUID</strong> for precise identification</li>
+                  <li>• <strong>Step 1</strong>: Select repositories to import</li>
+                  <li>• <strong>Step 2</strong>: Select or create an AI connection</li>
                 </ul>
               </div>
 
+              <div className="border-l-2 border-muted pl-4">
+                <h4 className="font-semibold mb-2">Option C: Manual Project Creation</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Use "New Project" for full manual control:
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                  <li>• <strong>Step 1</strong>: Select repository from your VCS connections</li>
+                  <li>• <strong>Step 2</strong>: Enter project name, namespace, and description</li>
+                  <li>• <strong>Step 3</strong>: Select or create an AI connection</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Connection Configuration</CardTitle>
+            <CardDescription>Configure AI provider during project creation</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              In the final step of project creation, you can select an existing AI connection or create a new one:
+            </p>
+            <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+              <li>• <strong>Provider</strong>: Choose from OpenRouter, OpenAI, or Anthropic</li>
+              <li>• <strong>Model</strong>: Enter the model identifier (e.g., "gpt-4", "claude-3-opus")</li>
+              <li>• <strong>API Key</strong>: Your provider's API key</li>
+              <li>• <strong>Token Limit</strong>: Maximum tokens for AI responses (optional)</li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Post-Creation Configuration</CardTitle>
+            <CardDescription>Additional settings available after project creation</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
               <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">4. Bind AI Connection</h4>
+                <h4 className="font-semibold mb-2">Change AI Connection</h4>
                 <p className="text-sm text-muted-foreground">
-                  After creating the project, navigate to <strong>Project Settings → AI</strong> and select
-                  the AI connection you created in Step 3. This enables AI-powered code analysis for this project.
+                  Navigate to <strong>Project Settings → AI</strong> to change or update the AI connection.
                 </p>
               </div>
 
               <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">5. Configure Project Settings</h4>
-                <p className="text-sm text-muted-foreground">
-                  Optionally customize review settings, target branches, and analysis parameters in
-                  <strong> Project Settings</strong>.
+                <h4 className="font-semibold mb-2">Configure Analysis Scope</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  In <strong>Project Settings → Analysis Scope</strong>, configure which branches trigger analysis:
                 </p>
+                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                  <li>• <strong>PR Target Branches</strong>: Only analyze PRs targeting specific branches (e.g., <code className="bg-muted px-1 rounded">main</code>, <code className="bg-muted px-1 rounded">develop</code>)</li>
+                  <li>• <strong>Branch Push Patterns</strong>: Only analyze pushes to specific branches</li>
+                  <li>• Supports wildcards: <code className="bg-muted px-1 rounded">release/*</code> matches <code className="bg-muted px-1 rounded">release/1.0</code></li>
+                  <li>• Leave empty to analyze all branches (default)</li>
+                </ul>
               </div>
             </div>
           </CardContent>
@@ -156,6 +189,17 @@ export default function CreateFirstProject() {
               <pre className="text-xs overflow-x-auto">
 {`{
   "aiConnectionId": number
+}`}
+              </pre>
+            </div>
+
+            <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
+              <div className="text-primary font-semibold">PUT /{'{workspaceId}'}/project/{'{namespace}'}/branch-analysis-config</div>
+              <div className="text-muted-foreground">Request Body:</div>
+              <pre className="text-xs overflow-x-auto">
+{`{
+  "prTargetBranches": ["main", "develop", "release/*"],
+  "branchPushPatterns": ["main", "develop"]
 }`}
               </pre>
             </div>

@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle, BarChart3, XCircle, FileCode } from "lucide-react";
+import { AlertCircle, CheckCircle, BarChart3, XCircle, FileCode, ChevronRight } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 
 interface IssuesByFileDisplayProps {
@@ -33,20 +33,20 @@ export default function IssuesByFileDisplay({
     switch (type) {
       case 'security': return <AlertCircle className="h-4 w-4 text-destructive" />;
       case 'quality': return <CheckCircle className="h-4 w-4 text-primary" />;
-      case 'performance': return <BarChart3 className="h-4 w-4 text-orange-500" />;
+      case 'performance': return <BarChart3 className="h-4 w-4 text-warning" />;
       default: return <XCircle className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getSeverityBadge = (severity: string) => {
-    const colors = {
-      high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-      medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-      low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-    };
+    const variants = {
+      high: "destructive",
+      medium: "secondary",
+      low: "outline"
+    } as const;
     
     return (
-      <Badge className={colors[severity as keyof typeof colors] || colors.medium}>
+      <Badge variant={variants[severity as keyof typeof variants] || "secondary"}>
         {severity.toUpperCase()}
       </Badge>
     );
@@ -66,8 +66,11 @@ export default function IssuesByFileDisplay({
   if (issues.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <FileCode className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p>No analysis issues found</p>
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted mb-4">
+          <FileCode className="h-7 w-7" />
+        </div>
+        <p className="font-medium">No analysis issues found</p>
+        <p className="text-sm mt-1">Issues will appear here when analysis is complete</p>
       </div>
     );
   }
@@ -77,13 +80,15 @@ export default function IssuesByFileDisplay({
       {Object.entries(issuesByFile).map(([filename, fileIssues]) => (
         <div key={filename} className="space-y-3">
           {/* File Header */}
-          <div className="flex items-center gap-2 px-2">
-            <FileCode className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-mono text-xs font-medium text-foreground">
+          <div className="flex items-center gap-2 px-1">
+            <div className="p-1 rounded bg-muted">
+              <FileCode className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <h3 className="font-mono text-xs font-medium text-foreground truncate">
               {filename}
             </h3>
-            <Badge variant="outline" className="ml-2">
-              {fileIssues.length}
+            <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
+              {fileIssues.length} issue{fileIssues.length !== 1 ? 's' : ''}
             </Badge>
           </div>
 
@@ -92,26 +97,31 @@ export default function IssuesByFileDisplay({
             {fileIssues.map((issue) => (
               <Card 
                 key={issue.id}
-                className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50 group"
+                className="group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
                 onClick={() => handleCardClick(issue.id)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                      {getIssueIcon(issue.type)}
+                      <div className="p-1.5 rounded-lg bg-muted shrink-0 mt-0.5">
+                        {getIssueIcon(issue.type)}
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-base group-hover:text-primary transition-colors">
-                          {issue.title}
-                        </h4>
-                        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                          <span>Line {issue.line}</span>
-                          <span>•</span>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-sm group-hover:text-primary transition-colors truncate">
+                            {issue.title}
+                          </h4>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" />
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                          <span className="font-mono">Line {issue.line}</span>
+                          <span className="opacity-50">•</span>
                           <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                       {getSeverityBadge(issue.severity)}
                       {onUpdateIssueStatus && (
                         <Select 
@@ -120,7 +130,7 @@ export default function IssuesByFileDisplay({
                             onUpdateIssueStatus(issue.id, value as 'open' | 'resolved');
                           }}
                         >
-                          <SelectTrigger className="w-[110px] h-8">
+                          <SelectTrigger className="w-[100px] h-8 text-xs">
                             <SelectValue />
                           </SelectTrigger>  
                           <SelectContent>

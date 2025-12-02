@@ -47,6 +47,7 @@ export class ApiService {
         id: result.id,
         username: result.username,
         email: result.email,
+        avatarUrl: result.avatarUrl,
         roles: result.roles ? result.roles.join(',') : '',
       }));
     }

@@ -28,12 +28,26 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
     try {
       setLoading(true);
       const userWorkspaces = await workspaceService.getUserWorkspaces();
-      setWorkspaces(userWorkspaces);
+      
+      // Fetch member counts for each workspace in parallel
+      const workspacesWithMembers = await Promise.all(
+        userWorkspaces.map(async (ws) => {
+          try {
+            const members = await workspaceService.getWorkspaceMembers(ws.slug);
+            return { ...ws, membersCount: members.length, members };
+          } catch {
+            // If fetching members fails, return workspace with default count
+            return { ...ws, membersCount: ws.membersCount ?? 1 };
+          }
+        })
+      );
+      
+      setWorkspaces(workspacesWithMembers);
       
       // If no current workspace is set and there are workspaces, set the first one
-      if (!currentWorkspace && userWorkspaces.length > 0) {
-        setCurrentWorkspace(userWorkspaces[0]);
-        localStorage.setItem('currentWorkspaceSlug', userWorkspaces[0].slug);
+      if (!currentWorkspace && workspacesWithMembers.length > 0) {
+        setCurrentWorkspace(workspacesWithMembers[0]);
+        localStorage.setItem('currentWorkspaceSlug', workspacesWithMembers[0].slug);
       }
     } catch (error: any) {
       toast({

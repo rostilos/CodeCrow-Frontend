@@ -12,6 +12,7 @@ import { workspaceService, WorkspaceMemberDTO, InviteRequest, ChangeRoleRequest,
 import { authService } from '@/api_service/auth/authService';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function WorkspaceManagement() {
   const { currentWorkspace } = useWorkspace();
@@ -349,11 +350,12 @@ export default function WorkspaceManagement() {
               members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center space-x-4">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-medium text-primary">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={member.avatarUrl} alt={member.username} referrerPolicy="no-referrer" />
+                      <AvatarFallback className="bg-primary/10 text-primary">
                         {member.username ? member.username.charAt(0).toUpperCase() : '?'}
-                      </span>
-                    </div>
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <h4 className="font-medium">{member.username || 'Unknown User'}</h4>
                       <p className="text-sm text-muted-foreground">{member.email || 'No email'}</p>

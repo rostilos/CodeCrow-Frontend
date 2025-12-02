@@ -1,59 +1,66 @@
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { 
+  ArrowLeft, 
+  ArrowRight, 
+  GitBranch, 
+  FileText, 
+  Brain, 
+  Loader2, 
+  Search, 
+  Plus, 
+  Zap,
+  CheckCircle
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  CheckCircle, 
-  Search,
-  Loader2,
-  GitBranch,
-  ArrowRight,
-  ArrowLeft,
-  Brain,
-  Plus,
-  Zap
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { integrationService } from "@/api_service/integration/integrationService";
+import { projectService } from "@/api_service/project/projectService";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService";
 import { 
   VcsConnection, 
   VcsProvider, 
-  VcsRepository,
-  VcsRepositoryList 
+  VcsRepository 
 } from "@/api_service/integration/integration.interface";
 
 /**
- * Post-installation success page.
- * Shows repository selection for onboarding after app installation.
- * Step 1: Select repositories
- * Step 2: Configure AI connection
+ * Import Project Flow for Manual OAuth connections.
+ * Steps:
+ * 1. Select repository from VCS connection
+ * 2. Set project name and description
+ * 3. Select or create AI connection
  */
-export default function IntegrationSuccess() {
+export default function ImportProject() {
   const navigate = useNavigate();
-  const { provider } = useParams<{ provider: string }>();
   const [searchParams] = useSearchParams();
   const connectionId = searchParams.get('connectionId');
+  const provider = searchParams.get('provider') as VcsProvider;
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   
-  // Current step: 1 = repository selection, 2 = AI connection
+  // Current step: 1 = repo selection, 2 = project details, 3 = AI connection
   const [currentStep, setCurrentStep] = useState(1);
   
+  // Connection & Repository state
   const [connection, setConnection] = useState<VcsConnection | null>(null);
   const [repositories, setRepositories] = useState<VcsRepository[]>([]);
-  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
+  const [selectedRepo, setSelectedRepo] = useState<VcsRepository | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isOnboarding, setIsOnboarding] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  
+  // Project details state
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   
   // AI Connection state
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
@@ -66,6 +73,9 @@ export default function IntegrationSuccess() {
     apiKey: '',
     tokenLimitation: '150000'
   });
+  
+  // Creating state
+  const [isCreating, setIsCreating] = useState(false);
   
   useEffect(() => {
     if (currentWorkspace && connectionId && provider) {
@@ -80,7 +90,7 @@ export default function IntegrationSuccess() {
     try {
       const conn = await integrationService.getConnection(
         currentWorkspace.slug, 
-        provider as VcsProvider, 
+        provider, 
         parseInt(connectionId)
       );
       setConnection(conn);
@@ -103,9 +113,9 @@ export default function IntegrationSuccess() {
         setIsLoadingMore(true);
       }
       
-      const result: VcsRepositoryList = await integrationService.listRepositories(
+      const result = await integrationService.listRepositories(
         currentWorkspace.slug,
-        provider as VcsProvider,
+        provider,
         parseInt(connectionId),
         pageNum,
         searchQuery || undefined
@@ -140,30 +150,11 @@ export default function IntegrationSuccess() {
     loadRepositories(page + 1, true);
   };
   
-  const toggleRepo = (repoId: string) => {
-    setSelectedRepos(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(repoId)) {
-        newSet.delete(repoId);
-      } else {
-        newSet.add(repoId);
-      }
-      return newSet;
-    });
+  const handleSelectRepo = (repo: VcsRepository) => {
+    setSelectedRepo(repo);
+    setProjectName(repo.name);
   };
   
-  const selectAll = () => {
-    const allIds = repositories
-      .filter(r => !r.isOnboarded)
-      .map(r => r.id);
-    setSelectedRepos(new Set(allIds));
-  };
-  
-  const deselectAll = () => {
-    setSelectedRepos(new Set());
-  };
-  
-  // Load AI connections when moving to step 2
   const loadAiConnections = async () => {
     if (!currentWorkspace) return;
     
@@ -171,7 +162,6 @@ export default function IntegrationSuccess() {
       setIsLoadingAi(true);
       const connections = await aiConnectionService.listWorkspaceConnections(currentWorkspace.slug);
       setAiConnections(connections);
-      // Auto-select first connection if available
       if (connections.length > 0 && !selectedAiConnectionId) {
         setSelectedAiConnectionId(connections[0].id);
       }
@@ -221,73 +211,71 @@ export default function IntegrationSuccess() {
     }
   };
   
-  const handleProceedToAiStep = () => {
-    if (selectedRepos.size === 0) {
-      toast({
-        title: "No repositories selected",
-        description: "Please select at least one repository to continue",
-        variant: "destructive",
-      });
-      return;
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      if (!selectedRepo) {
+        toast({
+          title: "No repository selected",
+          description: "Please select a repository to continue",
+          variant: "destructive",
+        });
+        return;
+      }
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (!projectName.trim()) {
+        toast({
+          title: "Name required",
+          description: "Please enter a project name",
+          variant: "destructive",
+        });
+        return;
+      }
+      setCurrentStep(3);
+      loadAiConnections();
     }
-    setCurrentStep(2);
-    loadAiConnections();
   };
   
-  const handleBackToRepos = () => {
-    setCurrentStep(1);
+  const handlePreviousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
   
-  const handleOnboard = async () => {
-    if (!currentWorkspace || !connectionId || !provider) return;
-    if (selectedRepos.size === 0) return;
+  const handleCreateProject = async () => {
+    if (!currentWorkspace || !connectionId || !provider || !selectedRepo) return;
     
     try {
-      setIsOnboarding(true);
+      setIsCreating(true);
       
-      const reposToOnboard = repositories.filter(r => selectedRepos.has(r.id));
-      const requests = reposToOnboard.map(repo => ({
-        externalRepoId: repo.slug, // Use slug for Bitbucket API compatibility
-        request: {
-          vcsConnectionId: parseInt(connectionId),
-          projectName: repo.name,
-          projectNamespace: repo.slug,
-          setupWebhooks: true,
-          aiConnectionId: selectedAiConnectionId || undefined,
-        },
-      }));
-      
-      const results = await integrationService.onboardRepositories(
+      const result = await integrationService.onboardRepository(
         currentWorkspace.slug,
-        provider as VcsProvider,
-        requests
+        provider,
+        selectedRepo.slug,
+        {
+          vcsConnectionId: parseInt(connectionId),
+          projectName: projectName,
+          projectDescription: projectDescription || undefined,
+          aiConnectionId: selectedAiConnectionId || undefined,
+          setupWebhooks: true,
+        }
       );
       
       toast({
-        title: "Repositories connected",
-        description: `Successfully connected ${results.length} repositories`,
+        title: "Project created",
+        description: `Successfully created project "${result.projectName}"`,
       });
       
-      // Refresh list to show updated status
-      loadRepositories(1, false);
-      setSelectedRepos(new Set());
-      
-      // Navigate to projects page
-      navigate('/dashboard/projects');
-      
+      navigate(`/dashboard/projects/${result.projectNamespace}/setup`);
     } catch (error: any) {
       toast({
-        title: "Failed to connect repositories",
+        title: "Failed to create project",
         description: error.message,
         variant: "destructive",
       });
     } finally {
-      setIsOnboarding(false);
+      setIsCreating(false);
     }
-  };
-  
-  const handleFinish = () => {
-    navigate('/dashboard/projects');
   };
   
   if (isLoading && !connection) {
@@ -305,50 +293,55 @@ export default function IntegrationSuccess() {
   
   return (
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
-      {/* Success header */}
-      <Card className="border-success/50 bg-success/5">
-        <CardContent className="flex items-center gap-4 py-6">
-          <div className="p-3 bg-success/20 rounded-full">
-            <CheckCircle className="h-8 w-8 text-success" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold">Connection Successful!</h2>
-            <p className="text-muted-foreground">
-              {connection?.connectionName || 'Your VCS connection'} is now connected.
-              {currentStep === 1 ? ' Select repositories to start analyzing.' : ' Configure AI for code analysis.'}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/projects")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Import Project</h1>
+          <p className="text-muted-foreground">
+            Import a repository from {connection?.connectionName || 'your VCS connection'}
+          </p>
+        </div>
+      </div>
       
       {/* Step indicator */}
       <div className="flex items-center justify-center gap-4">
         <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            1
+            {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : '1'}
           </div>
-          <span className="hidden sm:inline font-medium">Select Repositories</span>
+          <span className="hidden sm:inline font-medium">Select Repository</span>
         </div>
         <div className={`w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
         <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            2
+            {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : '2'}
+          </div>
+          <span className="hidden sm:inline font-medium">Project Details</span>
+        </div>
+        <div className={`w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+            3
           </div>
           <span className="hidden sm:inline font-medium">AI Connection</span>
         </div>
       </div>
       
-      {/* Step 1: Repository selection */}
+      {/* Step 1: Repository Selection */}
       {currentStep === 1 && (
         <>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GitBranch className="h-5 w-5" />
-                Select Repositories
+                Select Repository
               </CardTitle>
               <CardDescription>
-                Choose which repositories you want to connect to CodeCrow
+                Choose a repository to import as a project
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -363,22 +356,6 @@ export default function IntegrationSuccess() {
                 <Button variant="outline" onClick={handleSearch}>
                   <Search className="h-4 w-4" />
                 </Button>
-              </div>
-              
-              {/* Selection controls */}
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex gap-2">
-                  <Button variant="link" size="sm" onClick={selectAll} className="p-0 h-auto">
-                    Select all
-                  </Button>
-                  <span className="text-muted-foreground">|</span>
-                  <Button variant="link" size="sm" onClick={deselectAll} className="p-0 h-auto">
-                    Deselect all
-                  </Button>
-                </div>
-                <span className="text-muted-foreground">
-                  {selectedRepos.size} selected
-                </span>
               </div>
               
               {/* Repository list */}
@@ -396,16 +373,18 @@ export default function IntegrationSuccess() {
                   {repositories.map((repo) => (
                     <div
                       key={repo.id}
-                      className={`flex items-center gap-3 p-3 border rounded-lg transition-colors
-                        ${repo.isOnboarded ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'}
-                        ${selectedRepos.has(repo.id) ? 'border-primary bg-primary/5' : ''}`}
-                      onClick={() => !repo.isOnboarded && toggleRepo(repo.id)}
+                      className={`flex items-center gap-3 p-3 border rounded-lg transition-colors cursor-pointer
+                        ${repo.isOnboarded ? 'opacity-50' : 'hover:bg-muted/50'}
+                        ${selectedRepo?.id === repo.id ? 'border-primary bg-primary/5' : ''}`}
+                      onClick={() => !repo.isOnboarded && handleSelectRepo(repo)}
                     >
-                      <Checkbox
-                        checked={selectedRepos.has(repo.id) || repo.isOnboarded}
-                        disabled={repo.isOnboarded}
-                        onCheckedChange={() => !repo.isOnboarded && toggleRepo(repo.id)}
-                      />
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        selectedRepo?.id === repo.id ? 'border-primary' : 'border-muted-foreground'
+                      }`}>
+                        {selectedRepo?.id === repo.id && (
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium truncate">{repo.name}</span>
@@ -414,7 +393,7 @@ export default function IntegrationSuccess() {
                           )}
                           {repo.isOnboarded && (
                             <span className="text-xs bg-success/20 text-success px-1.5 py-0.5 rounded">
-                              Already connected
+                              Already imported
                             </span>
                           )}
                         </div>
@@ -447,13 +426,10 @@ export default function IntegrationSuccess() {
           
           {/* Step 1 Actions */}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={handleFinish}>
-              Skip for Now
+            <Button variant="outline" onClick={() => navigate('/dashboard/projects')}>
+              Cancel
             </Button>
-            <Button
-              onClick={handleProceedToAiStep}
-              disabled={selectedRepos.size === 0}
-            >
+            <Button onClick={handleNextStep} disabled={!selectedRepo}>
               Continue
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
@@ -461,8 +437,65 @@ export default function IntegrationSuccess() {
         </>
       )}
       
-      {/* Step 2: AI Connection */}
+      {/* Step 2: Project Details */}
       {currentStep === 2 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Project Details
+              </CardTitle>
+              <CardDescription>
+                Configure the project name and description
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Selected repo info */}
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="text-sm text-muted-foreground">Selected repository</div>
+                <div className="font-medium">{selectedRepo?.fullName}</div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="project-name">Project Name *</Label>
+                <Input
+                  id="project-name"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="Enter project name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="project-description">Description (optional)</Label>
+                <Textarea
+                  id="project-description"
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  placeholder="Enter project description"
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Step 2 Actions */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePreviousStep}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <Button onClick={handleNextStep} disabled={!projectName.trim()}>
+              Continue
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </>
+      )}
+      
+      {/* Step 3: AI Connection */}
+      {currentStep === 3 && (
         <>
           <Card>
             <CardHeader>
@@ -471,7 +504,7 @@ export default function IntegrationSuccess() {
                 Configure AI Connection
               </CardTitle>
               <CardDescription>
-                Select or create an AI connection for code analysis. This will be used for all {selectedRepos.size} selected repositories.
+                Select or create an AI connection for code analysis
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -607,24 +640,28 @@ export default function IntegrationSuccess() {
             </CardContent>
           </Card>
           
-          {/* Step 2 Actions */}
+          {/* Step 3 Actions */}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={handleBackToRepos}>
+            <Button variant="outline" onClick={handlePreviousStep}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleFinish}>
+              <Button
+                variant="outline"
+                onClick={handleCreateProject}
+                disabled={isCreating}
+              >
                 Skip AI Setup
               </Button>
               <Button
-                onClick={handleOnboard}
-                disabled={isOnboarding}
+                onClick={handleCreateProject}
+                disabled={isCreating}
               >
-                {isOnboarding ? (
+                {isCreating ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : null}
-                Connect {selectedRepos.size} Repositories
+                Create Project
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>

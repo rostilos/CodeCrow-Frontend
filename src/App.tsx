@@ -23,6 +23,16 @@ const GenerateProjectToken = lazy(() => import("./pages/Docs/GenerateProjectToke
 const SetupBitbucketPipelines = lazy(() => import("./pages/Docs/SetupBitbucketPipelines"));
 const CreatePullRequest = lazy(() => import("./pages/Docs/CreatePullRequest"));
 const FAQ = lazy(() => import("./pages/Docs/FAQ"));
+const BitbucketAppInstall = lazy(() => import("./pages/Docs/BitbucketAppInstall"));
+// Developer Documentation
+const DevArchitecture = lazy(() => import("./pages/Docs/Developer/Architecture"));
+const DevConfiguration = lazy(() => import("./pages/Docs/Developer/Configuration"));
+const DevAPIReference = lazy(() => import("./pages/Docs/Developer/APIReference"));
+const DevDatabaseSchema = lazy(() => import("./pages/Docs/Developer/DatabaseSchema"));
+const DevModules = lazy(() => import("./pages/Docs/Developer/Modules"));
+const DevDeployment = lazy(() => import("./pages/Docs/Developer/Deployment"));
+const DevDevelopmentGuide = lazy(() => import("./pages/Docs/Developer/DevelopmentGuide"));
+const DevTroubleshooting = lazy(() => import("./pages/Docs/Developer/Troubleshooting"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const DashboardLayout = lazy(() => import("./components/DashboardLayout"));
 const ProjectSetupInstructions = lazy(() => import("./pages/Account/Project/ProjectSetupInstructions.tsx"));
@@ -38,6 +48,7 @@ const TaskSettings = lazy(() => import("./pages/Account/TaskSettings/TaskSetting
 const AISettings = lazy(() => import("./pages/Account/AI/AISettings.tsx"));
 const NewProjectPage = lazy(() => import("./pages/Account/Project/NewProject.tsx"));
 const SelectRepoPage = lazy(() => import("./pages/Account/Project/SelectRepo.tsx"));
+const ImportProjectPage = lazy(() => import("./pages/Account/Project/ImportProject.tsx"));
 const BillingSettings = lazy(() => import("./pages/Account/Billing/BillingSettings.tsx"));
 const WorkspaceSelection = lazy(() => import("./pages/WorkspaceSelection.tsx"));
 const ProjectDashboard = lazy(() => import("./pages/ProjectDashboard.tsx"));
@@ -47,7 +58,7 @@ const IntegrationSuccess = lazy(() => import("./pages/Account/Integrations/Integ
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="light" storageKey="codecrow-ui-theme">
+    <ThemeProvider defaultTheme="system" storageKey="codecrow-ui-theme">
       <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -77,6 +88,16 @@ const App = () => (
             <Route path="bitbucket-pipelines" element={<SetupBitbucketPipelines />} />
             <Route path="pull-request" element={<CreatePullRequest />} />
             <Route path="faq" element={<FAQ />} />
+            <Route path="bitbucket-app-install" element={<BitbucketAppInstall />} />
+            {/* Developer Documentation */}
+            <Route path="dev/architecture" element={<DevArchitecture />} />
+            <Route path="dev/configuration" element={<DevConfiguration />} />
+            <Route path="dev/api" element={<DevAPIReference />} />
+            <Route path="dev/database" element={<DevDatabaseSchema />} />
+            <Route path="dev/modules" element={<DevModules />} />
+            <Route path="dev/deployment" element={<DevDeployment />} />
+            <Route path="dev/development" element={<DevDevelopmentGuide />} />
+            <Route path="dev/troubleshooting" element={<DevTroubleshooting />} />
           </Route>
           <Route path="/workspace" element={
             <ProtectedRoute>
@@ -94,6 +115,7 @@ const App = () => (
                       <Route path="projects" element={<ProjectManagement />} />
                       <Route path="projects/new" element={<NewProjectPage />} />
                       <Route path="projects/new/select-repo/:connectionId" element={<SelectRepoPage />} />
+                      <Route path="projects/import" element={<ImportProjectPage />} />
                       <Route path="projects/:namespace" element={<ProjectDashboard />} />
                       <Route path="projects/:namespace/setup" element={<ProjectSetupInstructions />} />
                       <Route path="projects/:namespace/branches/:branchName/issues" element={<BranchIssues />} />

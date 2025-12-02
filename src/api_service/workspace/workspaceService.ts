@@ -13,6 +13,7 @@ export interface WorkspaceDTO {
   name: string;
   description?: string;
   createdAt?: string;
+  membersCount?: number;
   members?: WorkspaceMemberDTO[];
 }
 
@@ -20,6 +21,7 @@ export interface WorkspaceMemberDTO {
   id: number;
   username: string;
   email: string;
+  avatarUrl?: string;
   role: string;
   joinedAt: string;
 }

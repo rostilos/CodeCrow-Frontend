@@ -9,4 +9,5 @@ export interface SaveUserDataResponse {
     username?: string;
     email?: string;
     company?: string;
+    avatarUrl?: string;
 }
