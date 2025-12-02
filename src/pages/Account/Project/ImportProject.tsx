@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { integrationService } from "@/api_service/integration/integrationService";
+import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService";
 import { projectService } from "@/api_service/project/projectService";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService";
 import { 
@@ -42,6 +43,7 @@ export default function ImportProject() {
   const [searchParams] = useSearchParams();
   const connectionId = searchParams.get('connectionId');
   const provider = searchParams.get('provider') as VcsProvider;
+  const connectionType = searchParams.get('connectionType');
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   
@@ -88,12 +90,33 @@ export default function ImportProject() {
     if (!currentWorkspace || !connectionId || !provider) return;
     
     try {
-      const conn = await integrationService.getConnection(
-        currentWorkspace.slug, 
-        provider, 
-        parseInt(connectionId)
-      );
-      setConnection(conn);
+      // Use appropriate service based on connection type
+      if (connectionType === 'OAUTH_MANUAL' || connectionType === 'ACCESS_TOKEN') {
+        const conn = await bitbucketCloudService.getConnection(
+          currentWorkspace.slug, 
+          parseInt(connectionId)
+        );
+        // Map to VcsConnection format
+        setConnection({
+          id: conn.id,
+          provider: 'bitbucket-cloud',
+          connectionType: connectionType as any,
+          connectionName: conn.connectionName,
+          status: conn.setupStatus as any,
+          externalWorkspaceId: conn.workspaceId || null,
+          externalWorkspaceSlug: conn.workspaceId || null,
+          repoCount: conn.repoCount || 0,
+          createdAt: '',
+          updatedAt: '',
+        });
+      } else {
+        const conn = await integrationService.getConnection(
+          currentWorkspace.slug, 
+          provider, 
+          parseInt(connectionId)
+        );
+        setConnection(conn);
+      }
     } catch (error: any) {
       toast({
         title: "Failed to load connection",
@@ -113,13 +136,50 @@ export default function ImportProject() {
         setIsLoadingMore(true);
       }
       
-      const result = await integrationService.listRepositories(
-        currentWorkspace.slug,
-        provider,
-        parseInt(connectionId),
-        pageNum,
-        searchQuery || undefined
-      );
+      let result: { items: VcsRepository[]; hasNext: boolean };
+      
+      // Check connection type to use appropriate endpoint
+      // For OAuth manual connections (or null/undefined), use bitbucketCloudService
+      // For APP connections, use integrationService
+      const isManualConnection = !connection?.connectionType || 
+        connection?.connectionType === 'OAUTH_MANUAL' || 
+        connection?.connectionType === 'ACCESS_TOKEN';
+      
+      if (isManualConnection) {
+        // Use legacy OAuth endpoint for manual connections
+        const res = await bitbucketCloudService.getRepositories(
+          currentWorkspace.slug,
+          parseInt(connectionId),
+          pageNum,
+          searchQuery || undefined
+        );
+        result = {
+          items: res.items.map((r: any) => ({
+            id: r.uuid || r.id || r.slug,
+            slug: r.slug,
+            name: r.name,
+            fullName: r.fullName || r.full_name || `${r.owner?.username || r.workspace?.slug || ''}/${r.slug}`,
+            description: r.description,
+            isPrivate: r.isPrivate ?? r.is_private ?? true,
+            defaultBranch: r.mainBranch?.name || r.defaultBranch || r.default_branch || 'main',
+            cloneUrl: r.links?.clone?.[0]?.href || r.cloneUrl,
+            htmlUrl: r.links?.html?.href || r.htmlUrl,
+            namespace: r.owner?.username || r.workspace?.slug || '',
+            avatarUrl: r.links?.avatar?.href || r.avatarUrl || null,
+            isOnboarded: r.isOnboarded ?? false,
+          })),
+          hasNext: res.hasNext
+        };
+      } else {
+        // Use integration API for APP connections
+        result = await integrationService.listRepositories(
+          currentWorkspace.slug,
+          provider,
+          parseInt(connectionId),
+          pageNum,
+          searchQuery || undefined
+        );
+      }
       
       if (append) {
         setRepositories(prev => [...prev, ...result.items]);

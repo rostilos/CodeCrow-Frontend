@@ -248,7 +248,7 @@ export default function ProjectSettings() {
       navigate(`/dashboard/hosting/${connection.provider}/success?connectionId=${connection.id}`);
     } else {
       // For manual OAuth connections, use the step-by-step new project flow
-      navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=${connection.provider}`);
+      navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=${connection.provider}&connectionType=${connection.connectionType}`);
     }
   };
   
