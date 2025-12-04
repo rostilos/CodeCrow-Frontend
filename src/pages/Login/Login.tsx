@@ -15,6 +15,8 @@ import { authUtils } from "@/lib/auth";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { GoogleSignInButtonCustom, GoogleCredentialResponse } from "@/components/GoogleSignInButton";
+import { TwoFactorLoginDialog } from "@/components/Auth/TwoFactorLoginDialog";
+import { TwoFactorRequiredResponse } from "@/api_service/auth/twoFactorService.interface";
 
 const loginSchema = z.object({
   username: z.string(),
@@ -26,6 +28,8 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [twoFactorDialogOpen, setTwoFactorDialogOpen] = useState(false);
+  const [twoFactorData, setTwoFactorData] = useState<TwoFactorRequiredResponse | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -59,6 +63,29 @@ export default function Login() {
     try {
       const result = await authService.login(data as { username: string; password: string });
 
+      // Check if 2FA is required
+      if (result.requiresTwoFactor) {
+        setTwoFactorData({
+          requiresTwoFactor: true,
+          tempToken: result.tempToken!,
+          twoFactorType: result.twoFactorType!,
+          message: result.message || 'Two-factor authentication required',
+        });
+        setTwoFactorDialogOpen(true);
+        return;
+      }
+
+      // Store auth data (for non-2FA login)
+      if (result.accessToken) {
+        localStorage.setItem('codecrow_token', result.accessToken);
+        localStorage.setItem('codecrow_user', JSON.stringify({
+          id: result.id,
+          email: result.email,
+          username: result.username,
+          avatarUrl: result.avatarUrl,
+        }));
+      }
+
       toast({
         title: "Login successful",
         description: "Welcome to CodeCrow!",
@@ -74,6 +101,24 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTwoFactorSuccess = (token: string, user: any) => {
+    // Store the token and user data
+    localStorage.setItem('codecrow_token', token);
+    localStorage.setItem('codecrow_user', JSON.stringify(user));
+    
+    toast({
+      title: "Login successful",
+      description: "Welcome to CodeCrow!",
+    });
+    
+    handleSuccessfulAuth();
+  };
+
+  const handleTwoFactorCancel = () => {
+    setTwoFactorData(null);
+    // User cancelled 2FA, they can try logging in again
   };
 
   const handleGoogleSuccess = async (response: GoogleCredentialResponse) => {
@@ -246,6 +291,15 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {/* Two-Factor Authentication Dialog */}
+      <TwoFactorLoginDialog
+        open={twoFactorDialogOpen}
+        onOpenChange={setTwoFactorDialogOpen}
+        twoFactorData={twoFactorData}
+        onSuccess={handleTwoFactorSuccess}
+        onCancel={handleTwoFactorCancel}
+      />
     </div>
   );
 }

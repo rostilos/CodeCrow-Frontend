@@ -6,11 +6,21 @@ export const API_CONFIG = {
   BASE_URL: BACKEND_URL,
   ENDPOINTS: {
     LOGIN: '/auth/login',
+    LOGIN_2FA: '/auth/login/2fa',
+    LOGIN_2FA_RESEND: '/auth/login/2fa/resend',
     REGISTER: '/auth/register',
     GOOGLE_AUTH: '/auth/google',
     GET_USER_DATA: '/user_info/current',
     SAVE_USER_DATA: '/user_info/update',
     CHANGE_PASSWORD: '/user_info/change-password',
+    TWO_FACTOR: {
+      STATUS: '/auth/2fa/status',
+      SETUP: '/auth/2fa/setup',
+      VERIFY: '/auth/2fa/verify',
+      DISABLE: '/auth/2fa/disable',
+      RESEND_CODE: '/auth/2fa/resend-code',
+      REGENERATE_BACKUP_CODES: '/auth/2fa/backup-codes/regenerate',
+    },
     PROJECT: {
       LIST: '/project/project_list',
       CREATE: '/project/create',

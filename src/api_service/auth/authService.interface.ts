@@ -16,10 +16,22 @@ export interface GoogleAuthRequest {
 
 export interface AuthResponse {
     accessToken: string;
-    user: {
-        id: string;
-        email: string;
-        username?: string;
-        avatarUrl?: string;
-    };
+    id: string;
+    email: string;
+    username?: string;
+    avatarUrl?: string;
+    roles?: string[];
+}
+
+export interface LoginResponse {
+    accessToken?: string;
+    id?: string;
+    username?: string;
+    email?: string;
+    avatarUrl?: string;
+    roles?: string[];
+    requiresTwoFactor?: boolean;
+    tempToken?: string;
+    twoFactorType?: 'TOTP' | 'EMAIL';
+    message?: string;
 }
