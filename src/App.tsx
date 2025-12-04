@@ -33,6 +33,7 @@ const DevModules = lazy(() => import("./pages/Docs/Developer/Modules"));
 const DevDeployment = lazy(() => import("./pages/Docs/Developer/Deployment"));
 const DevDevelopmentGuide = lazy(() => import("./pages/Docs/Developer/DevelopmentGuide"));
 const DevTroubleshooting = lazy(() => import("./pages/Docs/Developer/Troubleshooting"));
+const DevSMTPSetup = lazy(() => import("./pages/Docs/Developer/SMTPSetup"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const DashboardLayout = lazy(() => import("./components/DashboardLayout"));
 const ProjectSetupInstructions = lazy(() => import("./pages/Account/Project/ProjectSetupInstructions.tsx"));
@@ -92,6 +93,7 @@ const App = () => (
             {/* Developer Documentation */}
             <Route path="dev/architecture" element={<DevArchitecture />} />
             <Route path="dev/configuration" element={<DevConfiguration />} />
+            <Route path="dev/smtp" element={<DevSMTPSetup />} />
             <Route path="dev/api" element={<DevAPIReference />} />
             <Route path="dev/database" element={<DevDatabaseSchema />} />
             <Route path="dev/modules" element={<DevModules />} />

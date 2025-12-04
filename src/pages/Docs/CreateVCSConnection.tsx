@@ -38,7 +38,7 @@ export default function CreateVCSConnection() {
                     <span className="font-medium">App Installation</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    One-click installation via Bitbucket Marketplace. Automatic token refresh, webhook setup, and workspace-level access.
+                    One-click connection via CodeCrow. Automatic token refresh, webhook setup, and workspace-level access.
                   </p>
                 </div>
                 <div className="p-3 border rounded-lg">
