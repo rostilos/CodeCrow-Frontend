@@ -752,7 +752,7 @@ export default function ProjectDashboard() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${analysisLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              {canManageWorkspace && (
+              {canManageWorkspace() && (
                 <Button
                   variant="outline"
                   onClick={handleGoToSettings}

@@ -146,6 +146,15 @@ class ProjectService extends ApiService {
     await this.request<void>(`/${workspaceSlug}/project/${namespace}`, { method: 'DELETE' }, true);
   }
 
+  async deleteProjectWithVerification(workspaceSlug: string, namespace: string, verificationCode: string): Promise<void> {
+    await this.request<void>(`/${workspaceSlug}/project/${namespace}`, {
+      method: 'DELETE',
+      headers: {
+        'X-2FA-Code': verificationCode,
+      },
+    }, true);
+  }
+
   async bindRepository(workspaceSlug: string, namespace: string, data: BindRepositoryRequest): Promise<ProjectDTO> {
     return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/repository/bind`, {
       method: 'PUT',
@@ -155,6 +164,15 @@ class ProjectService extends ApiService {
 
   async unbindRepository(workspaceSlug: string, namespace: string): Promise<ProjectDTO> {
     return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/repository/unbind`, { method: 'DELETE' }, true);
+  }
+
+  async unbindRepositoryWithVerification(workspaceSlug: string, namespace: string, verificationCode: string): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/repository/unbind`, {
+      method: 'DELETE',
+      headers: {
+        'X-2FA-Code': verificationCode,
+      },
+    }, true);
   }
 
   async updateRepositorySettings(workspaceSlug: string, namespace: string, data: any): Promise<void> {
