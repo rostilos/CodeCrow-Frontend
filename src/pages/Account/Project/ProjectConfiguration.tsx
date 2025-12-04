@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -18,6 +18,7 @@ import ProjectTokenManagement from "@/components/ProjectTokenManagement";
 import DefaultBranchSelector from "@/components/DefaultBranchSelector";
 import BranchPatternConfig from "@/components/BranchPatternConfig";
 import RagConfiguration from "@/components/RagConfiguration";
+import DangerZone from "@/components/Project/DangerZone";
 
 interface ProjectCodeHostingConfig {
   id: string | number;
@@ -336,6 +337,10 @@ export default function ProjectConfiguration() {
           {canGenerateTokens() && (
             <TabsTrigger value="tokens">API Tokens</TabsTrigger>
           )}
+          <TabsTrigger value="danger" className="text-destructive data-[state=active]:text-destructive">
+            <AlertTriangle className="h-4 w-4 mr-1" />
+            Danger Zone
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -358,9 +363,12 @@ export default function ProjectConfiguration() {
                 <Input
                   id="project-namespace"
                   value={project.namespace || ''}
-                  onChange={(e) => setProject({ ...project, namespace: e.target.value })}
-                  placeholder="Enter project namespace (e.g., my-project)"
+                  disabled
+                  className="bg-muted cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Project namespace cannot be changed after creation.
+                </p>
               </div>
               <div>
                 <Label htmlFor="project-description">Description</Label>
@@ -440,14 +448,7 @@ export default function ProjectConfiguration() {
                           <Edit className="h-4 w-4 mr-2" />
                           Change Repository
                         </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => handleDeleteConnection(project.vcsConnectionId!)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Unbind
-                        </Button>
+                        {/* Unbind moved to Danger Zone tab */}
                       </div>
                     </div>
                   </div>
@@ -721,6 +722,17 @@ export default function ProjectConfiguration() {
             <ProjectTokenManagement projectId={namespace} />
           </TabsContent>
         )}
+
+        {/* Danger Zone Tab */}
+        <TabsContent value="danger" className="space-y-4">
+          {currentWorkspace && project && (
+            <DangerZone
+              project={project}
+              workspaceSlug={currentWorkspace.slug}
+              onProjectUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   );
