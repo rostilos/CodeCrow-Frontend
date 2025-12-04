@@ -68,8 +68,8 @@ export default function GettingStarted() {
   const bitbucketAutoSteps = [
     {
       number: 2,
-      title: "Install CodeCrow App",
-      description: "One-click installation from Bitbucket Marketplace with automatic OAuth setup.",
+      title: "Connect Bitbucket App",
+      description: "Simplified setup via CodeCrow's Bitbucket connection flow.",
       path: "/docs/bitbucket-app-install",
       icon: MousePointer,
     },

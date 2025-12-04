@@ -112,6 +112,27 @@ The frontend requires a backend API server. Configure the API endpoint using the
 
 Default development API: `http://localhost:8081/api`
 
+### Backend Email/SMTP Configuration
+
+For features like Two-Factor Authentication (2FA) via email, the backend server requires SMTP configuration. Add these properties to your backend `application.properties`:
+
+```properties
+# Enable email
+codecrow.email.enabled=true
+codecrow.email.from=noreply@yourdomain.com
+codecrow.email.from-name=CodeCrow
+
+# SMTP Configuration (Gmail example)
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-app-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+```
+
+> **📖 For detailed SMTP setup with different providers (Amazon SES, SendGrid, Mailgun), see the [SMTP Setup Guide](../docs/SMTP_SETUP.md)**
+
 ## Project Structure
 
 ```

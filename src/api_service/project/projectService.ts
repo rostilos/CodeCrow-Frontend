@@ -61,6 +61,7 @@ export interface ProjectDTO {
     lowSeverityCount: number;
     resolvedCount: number;
   };
+  ragConfig?: RagConfigDTO;
   // other fields from ProjectDTO are allowed
   [key: string]: any;
 }
@@ -90,6 +91,36 @@ export interface BranchAnalysisConfig {
 export interface UpdateBranchAnalysisConfigRequest {
   prTargetBranches: string[];
   branchPushPatterns: string[];
+}
+
+// RAG Configuration types
+export interface RagConfigDTO {
+  enabled: boolean;
+  branch: string | null;
+  excludePatterns: string[] | null;
+}
+
+export interface UpdateRagConfigRequest {
+  enabled: boolean;
+  branch?: string | null;
+  excludePatterns?: string[] | null;
+}
+
+export interface RagIndexStatusDTO {
+  projectId: number;
+  status: 'NOT_INDEXED' | 'INDEXING' | 'INDEXED' | 'UPDATING' | 'FAILED';
+  indexedBranch: string | null;
+  indexedCommitHash: string | null;
+  totalFilesIndexed: number | null;
+  lastIndexedAt: string | null;
+  errorMessage: string | null;
+  collectionName: string | null;
+}
+
+export interface RagStatusResponse {
+  isIndexed: boolean;
+  indexStatus: RagIndexStatusDTO | null;
+  canStartIndexing: boolean;
 }
 
 class ProjectService extends ApiService {
@@ -197,6 +228,155 @@ class ProjectService extends ApiService {
       body: JSON.stringify(request),
     }, true);
   }
+
+  // RAG Configuration methods
+  async getRagStatus(workspaceSlug: string, namespace: string): Promise<RagStatusResponse> {
+    return this.request<RagStatusResponse>(`/${workspaceSlug}/project/${namespace}/rag/status`, {}, true);
+  }
+
+  async updateRagConfig(workspaceSlug: string, namespace: string, request: UpdateRagConfigRequest): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/rag/config`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    }, true);
+  }
+
+  /**
+   * Trigger RAG indexing for a project with SSE progress streaming.
+   * @param workspaceSlug - Workspace slug
+   * @param namespace - Project namespace
+   * @param branch - Optional branch to index
+   * @param onProgress - Callback for progress events
+   * @param onComplete - Callback when indexing completes
+   * @param onError - Callback when an error occurs
+   * @returns AbortController to cancel the operation
+   */
+  triggerRagIndexing(
+    workspaceSlug: string,
+    namespace: string,
+    branch: string | null,
+    onProgress: (data: RagIndexingProgressEvent) => void,
+    onComplete: (data: RagIndexingResult) => void,
+    onError: (error: string) => void
+  ): AbortController {
+    const abortController = new AbortController();
+    const token = localStorage.getItem('codecrow_token');
+    
+    // Build URL without /api prefix since VITE_API_URL already includes it
+    let url = `/${workspaceSlug}/project/${namespace}/rag/trigger`;
+    if (branch) {
+      url += `?branch=${encodeURIComponent(branch)}`;
+    }
+
+    // Use native EventSource with workaround for auth header
+    // Since EventSource doesn't support headers, we use fetch with SSE parsing
+    this.fetchSSE(url, token, abortController.signal, onProgress, onComplete, onError);
+
+    return abortController;
+  }
+
+  private async fetchSSE(
+    url: string,
+    token: string | null,
+    signal: AbortSignal,
+    onProgress: (data: RagIndexingProgressEvent) => void,
+    onComplete: (data: RagIndexingResult) => void,
+    onError: (error: string) => void
+  ): Promise<void> {
+    try {
+      // Get base URL from config (already includes /api)
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
+      const fullUrl = `${baseUrl}${url}`;
+
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'text/event-stream',
+          'Content-Type': 'application/json',
+        },
+        signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        onError(`Failed to start indexing: ${response.status} ${errorText}`);
+        return;
+      }
+
+      if (!response.body) {
+        onError('No response body');
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Parse SSE events
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            
+            if (data === '__EOF__') {
+              // Stream complete
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              
+              if (parsed.type === 'error' || parsed.status === 'error') {
+                onError(parsed.message || 'Unknown error');
+              } else if (parsed.status === 'completed' || parsed.status === 'skipped' || parsed.status === 'locked') {
+                onComplete(parsed as RagIndexingResult);
+              } else {
+                onProgress(parsed as RagIndexingProgressEvent);
+              }
+            } catch (e) {
+              console.warn('Failed to parse SSE event:', data, e);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        // Cancelled by user
+        onError('Indexing cancelled');
+      } else {
+        onError(error.message || 'Connection error');
+      }
+    }
+  }
+}
+
+// RAG Indexing event types
+export interface RagIndexingProgressEvent {
+  type: 'progress';
+  stage: string;
+  message: string;
+  progress?: number;
+  total?: number;
+}
+
+export interface RagIndexingResult {
+  status: 'completed' | 'error' | 'skipped' | 'locked';
+  message: string;
+  filesIndexed?: number;
+  branch?: string;
+  commitHash?: string;
 }
 
 export const projectService = new ProjectService();

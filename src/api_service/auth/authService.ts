@@ -1,11 +1,11 @@
 import {API_CONFIG} from '@/config/api';
 import {ApiService} from "@/api_service/api.ts";
-import {AuthResponse, LoginRequest, RegisterRequest, GoogleAuthRequest} from "@/api_service/auth/authService.interface.ts";
+import {AuthResponse, LoginRequest, LoginResponse, RegisterRequest, GoogleAuthRequest} from "@/api_service/auth/authService.interface.ts";
 
 
 class AuthService extends ApiService {
-    async login(credentials: LoginRequest): Promise<AuthResponse> {
-        return this.request<AuthResponse>(API_CONFIG.ENDPOINTS.LOGIN, {
+    async login(credentials: LoginRequest): Promise<LoginResponse> {
+        return this.request<LoginResponse>(API_CONFIG.ENDPOINTS.LOGIN, {
             method: 'POST',
             body: JSON.stringify(credentials),
         });

@@ -1,6 +1,6 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MousePointer, CheckCircle, ArrowRight, ExternalLink, Zap, Shield, Settings, Cpu } from "lucide-react";
+import { Link2, CheckCircle, ArrowRight, Zap, Shield, Settings, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -13,16 +13,16 @@ export default function BitbucketAppInstall() {
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10">
-            <MousePointer className="h-6 w-6 text-primary" />
+            <Link2 className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Install CodeCrow App</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Connect Bitbucket</h1>
             <p className="text-muted-foreground mt-1">
-              One-click installation from Bitbucket Marketplace
+              Simplified setup via CodeCrow's Bitbucket connection flow
             </p>
           </div>
         </div>
-        <Badge className="bg-primary/10 text-primary border-primary/30">Automatic Installation</Badge>
+        <Badge className="bg-primary/10 text-primary border-primary/30">Recommended</Badge>
       </div>
 
       {/* Benefits */}
@@ -30,7 +30,7 @@ export default function BitbucketAppInstall() {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Why Choose Automatic Installation?</CardTitle>
+            <CardTitle className="text-lg">Why Use Bitbucket Connection?</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -69,24 +69,20 @@ export default function BitbucketAppInstall() {
 
       {/* Installation Steps */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Installation Steps</h2>
+        <h2 className="text-lg font-semibold">Connection Steps</h2>
 
         {/* Step 1 */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">1</div>
-              <CardTitle className="text-base">Visit Bitbucket Marketplace</CardTitle>
+              <CardTitle className="text-base">Navigate to Code Hosting</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Navigate to the CodeCrow app page on Bitbucket Marketplace and click "Install".
+              In CodeCrow, go to <strong>Account → Code Hosting → Bitbucket Cloud</strong> and click "Connect Bitbucket".
             </p>
-            <Button variant="outline" className="gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Open Bitbucket Marketplace
-            </Button>
           </CardContent>
         </Card>
 
@@ -95,12 +91,12 @@ export default function BitbucketAppInstall() {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">2</div>
-              <CardTitle className="text-base">Grant Permissions</CardTitle>
+              <CardTitle className="text-base">Authorize with Bitbucket</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Review and approve the required permissions for CodeCrow to access your repositories.
+              You'll be redirected to Bitbucket to authorize CodeCrow. Review and approve the required permissions.
             </p>
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <h4 className="text-sm font-medium flex items-center gap-2">
@@ -122,12 +118,33 @@ export default function BitbucketAppInstall() {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">3</div>
+              <CardTitle className="text-base">Select Repositories</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Choose which repositories you want to enable for automated code review. You can add more repositories later from the dashboard.
+            </p>
+            <div className="flex items-center gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+              <Settings className="h-4 w-4 text-amber-500" />
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Pipelines will be automatically configured for selected repositories.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step 4 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">4</div>
               <CardTitle className="text-base">Configure AI Connection</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              During the installation flow, you'll be prompted to configure your AI provider.
+              During the setup flow, you'll be prompted to configure your AI provider.
             </p>
             <div className="grid sm:grid-cols-3 gap-3">
               <div className="p-3 border rounded-lg text-center">
@@ -149,28 +166,6 @@ export default function BitbucketAppInstall() {
           </CardContent>
         </Card>
 
-        {/* Step 4 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold">4</div>
-              <CardTitle className="text-base">Select Repositories</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Choose which repositories you want to enable for automated code review. 
-              You can add more repositories later from the dashboard.
-            </p>
-            <div className="flex items-center gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-              <Settings className="h-4 w-4 text-amber-500" />
-              <p className="text-sm text-amber-700 dark:text-amber-300">
-                Pipelines will be automatically configured for selected repositories.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Step 5 */}
         <Card className="border-green-500/30 bg-gradient-to-br from-green-500/5 to-transparent">
           <CardHeader className="pb-3">
@@ -183,8 +178,7 @@ export default function BitbucketAppInstall() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              CodeCrow is now installed and configured. Create a pull request in any of your 
-              enabled repositories to see it in action.
+              CodeCrow is now connected and configured. Create a pull request in any of your enabled repositories to see it in action.
             </p>
             <div className="flex gap-3">
               <Button onClick={() => navigate("/dashboard/projects")}>
@@ -206,7 +200,7 @@ export default function BitbucketAppInstall() {
             <div>
               <h3 className="font-semibold">Need More Control?</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Use manual installation for custom OAuth configuration and enterprise setups.
+                Use manual OAuth configuration for enterprise setups or custom requirements.
               </p>
             </div>
             <Button

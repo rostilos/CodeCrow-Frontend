@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -17,6 +17,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import ProjectTokenManagement from "@/components/ProjectTokenManagement";
 import DefaultBranchSelector from "@/components/DefaultBranchSelector";
 import BranchPatternConfig from "@/components/BranchPatternConfig";
+import RagConfiguration from "@/components/RagConfiguration";
 
 interface ProjectCodeHostingConfig {
   id: string | number;
@@ -330,6 +331,7 @@ export default function ProjectConfiguration() {
           <TabsTrigger value="branches">Branches</TabsTrigger>
           <TabsTrigger value="analysis-scope">Analysis Scope</TabsTrigger>
           <TabsTrigger value="ai">AI Connections</TabsTrigger>
+          <TabsTrigger value="rag">RAG Indexing</TabsTrigger>
           <TabsTrigger value="tasks">Task Management</TabsTrigger>
           {canGenerateTokens() && (
             <TabsTrigger value="tokens">API Tokens</TabsTrigger>
@@ -685,6 +687,17 @@ export default function ProjectConfiguration() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* RAG Indexing Tab */}
+        <TabsContent value="rag" className="space-y-4">
+          {currentWorkspace && project && (
+            <RagConfiguration
+              workspaceSlug={currentWorkspace.slug}
+              project={project}
+              onProjectUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="tasks" className="space-y-4">

@@ -34,6 +34,7 @@ import {
     Wrench,
     FileCode,
     Download,
+    Mail,
 } from "lucide-react";
 
 // Getting Started navigation items
@@ -53,6 +54,7 @@ const gettingStartedItems = [
 const developerDocsItems = [
   { title: "Architecture", url: "/docs/dev/architecture", icon: Layers },
   { title: "Configuration", url: "/docs/dev/configuration", icon: Settings },
+  { title: "SMTP Setup", url: "/docs/dev/smtp", icon: Mail },
   { title: "API Reference", url: "/docs/dev/api", icon: Terminal },
   { title: "Database Schema", url: "/docs/dev/database", icon: Database },
   { title: "Modules", url: "/docs/dev/modules", icon: Code2 },
