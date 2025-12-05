@@ -118,6 +118,12 @@ export interface AnalysisIssueSummary {
   qualityCount: number;
   performanceCount: number;
   styleCount: number;
+  bugRiskCount: number;
+  documentationCount: number;
+  bestPracticesCount: number;
+  errorHandlingCount: number;
+  testingCount: number;
+  architectureCount: number;
 }
 
 export interface AnalysisIssuesResponse {
@@ -147,6 +153,7 @@ export interface AnalysisIssue {
   resolvedBy?: string | null;
   aiProvider?: string | null;
   confidence?: number | null;
+  issueCategory?: string;
 }
 
 export interface AnalysisTrendData {

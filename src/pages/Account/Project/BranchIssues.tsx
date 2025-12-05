@@ -20,6 +20,7 @@ export default function BranchIssues() {
   const [filters, setFilters] = useState<IssueFilters>({
     severity: 'ALL',
     status: 'open',
+    category: 'ALL',
     filePath: '',
     dateFrom: undefined,
     dateTo: undefined,
@@ -32,6 +33,7 @@ export default function BranchIssues() {
     const newFilters: IssueFilters = {
       severity: 'ALL',
       status: 'open', // Default to showing only open issues
+      category: 'ALL',
       filePath: '',
       dateFrom: undefined,
       dateTo: undefined,
@@ -45,6 +47,11 @@ export default function BranchIssues() {
     const statusParam = searchParams.get('status');
     if (statusParam && ['open', 'resolved', 'ALL'].includes(statusParam.toLowerCase())) {
       newFilters.status = statusParam.toLowerCase();
+    }
+    
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      newFilters.category = categoryParam.toUpperCase();
     }
     
     const filePathParam = searchParams.get('filePath');
@@ -98,6 +105,9 @@ export default function BranchIssues() {
     if (newFilters.status !== 'open') {
       newParams.set('status', newFilters.status);
     }
+    if (newFilters.category !== 'ALL') {
+      newParams.set('category', newFilters.category);
+    }
     if (newFilters.filePath) {
       newParams.set('filePath', newFilters.filePath);
     }
@@ -144,6 +154,10 @@ export default function BranchIssues() {
     const normalizedStatus = issue.status?.toLowerCase();
     const matchesStatus = filters.status === 'ALL' || normalizedStatus === filters.status.toLowerCase();
     
+    // Category filter
+    const issueCategory = issue.issueCategory?.toUpperCase().replace(/[- ]/g, '_') || 'CODE_QUALITY';
+    const matchesCategory = filters.category === 'ALL' || issueCategory === filters.category;
+    
     // File path filter
     const matchesFilePath = !filters.filePath || 
       issue.file?.toLowerCase().includes(filters.filePath.toLowerCase());
@@ -153,7 +167,7 @@ export default function BranchIssues() {
     const matchesDateFrom = !filters.dateFrom || !issueDate || issueDate >= filters.dateFrom;
     const matchesDateTo = !filters.dateTo || !issueDate || issueDate <= filters.dateTo;
     
-    return matchesSeverity && matchesStatus && matchesFilePath && matchesDateFrom && matchesDateTo;
+    return matchesSeverity && matchesStatus && matchesCategory && matchesFilePath && matchesDateFrom && matchesDateTo;
   });
 
   const handleGoBack = () => {

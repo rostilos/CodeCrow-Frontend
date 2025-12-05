@@ -10,10 +10,12 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { getAllCategories, getCategoryInfo } from '@/config/issueCategories';
 
 export interface IssueFilters {
   severity: string;
   status: string;
+  category: string;
   filePath: string;
   dateFrom?: Date;
   dateTo?: Date;
@@ -42,6 +44,7 @@ export default function IssueFilterSidebar({ filters, onFiltersChange, issueCoun
     const clearedFilters: IssueFilters = {
       severity: 'ALL',
       status: 'open', // Default to showing only open issues
+      category: 'ALL',
       filePath: '',
       dateFrom: undefined,
       dateTo: undefined,
@@ -53,6 +56,7 @@ export default function IssueFilterSidebar({ filters, onFiltersChange, issueCoun
   const hasActiveFilters = 
     localFilters.severity !== 'ALL' || 
     localFilters.status !== 'open' || 
+    localFilters.category !== 'ALL' ||
     localFilters.filePath !== '' ||
     localFilters.dateFrom !== undefined ||
     localFilters.dateTo !== undefined;
@@ -60,6 +64,7 @@ export default function IssueFilterSidebar({ filters, onFiltersChange, issueCoun
   const activeFilterCount = [
     localFilters.severity !== 'ALL',
     localFilters.status !== 'open',
+    localFilters.category !== 'ALL',
     localFilters.filePath !== '',
     localFilters.dateFrom !== undefined,
     localFilters.dateTo !== undefined,
@@ -148,6 +153,36 @@ export default function IssueFilterSidebar({ filters, onFiltersChange, issueCoun
                   Resolved
                 </Label>
               </div>
+            </RadioGroup>
+          </div>
+
+          <Separator />
+
+          {/* Category Filter */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Category</Label>
+            <RadioGroup
+              value={localFilters.category}
+              onValueChange={(value) => setLocalFilters({ ...localFilters, category: value })}
+              className="grid grid-cols-2 gap-2"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="ALL" id="category-all" />
+                <Label htmlFor="category-all" className="font-normal cursor-pointer text-sm">
+                  All Categories
+                </Label>
+              </div>
+              {getAllCategories().map((cat) => (
+                <div key={cat.key} className="flex items-center space-x-2">
+                  <RadioGroupItem value={cat.key} id={`category-${cat.key}`} />
+                  <Label 
+                    htmlFor={`category-${cat.key}`} 
+                    className={cn("font-normal cursor-pointer text-sm", cat.color)}
+                  >
+                    {cat.label}
+                  </Label>
+                </div>
+              ))}
             </RadioGroup>
           </div>
 

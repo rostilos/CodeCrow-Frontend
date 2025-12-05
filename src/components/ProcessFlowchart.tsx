@@ -1,4 +1,4 @@
-import { GitPullRequest, FileCode, CheckCircle, MessageSquare, ArrowDown, RefreshCcw } from "lucide-react";
+import { GitPullRequest, FileCode, CheckCircle, MessageSquare, ArrowDown, RefreshCcw, Database, Zap, Brain } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/use-parallax";
 
 const StepCard = ({ step, index, Icon, isVisible }: { step: any; index: number; Icon: any; isVisible: boolean }) => (
@@ -7,7 +7,7 @@ const StepCard = ({ step, index, Icon, isVisible }: { step: any; index: number; 
             className={`p-6 rounded-xl border-2 ${step.borderColor} ${step.bgColor} backdrop-blur-sm hover:scale-105 transition-all duration-500 shadow-lg ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
-            style={{ transitionDelay: `${index * 120}ms` }}
+            style={{ transitionDelay: `${index * 100}ms` }}
         >
             <div className="flex items-center gap-4">
                 <div
@@ -18,6 +18,9 @@ const StepCard = ({ step, index, Icon, isVisible }: { step: any; index: number; 
                 <div className="flex-1">
                     <h4 className="font-bold mb-1 text-lg">{step.title}</h4>
                     <p className="text-sm text-muted-foreground">{step.description}</p>
+                    {step.detail && (
+                        <p className="text-xs text-muted-foreground/70 mt-1 italic">{step.detail}</p>
+                    )}
                 </div>
             </div>
 
@@ -36,14 +39,34 @@ export const ProcessFlowchart = () => {
             icon: GitPullRequest,
             title: "Create PR",
             description: "Push code & create pull request",
+            detail: "Automatic webhook triggers analysis",
             color: "text-primary",
             bgColor: "bg-primary/10",
             borderColor: "border-primary/30",
         },
         {
+            icon: Database,
+            title: "Smart Indexing",
+            description: "RAG identifies changed files",
+            detail: "Only new/modified files are processed",
+            color: "text-violet-500",
+            bgColor: "bg-violet-500/10",
+            borderColor: "border-violet-500/30",
+        },
+        {
+            icon: Brain,
+            title: "Context Retrieval",
+            description: "Full codebase context loaded",
+            detail: "Cached context + fresh changes",
+            color: "text-cyan-500",
+            bgColor: "bg-cyan-500/10",
+            borderColor: "border-cyan-500/30",
+        },
+        {
             icon: FileCode,
             title: "AI Analysis",
-            description: "Automatic code review runs",
+            description: "Deep code review with full context",
+            detail: "BYOK: Use your preferred LLM",
             color: "text-accent",
             bgColor: "bg-accent/10",
             borderColor: "border-accent/30",
@@ -52,6 +75,7 @@ export const ProcessFlowchart = () => {
             icon: MessageSquare,
             title: "Report Posted",
             description: "Results in your PR comments",
+            detail: "Actionable suggestions with code fixes",
             color: "text-warning",
             bgColor: "bg-warning/10",
             borderColor: "border-warning/30",
@@ -60,17 +84,10 @@ export const ProcessFlowchart = () => {
             icon: CheckCircle,
             title: "Fix & Deploy",
             description: "Apply suggestions & merge",
+            detail: "Track improvements over time",
             color: "text-success",
             bgColor: "bg-success/10",
             borderColor: "border-success/30",
-        },
-        {
-            icon: RefreshCcw,
-            title: "Continuous Analysis",
-            description: "Monitor, learn & improve",
-            color: "text-primary",
-            bgColor: "bg-primary/10",
-            borderColor: "border-primary/30",
         },
     ];
 
