@@ -35,3 +35,32 @@ export interface LoginResponse {
     twoFactorType?: 'TOTP' | 'EMAIL';
     message?: string;
 }
+
+export interface ForgotPasswordRequest {
+    email: string;
+}
+
+export interface ForgotPasswordResponse {
+    message: string;
+}
+
+export interface ValidateResetTokenRequest {
+    token: string;
+}
+
+export interface ValidateResetTokenResponse {
+    valid: boolean;
+    twoFactorRequired: boolean;
+    twoFactorType?: 'TOTP' | 'EMAIL';
+    maskedEmail?: string;
+}
+
+export interface ResetPasswordRequest {
+    token: string;
+    newPassword: string;
+    twoFactorCode?: string;
+}
+
+export interface ResetPasswordResponse {
+    message: string;
+}
