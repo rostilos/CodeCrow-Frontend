@@ -13,6 +13,8 @@ const queryClient = new QueryClient();
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login/Login.tsx"));
 const Register = lazy(() => import("./pages/Login/Register.tsx"));
+const ForgotPassword = lazy(() => import("./pages/Login/ForgotPassword.tsx"));
+const ResetPassword = lazy(() => import("./pages/Login/ResetPassword.tsx"));
 const DocsLayout = lazy(() => import("./pages/Docs/DocsLayout"));
 const GettingStarted = lazy(() => import("./pages/Docs/GettingStarted"));
 const CreateWorkspace = lazy(() => import("./pages/Docs/CreateWorkspace"));
@@ -81,6 +83,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/docs" element={<DocsLayout />}>
             <Route index element={<GettingStarted />} />
             <Route path="workspace" element={<CreateWorkspace />} />
