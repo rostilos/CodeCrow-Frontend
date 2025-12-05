@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, CheckCircle, BarChart3, XCircle, FileCode, ChevronRight } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
+import { getCategoryInfo } from "@/config/issueCategories";
+import { cn } from "@/lib/utils";
 
 interface IssuesByFileDisplayProps {
   issues: AnalysisIssue[];
@@ -122,6 +124,19 @@ export default function IssuesByFileDisplay({
                     </div>
                     
                     <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {issue.issueCategory && (
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "text-xs",
+                            getCategoryInfo(issue.issueCategory).color,
+                            getCategoryInfo(issue.issueCategory).bgColor,
+                            getCategoryInfo(issue.issueCategory).borderColor
+                          )}
+                        >
+                          {getCategoryInfo(issue.issueCategory).label}
+                        </Badge>
+                      )}
                       {getSeverityBadge(issue.severity)}
                       {onUpdateIssueStatus && (
                         <Select 

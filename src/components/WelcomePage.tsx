@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Code, GitBranch, Shield, Users, Star, LayoutDashboard, BookOpen, FileCode, 
   BarChart, CheckCircle2, AlertTriangle, FileSearch, Zap, Clock, ChevronDown, 
   ArrowRight, Sparkles, Key, Eye, Database, Server, TrendingUp, MousePointer,
-  Github, ExternalLink, Cpu, MessageSquare, Image as ImageIcon
+  Github, ExternalLink, Cpu, MessageSquare, Image as ImageIcon, RefreshCw, CheckCircle, X
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { authUtils } from "@/lib/auth";
@@ -13,6 +15,7 @@ import demoVcsReport from "@/assets/demo-vcs-report.png";
 import demoDetailedInfo from "@/assets/demo-detailed-info.png";
 import demoAnalysisDashboard from "@/assets/demo-analysis-dashboard.png";
 import demoProjectOverview from "@/assets/demo-project-overview.png";
+import demoRagContext from "@/assets/demo-rag-context.png";
 import { ProcessFlowchart } from "./ProcessFlowchart";
 import { useScrollAnimation } from "@/hooks/use-parallax";
 import { useState, useEffect } from "react";
@@ -25,6 +28,29 @@ function BitbucketIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z"/>
     </svg>
+  );
+}
+
+// Zoomable Image Component with lightbox
+function ZoomableImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <img 
+          src={src} 
+          alt={alt} 
+          className={`${className || ''} cursor-zoom-in hover:opacity-90 transition-opacity`}
+        />
+      </DialogTrigger>
+      <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 border-0 bg-transparent overflow-auto">
+        <img 
+          src={src} 
+          alt={alt} 
+          className="w-auto h-auto max-w-none"
+          style={{ maxHeight: '95vh' }}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -147,8 +173,8 @@ const KeyFeaturesSection = () => {
     },
     {
       icon: Database,
-      title: "RAG Pipeline",
-      description: "Retrieval-Augmented Generation keeps full project context during analysis. The AI understands your codebase structure, dependencies, and patterns.",
+      title: "Smart RAG Pipeline",
+      description: "Intelligent caching with incremental reindexing. Only changed files are processed — reducing API costs by up to 80% while maintaining full project context.",
       gradient: "from-violet-500 to-purple-600",
       bgGradient: "from-violet-500/10 to-purple-600/10",
     },
@@ -301,23 +327,159 @@ export default function WelcomePage() {
       {/* Key Features Section */}
       <KeyFeaturesSection />
 
+      {/* RAG Pipeline Benefits Section */}
+      <section className="py-24 lg:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-purple-500/5 to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-500/10 via-transparent to-transparent" />
+        
+        <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center max-w-7xl mx-auto">
+            <div className="space-y-8">
+              <div>
+                <Badge variant="secondary" className="mb-4 px-4 py-1.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20">
+                  <Database className="h-3.5 w-3.5 mr-1.5" />
+                  Smart RAG Pipeline
+                </Badge>
+                <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+                  Intelligent Context, <br />
+                  <span className="bg-gradient-to-r from-violet-500 to-purple-600 bg-clip-text text-transparent">
+                    Minimal Cost
+                  </span>
+                </h2>
+                <p className="text-xl text-muted-foreground leading-relaxed">
+                  Our Retrieval-Augmented Generation pipeline understands your entire codebase while processing only what's changed — dramatically reducing API costs and analysis time.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center shrink-0">
+                    <RefreshCw className="h-6 w-6 text-violet-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg mb-1">Incremental Reindexing</h4>
+                    <p className="text-muted-foreground">Only changed files are reprocessed. On typical PRs, this means 80-95% of your codebase is cached and ready.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center shrink-0">
+                    <Database className="h-6 w-6 text-violet-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg mb-1">Full Context Awareness</h4>
+                    <p className="text-muted-foreground">The AI understands your project structure, dependencies, and coding patterns — even files not in the current PR.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center shrink-0">
+                    <TrendingUp className="h-6 w-6 text-violet-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg mb-1">Historical Intelligence</h4>
+                    <p className="text-muted-foreground">Track analysis history and code quality trends. See improvements over time and identify recurring patterns.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -inset-4 bg-gradient-to-r from-violet-500/20 to-purple-600/20 rounded-3xl blur-3xl" />
+              <Card className="relative border-2 border-violet-500/20 bg-card/50 backdrop-blur-sm overflow-hidden">
+                <CardContent className="p-8">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between pb-4 border-b border-border/50">
+                      <span className="text-sm font-medium text-muted-foreground">Analysis Comparison</span>
+                      <Badge variant="outline" className="text-xs">Per PR Review</Badge>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-muted-foreground">Without RAG Pipeline</span>
+                          <span className="text-sm font-semibold text-red-500">~100% files processed</span>
+                        </div>
+                        <div className="h-3 bg-red-500/20 rounded-full overflow-hidden">
+                          <div className="h-full w-full bg-gradient-to-r from-red-500 to-red-600 rounded-full" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-muted-foreground">With Smart RAG</span>
+                          <span className="text-sm font-semibold text-green-500">~15-25% files processed</span>
+                        </div>
+                        <div className="h-3 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full w-1/5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                      <div className="text-center p-4 rounded-xl bg-violet-500/5 border border-violet-500/10">
+                        <div className="text-3xl font-bold text-violet-500">80%</div>
+                        <div className="text-xs text-muted-foreground mt-1">Cost Reduction</div>
+                      </div>
+                      <div className="text-center p-4 rounded-xl bg-violet-500/5 border border-violet-500/10">
+                        <div className="text-3xl font-bold text-violet-500">5x</div>
+                        <div className="text-xs text-muted-foreground mt-1">Faster Analysis</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+                      <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                      <span>Same quality, fraction of the cost</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works Section with Screenshots */}
       <section id="how-it-works" className="py-24 lg:py-32 bg-muted/20">
         <div className="container px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
             <Badge variant="secondary" className="mb-4 px-4 py-1.5">
               <Zap className="h-3.5 w-3.5 mr-1.5" />
-              How It Works
+              Simple & Powerful
             </Badge>
-            <h2 className="text-4xl sm:text-5xl font-bold mb-6">See It In Action</h2>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+              Setup Once, Review Forever
+            </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              From PR analysis to detailed fixes — everything happens automatically
+              Six steps from PR to production. Our intelligent pipeline handles the complexity — 
+              you focus on shipping quality code.
             </p>
           </div>
 
           {/* Process Flowchart */}
           <div className="mb-24">
             <ProcessFlowchart />
+          </div>
+
+          {/* Simplicity Message */}
+          <div className="text-center mb-24 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border border-primary/20">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="text-lg">
+                <strong>That's it.</strong> No complex configuration, no steep learning curve. 
+                Connect your repo and let the AI do the heavy lifting.
+              </span>
+            </div>
+          </div>
+
+          {/* Screenshots Section Header */}
+          <div className="text-center mb-16">
+            <h3 className="text-2xl sm:text-3xl font-bold mb-4">
+              Powerful Insights, Beautiful Interface
+            </h3>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              See exactly what CodeCrow delivers — actionable code review results at your fingertips
+            </p>
           </div>
 
           <div className="space-y-32 max-w-7xl mx-auto">
@@ -368,9 +530,9 @@ export default function WelcomePage() {
                 <div className="relative">
                   <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl blur-2xl opacity-50" />
                   <Card className="relative overflow-hidden border-0 shadow-2xl rounded-xl">
-                    <img 
+                    <ZoomableImage 
                       src={demoAnalysisDashboard} 
-                      alt="VCS Pull Request Report" 
+                      alt="Analysis Dashboard" 
                       className="w-full h-auto"
                     />
                   </Card>
@@ -384,9 +546,9 @@ export default function WelcomePage() {
                 <div className="relative">
                   <div className="absolute -inset-4 bg-gradient-to-r from-accent/20 to-primary/20 rounded-2xl blur-2xl opacity-50" />
                   <Card className="relative overflow-hidden border-0 shadow-2xl rounded-xl">
-                    <img 
+                    <ZoomableImage 
                       src={demoProjectOverview} 
-                      alt="VCS Pull Request Report" 
+                      alt="Project Overview" 
                       className="w-full h-auto"
                     />
                   </Card>
@@ -482,7 +644,7 @@ export default function WelcomePage() {
                 <div className="relative">
                   <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-2xl blur-2xl opacity-50" />
                   <Card className="relative overflow-hidden border-0 shadow-2xl rounded-xl">
-                    <img 
+                    <ZoomableImage 
                       src={demoDetailedInfo} 
                       alt="Issue Details with Suggested Fix" 
                       className="w-full h-auto"
@@ -498,7 +660,7 @@ export default function WelcomePage() {
                 <div className="relative">
                   <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-2xl blur-2xl opacity-50" />
                   <Card className="relative overflow-hidden border-0 shadow-2xl rounded-xl">
-                    <img 
+                    <ZoomableImage 
                       src={demoVcsReport} 
                       alt="VCS Pull Request Report" 
                       className="w-full h-auto"
@@ -546,6 +708,64 @@ export default function WelcomePage() {
                     </div>
                   </li>
                 </ul>
+              </div>
+            </div>
+
+            {/* Screenshot 5: Context-Aware Analysis */}
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <div className="order-2 lg:order-1 space-y-6">
+                <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20">
+                  Beyond Static Analysis
+                </Badge>
+                <h3 className="text-3xl sm:text-4xl font-bold">
+                  Project Context-Aware Insights
+                </h3>
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  Unlike traditional linters, CodeCrow understands your entire project. 
+                  Detect architectural inconsistencies, pattern violations, and project-specific issues 
+                  that static analyzers simply cannot catch.
+                </p>
+                <ul className="space-y-4">
+                  <li className="flex items-start gap-4">
+                    <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center mt-0.5 shrink-0">
+                      <Database className="h-4 w-4 text-purple-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Full Codebase Understanding</p>
+                      <p className="text-muted-foreground">RAG indexes your entire project for deep context awareness</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-4">
+                    <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center mt-0.5 shrink-0">
+                      <Cpu className="h-4 w-4 text-indigo-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Architectural Validation</p>
+                      <p className="text-muted-foreground">Catch design pattern violations and structural inconsistencies</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-4">
+                    <div className="h-8 w-8 rounded-lg bg-pink-500/10 flex items-center justify-center mt-0.5 shrink-0">
+                      <Sparkles className="h-4 w-4 text-pink-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Smart Suggestions</p>
+                      <p className="text-muted-foreground">Recommendations based on your project's conventions and patterns</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+              <div className="order-1 lg:order-2">
+                <div className="relative group">
+                  <div className="absolute -inset-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-2xl opacity-50" />
+                  <Card className="relative overflow-hidden border-0 shadow-2xl rounded-xl">
+                    <ZoomableImage 
+                      src={demoRagContext} 
+                      alt="RAG Context-Aware Analysis" 
+                      className="w-full h-auto"
+                    />
+                  </Card>
+                </div>
               </div>
             </div>
           </div>
@@ -662,6 +882,107 @@ export default function WelcomePage() {
                 </Badge>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-24 lg:py-32">
+        <div className="container px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <Badge className="mb-4">FAQ</Badge>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to know about CodeCrow
+            </p>
+          </div>
+          
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              <AccordionItem value="item-1" className="border rounded-lg px-6 bg-card">
+                <AccordionTrigger className="text-left hover:no-underline">
+                  What is BYOK (Bring Your Own Key)?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  BYOK means you use your own API keys for LLM providers (OpenAI, Anthropic, Google, etc.). 
+                  Your keys are stored on the server and used to communicate with LLM providers on your behalf. 
+                  This gives you full control over costs and model selection — you pay directly to your provider 
+                  with no markup or hidden fees.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-2" className="border rounded-lg px-6 bg-card">
+                <AccordionTrigger className="text-left hover:no-underline">
+                  Is my code data secure?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  CodeCrow stores RAG indexes and temporarily caches source code to enable incremental 
+                  reindexing after each PR — keeping your project context up-to-date without full re-processing. 
+                  You have full control: exclude specific paths/files from analysis, or disable RAG entirely. 
+                  Code is sent to your chosen LLM provider using your own API key. We're fully open source, 
+                  so you can verify our security practices and self-host for complete data control.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-3" className="border rounded-lg px-6 bg-card">
+                <AccordionTrigger className="text-left hover:no-underline">
+                  Which LLM providers are supported?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  We currently support all available OpenRouter models, and the list of providers will be expanded in the future (OpenAI, Anthropic, etc.).
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-4" className="border rounded-lg px-6 bg-card">
+                <AccordionTrigger className="text-left hover:no-underline">
+                  What programming languages are supported?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  CodeCrow works with any programming language the LLM can understand. This includes 
+                  JavaScript/TypeScript, Python, Java, Go, Rust, C/C++, C#, PHP, Ruby, Swift, Kotlin, 
+                  and many more. The RAG pipeline has specialized parsers for popular languages to 
+                  provide even better context extraction.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-5" className="border rounded-lg px-6 bg-card">
+                <AccordionTrigger className="text-left hover:no-underline">
+                  How does the RAG pipeline enhance code review?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  The RAG (Retrieval-Augmented Generation) pipeline indexes your entire codebase to 
+                  understand project structure, patterns, and conventions. When reviewing code, it 
+                  retrieves relevant context — similar functions, related modules, architectural patterns — 
+                  enabling the LLM to provide insights that understand your specific project, not just 
+                  generic best practices.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-6" className="border rounded-lg px-6 bg-card">
+                <AccordionTrigger className="text-left hover:no-underline">
+                  Is CodeCrow free to use?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Yes! CodeCrow is currently in free alpha. You only pay for your LLM API usage directly 
+                  to your provider. Since you use your own API keys, you have full transparency and 
+                  control over costs. We plan to introduce optional paid tiers for enterprise features 
+                  in the future.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-7" className="border rounded-lg px-6 bg-card">
+                <AccordionTrigger className="text-left hover:no-underline">
+                  Can I self-host CodeCrow?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  Yes! CodeCrow is open source under MIT license. You can deploy the entire stack 
+                  on your own infrastructure using Docker Compose. This is ideal for organizations 
+                  with strict data sovereignty requirements or those wanting to use local LLMs.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
       </section>

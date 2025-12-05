@@ -18,6 +18,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from "@/components/ThemeProvider";
+import { getCategoryInfo } from "@/config/issueCategories";
+import { cn } from "@/lib/utils";
 
 export default function IssueDetails() {
   const { namespace, issueId } = useParams<{ namespace: string; issueId: string }>();
@@ -330,6 +332,18 @@ export default function IssueDetails() {
             <h1 className="text-base md:text-xl lg:text-2xl font-bold">{issue.title}</h1>
             <div className="flex items-center space-x-2 mt-1">
               {getSeverityBadge(issue.severity)}
+              {issue.issueCategory && (
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    getCategoryInfo(issue.issueCategory).color,
+                    getCategoryInfo(issue.issueCategory).bgColor,
+                    getCategoryInfo(issue.issueCategory).borderColor
+                  )}
+                >
+                  {getCategoryInfo(issue.issueCategory).label}
+                </Badge>
+              )}
               <Badge variant="outline">{issue.type || 'Quality'}</Badge>
             </div>
           </div>
