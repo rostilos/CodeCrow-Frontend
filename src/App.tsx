@@ -56,6 +56,8 @@ const ProjectDashboard = lazy(() => import("./pages/ProjectDashboard.tsx"));
 const IssueDetails = lazy(() => import("./pages/Account/Project/IssueDetails.tsx"));
 const BranchIssues = lazy(() => import("./pages/Account/Project/BranchIssues.tsx"));
 const IntegrationSuccess = lazy(() => import("./pages/Account/Integrations/IntegrationSuccess.tsx"));
+const JobsPage = lazy(() => import("./pages/Jobs/JobsPage.tsx"));
+const JobDetailPage = lazy(() => import("./pages/Jobs/JobDetailPage.tsx"));
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -123,6 +125,8 @@ const App = () => (
                       <Route path="projects/:namespace/branches/:branchName/issues" element={<BranchIssues />} />
                       <Route path="projects/:namespace/issues/:issueId" element={<IssueDetails />} />
                       <Route path="projects/:namespace/settings" element={<ProjectConfiguration />} />
+                      <Route path="projects/:namespace/jobs" element={<JobsPage />} />
+                      <Route path="projects/:namespace/jobs/:jobId" element={<JobDetailPage />} />
                       <Route path="user" element={<UserSettings />} />
                       <Route path="hosting" element={<HostingSettings />} />
                       <Route path="hosting/add-connection" element={<AddConnection />} />

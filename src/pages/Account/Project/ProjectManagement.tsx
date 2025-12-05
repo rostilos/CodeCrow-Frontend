@@ -432,23 +432,13 @@ export default function ProjectSettings() {
                             View Details
                           </Button>
                           {canManageWorkspace() && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => handleProjectSettings(project.namespace || String(project.id))}
-                              >
-                                <Settings className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => handleDeleteProject(project.namespace || String(project.id))}
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => handleProjectSettings(project.namespace || String(project.id))}
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </div>

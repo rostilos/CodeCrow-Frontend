@@ -9,13 +9,16 @@ export class ApiService {
   ): Promise<T> {
     const url = getApiUrl(endpoint);
 
+    // Extract headers from options to merge properly
+    const { headers: optionHeaders, ...restOptions } = options;
+
     const config: RequestInit = {
+      ...restOptions,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('codecrow_token')}`,
-        ...options.headers,
+        ...(optionHeaders as Record<string, string>),
       },
-      ...options,
     };
 
     const response = await fetch(url, config);

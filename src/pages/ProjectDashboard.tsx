@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle } from 'lucide-react';
+import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, ClipboardList } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -581,6 +581,10 @@ export default function ProjectDashboard() {
     navigate(`/dashboard/projects/${namespace}/settings`);
   };
 
+  const handleGoToJobs = () => {
+    navigate(`/dashboard/projects/${namespace}/jobs`);
+  };
+
   const handleSeverityClick = (severity: 'HIGH' | 'MEDIUM' | 'LOW') => {
     if (selectedBranch) {
       navigate(`/dashboard/projects/${namespace}/branches/${encodeURIComponent(selectedBranch)}/issues?severity=${severity}`);
@@ -752,7 +756,15 @@ export default function ProjectDashboard() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${analysisLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              {canManageWorkspace && (
+              <Button
+                variant="outline"
+                onClick={handleGoToJobs}
+                size="sm"
+              >
+                <ClipboardList className="h-4 w-4 mr-2" />
+                Jobs
+              </Button>
+              {canManageWorkspace() && (
                 <Button
                   variant="outline"
                   onClick={handleGoToSettings}
