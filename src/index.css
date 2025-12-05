@@ -224,3 +224,68 @@
     @apply animate-pulse bg-muted rounded;
   }
 }
+
+/* Dashboard-specific theme overrides for better contrast */
+.dashboard-theme {
+  /* Clean white background */
+  --background: 0 0% 99%;
+  --card: 0 0% 100%;
+  
+  /* Primary colors - vibrant but not too bright */
+  --primary: 24 90% 45%;
+  --primary-glow: 24 90% 55%;
+  
+  /* Secondary/muted - MORE VISIBLE for tabs, badges etc */
+  --secondary: 220 15% 88%;
+  --muted: 220 15% 90%;
+  --muted-foreground: 220 12% 35%;
+  
+  /* Accent */
+  --accent: 221 85% 50%;
+  --accent-foreground: 0 0% 100%;
+  
+  /* Status colors - richer */
+  --destructive: 0 75% 48%;
+  --success: 142 65% 35%;
+  --warning: 38 85% 45%;
+  
+  /* Borders - clearly visible */
+  --border: 220 15% 78%;
+  --input: 220 15% 78%;
+  --ring: 24 90% 45%;
+}
+
+/* Dashboard badge colors - more muted for light theme */
+.dashboard-theme .badge-security {
+  @apply text-red-700 bg-red-100/70 border-red-300;
+}
+
+.dashboard-theme .badge-performance {
+  @apply text-orange-700 bg-orange-100/70 border-orange-300;
+}
+
+.dashboard-theme .badge-quality {
+  @apply text-blue-700 bg-blue-100/70 border-blue-300;
+}
+
+.dashboard-theme .badge-bug {
+  @apply text-purple-700 bg-purple-100/70 border-purple-300;
+}
+
+.dark .dashboard-theme {
+  /* Dark mode keeps original values */
+  --background: 224 71% 4%;
+  --card: 224 71% 6%;
+  --primary: 24 100% 50%;
+  --primary-glow: 24 100% 60%;
+  --secondary: 222 47% 14%;
+  --muted: 223 47% 14%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 221 83% 53%;
+  --destructive: 0 62% 50%;
+  --border: 222 47% 18%;
+  --input: 222 47% 18%;
+  --ring: 24 100% 50%;
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+}

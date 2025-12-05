@@ -10,13 +10,13 @@ export default function DocsLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full dashboard-theme">
         <DocsSidebar />
         
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <header className="border-b border-border/40 sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
-            <div className="flex items-center justify-between px-4 lg:px-6 h-14">
+            <div className="h-[64px] flex items-center justify-between px-4 lg:px-6 h-14">
               <div className="flex items-center gap-3">
                 <SidebarTrigger className="-ml-1" />
                 <span className="text-sm font-medium text-muted-foreground hidden sm:block">Documentation</span>

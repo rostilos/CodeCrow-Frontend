@@ -2,7 +2,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle, BarChart3, XCircle, FileCode, ChevronRight } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { AlertCircle, CheckCircle, BarChart3, XCircle, FileCode, ChevronRight, Clock, Code } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { getCategoryInfo } from "@/config/issueCategories";
 import { cn } from "@/lib/utils";
@@ -11,12 +13,18 @@ interface IssuesByFileDisplayProps {
   issues: AnalysisIssue[];
   projectNamespace: string;
   onUpdateIssueStatus?: (issueId: string, status: 'open' | 'resolved') => void;
+  selectedIssues?: Set<string>;
+  onSelectionChange?: (issueId: string, selected: boolean) => void;
+  selectionEnabled?: boolean;
 }
 
 export default function IssuesByFileDisplay({ 
   issues, 
   projectNamespace,
-  onUpdateIssueStatus 
+  onUpdateIssueStatus,
+  selectedIssues = new Set(),
+  onSelectionChange,
+  selectionEnabled = true
 }: IssuesByFileDisplayProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -95,65 +103,116 @@ export default function IssuesByFileDisplay({
           </div>
 
           {/* Issues for this file */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             {fileIssues.map((issue) => (
               <Card 
                 key={issue.id}
-                className="group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30"
-                onClick={() => handleCardClick(issue.id)}
+                className={cn(
+                  "group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30",
+                  selectedIssues.has(issue.id) && "ring-2 ring-primary/50 border-primary/30"
+                )}
+                onClick={() => {
+                  if (selectedIssues.size === 0) {
+                    handleCardClick(issue.id);
+                  }
+                }}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="p-1.5 rounded-lg bg-muted shrink-0 mt-0.5">
+                <CardContent className="p-5">
+                  <div className="flex gap-4">
+                    {/* Selection checkbox - always visible when enabled */}
+                    {selectionEnabled && (
+                      <div className="shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIssues.has(issue.id)}
+                          onCheckedChange={(checked) => onSelectionChange?.(issue.id, !!checked)}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Icon - only show when no checkbox */}
+                    {!selectionEnabled && (
+                      <div className="p-2 rounded-lg bg-muted shrink-0 h-fit">
                         {getIssueIcon(issue.type)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium text-sm group-hover:text-primary transition-colors truncate">
+                    )}
+                    
+                    {/* Main content */}
+                    <div className="flex-1 min-w-0 space-y-3">
+                      {/* Title row */}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-base group-hover:text-primary transition-colors leading-snug">
                             {issue.title}
                           </h4>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" />
                         </div>
-                        <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                          <span className="font-mono">Line {issue.line}</span>
-                          <span className="opacity-50">•</span>
-                          <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
+                        {selectedIssues.size === 0 && (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0 mt-1" />
+                        )}
+                      </div>
+                      
+                      {/* Badges row */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getSeverityBadge(issue.severity)}
+                        {issue.issueCategory && (
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "text-xs",
+                              getCategoryInfo(issue.issueCategory).color,
+                              getCategoryInfo(issue.issueCategory).bgColor,
+                              getCategoryInfo(issue.issueCategory).borderColor
+                            )}
+                          >
+                            {getCategoryInfo(issue.issueCategory).label}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Separator */}
+                      <Separator />
+                      
+                      {/* Bottom row: status select left, meta right */}
+                      <div className="flex items-end justify-between gap-3">
+                        {/* Status dropdown - hide when items are selected for bulk actions */}
+                        <div className="flex items-center gap-2">
+                          {onUpdateIssueStatus && selectedIssues.size === 0 && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Select 
+                                value={issue.status} 
+                                onValueChange={(value) => {
+                                  onUpdateIssueStatus(issue.id, value as 'open' | 'resolved');
+                                }}
+                              >
+                                <SelectTrigger className="w-[100px] h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>  
+                                <SelectContent>
+                                  <SelectItem value="open">Open</SelectItem>
+                                  <SelectItem value="resolved">Resolved</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                          {/* Show status badge when items are selected */}
+                          {selectedIssues.size > 0 && (
+                            <Badge variant={issue.status === 'resolved' ? 'secondary' : 'outline'} className="text-xs">
+                              {issue.status === 'resolved' ? 'Resolved' : 'Open'}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Meta info - bottom right */}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Code className="h-3 w-3" />
+                            <span className="font-mono">Line {issue.line}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {issue.issueCategory && (
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "text-xs",
-                            getCategoryInfo(issue.issueCategory).color,
-                            getCategoryInfo(issue.issueCategory).bgColor,
-                            getCategoryInfo(issue.issueCategory).borderColor
-                          )}
-                        >
-                          {getCategoryInfo(issue.issueCategory).label}
-                        </Badge>
-                      )}
-                      {getSeverityBadge(issue.severity)}
-                      {onUpdateIssueStatus && (
-                        <Select 
-                          value={issue.status} 
-                          onValueChange={(value) => {
-                            onUpdateIssueStatus(issue.id, value as 'open' | 'resolved');
-                          }}
-                        >
-                          <SelectTrigger className="w-[100px] h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>  
-                          <SelectContent>
-                            <SelectItem value="open">Open</SelectItem>
-                            <SelectItem value="resolved">Resolved</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
                     </div>
                   </div>
                 </CardContent>

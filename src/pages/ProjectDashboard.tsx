@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, ClipboardList } from 'lucide-react';
+import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, ClipboardList, CheckSquare, Square } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,7 @@ import { analysisService } from '@/api_service/analysis/analysisService';
 import { usePermissions } from "@/hooks/usePermissions";
 import BranchPRHierarchy from '@/components/BranchPRHierarchy';
 import IssuesByFileDisplay from '@/components/IssuesByFileDisplay';
-import IssueFilterSidebar, { IssueFilters } from '@/components/IssueFilterSidebar';
+import IssueFilterPanel, { IssueFilters } from '@/components/IssueFilterPanel';
 import type { 
   AnalysisIssue, 
   PullRequestSummary,
@@ -60,6 +60,7 @@ export default function ProjectDashboard() {
   const [filters, setFilters] = useState<IssueFilters>({
     severity: 'ALL',
     status: 'open',
+    category: 'ALL',
     filePath: '',
     dateFrom: undefined,
     dateTo: undefined,
@@ -74,6 +75,8 @@ export default function ProjectDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectionType, setSelectionType] = useState<'branch' | 'pr'>('branch');
   const [branchStats, setBranchStats] = useState<DetailedProjectStatsData | null>(null);
+  const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
 
 
@@ -86,6 +89,7 @@ export default function ProjectDashboard() {
     const newFilters: IssueFilters = {
       severity: 'ALL',
       status: 'open', // Default to showing only open issues
+      category: 'ALL',
       filePath: '',
       dateFrom: undefined,
       dateTo: undefined,
@@ -99,6 +103,11 @@ export default function ProjectDashboard() {
     const statusParam = searchParams.get('status');
     if (statusParam && ['open', 'resolved', 'ALL'].includes(statusParam.toLowerCase())) {
       newFilters.status = statusParam.toLowerCase();
+    }
+    
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      newFilters.category = categoryParam.toUpperCase();
     }
     
     const fileParam = searchParams.get('filePath');
@@ -265,6 +274,9 @@ export default function ProjectDashboard() {
   const loadAnalysisIssuesForPR = async (pr: PullRequestSummary, version?: number) => {
     if (!currentWorkspace || !namespace) return;
 
+    // Clear selections when loading new PR
+    setSelectedIssues(new Set());
+
     try {
       const response = await analysisService.getAnalysisIssues(
         currentWorkspace.slug,
@@ -383,6 +395,12 @@ export default function ProjectDashboard() {
       newParams.delete('status');
     }
     
+    if (newFilters.category !== 'ALL') {
+      newParams.set('category', newFilters.category);
+    } else {
+      newParams.delete('category');
+    }
+    
     if (newFilters.filePath) {
       newParams.set('filePath', newFilters.filePath);
     } else {
@@ -438,6 +456,65 @@ export default function ProjectDashboard() {
     }
   };
 
+  const handleSelectionChange = (issueId: string, selected: boolean) => {
+    setSelectedIssues(prev => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(issueId);
+      } else {
+        next.delete(issueId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIssues.size === currentFilteredIssues.length) {
+      setSelectedIssues(new Set());
+    } else {
+      setSelectedIssues(new Set(currentFilteredIssues.map(i => i.id)));
+    }
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: 'open' | 'resolved') => {
+    if (!currentWorkspace || !namespace || selectedIssues.size === 0) return;
+    
+    setBulkUpdating(true);
+    try {
+      const isResolved = newStatus === 'resolved';
+      const result = await analysisService.bulkUpdateIssueStatus(
+        currentWorkspace.slug, 
+        namespace, 
+        Array.from(selectedIssues),
+        isResolved
+      );
+      
+      // Update local state for successful updates
+      setAnalysisIssues(prev => prev.map(issue => 
+        selectedIssues.has(issue.id) && !result.failedIds.includes(Number(issue.id))
+          ? { ...issue, status: newStatus } 
+          : issue
+      ));
+      
+      toast({
+        title: "Bulk update complete",
+        description: `${result.successCount} issue(s) updated${result.failureCount > 0 ? `, ${result.failureCount} failed` : ''}`,
+        variant: result.failureCount > 0 ? "destructive" : "default",
+      });
+      
+      // Clear selection
+      setSelectedIssues(new Set());
+    } catch (error: any) {
+      toast({
+        title: "Failed to update issues",
+        description: error.message || "Could not update issue statuses",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   const getSeverityBadge = (severity: string) => {
     const colors = {
       high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300", 
@@ -465,6 +542,14 @@ export default function ProjectDashboard() {
     // Status filter
     if (filters.status !== 'ALL') {
       if (issue.status !== filters.status) {
+        return false;
+      }
+    }
+    
+    // Category filter
+    if (filters.category !== 'ALL') {
+      const issueCategory = issue.issueCategory?.toUpperCase().replace(/[- ]/g, '_') || 'CODE_QUALITY';
+      if (issueCategory !== filters.category) {
         return false;
       }
     }
@@ -538,6 +623,14 @@ export default function ProjectDashboard() {
         }
         if (filters.status === 'resolved' && issue.status !== 'resolved') {
           return false;
+        }
+        
+        // Apply category filter
+        if (filters.category !== 'ALL') {
+          const issueCategory = issue.issueCategory?.toUpperCase().replace(/[- ]/g, '_') || 'CODE_QUALITY';
+          if (issueCategory !== filters.category) {
+            return false;
+          }
         }
         
         // Apply file path filter
@@ -739,11 +832,9 @@ export default function ProjectDashboard() {
                 </PopoverContent>
               </Popover>
               {selectionType === 'pr' && (
-                <IssueFilterSidebar
-                  filters={filters}
-                  onFiltersChange={handleFiltersChange}
-                  issueCount={currentFilteredIssues.length}
-                />
+                <span className="text-sm text-muted-foreground">
+                  {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -832,53 +923,118 @@ export default function ProjectDashboard() {
               </Card>
             )}
             
-            {/* Analysis Issues Card */}
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-lg">Analysis Issues</CardTitle>
-                    <CardDescription className="mt-1">
-                      {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''} found in PR #{selectedPR.prNumber}
-                    </CardDescription>
-                  </div>
-                  {maxVersion > 1 && (
-                    <Select value={String(selectedVersion)} onValueChange={handleVersionChange}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Version" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
-                          <SelectItem key={v} value={String(v)}>
-                            Version {v}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            {/* Analysis Issues with Filter Sidebar */}
+            <div className="flex gap-6">
+              {/* Main content */}
+              <div className="flex-1 min-w-0">
+                <Card>
+                  <CardHeader className="pb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <CardTitle className="text-lg">Analysis Issues</CardTitle>
+                        <CardDescription className="mt-1">
+                          {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''} found in PR #{selectedPR.prNumber}
+                        </CardDescription>
+                      </div>
+                      {maxVersion > 1 && (
+                        <Select value={String(selectedVersion)} onValueChange={handleVersionChange}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Version" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
+                              <SelectItem key={v} value={String(v)}>
+                                Version {v}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </CardHeader>
+                  
+                  {/* Bulk Action Bar - shows when at least 1 issue is selected */}
+                  {selectedIssues.size > 0 && (
+                    <div className="px-6 py-3 bg-muted/50 border-b flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleSelectAll}
+                        >
+                          {selectedIssues.size === currentFilteredIssues.length ? (
+                            <>
+                              <Square className="mr-2 h-4 w-4" />
+                              Deselect All
+                            </>
+                          ) : (
+                            <>
+                              <CheckSquare className="mr-2 h-4 w-4" />
+                              Select All ({currentFilteredIssues.length})
+                            </>
+                          )}
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''} selected
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={bulkUpdating}
+                          onClick={() => handleBulkStatusUpdate('resolved')}
+                        >
+                          Mark as Resolved
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={bulkUpdating}
+                          onClick={() => handleBulkStatusUpdate('open')}
+                        >
+                          Mark as Open
+                        </Button>
+                      </div>
+                    </div>
                   )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {analysisLoading ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
-                    Loading analysis...
-                  </div>
-                ) : currentFilteredIssues.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />
-                    <p className="font-medium">No issues found</p>
-                    <p className="text-sm mt-1">No analysis issues match the current filters</p>
-                  </div>
-                ) : (
-                  <IssuesByFileDisplay
-                    issues={currentFilteredIssues}
-                    projectNamespace={namespace!}
-                    onUpdateIssueStatus={handleUpdateIssueStatus}
-                  />
-                )}
-              </CardContent>
-            </Card>
+                  
+                  <CardContent className={selectedIssues.size > 0 ? "pt-4" : ""}>
+                    {analysisLoading ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
+                        Loading analysis...
+                      </div>
+                    ) : currentFilteredIssues.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />
+                        <p className="font-medium">No issues found</p>
+                        <p className="text-sm mt-1">No analysis issues match the current filters</p>
+                      </div>
+                    ) : (
+                      <IssuesByFileDisplay
+                        issues={currentFilteredIssues}
+                        projectNamespace={namespace!}
+                        onUpdateIssueStatus={handleUpdateIssueStatus}
+                        selectionEnabled={true}
+                        selectedIssues={selectedIssues}
+                        onSelectionChange={handleSelectionChange}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Filter Sidebar */}
+              <div className="w-72 shrink-0 hidden lg:block">
+                <IssueFilterPanel
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                  issueCount={currentFilteredIssues.length}
+                  className="sticky top-6"
+                />
+              </div>
+            </div>
           </div>
         ) : (
           <Alert className="max-w-xl mx-auto">
