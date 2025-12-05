@@ -5,6 +5,13 @@ export interface IssueStatusUpdateRequest {
   comment?: string;
 }
 
+export interface BulkStatusUpdateResponse {
+  successCount: number;
+  failureCount: number;
+  failedIds: number[];
+  newStatus: string;
+}
+
 export interface ProjectAnalysisSummary {
   totalIssues: number;
   highIssues: number;
@@ -179,9 +186,22 @@ class AnalysisService extends ApiService {
     isResolved: boolean,
     comment?: string
   ): Promise<any> {
-    return this.request<any>(`/${workspaceSlug}/project/${namespace}/analysis/issues/${issueId}/status`, {
+    return this.request<any>(`/${workspaceSlug}/projects/${namespace}/analysis/issues/${issueId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ isResolved, comment }),
+    }, true);
+  }
+
+  async bulkUpdateIssueStatus(
+    workspaceSlug: string,
+    namespace: string,
+    issueIds: (string | number)[],
+    isResolved: boolean,
+    comment?: string
+  ): Promise<BulkStatusUpdateResponse> {
+    return this.request<BulkStatusUpdateResponse>(`/${workspaceSlug}/projects/${namespace}/analysis/issues/bulk-status`, {
+      method: 'PUT',
+      body: JSON.stringify({ issueIds: issueIds.map(id => Number(id)), isResolved, comment }),
     }, true);
   }
 
