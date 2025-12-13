@@ -190,10 +190,20 @@ export default function ImportProject() {
       setPage(pageNum);
       setHasMore(result.hasNext);
     } catch (error: any) {
+      const isExpiredToken = error.message?.includes('expired') || error.error === 'INTEGRATION_ERROR';
       toast({
-        title: "Failed to load repositories",
+        title: isExpiredToken ? "Connection Expired" : "Failed to load repositories",
         description: error.message,
         variant: "destructive",
+        action: isExpiredToken ? (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate(`/${currentWorkspace?.slug}/settings/code-hosting`)}
+          >
+            Reconnect
+          </Button>
+        ) : undefined,
       });
     } finally {
       setIsLoading(false);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { projectService, BindRepositoryRequest, ProjectDTO } from "@/api_service/project/projectService.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
@@ -48,6 +49,11 @@ export default function ProjectConfiguration() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>('');
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
   const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<number | null>(null);
+  
+  // Analysis settings state
+  const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
+  const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
+  const [savingAnalysisSettings, setSavingAnalysisSettings] = useState(false);
 
   // Redirect if user doesn't have permission
   useEffect(() => {
@@ -89,6 +95,12 @@ export default function ProjectConfiguration() {
       if (proj?.aiConnectionId) {
         setSelectedAiConnectionId(proj.aiConnectionId);
       }
+      
+      // Set analysis settings from project
+      if (proj) {
+        setPrAnalysisEnabled(proj.prAnalysisEnabled ?? true);
+        setBranchAnalysisEnabled(proj.branchAnalysisEnabled ?? true);
+      }
 
     } catch (err: any) {
       toast({
@@ -105,6 +117,41 @@ export default function ProjectConfiguration() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [namespace]);
+  
+  const handleSaveAnalysisSettings = async () => {
+    if (!namespace || !currentWorkspace) return;
+    
+    setSavingAnalysisSettings(true);
+    try {
+      await projectService.updateAnalysisSettings(currentWorkspace.slug, namespace, {
+        prAnalysisEnabled,
+        branchAnalysisEnabled,
+        installationMethod: project?.installationMethod || null
+      });
+      
+      // Update local project state
+      if (project) {
+        setProject({
+          ...project,
+          prAnalysisEnabled,
+          branchAnalysisEnabled
+        });
+      }
+      
+      toast({
+        title: "Success",
+        description: "Analysis settings saved successfully"
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to save analysis settings",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingAnalysisSettings(false);
+    }
+  };
 
   const handleCreateConnection = () => {
     setEditingConfig({
@@ -591,6 +638,61 @@ export default function ProjectConfiguration() {
         </TabsContent>
 
         <TabsContent value="analysis-scope" className="space-y-4">
+          {/* Auto Analysis Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Auto Analysis Settings
+              </CardTitle>
+              <CardDescription>
+                Configure when CodeCrow should automatically analyze your code
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <GitPullRequest className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-medium">Pull Request Analysis</div>
+                    <div className="text-sm text-muted-foreground">
+                      Automatically analyze PRs when created or updated
+                    </div>
+                  </div>
+                </div>
+                <Switch 
+                  checked={prAnalysisEnabled}
+                  onCheckedChange={setPrAnalysisEnabled}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <GitCommit className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-medium">Branch Analysis</div>
+                    <div className="text-sm text-muted-foreground">
+                      Analyze code when branches are pushed
+                    </div>
+                  </div>
+                </div>
+                <Switch 
+                  checked={branchAnalysisEnabled}
+                  onCheckedChange={setBranchAnalysisEnabled}
+                />
+              </div>
+              
+              <Button 
+                onClick={handleSaveAnalysisSettings}
+                disabled={savingAnalysisSettings}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {savingAnalysisSettings ? "Saving..." : "Save Analysis Settings"}
+              </Button>
+            </CardContent>
+          </Card>
+          
+          {/* Branch Pattern Config */}
           <BranchPatternConfig
             project={project}
             onUpdate={(updatedProject) => setProject(updatedProject)}

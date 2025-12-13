@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Copy, CheckCircle, FileCode, AlertCircle } from "lucide-react";
+import { ArrowLeft, Copy, CheckCircle, FileCode, AlertCircle, Webhook, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { projectService, ProjectDTO } from "@/api_service/project/projectService";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -41,6 +41,15 @@ export default function ProjectSetupInstructions() {
       setLoading(false);
     }
   };
+  
+  // Check if project uses webhook installation method or app-based connection
+  const isWebhookInstallation = project?.installationMethod === 'WEBHOOK';
+  const isAppBasedConnection = project?.vcsConnectionType === 'APP' || project?.vcsConnectionType === 'GITHUB_APP';
+  const isAutoIntegration = isWebhookInstallation || isAppBasedConnection;
+  
+  // Determine which provider is being used
+  const isGitHub = project?.vcsProvider === 'GITHUB';
+  const isBitbucket = project?.vcsProvider === 'BITBUCKET_CLOUD';
 
   const copyToClipboard = async (text: string, label: string) => {
     try {
@@ -122,6 +131,35 @@ fi
               fi
               analysis-executor`;
 
+  // GitHub Actions workflow YAML
+  const githubActionsYaml = `name: CodeCrow AI Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - develop
+
+jobs:
+  codecrow-analysis:
+    runs-on: ubuntu-latest
+    name: CodeCrow AI Review
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Run CodeCrow Analysis
+        uses: codecrowai/github-analysis-action@v1
+        with:
+          project-id: \${{ secrets.CODECROW_PROJECT_ID }}
+          project-token: \${{ secrets.CODECROW_PROJECT_TOKEN }}
+          base-url: \${{ secrets.CODECROW_BASE_URL }}
+`;
+
   if (loading) {
     return (
       <div className="p-6">
@@ -168,18 +206,58 @@ fi
             Back to Project
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Pipeline Setup Instructions</h1>
-            <p className="text-muted-foreground">Configure Bitbucket Pipelines for {project.name}</p>
+            <h1 className="text-3xl font-bold">
+              {isGitHub ? 'GitHub Actions Setup Instructions' : 'Pipeline Setup Instructions'}
+            </h1>
+            <p className="text-muted-foreground">
+              {isGitHub 
+                ? `Configure GitHub Actions for ${project.name}` 
+                : `Configure Bitbucket Pipelines for ${project.name}`}
+            </p>
           </div>
         </div>
       </div>
+      
+      {/* Show auto-integration message for app-based connections or webhook installations */}
+      {isAutoIntegration && (
+        <Alert className="border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-900/20">
+          <Webhook className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertTitle className="text-green-600 dark:text-green-400">
+            {isAppBasedConnection 
+              ? `${isGitHub ? 'GitHub App' : 'Bitbucket App'} Integration Active`
+              : 'Automatic Webhook Integration'}
+          </AlertTitle>
+          <AlertDescription>
+            <p className="mt-2">
+              {isAppBasedConnection 
+                ? `This project is connected via the CodeCrow ${isGitHub ? 'GitHub' : 'Bitbucket'} App. CodeCrow will automatically analyze your code when pull requests are created or updated.`
+                : 'This project is configured with automatic webhook integration. CodeCrow will automatically analyze your code when pull requests are created or updated.'}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              No additional {isGitHub ? 'GitHub Actions' : 'pipeline'} setup is required. The instructions below are optional and can be used for custom triggers or CI/CD integration.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {/* Show note that pipeline setup is optional for auto-integration projects */}
+      {isAutoIntegration && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            The instructions below are optional. You may want to configure {isGitHub ? 'GitHub Actions' : 'pipelines'} for additional custom analysis triggers or CI/CD integration.
+          </AlertDescription>
+        </Alert>
+      )}
 
-      <Alert>
-        <CheckCircle className="h-4 w-4" />
-        <AlertDescription>
-          Follow these steps to integrate CodeCrow with your Bitbucket Pipelines for automated code analysis.
-        </AlertDescription>
-      </Alert>
+      {!isAutoIntegration && (
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
+            Follow these steps to integrate CodeCrow with your {isGitHub ? 'GitHub Actions' : 'Bitbucket Pipelines'} for automated code analysis.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Project Information */}
       <Card>
@@ -188,7 +266,7 @@ fi
             <FileCode className="mr-2 h-5 w-5" />
             Project Information
           </CardTitle>
-          <CardDescription>Essential details needed for pipeline configuration</CardDescription>
+          <CardDescription>Essential details needed for {isGitHub ? 'workflow' : 'pipeline'} configuration</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -223,12 +301,14 @@ fi
         </CardContent>
       </Card>
 
-      {/* Step 1: Repository Variables */}
+      {/* Step 1: Repository Variables/Secrets */}
       <Card>
         <CardHeader>
-          <CardTitle>Step 1: Configure Repository Variables</CardTitle>
+          <CardTitle>Step 1: Configure {isGitHub ? 'Repository Secrets' : 'Repository Variables'}</CardTitle>
           <CardDescription>
-            Add these variables in your Bitbucket repository settings: Settings → Repository variables
+            {isGitHub 
+              ? 'Add these secrets in your GitHub repository: Settings → Secrets and variables → Actions → New repository secret'
+              : 'Add these variables in your Bitbucket repository settings: Settings → Repository variables'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -296,26 +376,28 @@ fi
         </CardContent>
       </Card>
 
-      {/* Step 2: Pipeline YAML */}
+      {/* Step 2: Pipeline/Workflow YAML */}
       <Card>
         <CardHeader>
-          <CardTitle>Step 2: Configure Pipeline YAML</CardTitle>
+          <CardTitle>Step 2: Configure {isGitHub ? 'GitHub Actions Workflow' : 'Pipeline YAML'}</CardTitle>
           <CardDescription>
-            Add this configuration to your <code className="text-sm bg-muted px-1 rounded">bitbucket-pipelines.yml</code> file
+            {isGitHub 
+              ? <>Create this file at <code className="text-sm bg-muted px-1 rounded">.github/workflows/codecrow.yml</code></>
+              : <>Add this configuration to your <code className="text-sm bg-muted px-1 rounded">bitbucket-pipelines.yml</code> file</>}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="relative">
             <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
-              <code>{pipelineYaml}</code>
+              <code>{isGitHub ? githubActionsYaml : pipelineYaml}</code>
             </pre>
             <Button
               variant="outline"
               size="sm"
               className="absolute top-2 right-2"
-              onClick={() => copyToClipboard(pipelineYaml, "Pipeline YAML")}
+              onClick={() => copyToClipboard(isGitHub ? githubActionsYaml : pipelineYaml, isGitHub ? "GitHub Actions YAML" : "Pipeline YAML")}
             >
-              {copiedStates["Pipeline YAML"] ? (
+              {copiedStates[isGitHub ? "GitHub Actions YAML" : "Pipeline YAML"] ? (
                 <CheckCircle className="h-4 w-4 text-green-500" />
               ) : (
                 <Copy className="h-4 w-4" />
@@ -325,7 +407,7 @@ fi
         </CardContent>
       </Card>
 
-      {/* Step 4: Test */}
+      {/* Step 3: Test */}
       <Card>
         <CardHeader>
           <CardTitle>Step 3: Test the Integration</CardTitle>
@@ -335,7 +417,7 @@ fi
           <ol className="space-y-3 list-decimal list-inside">
             <li className="text-sm">Commit and push your changes to the repository</li>
             <li className="text-sm">Create a test pull request</li>
-            <li className="text-sm">Monitor the pipeline execution in Bitbucket Pipelines</li>
+            <li className="text-sm">Monitor the {isGitHub ? 'Actions workflow execution' : 'pipeline execution in Bitbucket Pipelines'}</li>
             <li className="text-sm">Check the analysis results in CodeCrow dashboard</li>
           </ol>
         </CardContent>
@@ -345,7 +427,7 @@ fi
       <div className="flex justify-end space-x-2">
         <Button
           variant="outline"
-          onClick={() => navigate("/docs/bitbucket-pipelines")}
+          onClick={() => navigate(isGitHub ? "/docs/github-actions" : "/docs/bitbucket-pipelines")}
         >
           View Full Documentation
         </Button>
