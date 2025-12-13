@@ -9,7 +9,11 @@ import {
   Brain, 
   Loader2, 
   Zap,
-  CheckCircle 
+  CheckCircle,
+  Settings,
+  Webhook,
+  GitPullRequest,
+  GitCommit
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -17,9 +21,10 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
-import { projectService } from "@/api_service/project/projectService.ts";
+import { projectService, InstallationMethod } from "@/api_service/project/projectService.ts";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
@@ -53,6 +58,11 @@ export default function NewProjectPage() {
     apiKey: '',
     tokenLimitation: '150000'
   });
+  
+  // Analysis settings state
+  const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
+  const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
+  const [installationMethod, setInstallationMethod] = useState<InstallationMethod | null>(null);
 
   useEffect(() => {
     // read selection returned from repo selector
@@ -176,6 +186,8 @@ export default function NewProjectPage() {
       }
       setCurrentStep(3);
       loadAiConnections();
+    } else if (currentStep === 3) {
+      setCurrentStep(4);
     }
   };
   
@@ -219,11 +231,30 @@ export default function NewProjectPage() {
       }
 
       const createdProject = await projectService.createProject(currentWorkspace!.slug, payload);
+      
+      // Update analysis settings
+      if (createdProject.namespace) {
+        await projectService.updateAnalysisSettings(currentWorkspace!.slug, createdProject.namespace, {
+          prAnalysisEnabled,
+          branchAnalysisEnabled,
+          installationMethod
+        });
+      }
+      
       toast({
         title: "Project created",
         description: "Project was created successfully"
       });
-      navigate(`/dashboard/projects/${createdProject.namespace}/setup`);
+      
+      // Navigate to success page with project info
+      navigate(`/dashboard/projects/${createdProject.namespace}/setup/success`, {
+        state: {
+          project: createdProject,
+          installationMethod,
+          prAnalysisEnabled,
+          branchAnalysisEnabled
+        }
+      });
     } catch (err: any) {
       toast({
         title: "Error",
@@ -252,26 +283,33 @@ export default function NewProjectPage() {
       </div>
       
       {/* Step indicator */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
         <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
             {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : '1'}
           </div>
-          <span className="hidden sm:inline font-medium">Select Repository</span>
+          <span className="hidden sm:inline font-medium">Repository</span>
         </div>
-        <div className={`w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
         <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
             {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : '2'}
           </div>
-          <span className="hidden sm:inline font-medium">Project Details</span>
+          <span className="hidden sm:inline font-medium">Details</span>
         </div>
-        <div className={`w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
         <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            3
+            {currentStep > 3 ? <CheckCircle className="h-4 w-4" /> : '3'}
           </div>
-          <span className="hidden sm:inline font-medium">AI Connection</span>
+          <span className="hidden sm:inline font-medium">AI</span>
+        </div>
+        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+            4
+          </div>
+          <span className="hidden sm:inline font-medium">Analysis</span>
         </div>
       </div>
 
@@ -570,23 +608,167 @@ export default function NewProjectPage() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={handleCreate}
-                disabled={creating}
+                onClick={handleNextStep}
               >
                 Skip AI Setup
               </Button>
               <Button
-                onClick={handleCreate}
-                disabled={creating}
+                onClick={handleNextStep}
               >
-                {creating ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Plus className="h-4 w-4 mr-2" />
-                )}
-                Create Project
+                Continue
+                <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
+          </div>
+        </>
+      )}
+      
+      {/* Step 4: Analysis Configuration */}
+      {currentStep === 4 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Analysis Configuration
+              </CardTitle>
+              <CardDescription>
+                Configure when and how CodeCrow should analyze your code
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Analysis Scope */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Analysis Scope</Label>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <GitPullRequest className="h-5 w-5 text-primary" />
+                    <div>
+                      <div className="font-medium">Pull Request Analysis</div>
+                      <div className="text-sm text-muted-foreground">
+                        Automatically analyze PRs when created or updated
+                      </div>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={prAnalysisEnabled}
+                    onCheckedChange={setPrAnalysisEnabled}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <GitCommit className="h-5 w-5 text-primary" />
+                    <div>
+                      <div className="font-medium">Branch Analysis</div>
+                      <div className="text-sm text-muted-foreground">
+                        Analyze code when branches are pushed
+                      </div>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={branchAnalysisEnabled}
+                    onCheckedChange={setBranchAnalysisEnabled}
+                  />
+                </div>
+              </div>
+              
+              {/* Installation Method */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Installation Method</Label>
+                <p className="text-sm text-muted-foreground">
+                  Choose how CodeCrow will be triggered for analysis
+                </p>
+                
+                <div className="grid gap-3">
+                  <div 
+                    className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                      installationMethod === 'WEBHOOK' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => setInstallationMethod('WEBHOOK')}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      installationMethod === 'WEBHOOK' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {installationMethod === 'WEBHOOK' && (
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <Webhook className="h-5 w-5 text-primary" />
+                    <div className="flex-1">
+                      <div className="font-medium">Webhook (Recommended)</div>
+                      <div className="text-sm text-muted-foreground">
+                        Automatic triggers via GitHub App or Bitbucket webhooks. No setup required.
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div 
+                    className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                      installationMethod === 'PIPELINE' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => setInstallationMethod('PIPELINE')}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      installationMethod === 'PIPELINE' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {installationMethod === 'PIPELINE' && (
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <GitBranch className="h-5 w-5 text-blue-500" />
+                    <div className="flex-1">
+                      <div className="font-medium">Bitbucket Pipelines</div>
+                      <div className="text-sm text-muted-foreground">
+                        Integrate with your existing CI/CD pipeline. Requires pipeline configuration.
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div 
+                    className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                      installationMethod === 'GITHUB_ACTION' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => setInstallationMethod('GITHUB_ACTION')}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      installationMethod === 'GITHUB_ACTION' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {installationMethod === 'GITHUB_ACTION' && (
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <GitBranch className="h-5 w-5 text-orange-500" />
+                    <div className="flex-1">
+                      <div className="font-medium">GitHub Actions</div>
+                      <div className="text-sm text-muted-foreground">
+                        Use GitHub Actions workflow. Requires workflow configuration.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Step 4 Actions */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePreviousStep}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={creating}
+            >
+              {creating ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Project
+            </Button>
           </div>
         </>
       )}

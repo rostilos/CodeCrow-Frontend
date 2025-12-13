@@ -118,11 +118,48 @@ codecrow.bitbucket.app.client-id=<your-oauth-consumer-key>
 codecrow.bitbucket.app.client-secret=<your-oauth-consumer-secret>`}</pre>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Create an OAuth consumer at Bitbucket Settings → OAuth consumers with callback URL:{" "}
+                  Create an OAuth consumer at Bitbucket Settings → Workspace Settings → OAuth consumers with callback URL:{" "}
                   <code className="bg-muted px-1 py-0.5 rounded">
-                    {"${codecrow.web.base.url}"}/api/integrations/bitbucket-cloud/app/callback
+                    {"${codecrow.web.base.url}"}/api/{"{workspaceSlug}"}/integrations/bitbucket-cloud/app/callback
                   </code>
                 </p>
+              </div>
+
+              {/* GitHub OAuth App */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  GitHub OAuth App
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Required for 1-click GitHub integration:
+                </p>
+                <div className="bg-muted/50 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                  <pre className="text-xs">{`# GitHub OAuth App credentials
+codecrow.github.app.client-id=<your-github-client-id>
+codecrow.github.app.client-secret=<your-github-client-secret>`}</pre>
+                </div>
+                <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                  <p><strong>Setup Steps:</strong></p>
+                  <ol className="list-decimal list-inside space-y-1 ml-2">
+                    <li>Go to <a href="https://github.com/settings/developers" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">GitHub Developer Settings</a> → OAuth Apps → New OAuth App</li>
+                    <li>Set <strong>Application name</strong>: CodeCrow</li>
+                    <li>Set <strong>Homepage URL</strong>: Your frontend URL</li>
+                    <li>Set <strong>Authorization callback URL</strong>:{" "}
+                      <code className="bg-muted px-1 py-0.5 rounded">
+                        {"${codecrow.web.base.url}"}/api/{"{workspaceSlug}"}/integrations/github/app/callback
+                      </code>
+                    </li>
+                    <li>Click "Register application" and copy Client ID</li>
+                    <li>Generate a client secret and copy it</li>
+                  </ol>
+                </div>
+                <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs">
+                  <strong>OAuth Scopes Requested:</strong>{" "}
+                  <code className="bg-muted px-1 py-0.5 rounded">repo</code>,{" "}
+                  <code className="bg-muted px-1 py-0.5 rounded">read:user</code>,{" "}
+                  <code className="bg-muted px-1 py-0.5 rounded">read:org</code>
+                </div>
               </div>
 
               {/* Google OAuth */}
