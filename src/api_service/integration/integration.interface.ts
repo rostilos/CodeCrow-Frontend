@@ -75,6 +75,9 @@ export interface RepoOnboardRequest {
   projectNamespace?: string;
   projectDescription?: string;
   aiConnectionId?: number;
+  defaultBranch?: string;
+  prAnalysisEnabled?: boolean;
+  branchAnalysisEnabled?: boolean;
   setupWebhooks?: boolean;
 }
 

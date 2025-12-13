@@ -153,11 +153,21 @@ export default function JobsPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Jobs</h1>
-          <p className="text-muted-foreground">
-            View and monitor background jobs for this project
-          </p>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate(`/${currentWorkspace?.slug}/projects/${namespace}`)}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back to Project
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Jobs</h1>
+            <p className="text-muted-foreground">
+              View and monitor background jobs for this project
+            </p>
+          </div>
         </div>
         <Button onClick={fetchJobs} variant="outline" size="sm">
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />

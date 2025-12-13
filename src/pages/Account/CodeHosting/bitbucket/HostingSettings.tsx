@@ -9,6 +9,7 @@ import {
     Edit, 
     ExternalLink,
     GitBranch, 
+    Github,
     Loader2, 
     Plus, 
     RefreshCw,
@@ -39,6 +40,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import GitHubHostingSettings from "@/pages/Account/CodeHosting/github/GitHubHostingSettings.tsx";
 
 interface BitbucketConnection {
     id: string;
@@ -233,9 +235,13 @@ export default function HostingSettings() {
             <Tabs defaultValue="bitbucket" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="bitbucket">Bitbucket</TabsTrigger>
-                    <TabsTrigger value="github" disabled>GitHub (Coming Soon)</TabsTrigger>
+                    <TabsTrigger value="github">GitHub</TabsTrigger>
                     <TabsTrigger value="gitlab" disabled>GitLab (Coming Soon)</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="github" className="space-y-6">
+                    <GitHubHostingSettings />
+                </TabsContent>
 
                 <TabsContent value="bitbucket" className="space-y-6">
                     {/* App Installation Card - Always show at top */}

@@ -53,7 +53,7 @@ class IntegrationService extends ApiService {
    */
   async getAllConnections(workspaceSlug: string): Promise<VcsConnection[]> {
     // Get connections for all supported providers
-    const providers: VcsProvider[] = ['bitbucket-cloud'];
+    const providers: VcsProvider[] = ['bitbucket-cloud', 'github'];
     const connectionPromises = providers.map(p => 
       this.getConnections(workspaceSlug, p).catch(() => [])
     );

@@ -41,11 +41,16 @@ export interface BindRepositoryRequest {
   name?: string;
 }
 
+export type VcsConnectionType = 'OAUTH_MANUAL' | 'APP' | 'GITHUB_APP' | 'OAUTH_APP' | 'PERSONAL_TOKEN' | 'APPLICATION';
+export type VcsProvider = 'BITBUCKET_CLOUD' | 'GITHUB' | 'GITLAB';
+
 export interface ProjectDTO {
   id: number | string;
   name: string;
   description?: string;
   vcsConnectionId?: number;
+  vcsConnectionType?: VcsConnectionType | null;
+  vcsProvider?: VcsProvider | null;
   aiConnectionId?: number;
   projectVcsWorkspace?: string;
   projectRepoSlug?: string;
@@ -62,6 +67,9 @@ export interface ProjectDTO {
     resolvedCount: number;
   };
   ragConfig?: RagConfigDTO;
+  prAnalysisEnabled?: boolean;
+  branchAnalysisEnabled?: boolean;
+  installationMethod?: InstallationMethod | null;
   // other fields from ProjectDTO are allowed
   [key: string]: any;
 }
@@ -104,6 +112,15 @@ export interface UpdateRagConfigRequest {
   enabled: boolean;
   branch?: string | null;
   excludePatterns?: string[] | null;
+}
+
+// Analysis settings types
+export type InstallationMethod = 'WEBHOOK' | 'PIPELINE' | 'GITHUB_ACTION';
+
+export interface UpdateAnalysisSettingsRequest {
+  prAnalysisEnabled?: boolean;
+  branchAnalysisEnabled?: boolean;
+  installationMethod?: InstallationMethod | null;
 }
 
 export interface RagIndexStatusDTO {
@@ -254,6 +271,14 @@ class ProjectService extends ApiService {
 
   async updateRagConfig(workspaceSlug: string, namespace: string, request: UpdateRagConfigRequest): Promise<ProjectDTO> {
     return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/rag/config`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    }, true);
+  }
+
+  // Analysis Settings methods
+  async updateAnalysisSettings(workspaceSlug: string, namespace: string, request: UpdateAnalysisSettingsRequest): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/analysis-settings`, {
       method: 'PUT',
       body: JSON.stringify(request),
     }, true);

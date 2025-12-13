@@ -243,13 +243,9 @@ export default function ProjectSettings() {
   };
   
   const handleImportFromConnection = (connection: VcsConnection) => {
-    if (connection.connectionType === 'APP') {
-      // For APP connections, redirect to the success page flow (repo selection + AI)
-      navigate(`/dashboard/hosting/${connection.provider}/success?connectionId=${connection.id}`);
-    } else {
-      // For manual OAuth connections, use the step-by-step new project flow
-      navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=${connection.provider}&connectionType=${connection.connectionType}`);
-    }
+    // Use the step-by-step import flow for all connection types
+    // This provides proper project naming, AI selection, and analysis configuration
+    navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=${connection.provider}&connectionType=${connection.connectionType}`);
   };
   
   // Group connections by provider
