@@ -13,7 +13,9 @@ import {
   CheckCircle,
   Settings,
   GitPullRequest,
-  GitCommit
+  GitCommit,
+  X,
+  Info
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { integrationService } from "@/api_service/integration/integrationService";
@@ -76,6 +80,7 @@ export default function ImportProject() {
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [showCreateAi, setShowCreateAi] = useState(false);
   const [newAiConnection, setNewAiConnection] = useState<CreateAIConnectionRequest>({
+    name: '',
     providerKey: 'OPENROUTER',
     aiModel: '',
     apiKey: '',
@@ -88,6 +93,12 @@ export default function ImportProject() {
   const [branches, setBranches] = useState<string[]>([]);
   const [selectedDefaultBranch, setSelectedDefaultBranch] = useState<string>('');
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+  
+  // Branch pattern state
+  const [prTargetPatterns, setPrTargetPatterns] = useState<string[]>([]);
+  const [branchPushPatterns, setBranchPushPatterns] = useState<string[]>([]);
+  const [newPrPattern, setNewPrPattern] = useState("");
+  const [newBranchPattern, setNewBranchPattern] = useState("");
   
   // Creating state
   const [isCreating, setIsCreating] = useState(false);
@@ -181,15 +192,15 @@ export default function ImportProject() {
         
         result = {
           items: res.items.map((r: any) => ({
-            id: r.uuid || r.id || r.slug,
-            slug: r.slug,
+            id: r.uuid || r.id || r.name,
+            slug: r.slug || r.name, // GitHub uses 'name' as slug
             name: r.name,
-            fullName: r.fullName || r.full_name || `${r.owner?.username || r.workspace?.slug || ''}/${r.slug}`,
+            fullName: r.fullName || r.full_name || `${r.owner?.username || r.workspace?.slug || ''}/${r.slug || r.name}`,
             description: r.description,
-            isPrivate: r.isPrivate ?? r.is_private ?? true,
+            isPrivate: r.isPrivate ?? r.is_private ?? r.private ?? true,
             defaultBranch: r.mainBranch?.name || r.defaultBranch || r.default_branch || 'main',
             cloneUrl: r.links?.clone?.[0]?.href || r.cloneUrl,
-            htmlUrl: r.links?.html?.href || r.htmlUrl,
+            htmlUrl: r.links?.html?.href || r.htmlUrl || r.html_url,
             namespace: r.owner?.username || r.workspace?.slug || '',
             avatarUrl: r.links?.avatar?.href || r.avatarUrl || null,
             isOnboarded: r.isOnboarded ?? false,
@@ -287,6 +298,7 @@ export default function ImportProject() {
       setSelectedAiConnectionId(created.id);
       setShowCreateAi(false);
       setNewAiConnection({
+        name: '',
         providerKey: 'OPENROUTER',
         aiModel: '',
         apiKey: '',
@@ -372,12 +384,34 @@ export default function ImportProject() {
         }
       );
       
+      // Update branch patterns if any are set
+      if ((prTargetPatterns.length > 0 || branchPushPatterns.length > 0) && result.projectNamespace) {
+        await projectService.updateBranchAnalysisConfig(currentWorkspace.slug, result.projectNamespace, {
+          prTargetBranches: prTargetPatterns,
+          branchPushPatterns: branchPushPatterns
+        });
+      }
+      
       toast({
         title: "Project created",
         description: `Successfully created project "${result.projectName}"`,
       });
       
-      navigate(`/${currentWorkspace.slug}/projects/${result.projectNamespace}`);
+      // Navigate to success page
+      navigate(`/dashboard/projects/${result.projectNamespace}/setup/success`, {
+        state: {
+          project: {
+            id: result.projectId,
+            name: result.projectName,
+            namespace: result.projectNamespace,
+          },
+          installationMethod: 'WEBHOOK',
+          prAnalysisEnabled,
+          branchAnalysisEnabled,
+          prTargetPatterns,
+          branchPushPatterns
+        }
+      });
     } catch (error: any) {
       toast({
         title: "Failed to create project",
@@ -656,7 +690,7 @@ export default function ImportProject() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <Zap className="h-4 w-4 text-primary" />
-                                <span className="font-medium">{conn.providerKey}</span>
+                                <span className="font-medium">{conn.name || conn.providerKey}</span>
                                 <span className="text-sm text-muted-foreground">- {conn.aiModel}</span>
                               </div>
                             </div>
@@ -690,6 +724,16 @@ export default function ImportProject() {
                       )}
                       
                       <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="ai-name">Connection Name (Optional)</Label>
+                          <Input
+                            id="ai-name"
+                            value={newAiConnection.name || ''}
+                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="e.g., Production Claude, Dev GPT-4"
+                          />
+                        </div>
+                        
                         <div className="space-y-2">
                           <Label htmlFor="ai-provider">AI Provider</Label>
                           <Select
@@ -854,6 +898,152 @@ export default function ImportProject() {
                 </div>
               </div>
               
+              {/* Branch Pattern Configuration */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Branch Pattern Filters (Optional)</Label>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Define which branches trigger automated analysis. If no patterns are configured, 
+                    all branches will be analyzed. Supports wildcards: <code className="px-1 bg-muted rounded">*</code> and <code className="px-1 bg-muted rounded">**</code>
+                  </AlertDescription>
+                </Alert>
+                
+                {/* PR Target Patterns */}
+                {prAnalysisEnabled && (
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        <GitPullRequest className="h-4 w-4" />
+                        PR Target Branches
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Only analyze PRs targeting these branches (e.g., main, develop, release/*)
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g., main, develop, release/*"
+                        value={newPrPattern}
+                        onChange={(e) => setNewPrPattern(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const pattern = newPrPattern.trim();
+                            if (pattern && !prTargetPatterns.includes(pattern)) {
+                              setPrTargetPatterns([...prTargetPatterns, pattern]);
+                              setNewPrPattern("");
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const pattern = newPrPattern.trim();
+                          if (pattern && !prTargetPatterns.includes(pattern)) {
+                            setPrTargetPatterns([...prTargetPatterns, pattern]);
+                            setNewPrPattern("");
+                          }
+                        }}
+                        disabled={!newPrPattern.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {prTargetPatterns.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {prTargetPatterns.map((pattern) => (
+                          <Badge key={pattern} variant="secondary" className="pl-3 pr-1 py-1.5">
+                            <code className="text-xs">{pattern}</code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
+                              onClick={() => setPrTargetPatterns(prTargetPatterns.filter(p => p !== pattern))}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No patterns configured - all PR target branches will be analyzed
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Branch Push Patterns */}
+                {branchAnalysisEnabled && (
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        <GitCommit className="h-4 w-4" />
+                        Branch Push Patterns
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Only analyze pushes to branches matching these patterns
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g., main, develop, feature/*"
+                        value={newBranchPattern}
+                        onChange={(e) => setNewBranchPattern(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const pattern = newBranchPattern.trim();
+                            if (pattern && !branchPushPatterns.includes(pattern)) {
+                              setBranchPushPatterns([...branchPushPatterns, pattern]);
+                              setNewBranchPattern("");
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const pattern = newBranchPattern.trim();
+                          if (pattern && !branchPushPatterns.includes(pattern)) {
+                            setBranchPushPatterns([...branchPushPatterns, pattern]);
+                            setNewBranchPattern("");
+                          }
+                        }}
+                        disabled={!newBranchPattern.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {branchPushPatterns.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {branchPushPatterns.map((pattern) => (
+                          <Badge key={pattern} variant="secondary" className="pl-3 pr-1 py-1.5">
+                            <code className="text-xs">{pattern}</code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
+                              onClick={() => setBranchPushPatterns(branchPushPatterns.filter(p => p !== pattern))}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No patterns configured - all branch pushes will be analyzed
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
               {/* Summary */}
               <div className="p-4 bg-muted/50 rounded-lg space-y-2">
                 <div className="font-medium">Project Summary</div>
@@ -863,6 +1053,12 @@ export default function ImportProject() {
                   <div><span className="text-muted-foreground">Default Branch:</span> {selectedDefaultBranch}</div>
                   <div><span className="text-muted-foreground">PR Analysis:</span> {prAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
                   <div><span className="text-muted-foreground">Branch Analysis:</span> {branchAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
+                  {prTargetPatterns.length > 0 && (
+                    <div><span className="text-muted-foreground">PR Target Patterns:</span> {prTargetPatterns.join(', ')}</div>
+                  )}
+                  {branchPushPatterns.length > 0 && (
+                    <div><span className="text-muted-foreground">Branch Push Patterns:</span> {branchPushPatterns.join(', ')}</div>
+                  )}
                   {selectedAiConnectionId && (
                     <div><span className="text-muted-foreground">AI Connection:</span> {aiConnections.find(c => c.id === selectedAiConnectionId)?.aiModel}</div>
                   )}

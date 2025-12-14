@@ -35,6 +35,8 @@ export default function ProjectSetupSuccess() {
   const installationMethod = (location.state as any)?.installationMethod as InstallationMethod | null;
   const prAnalysisEnabled = (location.state as any)?.prAnalysisEnabled ?? true;
   const branchAnalysisEnabled = (location.state as any)?.branchAnalysisEnabled ?? true;
+  const prTargetPatterns = (location.state as any)?.prTargetPatterns as string[] || [];
+  const branchPushPatterns = (location.state as any)?.branchPushPatterns as string[] || [];
   
   useEffect(() => {
     if (!project && namespace && currentWorkspace) {
@@ -158,6 +160,25 @@ export default function ProjectSetupSuccess() {
               </Badge>
             )}
           </div>
+          
+          {/* Branch Patterns Info */}
+          {(prTargetPatterns.length > 0 || branchPushPatterns.length > 0) && (
+            <div className="pt-4 border-t space-y-2">
+              <div className="text-sm font-medium">Configured Branch Patterns</div>
+              {prTargetPatterns.length > 0 && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">PR Target Branches:</span>{' '}
+                  <code className="text-xs bg-muted px-1 rounded">{prTargetPatterns.join(', ')}</code>
+                </div>
+              )}
+              {branchPushPatterns.length > 0 && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Branch Push Patterns:</span>{' '}
+                  <code className="text-xs bg-muted px-1 rounded">{branchPushPatterns.join(', ')}</code>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
       

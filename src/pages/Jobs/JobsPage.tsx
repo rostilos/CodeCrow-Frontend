@@ -157,7 +157,7 @@ export default function JobsPage() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => navigate(`/${currentWorkspace?.slug}/projects/${namespace}`)}
+            onClick={() => navigate(`/dashboard/projects/${namespace}`)}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Back to Project

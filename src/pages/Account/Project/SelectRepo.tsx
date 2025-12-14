@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { useDebounce } from "@/hooks/use-debounce.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
+import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
 export default function SelectRepoPage() {
@@ -28,8 +29,9 @@ export default function SelectRepoPage() {
   
   const debouncedQuery = useDebounce(query, 300);
 
-  // keep projectName that was passed from NewProject (so we can show it)
+  // keep projectName and provider that were passed from NewProject
   const passedProjectName = (location.state as any)?.projectName || "";
+  const provider = (location.state as any)?.provider || "BITBUCKET_CLOUD";
 
   useEffect(() => {
     if (!connectionId) return;
@@ -55,19 +57,40 @@ export default function SelectRepoPage() {
       } else {
         setLoadingMore(true);
       }
-      const res = await bitbucketCloudService.getRepositories(
-        currentWorkspace!.slug, 
-        Number(connectionId), 
-        pageToLoad + 1, // API uses 1-based pagination
-        searchQuery
-      );
+      
+      // Use appropriate service based on provider
+      let res;
+      if (provider === 'GITHUB') {
+        res = await githubService.getRepositories(
+          currentWorkspace!.slug, 
+          Number(connectionId), 
+          pageToLoad + 1, // API uses 1-based pagination
+          searchQuery
+        );
+      } else {
+        res = await bitbucketCloudService.getRepositories(
+          currentWorkspace!.slug, 
+          Number(connectionId), 
+          pageToLoad + 1, // API uses 1-based pagination
+          searchQuery
+        );
+      }
+      
       // res is { items, hasNext } as implemented in service
       const items = Array.isArray(res) ? res : (res.items || []);
       const next = Array.isArray(res) ? false : !!res.hasNext;
+      
+      // Normalize items - ensure slug is set for GitHub repos
+      const normalizedItems = items.map((r: any) => ({
+        ...r,
+        slug: r.slug || r.name,
+        id: r.id || r.uuid || r.name
+      }));
+      
       if (pageToLoad === 0) {
-        setRepos(items);
+        setRepos(normalizedItems);
       } else {
-        setRepos(prev => [...prev, ...items]);
+        setRepos(prev => [...prev, ...normalizedItems]);
       }
       setHasNext(next);
       setPage(pageToLoad);
@@ -98,8 +121,14 @@ export default function SelectRepoPage() {
   };
 
   const handleSelect = (repo: any) => {
-    // return to NewProject page with the selected repo and connectionId in location.state
-    navigate("/dashboard/projects/new", { state: { selectedRepo: repo, connectionId: Number(connectionId) } });
+    // return to NewProject page with the selected repo, connectionId, and provider in location.state
+    navigate("/dashboard/projects/new", { 
+      state: { 
+        selectedRepo: repo, 
+        connectionId: Number(connectionId),
+        provider: provider
+      } 
+    });
   };
 
   return (
