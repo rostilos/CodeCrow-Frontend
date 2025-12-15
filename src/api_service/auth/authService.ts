@@ -11,7 +11,9 @@ import {
     ValidateResetTokenRequest,
     ValidateResetTokenResponse,
     ResetPasswordRequest,
-    ResetPasswordResponse
+    ResetPasswordResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse
 } from "@/api_service/auth/authService.interface.ts";
 
 
@@ -56,6 +58,24 @@ class AuthService extends ApiService {
             method: 'POST',
             body: JSON.stringify(data),
         });
+    }
+
+    async refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
+        return this.request<RefreshTokenResponse>(API_CONFIG.ENDPOINTS.REFRESH_TOKEN, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async logout(refreshToken: string): Promise<void> {
+        try {
+            await this.request<{ message: string }>(API_CONFIG.ENDPOINTS.LOGOUT, {
+                method: 'POST',
+                body: JSON.stringify({ refreshToken }),
+            });
+        } catch {
+            // Ignore errors on logout - we'll clear local storage anyway
+        }
     }
 }
 

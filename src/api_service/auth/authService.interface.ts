@@ -16,6 +16,7 @@ export interface GoogleAuthRequest {
 
 export interface AuthResponse {
     accessToken: string;
+    refreshToken?: string;
     id: string;
     email: string;
     username?: string;
@@ -25,6 +26,7 @@ export interface AuthResponse {
 
 export interface LoginResponse {
     accessToken?: string;
+    refreshToken?: string;
     id?: string;
     username?: string;
     email?: string;
@@ -63,4 +65,18 @@ export interface ResetPasswordRequest {
 
 export interface ResetPasswordResponse {
     message: string;
+}
+
+export interface RefreshTokenRequest {
+    refreshToken: string;
+}
+
+export interface RefreshTokenResponse {
+    accessToken: string;
+    refreshToken: string;
+    id: string;
+    username: string;
+    email: string;
+    avatarUrl?: string;
+    roles?: string[];
 }

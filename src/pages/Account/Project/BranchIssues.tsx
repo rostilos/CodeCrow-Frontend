@@ -74,15 +74,18 @@ export default function BranchIssues() {
     setFilters(newFilters);
   }, [namespace, branchName, currentWorkspace]);
 
-  const loadBranchData = async () => {
+  const loadBranchData = async (statusFilter: string = filters.status) => {
     if (!namespace || !branchName || !currentWorkspace) return;
     
     setLoading(true);
     try {
+      // Map frontend status to API status parameter
+      const apiStatus = statusFilter === 'ALL' ? 'all' : statusFilter;
       const issuesData = await analysisService.getBranchIssues(
         currentWorkspace.slug,
         namespace,
-        decodeURIComponent(branchName)
+        decodeURIComponent(branchName),
+        apiStatus
       );
       setIssues(issuesData);
     } catch (error: any) {
@@ -98,6 +101,10 @@ export default function BranchIssues() {
 
   const handleFiltersChange = (newFilters: IssueFilters) => {
     setFilters(newFilters);
+    // Reload data when status filter changes
+    if (newFilters.status !== filters.status) {
+      loadBranchData(newFilters.status);
+    }
     const newParams = new URLSearchParams();
     
     if (newFilters.severity !== 'ALL') {
