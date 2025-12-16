@@ -277,7 +277,7 @@ export default function ProjectSettings() {
     <div className="min-h-full">
       {/* Page Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40">
-        <div className="px-4 lg:px-6 py-4">
+        <div className="px-4 lg:px-6 container py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-xl font-semibold">Projects</h1>
@@ -352,7 +352,7 @@ export default function ProjectSettings() {
       </div>
 
       {/* Main Content */}
-      <div className="p-4 lg:p-6">
+      <div className="container p-4 lg:p-6">
         <Tabs defaultValue="list" className="space-y-6">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="list">Project List</TabsTrigger>

@@ -361,7 +361,7 @@ export default function ProjectConfiguration() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="container space-y-6 p-6">
       <Button variant="ghost" onClick={() => navigate(`/dashboard/projects/${namespace}`)} size="sm">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Project

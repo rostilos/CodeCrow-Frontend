@@ -370,7 +370,7 @@ export default function DetailedProjectStats({
                                         Recent Analysis Trend
                                     </CardTitle>
                                     <CardDescription className="text-xs mt-1">
-                                        {chartType === 'resolved' ? 'Issue resolution rates over time' : 'Total issues breakdown by severity'}
+                                        {chartType === 'resolved' ? 'Issue resolution rates over time ( By PR )' : 'Total issues breakdown by severity ( By PR )'}
                                     </CardDescription>
                                 </div>
                                 <div className="flex items-center gap-2">

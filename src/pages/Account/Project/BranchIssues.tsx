@@ -268,6 +268,16 @@ export default function BranchIssues() {
       </div>
 
       <div className="flex gap-6">
+        {/* Filter Sidebar - Left */}
+        <div className="w-64 shrink-0 hidden lg:block">
+          <IssueFilterPanel
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            issueCount={filteredIssues.length}
+            className="sticky top-20"
+          />
+        </div>
+
         {/* Main content */}
         <div className="flex-1 min-w-0">
           <Card>
@@ -342,16 +352,6 @@ export default function BranchIssues() {
               )}
             </CardContent>
           </Card>
-        </div>
-        
-        {/* Filter Sidebar */}
-        <div className="w-72 shrink-0">
-          <IssueFilterPanel
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            issueCount={filteredIssues.length}
-            className="sticky top-6"
-          />
         </div>
       </div>
     </div>
