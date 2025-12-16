@@ -39,6 +39,7 @@ const DevSMTPSetup = lazy(() => import("./pages/Docs/Developer/SMTPSetup"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const DashboardLayout = lazy(() => import("./components/DashboardLayout"));
 const ProjectSetupInstructions = lazy(() => import("./pages/Account/Project/ProjectSetupInstructions.tsx"));
+const ProjectSetupSuccess = lazy(() => import("./pages/Account/Project/new/ProjectSetupSuccess.tsx"));
 const WorkspaceManagementPage = lazy(() => import("./pages/Account/Workspace/WorkspaceManagement.tsx"));
 const ProjectSettings = lazy(() => import("./pages/Account/Project/ProjectSettings.tsx"));
 const ProjectManagement = lazy(() => import("./pages/Account/Project/ProjectManagement.tsx"));
@@ -47,9 +48,12 @@ const UserSettings = lazy(() => import("./pages/Account/UserSettings/UserSetting
 const HostingSettings = lazy(() => import("./pages/Account/CodeHosting/bitbucket/HostingSettings.tsx"));
 const AddConnection = lazy(() => import("./pages/Account/CodeHosting/bitbucket/AddConnection.tsx"));
 const ConfigureConnection = lazy(() => import("./pages/Account/CodeHosting/bitbucket/ConfigureConnection.tsx"));
+const GitHubAddConnection = lazy(() => import("./pages/Account/CodeHosting/github/AddConnection.tsx"));
+const GitHubConfigureConnection = lazy(() => import("./pages/Account/CodeHosting/github/ConfigureConnection.tsx"));
+const GitHubOAuthCallback = lazy(() => import("./pages/Account/CodeHosting/github/OAuthCallback.tsx"));
 const TaskSettings = lazy(() => import("./pages/Account/TaskSettings/TaskSettings.tsx"));
 const AISettings = lazy(() => import("./pages/Account/AI/AISettings.tsx"));
-const NewProjectPage = lazy(() => import("./pages/Account/Project/NewProject.tsx"));
+const NewProjectPage = lazy(() => import("./pages/Account/Project/new/NewProject.tsx"));
 const SelectRepoPage = lazy(() => import("./pages/Account/Project/SelectRepo.tsx"));
 const ImportProjectPage = lazy(() => import("./pages/Account/Project/ImportProject.tsx"));
 const BillingSettings = lazy(() => import("./pages/Account/Billing/BillingSettings.tsx"));
@@ -126,6 +130,7 @@ const App = () => (
                       <Route path="projects/import" element={<ImportProjectPage />} />
                       <Route path="projects/:namespace" element={<ProjectDashboard />} />
                       <Route path="projects/:namespace/setup" element={<ProjectSetupInstructions />} />
+                      <Route path="projects/:namespace/setup/success" element={<ProjectSetupSuccess />} />
                       <Route path="projects/:namespace/branches/:branchName/issues" element={<BranchIssues />} />
                       <Route path="projects/:namespace/issues/:issueId" element={<IssueDetails />} />
                       <Route path="projects/:namespace/settings" element={<ProjectConfiguration />} />
@@ -135,6 +140,9 @@ const App = () => (
                       <Route path="hosting" element={<HostingSettings />} />
                       <Route path="hosting/add-connection" element={<AddConnection />} />
                       <Route path="hosting/configure/:connectionId" element={<ConfigureConnection />} />
+                      <Route path="hosting/github/add-connection" element={<GitHubAddConnection />} />
+                      <Route path="hosting/github/configure/:connectionId" element={<GitHubConfigureConnection />} />
+                      <Route path="hosting/github/callback" element={<GitHubOAuthCallback />} />
                       <Route path="ai" element={<AISettings />} />
                       <Route path="workspace" element={<WorkspaceManagementPage />} />
                       <Route path="tasks" element={<TaskSettings />} />

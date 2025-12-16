@@ -10,7 +10,10 @@ import {
   Search, 
   Plus, 
   Zap,
-  CheckCircle
+  CheckCircle,
+  Settings,
+  GitPullRequest,
+  GitCommit
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,10 +22,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { integrationService } from "@/api_service/integration/integrationService";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService";
+import { githubService } from "@/api_service/codeHosting/github/githubService";
 import { projectService } from "@/api_service/project/projectService";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService";
 import { 
@@ -37,6 +42,7 @@ import {
  * 1. Select repository from VCS connection
  * 2. Set project name and description
  * 3. Select or create AI connection
+ * 4. Analysis configuration (default branch, auto-analysis)
  */
 export default function ImportProject() {
   const navigate = useNavigate();
@@ -47,7 +53,7 @@ export default function ImportProject() {
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   
-  // Current step: 1 = repo selection, 2 = project details, 3 = AI connection
+  // Current step: 1 = repo selection, 2 = project details, 3 = AI connection, 4 = analysis config
   const [currentStep, setCurrentStep] = useState(1);
   
   // Connection & Repository state
@@ -75,6 +81,13 @@ export default function ImportProject() {
     apiKey: '',
     tokenLimitation: '150000'
   });
+  
+  // Analysis settings state
+  const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
+  const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
+  const [branches, setBranches] = useState<string[]>([]);
+  const [selectedDefaultBranch, setSelectedDefaultBranch] = useState<string>('');
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   
   // Creating state
   const [isCreating, setIsCreating] = useState(false);
@@ -139,20 +152,33 @@ export default function ImportProject() {
       let result: { items: VcsRepository[]; hasNext: boolean };
       
       // Check connection type to use appropriate endpoint
-      // For OAuth manual connections (or null/undefined), use bitbucketCloudService
+      // For OAuth manual connections (or null/undefined), use provider-specific legacy services
       // For APP connections, use integrationService
       const isManualConnection = !connection?.connectionType || 
         connection?.connectionType === 'OAUTH_MANUAL' || 
         connection?.connectionType === 'ACCESS_TOKEN';
       
       if (isManualConnection) {
-        // Use legacy OAuth endpoint for manual connections
-        const res = await bitbucketCloudService.getRepositories(
-          currentWorkspace.slug,
-          parseInt(connectionId),
-          pageNum,
-          searchQuery || undefined
-        );
+        // Use legacy OAuth endpoint for manual connections based on provider
+        let res: { items: any[]; hasNext: boolean };
+        
+        if (provider === 'github' || provider.toLowerCase() === 'github') {
+          res = await githubService.getRepositories(
+            currentWorkspace.slug,
+            parseInt(connectionId),
+            pageNum,
+            searchQuery || undefined
+          );
+        } else {
+          // Default to Bitbucket Cloud service
+          res = await bitbucketCloudService.getRepositories(
+            currentWorkspace.slug,
+            parseInt(connectionId),
+            pageNum,
+            searchQuery || undefined
+          );
+        }
+        
         result = {
           items: res.items.map((r: any) => ({
             id: r.uuid || r.id || r.slug,
@@ -190,10 +216,20 @@ export default function ImportProject() {
       setPage(pageNum);
       setHasMore(result.hasNext);
     } catch (error: any) {
+      const isExpiredToken = error.message?.includes('expired') || error.error === 'INTEGRATION_ERROR';
       toast({
-        title: "Failed to load repositories",
+        title: isExpiredToken ? "Connection Expired" : "Failed to load repositories",
         description: error.message,
         variant: "destructive",
+        action: isExpiredToken ? (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate(`/${currentWorkspace?.slug}/settings/code-hosting`)}
+          >
+            Reconnect
+          </Button>
+        ) : undefined,
       });
     } finally {
       setIsLoading(false);
@@ -271,6 +307,15 @@ export default function ImportProject() {
     }
   };
   
+  const loadBranches = async () => {
+    if (!selectedRepo) return;
+    
+    // Use default branch from repo metadata
+    const defaultBranch = selectedRepo.defaultBranch || 'main';
+    setBranches([defaultBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i));
+    setSelectedDefaultBranch(defaultBranch);
+  };
+  
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (!selectedRepo) {
@@ -293,6 +338,9 @@ export default function ImportProject() {
       }
       setCurrentStep(3);
       loadAiConnections();
+    } else if (currentStep === 3) {
+      setCurrentStep(4);
+      loadBranches();
     }
   };
   
@@ -317,6 +365,9 @@ export default function ImportProject() {
           projectName: projectName,
           projectDescription: projectDescription || undefined,
           aiConnectionId: selectedAiConnectionId || undefined,
+          defaultBranch: selectedDefaultBranch || undefined,
+          prAnalysisEnabled: prAnalysisEnabled,
+          branchAnalysisEnabled: branchAnalysisEnabled,
           setupWebhooks: true,
         }
       );
@@ -326,7 +377,7 @@ export default function ImportProject() {
         description: `Successfully created project "${result.projectName}"`,
       });
       
-      navigate(`/dashboard/projects/${result.projectNamespace}/setup`);
+      navigate(`/${currentWorkspace.slug}/projects/${result.projectNamespace}`);
     } catch (error: any) {
       toast({
         title: "Failed to create project",
@@ -368,26 +419,33 @@ export default function ImportProject() {
       </div>
       
       {/* Step indicator */}
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
         <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
             {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : '1'}
           </div>
-          <span className="hidden sm:inline font-medium">Select Repository</span>
+          <span className="hidden sm:inline font-medium">Repository</span>
         </div>
-        <div className={`w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
         <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
             {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : '2'}
           </div>
-          <span className="hidden sm:inline font-medium">Project Details</span>
+          <span className="hidden sm:inline font-medium">Details</span>
         </div>
-        <div className={`w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
         <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            3
+            {currentStep > 3 ? <CheckCircle className="h-4 w-4" /> : '3'}
           </div>
-          <span className="hidden sm:inline font-medium">AI Connection</span>
+          <span className="hidden sm:inline font-medium">AI</span>
+        </div>
+        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+            4
+          </div>
+          <span className="hidden sm:inline font-medium">Analysis</span>
         </div>
       </div>
       
@@ -709,22 +767,127 @@ export default function ImportProject() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={handleCreateProject}
-                disabled={isCreating}
+                onClick={handleNextStep}
               >
                 Skip AI Setup
               </Button>
-              <Button
-                onClick={handleCreateProject}
-                disabled={isCreating}
-              >
-                {isCreating ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                Create Project
+              <Button onClick={handleNextStep}>
+                Continue
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
+          </div>
+        </>
+      )}
+      
+      {/* Step 4: Analysis Configuration */}
+      {currentStep === 4 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Analysis Configuration
+              </CardTitle>
+              <CardDescription>
+                Configure when and how CodeCrow should analyze your code
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Default Branch */}
+              <div className="space-y-2">
+                <Label htmlFor="default-branch">Default Branch</Label>
+                <Select
+                  value={selectedDefaultBranch}
+                  onValueChange={setSelectedDefaultBranch}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select default branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch} value={branch}>
+                        {branch}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  This branch will be used as the baseline for analysis
+                </p>
+              </div>
+              
+              {/* Analysis Scope */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Analysis Scope</Label>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <GitPullRequest className="h-5 w-5 text-primary" />
+                    <div>
+                      <div className="font-medium">Pull Request Analysis</div>
+                      <div className="text-sm text-muted-foreground">
+                        Automatically analyze PRs when created or updated
+                      </div>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={prAnalysisEnabled}
+                    onCheckedChange={setPrAnalysisEnabled}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <GitCommit className="h-5 w-5 text-primary" />
+                    <div>
+                      <div className="font-medium">Branch Analysis</div>
+                      <div className="text-sm text-muted-foreground">
+                        Analyze code when branches are pushed
+                      </div>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={branchAnalysisEnabled}
+                    onCheckedChange={setBranchAnalysisEnabled}
+                  />
+                </div>
+              </div>
+              
+              {/* Summary */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                <div className="font-medium">Project Summary</div>
+                <div className="text-sm space-y-1">
+                  <div><span className="text-muted-foreground">Repository:</span> {selectedRepo?.fullName}</div>
+                  <div><span className="text-muted-foreground">Project Name:</span> {projectName}</div>
+                  <div><span className="text-muted-foreground">Default Branch:</span> {selectedDefaultBranch}</div>
+                  <div><span className="text-muted-foreground">PR Analysis:</span> {prAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
+                  <div><span className="text-muted-foreground">Branch Analysis:</span> {branchAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
+                  {selectedAiConnectionId && (
+                    <div><span className="text-muted-foreground">AI Connection:</span> {aiConnections.find(c => c.id === selectedAiConnectionId)?.aiModel}</div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Step 4 Actions */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePreviousStep}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <Button
+              onClick={handleCreateProject}
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Project
+            </Button>
           </div>
         </>
       )}
