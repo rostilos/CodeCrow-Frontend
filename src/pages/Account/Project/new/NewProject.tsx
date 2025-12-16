@@ -235,14 +235,19 @@ export default function NewProjectPage() {
     try {
       setCreating(true);
 
+      // Generate namespace from project name (lowercase, replace spaces/special chars with dashes)
+      const namespace = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
       const payload: any = {
         name: projectName,
+        namespace: namespace,
         description: projectDescription,
         creationMode: selectedRepo ? "IMPORT" : "MANUAL"
       };
 
       if (selectedConnectionId) {
-        payload.connectionId = selectedConnectionId;
+        payload.vcsConnectionId = selectedConnectionId;
+        payload.vcsProvider = selectedConnectionProvider;
       }
       
       if (selectedAiConnectionId) {
@@ -250,9 +255,11 @@ export default function NewProjectPage() {
       }
 
       if (selectedRepo) {
-        payload.workspaceId = selectedRepo.workspace?.slug || selectedRepo.workspaceId || selectedRepo.workspace;
-        payload.repositorySlug = selectedRepo.full_name || selectedRepo.slug || selectedRepo.name;
-        payload.repositoryId = selectedRepo.id || selectedRepo.uuid || undefined;
+        // Clean UUID by removing braces if present
+        const cleanUUID = selectedRepo.uuid ? selectedRepo.uuid.replace(/[{}]/g, '') : 
+                          (selectedRepo.id ? String(selectedRepo.id).replace(/[{}]/g, '') : undefined);
+        payload.repositorySlug = selectedRepo.slug || selectedRepo.name;
+        payload.repositoryUUID = cleanUUID;
       }
 
       const createdProject = await projectService.createProject(currentWorkspace!.slug, payload);
@@ -974,3 +981,4 @@ export default function NewProjectPage() {
     </div>
   );
 }
+

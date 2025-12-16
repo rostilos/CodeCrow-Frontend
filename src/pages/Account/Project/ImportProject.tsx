@@ -115,7 +115,8 @@ export default function ImportProject() {
     
     try {
       // Use appropriate service based on connection type
-      if (connectionType === 'OAUTH_MANUAL' || connectionType === 'ACCESS_TOKEN') {
+      // Note: connectionType can be "null" string if backend returns null
+      if (connectionType === 'OAUTH_MANUAL' || connectionType === 'ACCESS_TOKEN' || connectionType === 'null' || !connectionType) {
         const conn = await bitbucketCloudService.getConnection(
           currentWorkspace.slug, 
           parseInt(connectionId)
@@ -165,7 +166,12 @@ export default function ImportProject() {
       // Check connection type to use appropriate endpoint
       // For OAuth manual connections (or null/undefined), use provider-specific legacy services
       // For APP connections, use integrationService
-      const isManualConnection = !connection?.connectionType || 
+      // Note: connectionType from URL can be "null" string if backend returns null
+      const isManualConnection = !connectionType || 
+        connectionType === 'null' ||
+        connectionType === 'OAUTH_MANUAL' || 
+        connectionType === 'ACCESS_TOKEN' ||
+        !connection?.connectionType || 
         connection?.connectionType === 'OAUTH_MANUAL' || 
         connection?.connectionType === 'ACCESS_TOKEN';
       
@@ -191,20 +197,25 @@ export default function ImportProject() {
         }
         
         result = {
-          items: res.items.map((r: any) => ({
-            id: r.uuid || r.id || r.name,
-            slug: r.slug || r.name, // GitHub uses 'name' as slug
-            name: r.name,
-            fullName: r.fullName || r.full_name || `${r.owner?.username || r.workspace?.slug || ''}/${r.slug || r.name}`,
-            description: r.description,
-            isPrivate: r.isPrivate ?? r.is_private ?? r.private ?? true,
-            defaultBranch: r.mainBranch?.name || r.defaultBranch || r.default_branch || 'main',
-            cloneUrl: r.links?.clone?.[0]?.href || r.cloneUrl,
-            htmlUrl: r.links?.html?.href || r.htmlUrl || r.html_url,
-            namespace: r.owner?.username || r.workspace?.slug || '',
-            avatarUrl: r.links?.avatar?.href || r.avatarUrl || null,
-            isOnboarded: r.isOnboarded ?? false,
-          })),
+          items: res.items.map((r: any) => {
+            // For Bitbucket, fullName is "workspace/repo-slug", extract repo slug from it
+            const fullName = r.fullName || r.full_name || '';
+            const repoSlug = fullName.includes('/') ? fullName.split('/').pop() : (r.slug || r.name);
+            return {
+              id: r.uuid || r.id || r.name,
+              slug: repoSlug,
+              name: r.name,
+              fullName: fullName || `${r.owner?.username || r.workspace?.slug || ''}/${repoSlug}`,
+              description: r.description,
+              isPrivate: r.isPrivate ?? r.is_private ?? r.private ?? true,
+              defaultBranch: r.mainBranch?.name || r.defaultBranch || r.default_branch || 'main',
+              cloneUrl: r.links?.clone?.[0]?.href || r.cloneUrl,
+              htmlUrl: r.links?.html?.href || r.htmlUrl || r.html_url,
+              namespace: r.owner?.username || r.workspace?.slug || '',
+              avatarUrl: r.links?.avatar?.href || r.avatarUrl || null,
+              isOnboarded: r.isOnboarded ?? false,
+            };
+          }),
           hasNext: res.hasNext
         };
       } else {
@@ -368,21 +379,83 @@ export default function ImportProject() {
     try {
       setIsCreating(true);
       
-      const result = await integrationService.onboardRepository(
-        currentWorkspace.slug,
+      // Check if this is an OAuth/manual connection - use URL param directly
+      // Note: connectionType can be "null" string if backend returns null
+      const isManualConnection = !connectionType || 
+        connectionType === 'null' ||
+        connectionType === 'OAUTH_MANUAL' || 
+        connectionType === 'ACCESS_TOKEN';
+      
+      console.log('[ImportProject] handleCreateProject called', {
+        connectionType,
+        isManualConnection,
         provider,
-        selectedRepo.slug,
-        {
+        connectionId,
+        selectedRepo: selectedRepo?.slug
+      });
+      
+      let result: { projectId: number; projectName: string; projectNamespace: string };
+      
+      if (isManualConnection) {
+        // For OAuth connections, use projectService.createProject
+        const namespace = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        
+        // Clean UUID by removing braces if present
+        const cleanUUID = selectedRepo.id ? String(selectedRepo.id).replace(/[{}]/g, '') : undefined;
+        
+        const createdProject = await projectService.createProject(currentWorkspace.slug, {
+          name: projectName,
+          namespace: namespace,
+          description: projectDescription || '',
+          creationMode: 'IMPORT',
+          vcsProvider: provider.toUpperCase() as 'BITBUCKET_CLOUD' | 'GITHUB',
           vcsConnectionId: parseInt(connectionId),
-          projectName: projectName,
-          projectDescription: projectDescription || undefined,
-          aiConnectionId: selectedAiConnectionId || undefined,
-          defaultBranch: selectedDefaultBranch || undefined,
-          prAnalysisEnabled: prAnalysisEnabled,
-          branchAnalysisEnabled: branchAnalysisEnabled,
-          setupWebhooks: true,
+          repositorySlug: selectedRepo.slug,
+          repositoryUUID: cleanUUID,
+        });
+        
+        // Bind AI connection if selected
+        if (selectedAiConnectionId && createdProject.namespace) {
+          try {
+            await projectService.bindAiConnection(currentWorkspace.slug, createdProject.namespace, selectedAiConnectionId);
+          } catch (aiErr: any) {
+            console.warn("Failed to bind AI connection:", aiErr);
+          }
         }
-      );
+        
+        // Update analysis settings
+        if (createdProject.namespace) {
+          await projectService.updateAnalysisSettings(currentWorkspace.slug, createdProject.namespace, {
+            prAnalysisEnabled,
+            branchAnalysisEnabled,
+            installationMethod: 'WEBHOOK'
+          });
+        }
+        
+        result = {
+          projectId: typeof createdProject.id === 'string' ? parseInt(createdProject.id) : createdProject.id,
+          projectName: createdProject.name,
+          projectNamespace: createdProject.namespace,
+        };
+      } else {
+        // For App connections, use integrationService.onboardRepository
+        const onboardResult = await integrationService.onboardRepository(
+          currentWorkspace.slug,
+          provider,
+          selectedRepo.slug,
+          {
+            vcsConnectionId: parseInt(connectionId),
+            projectName: projectName,
+            projectDescription: projectDescription || undefined,
+            aiConnectionId: selectedAiConnectionId || undefined,
+            defaultBranch: selectedDefaultBranch || undefined,
+            prAnalysisEnabled: prAnalysisEnabled,
+            branchAnalysisEnabled: branchAnalysisEnabled,
+            setupWebhooks: true,
+          }
+        );
+        result = onboardResult;
+      }
       
       // Update branch patterns if any are set
       if ((prTargetPatterns.length > 0 || branchPushPatterns.length > 0) && result.projectNamespace) {
