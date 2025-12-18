@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { analysisService } from "@/api_service/analysis/analysisService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 export default function IssueDetails() {
   const { namespace, issueId } = useParams<{ namespace: string; issueId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
@@ -31,7 +32,10 @@ export default function IssueDetails() {
 
   const [issue, setIssue] = useState<AnalysisIssue | null>(null);
   const [loading, setLoading] = useState(true);
-  const [scopeIssues, setScopeIssues] = useState<AnalysisIssue[]>([]);
+  const [scopeIssues, setScopeIssues] = useState<AnalysisIssue[]>(
+    // Initialize from route state if available
+    (location.state as { scopeIssues?: AnalysisIssue[] })?.scopeIssues || []
+  );
   const [scopeLoading, setScopeLoading] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -71,12 +75,17 @@ export default function IssueDetails() {
     try {
       // Use filter parameters from URL if available
       const statusFilter = filterStatus || 'all';
-      let issues = await analysisService.getBranchIssues(
+      const response = await analysisService.getBranchIssues(
         currentWorkspace.slug,
         namespace,
         branch,
-        statusFilter
+        statusFilter,
+        1,
+        100, // Load more issues for sidebar navigation
+        true // excludeDiff to reduce payload size
       );
+      
+      let issues = response.issues;
       
       // Apply additional filters if present
       if (filterSeverity && filterSeverity !== 'ALL') {
@@ -99,6 +108,9 @@ export default function IssueDetails() {
   }, [currentWorkspace, namespace, issueId]);
 
   useEffect(() => {
+    // Skip loading if we already have scope issues from route state
+    if (scopeIssues.length > 0) return;
+    
     if (issue || scopeBranch) {
       loadScopeIssues();
     }
@@ -113,7 +125,11 @@ export default function IssueDetails() {
     if (filterStatus) params.set('status', filterStatus);
     if (filterCategory) params.set('category', filterCategory);
     
-    navigate(`/dashboard/projects/${namespace}/issues/${targetIssueId}?${params.toString()}`);
+    // Pass scopeIssues via route state to avoid reloading
+    navigate(`/dashboard/projects/${namespace}/issues/${targetIssueId}?${params.toString()}`, {
+      state: { scopeIssues },
+      replace: false
+    });
   };
 
   const handleUpdateIssueStatus = async (newStatus: 'open' | 'resolved') => {
