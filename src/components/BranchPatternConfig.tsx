@@ -27,14 +27,23 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
   const [savingBranch, setSavingBranch] = useState(false);
 
   const loadConfig = async () => {
-    if (!currentWorkspace || !project.namespace) return;
+    if (!currentWorkspace || !project.namespace) {
+      console.log('[BranchPatternConfig] loadConfig skipped - no workspace or namespace', { 
+        hasWorkspace: !!currentWorkspace, 
+        namespace: project.namespace 
+      });
+      return;
+    }
     
     setLoading(true);
     try {
+      console.log('[BranchPatternConfig] Loading config for', currentWorkspace.slug, project.namespace);
       const config = await projectService.getBranchAnalysisConfig(currentWorkspace.slug, project.namespace);
+      console.log('[BranchPatternConfig] Loaded config:', config);
       setPrPatterns(config?.prTargetBranches || []);
       setBranchPatterns(config?.branchPushPatterns || []);
     } catch (error: any) {
+      console.error('[BranchPatternConfig] Failed to load config:', error);
       toast({
         title: "Failed to load configuration",
         description: error.message || "Could not load branch analysis configuration",
@@ -59,6 +68,10 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
     }
     
     try {
+      console.log('[BranchPatternConfig] Saving config:', { 
+        prTargetBranches: newPrPatterns, 
+        branchPushPatterns: newBranchPatterns 
+      });
       const updatedProject = await projectService.updateBranchAnalysisConfig(
         currentWorkspace.slug,
         project.namespace,
@@ -67,9 +80,11 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
           branchPushPatterns: newBranchPatterns,
         }
       );
+      console.log('[BranchPatternConfig] Save successful, updated project:', updatedProject);
       
       onUpdate?.(updatedProject);
     } catch (error: any) {
+      console.error('[BranchPatternConfig] Save failed:', error);
       toast({
         title: "Failed to save",
         description: error.message || "Could not save configuration",

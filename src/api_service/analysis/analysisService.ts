@@ -88,10 +88,13 @@ export interface DetailedStatsResponse {
   lowIssues: number;
   lastAnalysisDate?: string;
   trend?: 'up' | 'down' | 'stable';
-  securityIssues: number;
-  qualityIssues: number;
-  performanceIssues: number;
-  styleIssues: number;
+  // Individual fields for convenience (mapped from issuesByType)
+  securityIssues?: number;
+  qualityIssues?: number;
+  performanceIssues?: number;
+  styleIssues?: number;
+  // The actual backend field
+  issuesByType?: Record<string, number>;
   resolvedIssuesCount: number;
   openIssuesCount: number;
   ignoredIssuesCount: number;
