@@ -359,9 +359,38 @@ class AnalysisService extends ApiService {
     return this.request<PullRequestsByBranchResponse>(`/${workspaceSlug}/project/${namespace}/pull-requests/by-branch`, {}, true);
   }
 
-  async getBranchIssues(workspaceSlug: string, namespace: string, branchName: string, status: string = 'open'): Promise<AnalysisIssue[]> {
-    const params = new URLSearchParams({ status });
-    return this.request<AnalysisIssue[]>(`/${workspaceSlug}/project/${namespace}/pull-requests/branches/${encodeURIComponent(branchName)}/issues?${params.toString()}`, {}, true);
+  async getBranchIssues(
+    workspaceSlug: string, 
+    namespace: string, 
+    branchName: string, 
+    status: string = 'open',
+    page: number = 1,
+    pageSize: number = 50,
+    excludeDiff: boolean = true
+  ): Promise<{ issues: AnalysisIssue[]; total: number; page: number; pageSize: number }> {
+    const params = new URLSearchParams({ 
+      status,
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+      excludeDiff: excludeDiff.toString()
+    });
+    const response = await this.request<AnalysisIssue[] | { issues: AnalysisIssue[]; total: number; page: number; pageSize: number }>(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/${encodeURIComponent(branchName)}/issues?${params.toString()}`, 
+      {}, 
+      true
+    );
+    
+    // Handle backward compatibility - if API returns array, wrap it in paginated response
+    if (Array.isArray(response)) {
+      return {
+        issues: response,
+        total: response.length,
+        page: 1,
+        pageSize: response.length
+      };
+    }
+    
+    return response;
   }
 }
 

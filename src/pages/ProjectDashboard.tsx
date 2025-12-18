@@ -69,6 +69,9 @@ export default function ProjectDashboard() {
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [branchIssues, setBranchIssues] = useState<AnalysisIssue[]>([]);
   const [branchLoading, setBranchLoading] = useState(false);
+  const [branchIssuesPage, setBranchIssuesPage] = useState(1);
+  const [branchIssuesTotalCount, setBranchIssuesTotalCount] = useState(0);
+  const [branchIssuesPageSize] = useState(50);
   const { canManageWorkspace } = usePermissions();
   const [branches, setBranches] = useState<string[]>([]);
   const [defaultBranchName, setDefaultBranchName] = useState<string | null>(null);
@@ -138,6 +141,13 @@ export default function ProjectDashboard() {
       loadBranchData(urlBranch);
     }
   }, [namespace, currentWorkspace]);
+
+  // Lazy load branch issues when switching to Issues tab
+  useEffect(() => {
+    if (selectionType === 'branch' && branchTab === 'issues' && selectedBranch && branchIssues.length === 0 && !branchLoading) {
+      loadBranchIssues(selectedBranch);
+    }
+  }, [branchTab, selectionType, selectedBranch]);
 
   const activeTab = searchParams.get('tab') || 'analysis';
 
@@ -231,10 +241,8 @@ export default function ProjectDashboard() {
     setBranchLoading(true);
     setStatsLoading(true);
     try {
-      const [stats, issues] = await Promise.all([
-        analysisService.getProjectDetailedStats(currentWorkspace.slug, namespace, branchName),
-        analysisService.getBranchIssues(currentWorkspace.slug, namespace, branchName)
-      ]);
+      // Only load stats initially - issues will be loaded lazily when Issues tab is selected
+      const stats = await analysisService.getProjectDetailedStats(currentWorkspace.slug, namespace, branchName);
       // Map issuesByType to individual fields if present
       const mappedStats = {
         ...stats,
@@ -244,7 +252,8 @@ export default function ProjectDashboard() {
         styleIssues: stats.issuesByType?.style ?? stats.styleIssues ?? 0,
       };
       setBranchStats(mappedStats);
-      setBranchIssues(issues);
+      // Clear previous issues - will be loaded when Issues tab is clicked
+      setBranchIssues([]);
     } catch (error: any) {
       console.error('Failed to load branch data:', error);
       toast({
@@ -318,13 +327,27 @@ export default function ProjectDashboard() {
     }
   };
 
-  const loadBranchIssues = async (branchName: string) => {
+  const loadBranchIssues = async (branchName: string, page: number = 1, append: boolean = false) => {
     if (!currentWorkspace || !namespace) return;
 
     try {
       setBranchLoading(true);
-      const issues = await analysisService.getBranchIssues(currentWorkspace.slug, namespace, branchName);
-      setBranchIssues(issues);
+      const response = await analysisService.getBranchIssues(
+        currentWorkspace.slug, 
+        namespace, 
+        branchName, 
+        'open', // status
+        page,
+        branchIssuesPageSize,
+        true // excludeDiff
+      );
+      if (append) {
+        setBranchIssues(prev => [...prev, ...response.issues]);
+      } else {
+        setBranchIssues(response.issues);
+      }
+      setBranchIssuesTotalCount(response.total);
+      setBranchIssuesPage(page);
       setSelectedBranch(branchName);
     } catch (error: any) {
       console.error('Failed to load branch issues:', error);
@@ -336,6 +359,12 @@ export default function ProjectDashboard() {
       setBranchIssues([]);
     } finally {
       setBranchLoading(false);
+    }
+  };
+
+  const loadMoreBranchIssues = async () => {
+    if (selectedBranch && branchIssues.length < branchIssuesTotalCount) {
+      await loadBranchIssues(selectedBranch, branchIssuesPage + 1, true);
     }
   };
 
@@ -353,10 +382,20 @@ export default function ProjectDashboard() {
     setSelectOpen(false);
     setSelectionType('pr');
     
-    // Update URL with prId
-    const newParams = new URLSearchParams(searchParams);
+    // Reset filters when changing PR
+    const defaultFilters: IssueFilters = {
+      severity: 'ALL',
+      status: 'open',
+      category: 'ALL',
+      filePath: '',
+      dateFrom: undefined,
+      dateTo: undefined,
+    };
+    setFilters(defaultFilters);
+    
+    // Update URL with prId (remove filter params)
+    const newParams = new URLSearchParams();
     newParams.set('prId', String(pr.id));
-    newParams.delete('branch');
     setSearchParams(newParams, { replace: true });
     
     await loadPRAnalysis(pr);
@@ -367,10 +406,24 @@ export default function ProjectDashboard() {
     setSelectOpen(false);
     setSelectionType('branch');
     
-    // Update URL with branch
-    const newParams = new URLSearchParams(searchParams);
+    // Reset filters when changing branch
+    const defaultFilters: IssueFilters = {
+      severity: 'ALL',
+      status: 'open',
+      category: 'ALL',
+      filePath: '',
+      dateFrom: undefined,
+      dateTo: undefined,
+    };
+    setFilters(defaultFilters);
+    
+    // Reset pagination
+    setBranchIssuesPage(1);
+    setBranchIssuesTotalCount(0);
+    
+    // Update URL with branch (remove filter params)
+    const newParams = new URLSearchParams();
     newParams.set('branch', branchName);
-    newParams.delete('prId');
     setSearchParams(newParams, { replace: true });
     
     await loadBranchData(branchName);
@@ -380,13 +433,23 @@ export default function ProjectDashboard() {
     const versionNum = parseInt(version);
     setSelectedVersion(versionNum);
     
-    // Update URL params to persist version selection
+    // Reset filters when changing version
+    const defaultFilters: IssueFilters = {
+      severity: 'ALL',
+      status: 'open',
+      category: 'ALL',
+      filePath: '',
+      dateFrom: undefined,
+      dateTo: undefined,
+    };
+    setFilters(defaultFilters);
+    
+    // Update URL params to persist version selection (remove filter params)
     if (selectedPR) {
-      const params: Record<string, string> = { 
-        prId: String(selectedPR.id), 
-        version: String(versionNum) 
-      };
-      setSearchParams(params);
+      const params = new URLSearchParams();
+      params.set('prId', String(selectedPR.id));
+      params.set('version', String(versionNum));
+      setSearchParams(params, { replace: true });
       loadAnalysisIssuesForPR(selectedPR, versionNum);
     }
   };
@@ -1069,14 +1132,28 @@ export default function ProjectDashboard() {
                           <p className="text-sm mt-1">No issues match the current filters</p>
                         </div>
                       ) : (
-                        <IssuesByFileDisplay
-                          issues={currentFilteredIssues}
-                          projectNamespace={namespace!}
-                          onUpdateIssueStatus={handleUpdateIssueStatus}
-                          selectionEnabled={true}
-                          selectedIssues={selectedIssues}
-                          onSelectionChange={handleSelectionChange}
-                        />
+                        <>
+                          <IssuesByFileDisplay
+                            issues={currentFilteredIssues}
+                            projectNamespace={namespace!}
+                            onUpdateIssueStatus={handleUpdateIssueStatus}
+                            selectionEnabled={true}
+                            selectedIssues={selectedIssues}
+                            onSelectionChange={handleSelectionChange}
+                          />
+                          {/* Load More Button for Pagination */}
+                          {branchIssues.length < branchIssuesTotalCount && (
+                            <div className="mt-6 text-center">
+                              <Button
+                                variant="outline"
+                                onClick={loadMoreBranchIssues}
+                                disabled={branchLoading}
+                              >
+                                {branchLoading ? 'Loading...' : `Load More (${branchIssues.length} of ${branchIssuesTotalCount})`}
+                              </Button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </CardContent>
                   </Card>

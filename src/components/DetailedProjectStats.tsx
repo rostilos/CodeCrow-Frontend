@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import {
     AlertTriangle,
     ShieldAlert,
@@ -21,6 +21,10 @@ import {analysisService, AnalysisTrendData, BranchIssuesTrendPoint} from '@/api_
 import {format} from 'date-fns';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import {cn} from '@/lib/utils';
+
+// Cache for trend data to avoid repeated API calls
+const trendDataCache = new Map<string, { data: AnalysisTrendData[] | BranchIssuesTrendPoint[]; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
 
 export interface DetailedProjectStatsData {
     totalIssues: number;
@@ -85,15 +89,30 @@ export default function DetailedProjectStats({
 
     useEffect(() => {
         const fetchTrendData = async () => {
+            const cacheKey = `${chartType}-${workspaceSlug}-${projectNamespace}-${branchName || ''}-${timeframe}`;
+            const cached = trendDataCache.get(cacheKey);
+            
+            // Return cached data if valid
+            if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+                if (chartType === 'resolved') {
+                    setTrendData(cached.data as AnalysisTrendData[]);
+                } else {
+                    setIssuesTrendData(cached.data as BranchIssuesTrendPoint[]);
+                }
+                return;
+            }
+            
             try {
                 setIsLoadingTrend(true);
                 if (chartType === 'resolved') {
                     const data = await analysisService.getAnalysisTrends(workspaceSlug, projectNamespace, timeframe);
                     setTrendData(data);
+                    trendDataCache.set(cacheKey, { data, timestamp: Date.now() });
                 } else {
                     if (branchName) {
                         const data = await analysisService.getBranchIssuesTrend(workspaceSlug, projectNamespace, branchName, undefined, timeframe);
                         setIssuesTrendData(data);
+                        trendDataCache.set(cacheKey, { data, timestamp: Date.now() });
                     }
                 }
             } catch (error) {
