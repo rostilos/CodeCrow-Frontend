@@ -56,8 +56,8 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `text-sm font-medium transition-colors hover:text-foreground ${
-      isActive ? "text-foreground" : "text-muted-foreground"
+    `text-sm transition-colors hover:text-foreground ${
+      isActive ? "text-orange-500 font-bold" : "font-medium text-muted-foreground"
     }`;
 
   const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>

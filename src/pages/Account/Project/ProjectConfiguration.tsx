@@ -20,6 +20,7 @@ import DefaultBranchSelector from "@/components/DefaultBranchSelector";
 import BranchPatternConfig from "@/components/BranchPatternConfig";
 import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
+import CommentCommandsConfig from "@/components/CommentCommandsConfig";
 
 interface ProjectCodeHostingConfig {
   id: string | number;
@@ -697,6 +698,14 @@ export default function ProjectConfiguration() {
             project={project}
             onUpdate={(updatedProject) => setProject(updatedProject)}
           />
+          
+          {/* Comment Commands Config */}
+          {currentWorkspace && (
+            <CommentCommandsConfig
+              project={project}
+              onUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-4">

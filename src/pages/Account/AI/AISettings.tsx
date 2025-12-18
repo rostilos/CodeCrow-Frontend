@@ -27,8 +27,8 @@ export default function AISettings() {
   const [editingConnection, setEditingConnection] = useState<(Omit<AIConnectionDTO, 'tokenLimitation'> & { apiKey?: string; tokenLimitation?: string }) | null>(null);
   const [newConnection, setNewConnection] = useState<CreateAIConnectionRequest>({
     name: '',
-    providerKey: 'OPENAI',
-    aiModel: 'gpt-5',
+    providerKey: 'OPENROUTER',
+    aiModel: '',
     apiKey: '',
     tokenLimitation: '200000'
   });
@@ -74,7 +74,7 @@ export default function AISettings() {
         description: "AI connection created successfully",
       });
       setShowCreateDialog(false);
-      setNewConnection({ name: '', providerKey: 'OPENAI', aiModel: 'gpt-5', apiKey: '', tokenLimitation: '200000' });
+      setNewConnection({ name: '', providerKey: 'OPENROUTER', aiModel: '', apiKey: '', tokenLimitation: '200000' });
       await loadConnections();
     } catch (error: any) {
       toast({

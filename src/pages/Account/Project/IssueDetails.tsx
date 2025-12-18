@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  ArrowLeft, AlertCircle, CheckCircle, XCircle, BarChart3,
-  FileText, Clock, GitBranch, GitPullRequest
+  ArrowLeft, CheckCircle, FileText, Clock, GitBranch, GitPullRequest, ChevronRight, ChevronLeft
 } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -31,6 +31,13 @@ export default function IssueDetails() {
 
   const [issue, setIssue] = useState<AnalysisIssue | null>(null);
   const [loading, setLoading] = useState(true);
+  const [scopeIssues, setScopeIssues] = useState<AnalysisIssue[]>([]);
+  const [scopeLoading, setScopeLoading] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Get scope parameters from URL
+  const scopeBranch = searchParams.get('branch');
+  const returnPath = searchParams.get('returnPath');
 
   const loadIssue = async () => {
     if (!currentWorkspace || !namespace || !issueId) return;
@@ -50,9 +57,46 @@ export default function IssueDetails() {
     }
   };
 
+  const loadScopeIssues = async () => {
+    if (!currentWorkspace || !namespace) return;
+    
+    // Determine what scope to load based on URL params or issue data
+    const branch = scopeBranch || issue?.branch;
+    if (!branch) return;
+    
+    setScopeLoading(true);
+    try {
+      const issues = await analysisService.getBranchIssues(
+        currentWorkspace.slug,
+        namespace,
+        branch,
+        'all'
+      );
+      setScopeIssues(issues);
+    } catch (error: any) {
+      console.error('Failed to load scope issues:', error);
+    } finally {
+      setScopeLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadIssue();
   }, [currentWorkspace, namespace, issueId]);
+
+  useEffect(() => {
+    if (issue || scopeBranch) {
+      loadScopeIssues();
+    }
+  }, [issue, scopeBranch, currentWorkspace, namespace]);
+
+  const navigateToIssue = (targetIssueId: string) => {
+    const params = new URLSearchParams();
+    if (scopeBranch) params.set('branch', scopeBranch);
+    if (returnPath) params.set('returnPath', returnPath);
+    
+    navigate(`/dashboard/projects/${namespace}/issues/${targetIssueId}?${params.toString()}`);
+  };
 
   const handleUpdateIssueStatus = async (newStatus: 'open' | 'resolved') => {
     if (!currentWorkspace || !namespace || !issueId) return;
@@ -61,6 +105,8 @@ export default function IssueDetails() {
       const isResolved = newStatus === 'resolved';
       await analysisService.updateIssueStatus(currentWorkspace.slug, namespace, issueId, isResolved);
       setIssue(prev => prev ? { ...prev, status: newStatus } : null);
+      // Update in scope list too
+      setScopeIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: newStatus } : i));
       toast({
         title: "Success",
         description: "Issue status updated successfully",
@@ -71,15 +117,6 @@ export default function IssueDetails() {
         description: error.message || "Could not update issue status",
         variant: "destructive",
       });
-    }
-  };
-
-  const getIssueIcon = (type: string) => {
-    switch (type) {
-      case 'security': return <AlertCircle className="h-5 w-5 text-red-500" />;
-      case 'quality': return <CheckCircle className="h-5 w-5 text-blue-500" />;
-      case 'performance': return <BarChart3 className="h-5 w-5 text-orange-500" />;
-      default: return <XCircle className="h-5 w-5 text-gray-500" />;
     }
   };
 
@@ -278,7 +315,7 @@ export default function IssueDetails() {
 
   if (loading) {
     return (
-      <div className="mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center space-x-4">
           <Skeleton className="h-8 w-8" />
           <Skeleton className="h-8 w-64" />
@@ -289,7 +326,6 @@ export default function IssueDetails() {
   }
 
   if (!issue) {
-    const returnPath = searchParams.get('returnPath');
     const backUrl = returnPath || `/dashboard/projects/${namespace}`;
     
     return (
@@ -314,67 +350,138 @@ export default function IssueDetails() {
   const descriptionText = issue.suggestedFixDescription || issue.description;
   const diffContent = issue.suggestedFixDiff;
   
-  // Determine back URL from returnPath parameter or default to dashboard
-  const returnPath = searchParams.get('returnPath');
+  // Determine back URL
   const backUrl = returnPath || `/dashboard/projects/${namespace}`;
 
-  return (
-    <div className="mx-auto p-6 space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate(backUrl)}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Analysis
-      </Button>
+  // Find current issue index in scope list
+  const currentIndex = scopeIssues.findIndex(i => i.id === issueId);
+  const prevIssue = currentIndex > 0 ? scopeIssues[currentIndex - 1] : null;
+  const nextIssue = currentIndex < scopeIssues.length - 1 ? scopeIssues[currentIndex + 1] : null;
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div>
-            <h1 className="text-base md:text-xl lg:text-2xl font-bold">{issue.title}</h1>
-            <div className="flex items-center space-x-2 mt-1">
-              {getSeverityBadge(issue.severity)}
-              {issue.issueCategory && (
-                <Badge 
-                  variant="outline" 
-                  className={cn(
-                    getCategoryInfo(issue.issueCategory).color,
-                    getCategoryInfo(issue.issueCategory).bgColor,
-                    getCategoryInfo(issue.issueCategory).borderColor
-                  )}
-                >
-                  {getCategoryInfo(issue.issueCategory).label}
-                </Badge>
-              )}
-              <Badge variant="outline">{issue.type || 'Quality'}</Badge>
+  return (
+    <div className="flex h-[calc(100vh-64px)]">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-auto p-6">
+        {/* Top Navigation Bar */}
+        <div className="flex items-center justify-between mb-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate(backUrl)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          
+          {/* Navigation between issues */}
+          {scopeIssues.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {currentIndex + 1} of {scopeIssues.length}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!prevIssue}
+                onClick={() => prevIssue && navigateToIssue(prevIssue.id)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!nextIssue}
+                onClick={() => nextIssue && navigateToIssue(nextIssue.id)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Issue Header - Compact Metadata Bar */}
+        <div className="bg-card border rounded-lg p-4 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2 flex-1 min-w-0">
+              <h1 className="text-lg font-bold leading-tight">{issue.title}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                {getSeverityBadge(issue.severity)}
+                {issue.issueCategory && (
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      getCategoryInfo(issue.issueCategory).color,
+                      getCategoryInfo(issue.issueCategory).bgColor,
+                      getCategoryInfo(issue.issueCategory).borderColor,
+                      "text-xs"
+                    )}
+                  >
+                    {getCategoryInfo(issue.issueCategory).label}
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-xs">{issue.type || 'Quality'}</Badge>
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  {issue.file}
+                  {issue.line > 0 && `:${issue.line}`}
+                </span>
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <GitBranch className="h-3 w-3" />
+                  {issue.branch}
+                </span>
+                {issue.pullRequest && (
+                  <>
+                    <Separator orientation="vertical" className="h-4" />
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <GitPullRequest className="h-3 w-3" />
+                      #{issue.pullRequest}
+                    </span>
+                  </>
+                )}
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {new Date(issue.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={issue.status}
+                onValueChange={(value) => handleUpdateIssueStatus(value as 'open' | 'resolved')}
+              >
+                <SelectTrigger className="w-[120px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Issue Content */}
+        <div className="space-y-6">
           {/* Description */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5" />
-                <span className="text-xl lg:text-2xl">Issue Description</span>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Issue Description
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="prose prose-sm max-w-none">
-                <p className="text-foreground leading-relaxed">{descriptionText}</p>
-              </div>
+            <CardContent>
+              <p className="text-sm text-foreground leading-relaxed">{descriptionText}</p>
             </CardContent>
           </Card>
 
           {/* Code Diff */}
           {diffContent && (
             <Card>
-              <CardHeader>
-                <CardTitle className="text-xl lg:text-2xl">Suggested Fix</CardTitle>
-                <CardDescription>
-                  Below is the suggested code change to resolve this issue
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Suggested Fix</CardTitle>
+                <CardDescription className="text-xs">
+                  Suggested code change to resolve this issue
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -383,91 +490,67 @@ export default function IssueDetails() {
             </Card>
           )}
         </div>
+      </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Issue Metadata */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Issue Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">File</p>
-                  <p className="text-sm text-muted-foreground break-all">{issue.file}</p>
-                </div>
-              </div>
-
-              {issue.line > 0 && (
-                <div className="flex items-center space-x-3">
-                  <div className="h-4 w-4 flex items-center justify-center">
-                    <span className="text-xs font-mono">#</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Line</p>
-                    <p className="text-sm text-muted-foreground">{issue.line}</p>
-                  </div>
-                </div>
-              )}
-
-              <Separator />
-
-              <div className="flex items-center space-x-3">
-                <GitBranch className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Branch</p>
-                  <p className="text-sm text-muted-foreground">{issue.branch}</p>
-                </div>
-              </div>
-
-              {issue.pullRequest && (
-                <div className="flex items-center space-x-3">
-                  <GitPullRequest className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Pull Request</p>
-                    <p className="text-sm text-muted-foreground">#{issue.pullRequest}</p>
-                  </div>
-                </div>
-              )}
-
-              <Separator />
-
-              <div className="flex items-center space-x-3">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Created</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(issue.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center space-x-3">
-                  <div>
-                      <p className="text-sm font-medium mb-2">Issue status</p>
-                      <Select
-                          value={issue.status}
-                          onValueChange={(value) => handleUpdateIssueStatus(value as 'open' | 'resolved')}
-                      >
-                          <SelectTrigger className="w-[140px]">
-                              <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="open">Open</SelectItem>
-                              <SelectItem value="resolved">Resolved</SelectItem>
-                          </SelectContent>
-                      </Select>
-                  </div>
-              </div>
-
-
-            </CardContent>
-          </Card>
+      {/* Right Sidebar - Issues List */}
+      <div className={cn(
+        "border-l bg-card transition-all duration-200 flex flex-col",
+        sidebarCollapsed ? "w-10" : "w-80"
+      )}>
+        {/* Sidebar Toggle */}
+        <div className="p-2 border-b flex items-center justify-between">
+          {!sidebarCollapsed && (
+            <span className="text-sm font-medium">Issues ({scopeIssues.length})</span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          >
+            {sidebarCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
         </div>
+
+        {!sidebarCollapsed && (
+          <ScrollArea className="flex-1">
+            {scopeLoading ? (
+              <div className="p-3 space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : scopeIssues.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No issues in scope
+              </div>
+            ) : (
+              <div className="p-2">
+                {scopeIssues.map((scopeIssue) => (
+                  <button
+                    key={scopeIssue.id}
+                    onClick={() => navigateToIssue(scopeIssue.id)}
+                    className={cn(
+                      "w-full text-left p-2 rounded-md hover:bg-accent transition-colors mb-1",
+                      scopeIssue.id === issueId && "bg-accent"
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      {getSeverityBadge(scopeIssue.severity)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{scopeIssue.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{scopeIssue.file}</p>
+                      </div>
+                      {scopeIssue.status === 'resolved' && (
+                        <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        )}
       </div>
     </div>
   );

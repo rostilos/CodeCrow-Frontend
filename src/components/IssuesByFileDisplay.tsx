@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 interface IssuesByFileDisplayProps {
   issues: AnalysisIssue[];
   projectNamespace: string;
+  branchName?: string;
   onUpdateIssueStatus?: (issueId: string, status: 'open' | 'resolved') => void;
   selectedIssues?: Set<string>;
   onSelectionChange?: (issueId: string, selected: boolean) => void;
@@ -21,6 +22,7 @@ interface IssuesByFileDisplayProps {
 export default function IssuesByFileDisplay({ 
   issues, 
   projectNamespace,
+  branchName,
   onUpdateIssueStatus,
   selectedIssues = new Set(),
   onSelectionChange,
@@ -69,6 +71,11 @@ export default function IssuesByFileDisplay({
     
     // Store the return path in the URL so we can come back to it
     params.set('returnPath', currentPath + (searchParams.toString() ? '?' + searchParams.toString() : ''));
+    
+    // Pass the branch for sidebar scope
+    if (branchName) {
+      params.set('branch', branchName);
+    }
     
     navigate(`/dashboard/projects/${projectNamespace}/issues/${issueId}?${params.toString()}`);
   };

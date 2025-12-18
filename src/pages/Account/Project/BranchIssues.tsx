@@ -269,12 +269,11 @@ export default function BranchIssues() {
 
       <div className="flex gap-6">
         {/* Filter Sidebar - Left */}
-        <div className="w-64 shrink-0 hidden lg:block">
+        <div className="w-64 shrink-0 hidden lg:block self-start">
           <IssueFilterPanel
             filters={filters}
             onFiltersChange={handleFiltersChange}
             issueCount={filteredIssues.length}
-            className="sticky top-20"
           />
         </div>
 
@@ -338,6 +337,7 @@ export default function BranchIssues() {
                 <IssuesByFileDisplay 
                   issues={filteredIssues}
                   projectNamespace={namespace || ''}
+                  branchName={branchName ? decodeURIComponent(branchName) : undefined}
                   onUpdateIssueStatus={handleUpdateIssueStatus}
                   selectionEnabled={true}
                   selectedIssues={selectedIssues}

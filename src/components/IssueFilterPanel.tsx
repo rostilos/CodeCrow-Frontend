@@ -53,7 +53,7 @@ export default function IssueFilterPanel({ filters, onFiltersChange, issueCount,
     filters.dateTo !== undefined;
 
   return (
-    <div className={cn("bg-card border rounded-lg", className)}>
+    <div className={cn("bg-card border rounded-lg sticky top-4", className)}>
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
           <div>
@@ -71,7 +71,7 @@ export default function IssueFilterPanel({ filters, onFiltersChange, issueCount,
         </div>
       </div>
       
-      <ScrollArea className="h-[calc(100vh-280px)]">
+      <ScrollArea className="max-h-[calc(100vh-200px)]">
         <div className="p-4 space-y-5">
           {/* Severity Filter */}
           <div className="space-y-2">

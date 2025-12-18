@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, ClipboardList, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import BranchPRHierarchy from '@/components/BranchPRHierarchy';
 import IssuesByFileDisplay from '@/components/IssuesByFileDisplay';
 import IssueFilterPanel, { IssueFilters } from '@/components/IssueFilterPanel';
+import JobsList from '@/components/JobsList';
 import type { 
   AnalysisIssue, 
   PullRequestSummary,
@@ -676,10 +677,6 @@ export default function ProjectDashboard() {
     navigate(`/dashboard/projects/${namespace}/settings`);
   };
 
-  const handleGoToJobs = () => {
-    navigate(`/dashboard/projects/${namespace}/jobs`);
-  };
-
   const handleSeverityClick = (severity: 'HIGH' | 'MEDIUM' | 'LOW') => {
     if (selectedBranch) {
       navigate(`/dashboard/projects/${namespace}/branches/${encodeURIComponent(selectedBranch)}/issues?severity=${severity}`);
@@ -849,14 +846,6 @@ export default function ProjectDashboard() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${analysisLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleGoToJobs}
-                size="sm"
-              >
-                <ClipboardList className="h-4 w-4 mr-2" />
-                Jobs
-              </Button>
               {canManageWorkspace() && (
                 <Button
                   variant="outline"
@@ -978,12 +967,11 @@ export default function ProjectDashboard() {
             ) : branchTab === 'issues' ? (
               <div className="flex gap-6">
                 {/* Filter Sidebar - Left */}
-                <div className="w-64 shrink-0 hidden lg:block">
+                <div className="w-64 shrink-0 hidden lg:block self-start">
                   <IssueFilterPanel
                     filters={filters}
                     onFiltersChange={handleFiltersChange}
                     issueCount={currentFilteredIssues.length}
-                    className="sticky top-20"
                   />
                 </div>
 
@@ -1084,14 +1072,10 @@ export default function ProjectDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Activity</CardTitle>
-                  <CardDescription>Recent activity and analysis history</CardDescription>
+                  <CardDescription>Background jobs and analysis history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">Activity timeline</p>
-                    <p className="text-sm mt-1">Analysis history and status changes will appear here</p>
-                  </div>
+                  <JobsList projectNamespace={namespace || ''} />
                 </CardContent>
               </Card>
             ) : null}
@@ -1280,12 +1264,11 @@ export default function ProjectDashboard() {
             {prTab === 'issues' && (
               <div className="flex gap-6">
                 {/* Filter Sidebar - Left */}
-                <div className="w-64 shrink-0 hidden lg:block">
+                <div className="w-64 shrink-0 hidden lg:block self-start">
                   <IssueFilterPanel
                     filters={filters}
                     onFiltersChange={handleFiltersChange}
                     issueCount={currentFilteredIssues.length}
-                    className="sticky top-20"
                   />
                 </div>
 
@@ -1381,14 +1364,10 @@ export default function ProjectDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Activity</CardTitle>
-                  <CardDescription>Recent activity and analysis history</CardDescription>
+                  <CardDescription>Background jobs and analysis history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">Activity timeline</p>
-                    <p className="text-sm mt-1">Analysis history and status changes will appear here</p>
-                  </div>
+                  <JobsList projectNamespace={namespace || ''} />
                 </CardContent>
               </Card>
             )}

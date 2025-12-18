@@ -38,7 +38,7 @@ export default function AIConnectionsPage() {
   }, [currentWorkspace]);
 
   const handleCreate = () => {
-    setEditing({ providerKey: "OPENAI", aiModel: "", apiKey: "", tokenLimitation: "200000" });
+    setEditing({ providerKey: "OPENROUTER", aiModel: "", apiKey: "", tokenLimitation: "200000" });
     setIsCreating(true);
   };
 
