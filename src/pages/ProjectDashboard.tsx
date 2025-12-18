@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, ClipboardList, CheckSquare, Square } from 'lucide-react';
+import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import BranchPRHierarchy from '@/components/BranchPRHierarchy';
 import IssuesByFileDisplay from '@/components/IssuesByFileDisplay';
 import IssueFilterPanel, { IssueFilters } from '@/components/IssueFilterPanel';
+import JobsList from '@/components/JobsList';
 import type { 
   AnalysisIssue, 
   PullRequestSummary,
@@ -77,6 +78,8 @@ export default function ProjectDashboard() {
   const [branchStats, setBranchStats] = useState<DetailedProjectStatsData | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [prTab, setPrTab] = useState<'preview' | 'issues' | 'activity'>('preview');
+  const [branchTab, setBranchTab] = useState<'preview' | 'issues' | 'activity'>('preview');
 
 
 
@@ -674,10 +677,6 @@ export default function ProjectDashboard() {
     navigate(`/dashboard/projects/${namespace}/settings`);
   };
 
-  const handleGoToJobs = () => {
-    navigate(`/dashboard/projects/${namespace}/jobs`);
-  };
-
   const handleSeverityClick = (severity: 'HIGH' | 'MEDIUM' | 'LOW') => {
     if (selectedBranch) {
       navigate(`/dashboard/projects/${namespace}/branches/${encodeURIComponent(selectedBranch)}/issues?severity=${severity}`);
@@ -847,14 +846,6 @@ export default function ProjectDashboard() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${analysisLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleGoToJobs}
-                size="sm"
-              >
-                <ClipboardList className="h-4 w-4 mr-2" />
-                Jobs
-              </Button>
               {canManageWorkspace() && (
                 <Button
                   variant="outline"
@@ -867,174 +858,519 @@ export default function ProjectDashboard() {
               )}
             </div>
           </div>
+          
+          {/* Tabs Row */}
+          {(selectionType === 'branch' && selectedBranch) || (selectionType === 'pr' && selectedPR) ? (
+            <div className="flex items-center justify-between mt-6 lg:mt-8 -mb-4">
+              <div className="flex items-center gap-6">
+                <button
+                  onClick={() => selectionType === 'branch' ? setBranchTab('preview') : setPrTab('preview')}
+                  className={`pb-3 text-base font-medium transition-colors relative ${
+                    (selectionType === 'branch' ? branchTab : prTab) === 'preview' 
+                      ? 'text-orange-500 !font-bold' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Preview
+                  {(selectionType === 'branch' ? branchTab : prTab) === 'preview' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                  )}
+                </button>
+                <button
+                  onClick={() => selectionType === 'branch' ? setBranchTab('issues') : setPrTab('issues')}
+                  className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                    (selectionType === 'branch' ? branchTab : prTab) === 'issues' 
+                      ? 'text-orange-500 !font-bold' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Issues
+                  {selectionType === 'branch' && branchStats && branchStats.totalIssues > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                      {branchStats.totalIssues}
+                    </Badge>
+                  )}
+                  {selectionType === 'pr' && currentFilteredIssues.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                      {currentFilteredIssues.length}
+                    </Badge>
+                  )}
+                  {(selectionType === 'branch' ? branchTab : prTab) === 'issues' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                  )}
+                </button>
+                <button
+                  onClick={() => selectionType === 'branch' ? setBranchTab('activity') : setPrTab('activity')}
+                  className={`pb-3 text-base font-medium transition-colors relative ${
+                    (selectionType === 'branch' ? branchTab : prTab) === 'activity' 
+                      ? 'text-orange-500 !font-bold' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Activity
+                  {(selectionType === 'branch' ? branchTab : prTab) === 'activity' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                  )}
+                </button>
+              </div>
+              {selectionType === 'pr' && maxVersion > 1 && (
+                <div className='-mt-4'>
+                  <Select value={String(selectedVersion)} onValueChange={handleVersionChange}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Version" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
+                      <SelectItem key={v} value={String(v)}>
+                        Version {v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="p-4 lg:p-6">
+      <div className="container p-4 lg:p-6">
         {selectionType === 'branch' && selectedBranch ? (
-          <>
+          <div className="space-y-4">
+            {/* Branch Tab Content */}
             {statsLoading ? (
               <div className="text-center py-16">
                 <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading branch statistics...</p>
               </div>
-            ) : branchStats ? (
-              <DetailedProjectStats
-                stats={branchStats}
-                workspaceSlug={currentWorkspace!.slug}
-                projectNamespace={namespace!}
-                branchName={selectedBranch}
-                onSeverityClick={handleSeverityClick}
-                onViewAllIssues={() => navigate(`/dashboard/projects/${namespace}/branches/${encodeURIComponent(selectedBranch!)}/issues`)}
-                onFileClick={handleFileClick}
-              />
-            ) : (
-              <Alert className="max-w-xl mx-auto">
-                <Info className="h-4 w-4" />
-                <AlertTitle>No statistics available</AlertTitle>
-                <AlertDescription>
-                  Statistics for branch "{selectedBranch}" could not be loaded.
-                </AlertDescription>
-              </Alert>
-            )}
-          </>
+            ) : branchTab === 'preview' ? (
+              branchStats ? (
+                <DetailedProjectStats
+                  stats={branchStats}
+                  workspaceSlug={currentWorkspace!.slug}
+                  projectNamespace={namespace!}
+                  branchName={selectedBranch}
+                  onSeverityClick={handleSeverityClick}
+                  onViewAllIssues={() => setBranchTab('issues')}
+                  onFileClick={handleFileClick}
+                />
+              ) : (
+                <Alert className="max-w-xl mx-auto">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>No statistics available</AlertTitle>
+                  <AlertDescription>
+                    Statistics for branch "{selectedBranch}" could not be loaded.
+                  </AlertDescription>
+                </Alert>
+              )
+            ) : branchTab === 'issues' ? (
+              <div className="flex gap-6">
+                {/* Filter Sidebar - Left */}
+                <div className="w-64 shrink-0 hidden lg:block self-start">
+                  <IssueFilterPanel
+                    filters={filters}
+                    onFiltersChange={handleFiltersChange}
+                    issueCount={currentFilteredIssues.length}
+                  />
+                </div>
+
+                {/* Main content */}
+                <div className="flex-1 min-w-0">
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                          <CardTitle className="text-lg">Branch Issues</CardTitle>
+                          <CardDescription className="mt-1">
+                            {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''} found
+                          </CardDescription>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/dashboard/projects/${namespace}/branches/${encodeURIComponent(selectedBranch)}/issues`)}
+                        >
+                          View Full Page
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    
+                    {/* Bulk Action Bar */}
+                    {selectedIssues.size > 0 && (
+                      <div className="px-6 py-3 bg-muted/50 border-b flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleSelectAll}
+                          >
+                            {selectedIssues.size === currentFilteredIssues.length ? (
+                              <>
+                                <Square className="mr-2 h-4 w-4" />
+                                Deselect All
+                              </>
+                            ) : (
+                              <>
+                                <CheckSquare className="mr-2 h-4 w-4" />
+                                Select All ({currentFilteredIssues.length})
+                              </>
+                            )}
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''} selected
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={bulkUpdating}
+                            onClick={() => handleBulkStatusUpdate('resolved')}
+                          >
+                            Mark as Resolved
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={bulkUpdating}
+                            onClick={() => handleBulkStatusUpdate('open')}
+                          >
+                            Mark as Open
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <CardContent className={selectedIssues.size > 0 ? "pt-4" : ""}>
+                      {branchLoading ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
+                          Loading issues...
+                        </div>
+                      ) : currentFilteredIssues.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />
+                          <p className="font-medium">No issues found</p>
+                          <p className="text-sm mt-1">No issues match the current filters</p>
+                        </div>
+                      ) : (
+                        <IssuesByFileDisplay
+                          issues={currentFilteredIssues}
+                          projectNamespace={namespace!}
+                          onUpdateIssueStatus={handleUpdateIssueStatus}
+                          selectionEnabled={true}
+                          selectedIssues={selectedIssues}
+                          onSelectionChange={handleSelectionChange}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ) : branchTab === 'activity' ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Activity</CardTitle>
+                  <CardDescription>Background jobs and analysis history</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <JobsList projectNamespace={namespace || ''} />
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
         ) : selectionType === 'pr' && selectedPR ? (
           <div className="space-y-4">
-            {/* PR Info Card */}
-            {(selectedPR.title || selectedPR.description) && (
+            {/* PR Tab Content */}
+            {prTab === 'preview' && (
               <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      {selectedPR.title && (
-                        <CardTitle className="text-base font-medium">
-                          {selectedPR.title}
-                        </CardTitle>
-                      )}
-                      {selectedPR.description && (
-                        <CardDescription className="mt-2 whitespace-pre-wrap text-sm">
-                          {selectedPR.description}
-                        </CardDescription>
-                      )}
-                    </div>
-                  </div>
+                <CardHeader>
+                  <CardTitle className="text-lg">Analysis Overview</CardTitle>
+                  <CardDescription>
+                    Summary of code review findings for PR {selectedPR.sourceBranchName} → {selectedPR.targetBranchName}
+                    {selectedPR.commitHash && (
+                      <code className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded">{selectedPR.commitHash.slice(0, 7)}</code>
+                    )}
+                  </CardDescription>
                 </CardHeader>
-              </Card>
-            )}
-            
-            {/* Analysis Issues with Filter Sidebar */}
-            <div className="flex gap-6">
-              {/* Main content */}
-              <div className="flex-1 min-w-0">
-                <Card>
-                  <CardHeader className="pb-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div>
-                        <CardTitle className="text-lg">Analysis Issues</CardTitle>
-                        <CardDescription className="mt-1">
-                          {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''} found in PR #{selectedPR.prNumber}
-                        </CardDescription>
-                      </div>
-                      {maxVersion > 1 && (
-                        <Select value={String(selectedVersion)} onValueChange={handleVersionChange}>
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Version" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
-                              <SelectItem key={v} value={String(v)}>
-                                Version {v}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                <CardContent>
+                  {analysisLoading ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
+                      Loading analysis...
                     </div>
-                  </CardHeader>
-                  
-                  {/* Bulk Action Bar - shows when at least 1 issue is selected */}
-                  {selectedIssues.size > 0 && (
-                    <div className="px-6 py-3 bg-muted/50 border-b flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleSelectAll}
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Issue counts summary - matching DetailedProjectStats style */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Card
+                          className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
+                          onClick={() => setPrTab('issues')}
                         >
-                          {selectedIssues.size === currentFilteredIssues.length ? (
-                            <>
-                              <Square className="mr-2 h-4 w-4" />
-                              Deselect All
-                            </>
-                          ) : (
-                            <>
-                              <CheckSquare className="mr-2 h-4 w-4" />
-                              Select All ({currentFilteredIssues.length})
-                            </>
-                          )}
-                        </Button>
-                        <span className="text-sm text-muted-foreground">
-                          {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''} selected
-                        </span>
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">All Issues</p>
+                                <p className="text-2xl font-bold mt-1">{currentFilteredIssues.length}</p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-primary/10">
+                                <Activity className="h-5 w-5 text-primary" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card
+                          className="border-l-4 border-l-destructive/80 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-destructive/30"
+                          onClick={() => {
+                            setFilters(prev => ({ ...prev, severity: 'HIGH' }));
+                            setPrTab('issues');
+                          }}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">High</p>
+                                <p className="text-2xl font-bold mt-1">
+                                  {currentFilteredIssues.filter(i => i.severity?.toUpperCase() === 'HIGH').length}
+                                </p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-destructive/10">
+                                <AlertTriangle className="h-5 w-5 text-destructive" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card
+                          className="border-l-4 border-l-warning cursor-pointer hover:shadow-md transition-all duration-200 hover:border-warning/30"
+                          onClick={() => {
+                            setFilters(prev => ({ ...prev, severity: 'MEDIUM' }));
+                            setPrTab('issues');
+                          }}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Medium</p>
+                                <p className="text-2xl font-bold mt-1">
+                                  {currentFilteredIssues.filter(i => i.severity?.toUpperCase() === 'MEDIUM').length}
+                                </p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-warning/10">
+                                <AlertCircle className="h-5 w-5 text-warning" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card
+                          className="border-l-4 border-l-muted-foreground/30 cursor-pointer hover:shadow-md transition-all duration-200"
+                          onClick={() => {
+                            setFilters(prev => ({ ...prev, severity: 'LOW' }));
+                            setPrTab('issues');
+                          }}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Low</p>
+                                <p className="text-2xl font-bold mt-1">
+                                  {currentFilteredIssues.filter(i => i.severity?.toUpperCase() === 'LOW').length}
+                                </p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-muted">
+                                <Info className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={bulkUpdating}
-                          onClick={() => handleBulkStatusUpdate('resolved')}
-                        >
-                          Mark as Resolved
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={bulkUpdating}
-                          onClick={() => handleBulkStatusUpdate('open')}
-                        >
-                          Mark as Open
-                        </Button>
-                      </div>
+                      
+                      {/* Files affected */}
+                      {currentFilteredIssues.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-3">Files with Issues</h4>
+                          <div className="space-y-2">
+                            {Array.from(new Set(currentFilteredIssues.map(i => i.file))).slice(0, 5).map((file, i) => {
+                              const fileIssues = currentFilteredIssues.filter(issue => issue.file === file);
+                              const highCount = fileIssues.filter(i => i.severity?.toUpperCase() === 'HIGH').length;
+                              const mediumCount = fileIssues.filter(i => i.severity?.toUpperCase() === 'MEDIUM').length;
+                              const lowCount = fileIssues.filter(i => i.severity?.toUpperCase() === 'LOW').length;
+                              return (
+                                <div 
+                                  key={i} 
+                                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                                  onClick={() => {
+                                    setFilters(prev => ({ ...prev, filePath: file }));
+                                    setPrTab('issues');
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span className="text-sm truncate">{file}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {highCount > 0 && (
+                                      <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
+                                        {highCount}
+                                      </Badge>
+                                    )}
+                                    {mediumCount > 0 && (
+                                      <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                                        {mediumCount}
+                                      </Badge>
+                                    )}
+                                    {lowCount > 0 && (
+                                      <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+                                        {lowCount}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {Array.from(new Set(currentFilteredIssues.map(i => i.file))).length > 5 && (
+                              <Button 
+                                variant="ghost" 
+                                className="w-full text-muted-foreground"
+                                onClick={() => setPrTab('issues')}
+                              >
+                                View all {Array.from(new Set(currentFilteredIssues.map(i => i.file))).length} files →
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {currentFilteredIssues.length === 0 && (
+                        <div className="text-center py-8">
+                          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500/50" />
+                          <p className="font-medium">All clear!</p>
+                          <p className="text-sm text-muted-foreground mt-1">No issues found in this PR</p>
+                        </div>
+                      )}
+                      
+                      {selectedPR.description && (
+                        <div>
+                          <h4 className="font-medium mb-2">Description</h4>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedPR.description}</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                  
-                  <CardContent className={selectedIssues.size > 0 ? "pt-4" : ""}>
-                    {analysisLoading ? (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
-                        Loading analysis...
+                </CardContent>
+              </Card>
+            )}
+
+            {prTab === 'issues' && (
+              <div className="flex gap-6">
+                {/* Filter Sidebar - Left */}
+                <div className="w-64 shrink-0 hidden lg:block self-start">
+                  <IssueFilterPanel
+                    filters={filters}
+                    onFiltersChange={handleFiltersChange}
+                    issueCount={currentFilteredIssues.length}
+                  />
+                </div>
+
+                {/* Main content */}
+                <div className="flex-1 min-w-0">
+                  <Card>
+                    <CardHeader className="pb-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                          <CardTitle className="text-lg">Analysis Issues</CardTitle>
+                          <CardDescription className="mt-1">
+                            {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''} found
+                          </CardDescription>
+                        </div>
                       </div>
-                    ) : currentFilteredIssues.length === 0 ? (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />
-                        <p className="font-medium">No issues found</p>
-                        <p className="text-sm mt-1">No analysis issues match the current filters</p>
+                    </CardHeader>
+                    
+                    {/* Bulk Action Bar */}
+                    {selectedIssues.size > 0 && (
+                      <div className="px-6 py-3 bg-muted/50 border-b flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleSelectAll}
+                          >
+                            {selectedIssues.size === currentFilteredIssues.length ? (
+                              <>
+                                <Square className="mr-2 h-4 w-4" />
+                                Deselect All
+                              </>
+                            ) : (
+                              <>
+                                <CheckSquare className="mr-2 h-4 w-4" />
+                                Select All ({currentFilteredIssues.length})
+                              </>
+                            )}
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''} selected
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={bulkUpdating}
+                            onClick={() => handleBulkStatusUpdate('resolved')}
+                          >
+                            Mark as Resolved
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={bulkUpdating}
+                            onClick={() => handleBulkStatusUpdate('open')}
+                          >
+                            Mark as Open
+                          </Button>
+                        </div>
                       </div>
-                    ) : (
-                      <IssuesByFileDisplay
-                        issues={currentFilteredIssues}
-                        projectNamespace={namespace!}
-                        onUpdateIssueStatus={handleUpdateIssueStatus}
-                        selectionEnabled={true}
-                        selectedIssues={selectedIssues}
-                        onSelectionChange={handleSelectionChange}
-                      />
                     )}
-                  </CardContent>
-                </Card>
+                    
+                    <CardContent className={selectedIssues.size > 0 ? "pt-4" : ""}>
+                      {analysisLoading ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
+                          Loading analysis...
+                        </div>
+                      ) : currentFilteredIssues.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />
+                          <p className="font-medium">No issues found</p>
+                          <p className="text-sm mt-1">No analysis issues match the current filters</p>
+                        </div>
+                      ) : (
+                        <IssuesByFileDisplay
+                          issues={currentFilteredIssues}
+                          projectNamespace={namespace!}
+                          onUpdateIssueStatus={handleUpdateIssueStatus}
+                          selectionEnabled={true}
+                          selectedIssues={selectedIssues}
+                          onSelectionChange={handleSelectionChange}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-              
-              {/* Filter Sidebar */}
-              <div className="w-72 shrink-0 hidden lg:block">
-                <IssueFilterPanel
-                  filters={filters}
-                  onFiltersChange={handleFiltersChange}
-                  issueCount={currentFilteredIssues.length}
-                  className="sticky top-6"
-                />
-              </div>
-            </div>
+            )}
+
+            {prTab === 'activity' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Activity</CardTitle>
+                  <CardDescription>Background jobs and analysis history</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <JobsList projectNamespace={namespace || ''} />
+                </CardContent>
+              </Card>
+            )}
           </div>
         ) : (
           <Alert className="max-w-xl mx-auto">

@@ -26,8 +26,9 @@ export default function AISettings() {
   const [editing, setEditing] = useState(false);
   const [editingConnection, setEditingConnection] = useState<(Omit<AIConnectionDTO, 'tokenLimitation'> & { apiKey?: string; tokenLimitation?: string }) | null>(null);
   const [newConnection, setNewConnection] = useState<CreateAIConnectionRequest>({
-    providerKey: 'OPENAI',
-    aiModel: 'gpt-5',
+    name: '',
+    providerKey: 'OPENROUTER',
+    aiModel: '',
     apiKey: '',
     tokenLimitation: '200000'
   });
@@ -73,7 +74,7 @@ export default function AISettings() {
         description: "AI connection created successfully",
       });
       setShowCreateDialog(false);
-      setNewConnection({ providerKey: 'OPENAI', aiModel: 'gpt-5', apiKey: '', tokenLimitation: '200000' });
+      setNewConnection({ name: '', providerKey: 'OPENROUTER', aiModel: '', apiKey: '', tokenLimitation: '200000' });
       await loadConnections();
     } catch (error: any) {
       toast({
@@ -121,9 +122,10 @@ export default function AISettings() {
     try {
       setEditing(true);
       await aiConnectionService.updateConnection(currentWorkspace!.slug, editingConnection.id, {
+        name: editingConnection.name || undefined,
         providerKey: editingConnection.providerKey,
         aiModel: editingConnection.aiModel,
-        apiKey: editingConnection.apiKey || '',
+        apiKey: editingConnection.apiKey || undefined,
         tokenLimitation: editingConnection.tokenLimitation || '200000'
       });
       toast({
@@ -196,6 +198,18 @@ export default function AISettings() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Connection Name</Label>
+                <Input
+                  id="name"
+                  value={newConnection.name || ''}
+                  onChange={(e) => setNewConnection({ ...newConnection, name: e.target.value })}
+                  placeholder="e.g., Production GPT-4, Development Claude"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Give this connection a recognizable name
+                </p>
+              </div>
               <div>
                 <Label htmlFor="provider">AI Provider</Label>
                 <Select
@@ -276,6 +290,15 @@ export default function AISettings() {
             </DialogHeader>
             {editingConnection && (
               <div className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-name">Connection Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editingConnection.name || ''}
+                    onChange={(e) => setEditingConnection({ ...editingConnection, name: e.target.value })}
+                    placeholder="e.g., Production GPT-4, Development Claude"
+                  />
+                </div>
                 <div>
                   <Label htmlFor="edit-provider">AI Provider</Label>
                   <Select
@@ -377,7 +400,7 @@ export default function AISettings() {
                     <CardTitle className="mb-2 flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         {getProviderIcon(connection.providerKey)}
-                        <span>{connection.aiModel}</span>
+                        <span>{connection.name || connection.aiModel}</span>
                       </div>
                       {getProviderBadge(connection.providerKey)}
                     </CardTitle>
@@ -387,6 +410,12 @@ export default function AISettings() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
+                      {connection.name && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Name: </span>
+                          <span className="font-medium">{connection.name}</span>
+                        </div>
+                      )}
                       <div className="text-sm">
                         <span className="text-muted-foreground">Provider: </span>
                         <span className="font-medium">{connection.providerKey}</span>

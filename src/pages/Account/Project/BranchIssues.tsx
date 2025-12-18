@@ -74,15 +74,18 @@ export default function BranchIssues() {
     setFilters(newFilters);
   }, [namespace, branchName, currentWorkspace]);
 
-  const loadBranchData = async () => {
+  const loadBranchData = async (statusFilter: string = filters.status) => {
     if (!namespace || !branchName || !currentWorkspace) return;
     
     setLoading(true);
     try {
+      // Map frontend status to API status parameter
+      const apiStatus = statusFilter === 'ALL' ? 'all' : statusFilter;
       const issuesData = await analysisService.getBranchIssues(
         currentWorkspace.slug,
         namespace,
-        decodeURIComponent(branchName)
+        decodeURIComponent(branchName),
+        apiStatus
       );
       setIssues(issuesData);
     } catch (error: any) {
@@ -98,6 +101,10 @@ export default function BranchIssues() {
 
   const handleFiltersChange = (newFilters: IssueFilters) => {
     setFilters(newFilters);
+    // Reload data when status filter changes
+    if (newFilters.status !== filters.status) {
+      loadBranchData(newFilters.status);
+    }
     const newParams = new URLSearchParams();
     
     if (newFilters.severity !== 'ALL') {
@@ -261,6 +268,15 @@ export default function BranchIssues() {
       </div>
 
       <div className="flex gap-6">
+        {/* Filter Sidebar - Left */}
+        <div className="w-64 shrink-0 hidden lg:block self-start">
+          <IssueFilterPanel
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            issueCount={filteredIssues.length}
+          />
+        </div>
+
         {/* Main content */}
         <div className="flex-1 min-w-0">
           <Card>
@@ -321,6 +337,7 @@ export default function BranchIssues() {
                 <IssuesByFileDisplay 
                   issues={filteredIssues}
                   projectNamespace={namespace || ''}
+                  branchName={branchName ? decodeURIComponent(branchName) : undefined}
                   onUpdateIssueStatus={handleUpdateIssueStatus}
                   selectionEnabled={true}
                   selectedIssues={selectedIssues}
@@ -335,16 +352,6 @@ export default function BranchIssues() {
               )}
             </CardContent>
           </Card>
-        </div>
-        
-        {/* Filter Sidebar */}
-        <div className="w-72 shrink-0">
-          <IssueFilterPanel
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            issueCount={filteredIssues.length}
-            className="sticky top-6"
-          />
         </div>
       </div>
     </div>

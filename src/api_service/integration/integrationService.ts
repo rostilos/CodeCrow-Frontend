@@ -118,7 +118,7 @@ class IntegrationService extends ApiService {
     externalRepoId: string
   ): Promise<VcsRepository> {
     return this.request<VcsRepository>(
-      `/${workspaceSlug}/integrations/${provider}/repos/${externalRepoId}?vcsConnectionId=${connectionId}`,
+      `/${workspaceSlug}/integrations/${provider}/repos/${encodeURIComponent(externalRepoId)}?vcsConnectionId=${connectionId}`,
       { method: 'GET' }
     );
   }
@@ -133,7 +133,7 @@ class IntegrationService extends ApiService {
     request: RepoOnboardRequest
   ): Promise<RepoOnboardResponse> {
     return this.request<RepoOnboardResponse>(
-      `/${workspaceSlug}/integrations/${provider}/repos/${externalRepoId}/onboard`,
+      `/${workspaceSlug}/integrations/${provider}/repos/${encodeURIComponent(externalRepoId)}/onboard`,
       {
         method: 'POST',
         body: JSON.stringify(request),

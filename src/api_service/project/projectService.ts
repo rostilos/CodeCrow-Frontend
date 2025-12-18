@@ -70,6 +70,7 @@ export interface ProjectDTO {
   prAnalysisEnabled?: boolean;
   branchAnalysisEnabled?: boolean;
   installationMethod?: InstallationMethod | null;
+  commentCommandsConfig?: CommentCommandsConfigDTO | null;
   // other fields from ProjectDTO are allowed
   [key: string]: any;
 }
@@ -121,6 +122,23 @@ export interface UpdateAnalysisSettingsRequest {
   prAnalysisEnabled?: boolean;
   branchAnalysisEnabled?: boolean;
   installationMethod?: InstallationMethod | null;
+}
+
+// Comment Commands Configuration types
+export interface CommentCommandsConfigDTO {
+  enabled: boolean;
+  rateLimit: number | null;
+  rateLimitWindowMinutes: number | null;
+  allowPublicRepoCommands: boolean | null;
+  allowedCommands: string[] | null;
+}
+
+export interface UpdateCommentCommandsConfigRequest {
+  enabled: boolean;
+  rateLimit?: number;
+  rateLimitWindowMinutes?: number;
+  allowPublicRepoCommands?: boolean;
+  allowedCommands?: string[];
 }
 
 export interface RagIndexStatusDTO {
@@ -282,6 +300,26 @@ class ProjectService extends ApiService {
       method: 'PUT',
       body: JSON.stringify(request),
     }, true);
+  }
+
+  // Comment Commands Configuration methods
+  async updateCommentCommandsConfig(
+    workspaceSlug: string, 
+    namespace: string, 
+    request: UpdateCommentCommandsConfigRequest
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/comment-commands-config`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    }, true);
+  }
+
+  async getCommentCommandsConfig(workspaceSlug: string, namespace: string): Promise<CommentCommandsConfigDTO | null> {
+    return this.request<CommentCommandsConfigDTO | null>(
+      `/${workspaceSlug}/project/${namespace}/comment-commands-config`, 
+      {}, 
+      true
+    );
   }
 
   /**

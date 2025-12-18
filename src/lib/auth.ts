@@ -9,10 +9,26 @@ export interface User {
   [key: string]: any;
 }
 
+// Token refresh threshold - refresh when token expires in less than 5 minutes
+const REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
+
 export const authUtils = {
   // Get token from localStorage
   getToken: (): string | null => {
     return localStorage.getItem('codecrow_token');
+  },
+
+  // Get refresh token from localStorage
+  getRefreshToken: (): string | null => {
+    return localStorage.getItem('codecrow_refresh_token');
+  },
+
+  // Store tokens
+  setTokens: (accessToken: string, refreshToken?: string): void => {
+    localStorage.setItem('codecrow_token', accessToken);
+    if (refreshToken) {
+      localStorage.setItem('codecrow_refresh_token', refreshToken);
+    }
   },
 
   // Get user data from localStorage
@@ -39,9 +55,29 @@ export const authUtils = {
     }
   },
 
+  // Check if token needs refresh (expires within threshold)
+  shouldRefreshToken: (): boolean => {
+    const token = authUtils.getToken();
+    const refreshToken = authUtils.getRefreshToken();
+    
+    if (!token || !refreshToken) return false;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now();
+      const expirationTime = payload.exp * 1000; // Convert to milliseconds
+      
+      // Refresh if token expires within threshold
+      return (expirationTime - currentTime) < REFRESH_THRESHOLD_MS;
+    } catch {
+      return false;
+    }
+  },
+
   // Logout user (clear localStorage)
   logout: (): void => {
     localStorage.removeItem('codecrow_token');
+    localStorage.removeItem('codecrow_refresh_token');
     localStorage.removeItem('codecrow_user');
   },
 

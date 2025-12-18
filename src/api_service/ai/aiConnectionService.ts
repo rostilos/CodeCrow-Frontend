@@ -2,6 +2,7 @@ import { API_CONFIG } from '@/config/api';
 import { ApiService } from '@/api_service/api.ts';
 
 export interface CreateAIConnectionRequest {
+  name?: string;
   providerKey: 'OPENAI' | 'OPENROUTER' | 'ANTHROPIC';
   aiModel: string;
   apiKey: string;
@@ -9,14 +10,16 @@ export interface CreateAIConnectionRequest {
 }
 
 export interface UpdateAiConnectionRequest {
-  providerKey: 'OPENAI' | 'OPENROUTER' | 'ANTHROPIC';
-  aiModel: string;
-  apiKey: string;
-  tokenLimitation: string;
+  name?: string;
+  providerKey?: 'OPENAI' | 'OPENROUTER' | 'ANTHROPIC';
+  aiModel?: string;
+  apiKey?: string;
+  tokenLimitation?: string;
 }
 
 export interface AIConnectionDTO {
   id: number;
+  name: string | null;
   providerKey: 'OPENAI' | 'OPENROUTER' | 'ANTHROPIC';
   aiModel: string;
   createdAt: string;

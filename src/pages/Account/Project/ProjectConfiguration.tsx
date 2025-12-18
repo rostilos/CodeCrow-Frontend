@@ -20,6 +20,7 @@ import DefaultBranchSelector from "@/components/DefaultBranchSelector";
 import BranchPatternConfig from "@/components/BranchPatternConfig";
 import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
+import CommentCommandsConfig from "@/components/CommentCommandsConfig";
 
 interface ProjectCodeHostingConfig {
   id: string | number;
@@ -361,7 +362,7 @@ export default function ProjectConfiguration() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="container space-y-6 p-6">
       <Button variant="ghost" onClick={() => navigate(`/dashboard/projects/${namespace}`)} size="sm">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Project
@@ -697,6 +698,14 @@ export default function ProjectConfiguration() {
             project={project}
             onUpdate={(updatedProject) => setProject(updatedProject)}
           />
+          
+          {/* Comment Commands Config */}
+          {currentWorkspace && (
+            <CommentCommandsConfig
+              project={project}
+              onUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-4">

@@ -356,8 +356,9 @@ class AnalysisService extends ApiService {
     return this.request<PullRequestsByBranchResponse>(`/${workspaceSlug}/project/${namespace}/pull-requests/by-branch`, {}, true);
   }
 
-  async getBranchIssues(workspaceSlug: string, namespace: string, branchName: string): Promise<AnalysisIssue[]> {
-    return this.request<AnalysisIssue[]>(`/${workspaceSlug}/project/${namespace}/pull-requests/branches/${encodeURIComponent(branchName)}/issues`, {}, true);
+  async getBranchIssues(workspaceSlug: string, namespace: string, branchName: string, status: string = 'open'): Promise<AnalysisIssue[]> {
+    const params = new URLSearchParams({ status });
+    return this.request<AnalysisIssue[]>(`/${workspaceSlug}/project/${namespace}/pull-requests/branches/${encodeURIComponent(branchName)}/issues?${params.toString()}`, {}, true);
   }
 }
 

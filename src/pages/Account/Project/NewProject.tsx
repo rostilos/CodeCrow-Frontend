@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
+import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
 import { projectService } from "@/api_service/project/projectService.ts";
 import { aiConnectionService, AIConnectionDTO } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -21,6 +22,7 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null);
+  const [selectedConnectionProvider, setSelectedConnectionProvider] = useState<string>("BITBUCKET_CLOUD");
   const [selectedRepo, setSelectedRepo] = useState<any | null>(null);
   const [projectName, setProjectName] = useState("");
   const [projectNamespace, setProjectNamespace] = useState("");
@@ -42,6 +44,9 @@ export default function NewProjectPage() {
     if (location.state && (location.state as any).connectionId) {
       setSelectedConnectionId(Number((location.state as any).connectionId));
     }
+    if (location.state && (location.state as any).provider) {
+      setSelectedConnectionProvider((location.state as any).provider);
+    }
   }, [location.state]);
 
   useEffect(() => {
@@ -52,11 +57,17 @@ export default function NewProjectPage() {
     if (!currentWorkspace) return;
     setLoading(true);
     try {
-      const [conns, aiConns] = await Promise.all([
+      const [bbConns, ghConns, aiConns] = await Promise.all([
         bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []),
+        githubService.getUserConnections(currentWorkspace.slug).catch(() => []),
         aiConnectionService.listWorkspaceConnections(currentWorkspace.slug).catch(() => [])
       ]);
-      setConnections(conns || []);
+      // Merge connections with provider info
+      const allConns = [
+        ...(bbConns || []).map((c: any) => ({ ...c, provider: 'BITBUCKET_CLOUD' })),
+        ...(ghConns || []).map((c: any) => ({ ...c, provider: 'GITHUB' }))
+      ];
+      setConnections(allConns);
       setAiConnections(aiConns || []);
     } catch (err: any) {
       toast({
@@ -71,9 +82,9 @@ export default function NewProjectPage() {
     }
   };
 
-  const handleOpenRepoSelector = (connectionId: number) => {
+  const handleOpenRepoSelector = (connectionId: number, provider: string) => {
     // Navigate to repository selector first, no project name required
-    navigate(`/dashboard/projects/new/select-repo/${connectionId}`, { state: { projectName } });
+    navigate(`/dashboard/projects/new/select-repo/${connectionId}`, { state: { projectName, provider } });
   };
 
   const handleCreate = async () => {
@@ -103,7 +114,7 @@ export default function NewProjectPage() {
         namespace: projectNamespace,
         description: "",
         creationMode: "IMPORT",
-        vcsProvider: "BITBUCKET_CLOUD",
+        vcsProvider: selectedConnectionProvider,
         vcsConnectionId: selectedConnectionId
       };
 
@@ -296,12 +307,14 @@ export default function NewProjectPage() {
                 <div key={c.id} className="flex items-center justify-between border rounded p-4">
                   <div>
                     <div className="font-medium">{c.connectionName || c.name || `Connection ${c.id}`}</div>
-                    <div className="text-sm text-muted-foreground">{c.workspaceId || c.workspace || ""}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {c.provider === 'GITHUB' ? 'GitHub' : 'Bitbucket Cloud'} • {c.workspaceId || c.workspace || ""}
+                    </div>
                     <div className="text-sm text-muted-foreground">Repos: {c.repoCount ?? "-"}</div>
                   </div>
                   <div className="flex space-x-2">
                     <Button
-                      onClick={() => handleOpenRepoSelector(Number(c.id))}
+                      onClick={() => handleOpenRepoSelector(Number(c.id), c.provider || 'BITBUCKET_CLOUD')}
                       disabled={creating}
                       className="flex items-center"
                     >

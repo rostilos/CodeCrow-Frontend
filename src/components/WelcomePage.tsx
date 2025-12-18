@@ -819,33 +819,33 @@ export default function WelcomePage() {
               </CardContent>
             </Card>
 
-            <Card className="group relative overflow-hidden border-2 border-dashed border-muted-foreground/20">
+            <Card className="group relative overflow-hidden border-2 border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5">
               <CardHeader>
-                <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                  <Github className="h-7 w-7 text-muted-foreground" />
+                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Github className="h-7 w-7 text-primary" />
                 </div>
-                <CardTitle className="text-xl text-muted-foreground">GitHub</CardTitle>
+                <CardTitle className="text-xl">GitHub</CardTitle>
                 <CardDescription className="text-base">
                   GitHub App with Actions integration
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3 text-sm">
-                  <li className="flex items-center gap-2 text-muted-foreground/60">
-                    <Clock className="h-4 w-4 shrink-0" />
-                    <span>GitHub App Integration</span>
+                  <li className="flex items-center gap-2 text-muted-foreground">
+                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                    <span>OAuth Integration</span>
                   </li>
-                  <li className="flex items-center gap-2 text-muted-foreground/60">
-                    <Clock className="h-4 w-4 shrink-0" />
+                  <li className="flex items-center gap-2 text-muted-foreground">
+                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                     <span>PR Review Comments</span>
                   </li>
-                  <li className="flex items-center gap-2 text-muted-foreground/60">
-                    <Clock className="h-4 w-4 shrink-0" />
-                    <span>Actions Workflow</span>
+                  <li className="flex items-center gap-2 text-muted-foreground">
+                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                    <span>Automatic Token Refresh</span>
                   </li>
                 </ul>
-                <Badge variant="outline" className="mt-4">
-                  Coming Soon
+                <Badge className="mt-4 bg-green-500/10 text-green-600 border-green-500/20">
+                  Available Now
                 </Badge>
               </CardContent>
             </Card>

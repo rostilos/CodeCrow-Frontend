@@ -373,7 +373,7 @@ export default function ProjectDashboard() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="container space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Project Dashboard</h1>

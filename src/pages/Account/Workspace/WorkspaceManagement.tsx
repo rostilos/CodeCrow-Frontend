@@ -27,7 +27,7 @@ export default function WorkspaceManagementPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="container space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Workspace Management</h1>
         <p className="text-muted-foreground">Manage workspace members, invitations, and permissions</p>

@@ -13,7 +13,9 @@ import {
   Settings,
   Webhook,
   GitPullRequest,
-  GitCommit
+  GitCommit,
+  X,
+  Info
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -22,8 +24,11 @@ import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
+import { Alert, AlertDescription } from "@/components/ui/alert.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
+import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
 import { projectService, InstallationMethod } from "@/api_service/project/projectService.ts";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -45,6 +50,7 @@ export default function NewProjectPage() {
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null);
+  const [selectedConnectionProvider, setSelectedConnectionProvider] = useState<string>("BITBUCKET_CLOUD");
   const [selectedRepo, setSelectedRepo] = useState<any | null>(null);
   
   // AI Connection state
@@ -53,6 +59,7 @@ export default function NewProjectPage() {
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [showCreateAi, setShowCreateAi] = useState(false);
   const [newAiConnection, setNewAiConnection] = useState<CreateAIConnectionRequest>({
+    name: '',
     providerKey: 'OPENROUTER',
     aiModel: '',
     apiKey: '',
@@ -63,6 +70,12 @@ export default function NewProjectPage() {
   const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
   const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
   const [installationMethod, setInstallationMethod] = useState<InstallationMethod | null>(null);
+  
+  // Branch pattern state
+  const [prTargetPatterns, setPrTargetPatterns] = useState<string[]>([]);
+  const [branchPushPatterns, setBranchPushPatterns] = useState<string[]>([]);
+  const [newPrPattern, setNewPrPattern] = useState("");
+  const [newBranchPattern, setNewBranchPattern] = useState("");
 
   useEffect(() => {
     // read selection returned from repo selector
@@ -79,6 +92,9 @@ export default function NewProjectPage() {
     if (location.state && (location.state as any).connectionId) {
       setSelectedConnectionId(Number((location.state as any).connectionId));
     }
+    if (location.state && (location.state as any).provider) {
+      setSelectedConnectionProvider((location.state as any).provider);
+    }
   }, [location.state]);
 
   useEffect(() => {
@@ -89,8 +105,16 @@ export default function NewProjectPage() {
     if (!currentWorkspace) return;
     setLoading(true);
     try {
-      const conns = await bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []);
-      setConnections(conns || []);
+      const [bbConns, ghConns] = await Promise.all([
+        bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []),
+        githubService.getUserConnections(currentWorkspace.slug).catch(() => [])
+      ]);
+      // Merge connections with provider info
+      const allConns = [
+        ...(bbConns || []).map((c: any) => ({ ...c, provider: 'BITBUCKET_CLOUD' })),
+        ...(ghConns || []).map((c: any) => ({ ...c, provider: 'GITHUB' }))
+      ];
+      setConnections(allConns);
     } catch (err: any) {
       toast({
         title: "Error",
@@ -103,8 +127,8 @@ export default function NewProjectPage() {
     }
   };
 
-  const handleOpenRepoSelector = (connectionId: number) => {
-    navigate(`/dashboard/projects/new/select-repo/${connectionId}`, { state: { projectName } });
+  const handleOpenRepoSelector = (connectionId: number, provider: string) => {
+    navigate(`/dashboard/projects/new/select-repo/${connectionId}`, { state: { projectName, provider } });
   };
   
   const loadAiConnections = async () => {
@@ -143,6 +167,7 @@ export default function NewProjectPage() {
       setSelectedAiConnectionId(created.id);
       setShowCreateAi(false);
       setNewAiConnection({
+        name: '',
         providerKey: 'OPENROUTER',
         aiModel: '',
         apiKey: '',
@@ -210,14 +235,19 @@ export default function NewProjectPage() {
     try {
       setCreating(true);
 
+      // Generate namespace from project name (lowercase, replace spaces/special chars with dashes)
+      const namespace = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
       const payload: any = {
         name: projectName,
+        namespace: namespace,
         description: projectDescription,
         creationMode: selectedRepo ? "IMPORT" : "MANUAL"
       };
 
       if (selectedConnectionId) {
-        payload.connectionId = selectedConnectionId;
+        payload.vcsConnectionId = selectedConnectionId;
+        payload.vcsProvider = selectedConnectionProvider;
       }
       
       if (selectedAiConnectionId) {
@@ -225,9 +255,11 @@ export default function NewProjectPage() {
       }
 
       if (selectedRepo) {
-        payload.workspaceId = selectedRepo.workspace?.slug || selectedRepo.workspaceId || selectedRepo.workspace;
-        payload.repositorySlug = selectedRepo.full_name || selectedRepo.slug || selectedRepo.name;
-        payload.repositoryId = selectedRepo.id || selectedRepo.uuid || undefined;
+        // Clean UUID by removing braces if present
+        const cleanUUID = selectedRepo.uuid ? selectedRepo.uuid.replace(/[{}]/g, '') : 
+                          (selectedRepo.id ? String(selectedRepo.id).replace(/[{}]/g, '') : undefined);
+        payload.repositorySlug = selectedRepo.slug || selectedRepo.name;
+        payload.repositoryUUID = cleanUUID;
       }
 
       const createdProject = await projectService.createProject(currentWorkspace!.slug, payload);
@@ -239,6 +271,14 @@ export default function NewProjectPage() {
           branchAnalysisEnabled,
           installationMethod
         });
+        
+        // Update branch patterns if any are set
+        if (prTargetPatterns.length > 0 || branchPushPatterns.length > 0) {
+          await projectService.updateBranchAnalysisConfig(currentWorkspace!.slug, createdProject.namespace, {
+            prTargetBranches: prTargetPatterns,
+            branchPushPatterns: branchPushPatterns
+          });
+        }
       }
       
       toast({
@@ -252,7 +292,9 @@ export default function NewProjectPage() {
           project: createdProject,
           installationMethod,
           prAnalysisEnabled,
-          branchAnalysisEnabled
+          branchAnalysisEnabled,
+          prTargetPatterns,
+          branchPushPatterns
         }
       });
     } catch (err: any) {
@@ -364,11 +406,13 @@ export default function NewProjectPage() {
                     <div key={c.id} className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                       <div>
                         <div className="font-medium">{c.connectionName || c.name || `Connection ${c.id}`}</div>
-                        <div className="text-sm text-muted-foreground">{c.workspaceId || c.workspace || ""}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {c.provider === 'GITHUB' ? 'GitHub' : 'Bitbucket Cloud'} • {c.workspaceId || c.workspace || ""}
+                        </div>
                         <div className="text-sm text-muted-foreground">Repos: {c.repoCount ?? "-"}</div>
                       </div>
                       <Button
-                        onClick={() => handleOpenRepoSelector(Number(c.id))}
+                        onClick={() => handleOpenRepoSelector(Number(c.id), c.provider || 'BITBUCKET_CLOUD')}
                         variant="outline"
                       >
                         <Plus className="mr-2 h-4 w-4" />
@@ -497,7 +541,7 @@ export default function NewProjectPage() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <Zap className="h-4 w-4 text-primary" />
-                                <span className="font-medium">{conn.providerKey}</span>
+                                <span className="font-medium">{conn.name || conn.providerKey}</span>
                                 <span className="text-sm text-muted-foreground">- {conn.aiModel}</span>
                               </div>
                             </div>
@@ -531,6 +575,16 @@ export default function NewProjectPage() {
                       )}
                       
                       <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="ai-name">Connection Name (Optional)</Label>
+                          <Input
+                            id="ai-name"
+                            value={newAiConnection.name || ''}
+                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="e.g., Production Claude, Dev GPT-4"
+                          />
+                        </div>
+                        
                         <div className="space-y-2">
                           <Label htmlFor="ai-provider">AI Provider</Label>
                           <Select
@@ -699,55 +753,207 @@ export default function NewProjectPage() {
                     <div className="flex-1">
                       <div className="font-medium">Webhook (Recommended)</div>
                       <div className="text-sm text-muted-foreground">
-                        Automatic triggers via GitHub App or Bitbucket webhooks. No setup required.
+                        Automatic triggers via {selectedConnectionProvider === 'GITHUB' ? 'GitHub App' : 'Bitbucket webhooks'}. No setup required.
                       </div>
                     </div>
                   </div>
                   
-                  <div 
-                    className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                      installationMethod === 'PIPELINE' ? 'border-primary bg-primary/5' : ''
-                    }`}
-                    onClick={() => setInstallationMethod('PIPELINE')}
-                  >
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      installationMethod === 'PIPELINE' ? 'border-primary' : 'border-muted-foreground'
-                    }`}>
-                      {installationMethod === 'PIPELINE' && (
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <GitBranch className="h-5 w-5 text-blue-500" />
-                    <div className="flex-1">
-                      <div className="font-medium">Bitbucket Pipelines</div>
-                      <div className="text-sm text-muted-foreground">
-                        Integrate with your existing CI/CD pipeline. Requires pipeline configuration.
+                  {/* Show Bitbucket Pipelines only for Bitbucket connections */}
+                  {selectedConnectionProvider !== 'GITHUB' && (
+                    <div 
+                      className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                        installationMethod === 'PIPELINE' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                      onClick={() => setInstallationMethod('PIPELINE')}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        installationMethod === 'PIPELINE' ? 'border-primary' : 'border-muted-foreground'
+                      }`}>
+                        {installationMethod === 'PIPELINE' && (
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <GitBranch className="h-5 w-5 text-blue-500" />
+                      <div className="flex-1">
+                        <div className="font-medium">Bitbucket Pipelines</div>
+                        <div className="text-sm text-muted-foreground">
+                          Integrate with your existing CI/CD pipeline. Requires pipeline configuration.
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                   
-                  <div 
-                    className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                      installationMethod === 'GITHUB_ACTION' ? 'border-primary bg-primary/5' : ''
-                    }`}
-                    onClick={() => setInstallationMethod('GITHUB_ACTION')}
-                  >
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      installationMethod === 'GITHUB_ACTION' ? 'border-primary' : 'border-muted-foreground'
-                    }`}>
-                      {installationMethod === 'GITHUB_ACTION' && (
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                    <GitBranch className="h-5 w-5 text-orange-500" />
-                    <div className="flex-1">
-                      <div className="font-medium">GitHub Actions</div>
-                      <div className="text-sm text-muted-foreground">
-                        Use GitHub Actions workflow. Requires workflow configuration.
+                  {/* Show GitHub Actions only for GitHub connections */}
+                  {selectedConnectionProvider === 'GITHUB' && (
+                    <div 
+                      className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                        installationMethod === 'GITHUB_ACTION' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                      onClick={() => setInstallationMethod('GITHUB_ACTION')}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        installationMethod === 'GITHUB_ACTION' ? 'border-primary' : 'border-muted-foreground'
+                      }`}>
+                        {installationMethod === 'GITHUB_ACTION' && (
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <GitBranch className="h-5 w-5 text-orange-500" />
+                      <div className="flex-1">
+                        <div className="font-medium">GitHub Actions</div>
+                        <div className="text-sm text-muted-foreground">
+                          Use GitHub Actions workflow. Requires workflow configuration.
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
+              </div>
+              
+              {/* Branch Pattern Configuration */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Branch Pattern Filters (Optional)</Label>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Define which branches trigger automated analysis. If no patterns are configured, 
+                    all branches will be analyzed. Supports wildcards: <code className="px-1 bg-muted rounded">*</code> and <code className="px-1 bg-muted rounded">**</code>
+                  </AlertDescription>
+                </Alert>
+                
+                {/* PR Target Patterns */}
+                {prAnalysisEnabled && (
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        <GitPullRequest className="h-4 w-4" />
+                        PR Target Branches
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Only analyze PRs targeting these branches (e.g., main, develop, release/*)
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g., main, develop, release/*"
+                        value={newPrPattern}
+                        onChange={(e) => setNewPrPattern(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const pattern = newPrPattern.trim();
+                            if (pattern && !prTargetPatterns.includes(pattern)) {
+                              setPrTargetPatterns([...prTargetPatterns, pattern]);
+                              setNewPrPattern("");
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const pattern = newPrPattern.trim();
+                          if (pattern && !prTargetPatterns.includes(pattern)) {
+                            setPrTargetPatterns([...prTargetPatterns, pattern]);
+                            setNewPrPattern("");
+                          }
+                        }}
+                        disabled={!newPrPattern.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {prTargetPatterns.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {prTargetPatterns.map((pattern) => (
+                          <Badge key={pattern} variant="secondary" className="pl-3 pr-1 py-1.5">
+                            <code className="text-xs">{pattern}</code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
+                              onClick={() => setPrTargetPatterns(prTargetPatterns.filter(p => p !== pattern))}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No patterns configured - all PR target branches will be analyzed
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Branch Push Patterns */}
+                {branchAnalysisEnabled && (
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        <GitCommit className="h-4 w-4" />
+                        Branch Push Patterns
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Only analyze pushes to branches matching these patterns
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g., main, develop, feature/*"
+                        value={newBranchPattern}
+                        onChange={(e) => setNewBranchPattern(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const pattern = newBranchPattern.trim();
+                            if (pattern && !branchPushPatterns.includes(pattern)) {
+                              setBranchPushPatterns([...branchPushPatterns, pattern]);
+                              setNewBranchPattern("");
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const pattern = newBranchPattern.trim();
+                          if (pattern && !branchPushPatterns.includes(pattern)) {
+                            setBranchPushPatterns([...branchPushPatterns, pattern]);
+                            setNewBranchPattern("");
+                          }
+                        }}
+                        disabled={!newBranchPattern.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {branchPushPatterns.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {branchPushPatterns.map((pattern) => (
+                          <Badge key={pattern} variant="secondary" className="pl-3 pr-1 py-1.5">
+                            <code className="text-xs">{pattern}</code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
+                              onClick={() => setBranchPushPatterns(branchPushPatterns.filter(p => p !== pattern))}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No patterns configured - all branch pushes will be analyzed
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -775,3 +981,4 @@ export default function NewProjectPage() {
     </div>
   );
 }
+
