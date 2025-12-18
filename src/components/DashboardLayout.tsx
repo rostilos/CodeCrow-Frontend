@@ -63,7 +63,7 @@ export default function DashboardLayout() {
       <TopNavigation showSearch onSearchClick={() => setSearchOpen(true)} />
       
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto container">
         <Outlet />
       </main>
 

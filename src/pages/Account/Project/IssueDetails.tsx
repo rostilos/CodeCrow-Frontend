@@ -38,6 +38,9 @@ export default function IssueDetails() {
   // Get scope parameters from URL
   const scopeBranch = searchParams.get('branch');
   const returnPath = searchParams.get('returnPath');
+  const filterSeverity = searchParams.get('severity');
+  const filterStatus = searchParams.get('status');
+  const filterCategory = searchParams.get('category');
 
   const loadIssue = async () => {
     if (!currentWorkspace || !namespace || !issueId) return;
@@ -66,12 +69,23 @@ export default function IssueDetails() {
     
     setScopeLoading(true);
     try {
-      const issues = await analysisService.getBranchIssues(
+      // Use filter parameters from URL if available
+      const statusFilter = filterStatus || 'all';
+      let issues = await analysisService.getBranchIssues(
         currentWorkspace.slug,
         namespace,
         branch,
-        'all'
+        statusFilter
       );
+      
+      // Apply additional filters if present
+      if (filterSeverity && filterSeverity !== 'ALL') {
+        issues = issues.filter(i => i.severity.toLowerCase() === filterSeverity.toLowerCase());
+      }
+      if (filterCategory && filterCategory !== 'ALL') {
+        issues = issues.filter(i => i.issueCategory?.toLowerCase() === filterCategory.toLowerCase());
+      }
+      
       setScopeIssues(issues);
     } catch (error: any) {
       console.error('Failed to load scope issues:', error);
@@ -94,6 +108,10 @@ export default function IssueDetails() {
     const params = new URLSearchParams();
     if (scopeBranch) params.set('branch', scopeBranch);
     if (returnPath) params.set('returnPath', returnPath);
+    // Preserve filter parameters
+    if (filterSeverity) params.set('severity', filterSeverity);
+    if (filterStatus) params.set('status', filterStatus);
+    if (filterCategory) params.set('category', filterCategory);
     
     navigate(`/dashboard/projects/${namespace}/issues/${targetIssueId}?${params.toString()}`);
   };
@@ -359,9 +377,70 @@ export default function IssueDetails() {
   const nextIssue = currentIndex < scopeIssues.length - 1 ? scopeIssues[currentIndex + 1] : null;
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-64px)] ">
+      {/* Left Sidebar - Issues List */}
+      <div className={cn(
+        "border-r border-l  bg-card transition-all duration-200 flex flex-col",
+        sidebarCollapsed ? "w-10" : "w-80"
+      )}>
+        {/* Sidebar Toggle */}
+        <div className="p-2 border-b flex items-center justify-between">
+          {!sidebarCollapsed && (
+            <span className="text-sm font-medium">Issues ({scopeIssues.length})</span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          >
+            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {!sidebarCollapsed && (
+          <ScrollArea className="flex-1">
+            {scopeLoading ? (
+              <div className="p-3 space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : scopeIssues.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No issues in scope
+              </div>
+            ) : (
+              <div className="p-2">
+                {scopeIssues.map((scopeIssue) => (
+                  <button
+                    key={scopeIssue.id}
+                    onClick={() => navigateToIssue(scopeIssue.id)}
+                    className={cn(
+                      "w-full text-left p-2 rounded-md hover:bg-primary/10 transition-colors mb-1",
+                      scopeIssue.id === issueId && "bg-primary/10"
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      {getSeverityBadge(scopeIssue.severity)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{scopeIssue.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{scopeIssue.file}</p>
+                      </div>
+                      {scopeIssue.status === 'resolved' && (
+                        <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        )}
+      </div>
+
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto container pt-6">
         {/* Top Navigation Bar */}
         <div className="flex items-center justify-between mb-4">
           <Button variant="ghost" size="sm" onClick={() => navigate(backUrl)}>
@@ -490,67 +569,6 @@ export default function IssueDetails() {
             </Card>
           )}
         </div>
-      </div>
-
-      {/* Right Sidebar - Issues List */}
-      <div className={cn(
-        "border-l bg-card transition-all duration-200 flex flex-col",
-        sidebarCollapsed ? "w-10" : "w-80"
-      )}>
-        {/* Sidebar Toggle */}
-        <div className="p-2 border-b flex items-center justify-between">
-          {!sidebarCollapsed && (
-            <span className="text-sm font-medium">Issues ({scopeIssues.length})</span>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          >
-            {sidebarCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </Button>
-        </div>
-
-        {!sidebarCollapsed && (
-          <ScrollArea className="flex-1">
-            {scopeLoading ? (
-              <div className="p-3 space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : scopeIssues.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                No issues in scope
-              </div>
-            ) : (
-              <div className="p-2">
-                {scopeIssues.map((scopeIssue) => (
-                  <button
-                    key={scopeIssue.id}
-                    onClick={() => navigateToIssue(scopeIssue.id)}
-                    className={cn(
-                      "w-full text-left p-2 rounded-md hover:bg-accent transition-colors mb-1",
-                      scopeIssue.id === issueId && "bg-accent"
-                    )}
-                  >
-                    <div className="flex items-start gap-2">
-                      {getSeverityBadge(scopeIssue.severity)}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{scopeIssue.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{scopeIssue.file}</p>
-                      </div>
-                      {scopeIssue.status === 'resolved' && (
-                        <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-        )}
       </div>
     </div>
   );

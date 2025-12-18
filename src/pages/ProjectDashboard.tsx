@@ -169,7 +169,15 @@ export default function ProjectDashboard() {
     try {
       setStatsLoading(true);
       const stats = await analysisService.getProjectDetailedStats(currentWorkspace.slug, namespace);
-      setDetailedStats(stats);
+      // Map issuesByType to individual fields if present
+      const mappedStats = {
+        ...stats,
+        securityIssues: stats.issuesByType?.security ?? stats.securityIssues ?? 0,
+        qualityIssues: stats.issuesByType?.quality ?? stats.qualityIssues ?? 0,
+        performanceIssues: stats.issuesByType?.performance ?? stats.performanceIssues ?? 0,
+        styleIssues: stats.issuesByType?.style ?? stats.styleIssues ?? 0,
+      };
+      setDetailedStats(mappedStats);
     } catch (error: any) {
       console.warn('Failed to load detailed stats:', error);
       // Don't show error toast for stats, just log it
@@ -227,7 +235,15 @@ export default function ProjectDashboard() {
         analysisService.getProjectDetailedStats(currentWorkspace.slug, namespace, branchName),
         analysisService.getBranchIssues(currentWorkspace.slug, namespace, branchName)
       ]);
-      setBranchStats(stats);
+      // Map issuesByType to individual fields if present
+      const mappedStats = {
+        ...stats,
+        securityIssues: stats.issuesByType?.security ?? stats.securityIssues ?? 0,
+        qualityIssues: stats.issuesByType?.quality ?? stats.qualityIssues ?? 0,
+        performanceIssues: stats.issuesByType?.performance ?? stats.performanceIssues ?? 0,
+        styleIssues: stats.issuesByType?.style ?? stats.styleIssues ?? 0,
+      };
+      setBranchStats(mappedStats);
       setBranchIssues(issues);
     } catch (error: any) {
       console.error('Failed to load branch data:', error);
@@ -859,78 +875,76 @@ export default function ProjectDashboard() {
             </div>
           </div>
           
-          {/* Tabs Row */}
-          {(selectionType === 'branch' && selectedBranch) || (selectionType === 'pr' && selectedPR) ? (
-            <div className="flex items-center justify-between mt-6 lg:mt-8 -mb-4">
-              <div className="flex items-center gap-6">
-                <button
-                  onClick={() => selectionType === 'branch' ? setBranchTab('preview') : setPrTab('preview')}
-                  className={`pb-3 text-base font-medium transition-colors relative ${
-                    (selectionType === 'branch' ? branchTab : prTab) === 'preview' 
-                      ? 'text-orange-500 !font-bold' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Preview
-                  {(selectionType === 'branch' ? branchTab : prTab) === 'preview' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
-                  )}
-                </button>
-                <button
-                  onClick={() => selectionType === 'branch' ? setBranchTab('issues') : setPrTab('issues')}
-                  className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
-                    (selectionType === 'branch' ? branchTab : prTab) === 'issues' 
-                      ? 'text-orange-500 !font-bold' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Issues
-                  {selectionType === 'branch' && branchStats && branchStats.totalIssues > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                      {branchStats.totalIssues}
-                    </Badge>
-                  )}
-                  {selectionType === 'pr' && currentFilteredIssues.length > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                      {currentFilteredIssues.length}
-                    </Badge>
-                  )}
-                  {(selectionType === 'branch' ? branchTab : prTab) === 'issues' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
-                  )}
-                </button>
-                <button
-                  onClick={() => selectionType === 'branch' ? setBranchTab('activity') : setPrTab('activity')}
-                  className={`pb-3 text-base font-medium transition-colors relative ${
-                    (selectionType === 'branch' ? branchTab : prTab) === 'activity' 
-                      ? 'text-orange-500 !font-bold' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Activity
-                  {(selectionType === 'branch' ? branchTab : prTab) === 'activity' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
-                  )}
-                </button>
-              </div>
-              {selectionType === 'pr' && maxVersion > 1 && (
-                <div className='-mt-4'>
-                  <Select value={String(selectedVersion)} onValueChange={handleVersionChange}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Version" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
-                      <SelectItem key={v} value={String(v)}>
-                        Version {v}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                </div>
-              )}
+          {/* Tabs Row - Always visible */}
+          <div className="flex items-center justify-between mt-6 lg:mt-8 -mb-4">
+            <div className="flex items-center gap-6">
+              <button
+                onClick={() => selectionType === 'branch' ? setBranchTab('preview') : setPrTab('preview')}
+                className={`pb-3 text-base font-medium transition-colors relative ${
+                  (selectionType === 'branch' ? branchTab : prTab) === 'preview' 
+                    ? 'text-orange-500 !font-bold' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Preview
+                {(selectionType === 'branch' ? branchTab : prTab) === 'preview' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>
+              <button
+                onClick={() => selectionType === 'branch' ? setBranchTab('issues') : setPrTab('issues')}
+                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                  (selectionType === 'branch' ? branchTab : prTab) === 'issues' 
+                    ? 'text-orange-500 !font-bold' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Issues
+                {selectionType === 'branch' && selectedBranch && branchStats && branchStats.totalIssues > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                    {branchStats.totalIssues}
+                  </Badge>
+                )}
+                {selectionType === 'pr' && selectedPR && currentFilteredIssues.length > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                    {currentFilteredIssues.length}
+                  </Badge>
+                )}
+                {(selectionType === 'branch' ? branchTab : prTab) === 'issues' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>
+              <button
+                onClick={() => selectionType === 'branch' ? setBranchTab('activity') : setPrTab('activity')}
+                className={`pb-3 text-base font-medium transition-colors relative ${
+                  (selectionType === 'branch' ? branchTab : prTab) === 'activity' 
+                    ? 'text-orange-500 !font-bold' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Activity
+                {(selectionType === 'branch' ? branchTab : prTab) === 'activity' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>
             </div>
-          ) : null}
+            {selectionType === 'pr' && selectedPR && maxVersion > 1 && (
+              <div className='-mt-4'>
+                <Select value={String(selectedVersion)} onValueChange={handleVersionChange}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Version" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
+                    <SelectItem key={v} value={String(v)}>
+                      Version {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1373,13 +1387,41 @@ export default function ProjectDashboard() {
             )}
           </div>
         ) : (
-          <Alert className="max-w-xl mx-auto">
-            <Info className="h-4 w-4" />
-            <AlertTitle>No selection</AlertTitle>
-            <AlertDescription>
-              Please select a branch or pull request to view analysis results.
-            </AlertDescription>
-          </Alert>
+          /* No branch or PR selected - show content based on active tab */
+          <div className="space-y-4">
+            {(selectionType === 'branch' ? branchTab : prTab) === 'preview' && (
+              <Alert className="max-w-xl mx-auto">
+                <Info className="h-4 w-4" />
+                <AlertTitle>No selection</AlertTitle>
+                <AlertDescription>
+                  Please select a branch or pull request to view analysis results.
+                </AlertDescription>
+              </Alert>
+            )}
+            {(selectionType === 'branch' ? branchTab : prTab) === 'issues' && (
+              <Alert className="max-w-xl mx-auto">
+                <Info className="h-4 w-4" />
+                <AlertTitle>No selection</AlertTitle>
+                <AlertDescription>
+                  Please select a branch or pull request to view issues.
+                </AlertDescription>
+              </Alert>
+            )}
+            {(selectionType === 'branch' ? branchTab : prTab) === 'activity' && (
+              <Card className="max-w-xl mx-auto">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Activity
+                  </CardTitle>
+                  <CardDescription>Background jobs and analysis history</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <JobsList projectNamespace={namespace || ''} />
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
       </div>
     </div>
