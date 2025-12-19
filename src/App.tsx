@@ -62,6 +62,7 @@ const ProjectDashboard = lazy(() => import("./pages/ProjectDashboard.tsx"));
 const IssueDetails = lazy(() => import("./pages/Account/Project/IssueDetails.tsx"));
 const BranchIssues = lazy(() => import("./pages/Account/Project/BranchIssues.tsx"));
 const IntegrationSuccess = lazy(() => import("./pages/Account/Integrations/IntegrationSuccess.tsx"));
+const BitbucketConnectHandshake = lazy(() => import("./pages/Account/Integrations/BitbucketConnectHandshake.tsx"));
 const JobsPage = lazy(() => import("./pages/Jobs/JobsPage.tsx"));
 const JobDetailPage = lazy(() => import("./pages/Jobs/JobDetailPage.tsx"));
 
@@ -148,6 +149,7 @@ const App = () => (
                       <Route path="tasks" element={<TaskSettings />} />
                       <Route path="billing" element={<BillingSettings />} />
                       <Route path="hosting/:provider/success" element={<IntegrationSuccess />} />
+                      <Route path="integrations/bitbucket/connect" element={<BitbucketConnectHandshake />} />
                     </Route>
                   </Routes>
                 </WorkspaceGuard>

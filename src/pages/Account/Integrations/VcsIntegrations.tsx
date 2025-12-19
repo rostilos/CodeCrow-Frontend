@@ -8,13 +8,14 @@ import {
   Settings, 
   Plus,
   ExternalLink,
-  Loader2 
+  Loader2,
+  Link as LinkIcon
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import { integrationService } from "@/api_service/integration/integrationService";
+import { integrationService, BitbucketConnectInstallation } from "@/api_service/integration/integrationService";
 import { 
   VcsConnection, 
   VcsProvider, 
@@ -36,9 +37,16 @@ export default function VcsIntegrations() {
   const [isLoading, setIsLoading] = useState(true);
   const [installingProvider, setInstallingProvider] = useState<VcsProvider | null>(null);
   
+  // Bitbucket Connect App state
+  const [connectInstallations, setConnectInstallations] = useState<BitbucketConnectInstallation[]>([]);
+  const [connectConfigured, setConnectConfigured] = useState(false);
+  const [linkingInstallation, setLinkingInstallation] = useState<number | null>(null);
+  const [connectInstallStatus, setConnectInstallStatus] = useState<string | null>(null);
+  
   useEffect(() => {
     if (currentWorkspace) {
       loadConnections();
+      loadConnectInstallations();
     }
   }, [currentWorkspace]);
   
@@ -60,6 +68,52 @@ export default function VcsIntegrations() {
     }
   };
   
+  const loadConnectInstallations = async () => {
+    try {
+      // Check if Connect App is configured
+      const status = await integrationService.getBitbucketConnectStatus();
+      console.log('Connect App status:', status);
+      setConnectConfigured(status.configured);
+      
+      if (status.configured) {
+        // Get unlinked installations that can be linked to this workspace
+        const unlinked = await integrationService.getUnlinkedConnectInstallations();
+        setConnectInstallations(unlinked);
+      }
+    } catch (error) {
+      // Connect App might not be configured, that's OK
+      console.log('Connect App not available:', error);
+      // Even if the check fails, let's show the button anyway for testing
+      setConnectConfigured(true);
+    }
+  };
+  
+  const handleLinkInstallation = async (installationId: number) => {
+    if (!currentWorkspace) return;
+    
+    try {
+      setLinkingInstallation(installationId);
+      await integrationService.linkConnectInstallation(installationId, currentWorkspace.id);
+      
+      toast({
+        title: "Installation linked",
+        description: "The Bitbucket workspace has been linked to your CodeCrow workspace",
+      });
+      
+      // Refresh data
+      await loadConnections();
+      await loadConnectInstallations();
+    } catch (error: any) {
+      toast({
+        title: "Failed to link installation",
+        description: error.message || "Could not link the installation",
+        variant: "destructive",
+      });
+    } finally {
+      setLinkingInstallation(null);
+    }
+  };
+  
   const handleInstallApp = async (provider: VcsProvider) => {
     if (!currentWorkspace) return;
     
@@ -73,6 +127,43 @@ export default function VcsIntegrations() {
         variant: "destructive",
       });
       setInstallingProvider(null);
+    }
+  };
+  
+  /**
+   * Handle 1-click Bitbucket Connect App installation.
+   * Opens popup, tracks installation, and auto-links to workspace.
+   */
+  const handleConnectAppInstall = async () => {
+    if (!currentWorkspace) return;
+    
+    try {
+      setConnectInstallStatus('starting');
+      
+      const result = await integrationService.startBitbucketConnectInstallWithTracking(
+        currentWorkspace.id,
+        currentWorkspace.slug,
+        (status) => setConnectInstallStatus(status)
+      );
+      
+      if (result.status === 'completed') {
+        toast({
+          title: "Bitbucket Connected!",
+          description: `Successfully connected to ${result.workspaceSlug || 'Bitbucket workspace'}`,
+        });
+        
+        // Refresh data
+        await loadConnections();
+        await loadConnectInstallations();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Installation failed",
+        description: error.message || "Could not complete the installation",
+        variant: "destructive",
+      });
+    } finally {
+      setConnectInstallStatus(null);
     }
   };
   
@@ -137,10 +228,64 @@ export default function VcsIntegrations() {
             onInstall={() => handleInstallApp(provider.id)}
             onManage={(connectionId) => navigate(`/dashboard/integrations/${provider.id}/${connectionId}`)}
             isInstalling={installingProvider === provider.id}
+            connectConfigured={connectConfigured}
+            onConnectAppInstall={handleConnectAppInstall}
+            connectInstallStatus={connectInstallStatus}
           />
         ))}
       </div>
       
+      {/* Bitbucket Connect App installations waiting to be linked */}
+      {connectConfigured && connectInstallations.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <LinkIcon className="h-5 w-5 text-blue-600" />
+              Bitbucket Workspaces Ready to Link
+            </CardTitle>
+            <CardDescription>
+              These Bitbucket workspaces have installed the CodeCrow app and are waiting to be linked to your CodeCrow workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {connectInstallations.map(installation => (
+                <div 
+                  key={installation.id}
+                  className="flex items-center justify-between p-4 bg-white border rounded-lg shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold">
+                      B
+                    </div>
+                    <div>
+                      <div className="font-medium">{installation.bitbucketWorkspaceName || installation.bitbucketWorkspaceSlug}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {installation.bitbucketWorkspaceSlug}
+                        {installation.installedByUsername && (
+                          <span> • Installed by {installation.installedByUsername}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleLinkInstallation(installation.id)}
+                    disabled={linkingInstallation === installation.id}
+                  >
+                    {linkingInstallation === installation.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <LinkIcon className="h-4 w-4 mr-2" />
+                    )}
+                    Link to Workspace
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Legacy connections section */}
       {connections.some(c => c.connectionType === 'OAUTH_MANUAL') && (
         <Card className="mt-8">
@@ -194,12 +339,25 @@ interface ProviderCardProps {
   onInstall: () => void;
   onManage: (connectionId: number) => void;
   isInstalling: boolean;
+  connectConfigured?: boolean;
+  onConnectAppInstall?: () => void;
+  connectInstallStatus?: string | null;
 }
 
-function ProviderCard({ provider, connections, onInstall, onManage, isInstalling }: ProviderCardProps) {
+function ProviderCard({ 
+  provider, 
+  connections, 
+  onInstall, 
+  onManage, 
+  isInstalling,
+  connectConfigured,
+  onConnectAppInstall,
+  connectInstallStatus
+}: ProviderCardProps) {
   const appConnections = connections.filter(c => c.connectionType === 'APP');
   const hasAppConnection = appConnections.length > 0;
   const activeConnection = appConnections.find(c => c.status === 'CONNECTED');
+  const isConnectInstalling = connectInstallStatus === 'starting' || connectInstallStatus === 'waiting';
   
   return (
     <Card className={!provider.isSupported ? 'opacity-60' : ''}>
@@ -247,25 +405,53 @@ function ProviderCard({ provider, connections, onInstall, onManage, isInstalling
                 </Button>
               </div>
             ))}
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={onInstall}
-              disabled={isInstalling}
-            >
-              {isInstalling ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
+            
+            {/* Add another workspace options */}
+            <div className="pt-2 border-t space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={onInstall}
+                disabled={isInstalling}
+              >
+                {isInstalling ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Add Another (OAuth)
+              </Button>
+              
+              {/* Connect App option for Bitbucket */}
+              {provider.id === 'bitbucket-cloud' && connectConfigured && onConnectAppInstall && (
+                <Button 
+                  variant="outline"
+                  className="w-full"
+                  onClick={onConnectAppInstall}
+                  disabled={isConnectInstalling}
+                >
+                  {isConnectInstalling ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      {connectInstallStatus === 'waiting' ? 'Waiting...' : 'Starting...'}
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Add via Bitbucket App (Teams)
+                    </>
+                  )}
+                </Button>
               )}
-              Add Another Workspace
-            </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Install the CodeCrow App to connect repositories from {provider.name}.
+              Connect your {provider.name} workspace to enable code analysis.
             </p>
+            
+            {/* OAuth flow (user-based) */}
             <Button 
               className="w-full"
               onClick={onInstall}
@@ -276,8 +462,35 @@ function ProviderCard({ provider, connections, onInstall, onManage, isInstalling
               ) : (
                 <ExternalLink className="h-4 w-4 mr-2" />
               )}
-              Install {provider.name} App
+              Connect with {provider.name}
             </Button>
+            
+            {/* Connect App flow (workspace-based) - only for Bitbucket */}
+            {provider.id === 'bitbucket-cloud' && connectConfigured && onConnectAppInstall && (
+              <div className="pt-2 border-t">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Or install the CodeCrow app for workspace-level access (recommended for teams):
+                </p>
+                <Button 
+                  variant="outline"
+                  className="w-full"
+                  onClick={onConnectAppInstall}
+                  disabled={isConnectInstalling}
+                >
+                  {isConnectInstalling ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      {connectInstallStatus === 'waiting' ? 'Waiting for authorization...' : 'Starting...'}
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Install from Bitbucket
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
