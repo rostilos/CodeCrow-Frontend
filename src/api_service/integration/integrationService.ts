@@ -172,6 +172,64 @@ class IntegrationService extends ApiService {
     const { installUrl } = await this.getInstallUrl(workspaceSlug, provider);
     window.location.href = installUrl;
   }
+  
+  // ==================== Bitbucket Connect App Methods ====================
+  
+  /**
+   * Get Bitbucket Connect App status.
+   */
+  async getBitbucketConnectStatus(): Promise<{ configured: boolean }> {
+    return this.request<{ configured: boolean }>(
+      '/bitbucket/connect/status',
+      { method: 'GET' }
+    );
+  }
+  
+  /**
+   * Get unlinked Bitbucket Connect App installations.
+   */
+  async getUnlinkedConnectInstallations(): Promise<BitbucketConnectInstallation[]> {
+    return this.request<BitbucketConnectInstallation[]>(
+      '/bitbucket/connect/installations/unlinked',
+      { method: 'GET' }
+    );
+  }
+  
+  /**
+   * Get Bitbucket Connect App installations for a workspace.
+   */
+  async getConnectInstallationsForWorkspace(workspaceId: number): Promise<BitbucketConnectInstallation[]> {
+    return this.request<BitbucketConnectInstallation[]>(
+      `/bitbucket/connect/installations/workspace/${workspaceId}`,
+      { method: 'GET' }
+    );
+  }
+  
+  /**
+   * Link a Bitbucket Connect App installation to a CodeCrow workspace.
+   */
+  async linkConnectInstallation(installationId: number, workspaceId: number): Promise<VcsConnection> {
+    return this.request<VcsConnection>(
+      `/bitbucket/connect/installations/${installationId}/link?workspaceId=${workspaceId}`,
+      { method: 'POST' }
+    );
+  }
+}
+
+/**
+ * Bitbucket Connect App installation details.
+ */
+export interface BitbucketConnectInstallation {
+  id: number;
+  clientKey: string;
+  bitbucketWorkspaceUuid: string;
+  bitbucketWorkspaceSlug: string;
+  bitbucketWorkspaceName: string;
+  installedByUsername: string | null;
+  installedAt: string;
+  enabled: boolean;
+  linkedWorkspaceId: number | null;
+  hasVcsConnection: boolean;
 }
 
 export const integrationService = new IntegrationService();

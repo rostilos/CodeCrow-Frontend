@@ -100,7 +100,7 @@ export default function ProjectConfiguration() {
       // Set analysis settings from project
       if (proj) {
         setPrAnalysisEnabled(proj.prAnalysisEnabled ?? true);
-        setBranchAnalysisEnabled(proj.branchAnalysisEnabled ?? true);
+        setBranchAnalysisEnabled(proj.ragConfig?.enabled ? true : (proj.branchAnalysisEnabled ?? true));
       }
 
     } catch (err: any) {
@@ -122,11 +122,14 @@ export default function ProjectConfiguration() {
   const handleSaveAnalysisSettings = async () => {
     if (!namespace || !currentWorkspace) return;
     
+    // Prevent disabling branch analysis when RAG is enabled
+    const effectiveBranchAnalysisEnabled = project?.ragConfig?.enabled ? true : branchAnalysisEnabled;
+    
     setSavingAnalysisSettings(true);
     try {
       await projectService.updateAnalysisSettings(currentWorkspace.slug, namespace, {
         prAnalysisEnabled,
-        branchAnalysisEnabled,
+        branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
         installationMethod: project?.installationMethod || null
       });
       
@@ -135,7 +138,7 @@ export default function ProjectConfiguration() {
         setProject({
           ...project,
           prAnalysisEnabled,
-          branchAnalysisEnabled
+          branchAnalysisEnabled: effectiveBranchAnalysisEnabled
         });
       }
       
@@ -674,12 +677,18 @@ export default function ProjectConfiguration() {
                     <div className="font-medium">Branch Analysis</div>
                     <div className="text-sm text-muted-foreground">
                       Analyze code when branches are pushed
+                      {project?.ragConfig?.enabled && (
+                        <span className="block text-xs text-amber-600 mt-1">
+                          Branch analysis is required when RAG indexing is enabled (for incremental updates)
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <Switch 
                   checked={branchAnalysisEnabled}
                   onCheckedChange={setBranchAnalysisEnabled}
+                  disabled={project?.ragConfig?.enabled}
                 />
               </div>
               

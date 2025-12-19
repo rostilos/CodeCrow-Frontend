@@ -150,6 +150,7 @@ export interface RagIndexStatusDTO {
   lastIndexedAt: string | null;
   errorMessage: string | null;
   collectionName: string | null;
+  failedIncrementalCount: number | null;
 }
 
 export interface RagStatusResponse {

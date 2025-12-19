@@ -41,6 +41,8 @@ export default function IssueDetails() {
 
   // Get scope parameters from URL
   const scopeBranch = searchParams.get('branch');
+  const scopePrNumber = searchParams.get('prNumber');
+  const scopePrVersion = searchParams.get('prVersion');
   const returnPath = searchParams.get('returnPath');
   const filterSeverity = searchParams.get('severity');
   const filterStatus = searchParams.get('status');
@@ -67,25 +69,41 @@ export default function IssueDetails() {
   const loadScopeIssues = async () => {
     if (!currentWorkspace || !namespace) return;
     
-    // Determine what scope to load based on URL params or issue data
-    const branch = scopeBranch || issue?.branch;
-    if (!branch) return;
-    
     setScopeLoading(true);
     try {
-      // Use filter parameters from URL if available
-      const statusFilter = filterStatus || 'all';
-      const response = await analysisService.getBranchIssues(
-        currentWorkspace.slug,
-        namespace,
-        branch,
-        statusFilter,
-        1,
-        100, // Load more issues for sidebar navigation
-        true // excludeDiff to reduce payload size
-      );
+      let issues: AnalysisIssue[] = [];
       
-      let issues = response.issues;
+      // If PR scope is specified, load PR issues
+      if (scopePrNumber) {
+        const version = scopePrVersion ? parseInt(scopePrVersion) : undefined;
+        const response = await analysisService.getAnalysisIssues(
+          currentWorkspace.slug,
+          namespace,
+          scopePrNumber,
+          version
+        );
+        issues = response.issues;
+      } else {
+        // Fall back to branch scope
+        const branch = scopeBranch || issue?.branch;
+        if (!branch) {
+          setScopeLoading(false);
+          return;
+        }
+        
+        // Use filter parameters from URL if available
+        const statusFilter = filterStatus || 'all';
+        const response = await analysisService.getBranchIssues(
+          currentWorkspace.slug,
+          namespace,
+          branch,
+          statusFilter,
+          1,
+          100, // Load more issues for sidebar navigation
+          true // excludeDiff to reduce payload size
+        );
+        issues = response.issues;
+      }
       
       // Apply additional filters if present
       if (filterSeverity && filterSeverity !== 'ALL') {
@@ -111,15 +129,18 @@ export default function IssueDetails() {
     // Skip loading if we already have scope issues from route state
     if (scopeIssues.length > 0) return;
     
-    if (issue || scopeBranch) {
+    if (issue || scopeBranch || scopePrNumber) {
       loadScopeIssues();
     }
-  }, [issue, scopeBranch, currentWorkspace, namespace]);
+  }, [issue, scopeBranch, scopePrNumber, currentWorkspace, namespace]);
 
   const navigateToIssue = (targetIssueId: string) => {
     const params = new URLSearchParams();
     if (scopeBranch) params.set('branch', scopeBranch);
     if (returnPath) params.set('returnPath', returnPath);
+    // Preserve PR scope parameters
+    if (scopePrNumber) params.set('prNumber', scopePrNumber);
+    if (scopePrVersion) params.set('prVersion', scopePrVersion);
     // Preserve filter parameters
     if (filterSeverity) params.set('severity', filterSeverity);
     if (filterStatus) params.set('status', filterStatus);

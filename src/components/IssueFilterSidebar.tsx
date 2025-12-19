@@ -83,7 +83,7 @@ export default function IssueFilterSidebar({ filters, onFiltersChange, issueCoun
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto">
+      <SheetContent side="right" className="w-[550px] sm:w-[540px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Filter Issues</SheetTitle>
           <SheetDescription>

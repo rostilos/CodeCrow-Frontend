@@ -74,6 +74,36 @@ export default function RagConfiguration({
     setExcludePatterns(project.ragConfig?.excludePatterns ?? []);
   }, [project.ragConfig]);
 
+  // Helper to check if reindex is allowed (24h cooldown after successful index)
+  const getReindexCooldownInfo = (): { isOnCooldown: boolean; remainingTime: string | null } => {
+    if (!ragStatus?.indexStatus) {
+      return { isOnCooldown: false, remainingTime: null };
+    }
+    
+    const status = ragStatus.indexStatus.status;
+    const lastIndexedAt = ragStatus.indexStatus.lastIndexedAt;
+    
+    // Only apply cooldown if the last index was successful
+    if (status !== 'INDEXED' || !lastIndexedAt) {
+      return { isOnCooldown: false, remainingTime: null };
+    }
+    
+    const lastIndexDate = new Date(lastIndexedAt);
+    const now = new Date();
+    const hoursSinceLastIndex = (now.getTime() - lastIndexDate.getTime()) / (1000 * 60 * 60);
+    const cooldownHours = 24;
+    
+    if (hoursSinceLastIndex < cooldownHours) {
+      const remainingHours = Math.ceil(cooldownHours - hoursSinceLastIndex);
+      const remainingTime = remainingHours > 1 
+        ? `${remainingHours} hours` 
+        : `${Math.ceil((cooldownHours - hoursSinceLastIndex) * 60)} minutes`;
+      return { isOnCooldown: true, remainingTime };
+    }
+    
+    return { isOnCooldown: false, remainingTime: null };
+  };
+
   const loadRagStatus = async () => {
     if (!project.namespace) return;
     
@@ -435,6 +465,25 @@ export default function RagConfiguration({
           </div>
         )}
 
+        {/* Warning for failed incremental updates */}
+        {ragStatus?.indexStatus && (ragStatus.indexStatus.failedIncrementalCount ?? 0) >= 5 && (
+          <div className="rounded-lg border border-amber-500 p-4 bg-amber-50 dark:bg-amber-950/30">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">
+                  Multiple Incremental Update Failures Detected
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  There have been {ragStatus.indexStatus.failedIncrementalCount} failed incremental RAG updates. 
+                  This may indicate issues with the repository structure or file patterns. 
+                  Consider triggering a full reindex to resolve potential index inconsistencies.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Indexing Progress */}
         {indexingProgress && (
           <div className="rounded-lg border p-3 bg-blue-50 dark:bg-blue-950/30">
@@ -455,23 +504,33 @@ export default function RagConfiguration({
             Save Configuration
           </Button>
           
-          <Button
-            variant={indexing ? "destructive" : "outline"}
-            onClick={handleTriggerIndexing}
-            disabled={!enabled || (!ragStatus?.canStartIndexing && !indexing)}
-          >
-            {indexing ? (
-              <>
-                <Square className="mr-2 h-4 w-4" />
-                Cancel Indexing
-              </>
-            ) : (
-              <>
-                <Play className="mr-2 h-4 w-4" />
-                Trigger Indexing
-              </>
-            )}
-          </Button>
+          {(() => {
+            const cooldownInfo = getReindexCooldownInfo();
+            return (
+              <Button
+                variant={indexing ? "destructive" : "outline"}
+                onClick={handleTriggerIndexing}
+                disabled={!enabled || (!ragStatus?.canStartIndexing && !indexing) || cooldownInfo.isOnCooldown}
+                title={cooldownInfo.isOnCooldown 
+                  ? `Reindex available in ${cooldownInfo.remainingTime}` 
+                  : undefined}
+              >
+                {indexing ? (
+                  <>
+                    <Square className="mr-2 h-4 w-4" />
+                    Cancel Indexing
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    {cooldownInfo.isOnCooldown 
+                      ? `Reindex in ${cooldownInfo.remainingTime}`
+                      : "Trigger Indexing"}
+                  </>
+                )}
+              </Button>
+            );
+          })()}
 
           <Button
             variant="ghost"
@@ -487,7 +546,9 @@ export default function RagConfiguration({
           <p className="text-sm text-muted-foreground">
             {ragStatus?.indexStatus?.status === 'INDEXING' 
               ? "Indexing is currently in progress. The status will update automatically when complete."
-              : "Please wait before triggering another indexing operation."}
+              : getReindexCooldownInfo().isOnCooldown
+                ? `Full reindex is limited to once every 24 hours after a successful index. Next reindex available in ${getReindexCooldownInfo().remainingTime}.`
+                : "Please wait before triggering another indexing operation."}
           </p>
         )}
       </CardContent>
