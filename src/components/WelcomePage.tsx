@@ -25,6 +25,7 @@ import demoDetailedInfo from "@/assets/demo-detailed-info.png";
 import demoProjectOverview from "@/assets/demo-project-overview.png";
 import demoRagContext from "@/assets/demo-rag-context.png";
 import demoVcsReport from "@/assets/demo-vcs-report.png";
+import demoInteractiveAgent from "@/assets/demo-interactive-agent.png";
 
 interface FeatureCard {
     title: string;
@@ -64,11 +65,17 @@ const features: FeatureCard[] = [
         description: "Centralized dashboard for your entire team. Manage analysis, review reports, track historical data, and collaborate on code quality improvements together.",
         mediaType: "screenshot",
         imageSrc: demoProjectOverview,
+    },
+    {
+        title: "Interactive AI Agent",
+        description: "Chat with CodeCrow's AI agent directly in your pull requests. Ask for clarification on analysis points, get detailed explanations of issues, or request specific suggestions on how to fix identified problems.",
+        mediaType: "screenshot",
+        imageSrc: demoInteractiveAgent,
     }
 ];
 
 const CARD_HEADER_HEIGHT = 48; // px - base height of card header
-const CARD_CONTENT_HEIGHT = 500; // px - height of expanded content
+const CARD_CONTENT_HEIGHT = 400; // px - height of expanded content
 
 // Stacked Cards Component - inactive headers stack above with distance effect
 const StackedCards = ({
@@ -272,7 +279,7 @@ const HeroSection = ({
             {/* Main content */}
             <div className="relative z-10 pt-32 pb-12">
                 <div className="container px-4 sm:px-6 lg:px-8">
-                    <div className="max-w-4xl mx-auto text-center mb-16">
+                    <div className="max-w-4xl mx-auto text-center mb-8">
                         {/* Badges */}
                         <div className="flex flex-wrap justify-center gap-3 mb-8">
                             <Badge variant="outline" className="px-4 py-2 text-sm font-medium border-success/30 text-success bg-success/5">
