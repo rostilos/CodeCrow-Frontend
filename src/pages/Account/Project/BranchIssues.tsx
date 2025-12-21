@@ -87,7 +87,16 @@ export default function BranchIssues() {
         decodeURIComponent(branchName),
         apiStatus
       );
-      setIssues(issuesData);
+      // analysisService.getBranchIssues may return a paginated object { issues, total, page, pageSize }
+      // or (for backward-compatibility) an array. Normalize to an array for the component.
+      if (Array.isArray(issuesData)) {
+        setIssues(issuesData);
+      } else if (issuesData && Array.isArray((issuesData as any).issues)) {
+        setIssues((issuesData as any).issues);
+      } else {
+        // Defensive fallback: ensure we always have an array
+        setIssues([]);
+      }
     } catch (error: any) {
       toast({
         title: "Failed to load branch issues",

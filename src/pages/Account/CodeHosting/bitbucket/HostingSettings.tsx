@@ -27,8 +27,8 @@ import {
     BitbucketConnections,
     EGitSetupStatus
 } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.interface.ts";
-import {integrationService} from "@/api_service/integration/integrationService.ts";
 import {VcsConnection, VcsConnectionType} from "@/api_service/integration/integration.interface.ts";
+import {integrationService, BitbucketConnectInstallation} from "@/api_service/integration/integrationService.ts";
 import { useWorkspace } from '@/context/WorkspaceContext';
 import {
     AlertDialog,
@@ -65,6 +65,32 @@ export default function HostingSettings() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [connectionToDelete, setConnectionToDelete] = useState<{id: number, type: 'app' | 'manual'} | null>(null);
     const {toast} = useToast();
+    
+    // Connect App state
+    const [connectInstallStatus, setConnectInstallStatus] = useState<string | null>(null);
+    const [isConnectAppConfigured, setIsConnectAppConfigured] = useState(false);
+    const [unlinkedInstallations, setUnlinkedInstallations] = useState<BitbucketConnectInstallation[]>([]);
+    const [linkingInstallationId, setLinkingInstallationId] = useState<number | null>(null);
+    
+    // Check if Connect App is configured and load unlinked installations
+    useEffect(() => {
+        const checkConnectAppConfig = async () => {
+            try {
+                const status = await integrationService.getBitbucketConnectStatus();
+                setIsConnectAppConfigured(status.configured);
+                
+                if (status.configured) {
+                    // Load unlinked installations
+                    const unlinked = await integrationService.getUnlinkedConnectInstallations();
+                    setUnlinkedInstallations(unlinked);
+                }
+            } catch {
+                // Connect App not available, use OAuth fallback
+                setIsConnectAppConfigured(false);
+            }
+        };
+        checkConnectAppConfig();
+    }, []);
 
     const fetchConnections = async () => {
         if (!currentWorkspace) return;
@@ -110,6 +136,102 @@ export default function HostingSettings() {
                 variant: "destructive",
             });
             setIsInstallingApp(false);
+        }
+    };
+    
+    /**
+     * Handle Bitbucket Connect App installation.
+     * Opens popup for Bitbucket authorization, then checks for new installations.
+     * User will need to manually link if an installation is found.
+     */
+    const handleConnectAppInstall = async () => {
+        if (!currentWorkspace) return;
+        
+        try {
+            setConnectInstallStatus('starting');
+            
+            const result = await integrationService.startBitbucketConnectInstallWithTracking(
+                currentWorkspace.id,
+                currentWorkspace.slug,
+                (status) => setConnectInstallStatus(status)
+            );
+            
+            if (result.status === 'installed_pending_link') {
+                toast({
+                    title: "Installation Found!",
+                    description: `Bitbucket workspace "${result.workspaceSlug}" is ready to link.`,
+                });
+                
+                // Refresh to show the pending installation
+                const unlinked = await integrationService.getUnlinkedConnectInstallations();
+                setUnlinkedInstallations(unlinked);
+                
+            } else if (result.status === 'completed') {
+                toast({
+                    title: "Bitbucket Connected!",
+                    description: `Successfully connected to ${result.workspaceSlug || 'Bitbucket workspace'}`,
+                });
+                await fetchConnections();
+                
+            } else if (result.status === 'no_installation') {
+                toast({
+                    title: "No Installation Found",
+                    description: "The app wasn't installed or you don't have access to the Bitbucket workspace. Make sure you have an existing Bitbucket connection first.",
+                    variant: "destructive",
+                });
+                
+            } else if (result.status === 'popup_closed' || result.status === 'timeout') {
+                // User closed popup, just refresh in case installation happened
+                const unlinked = await integrationService.getUnlinkedConnectInstallations();
+                if (unlinked.length > 0) {
+                    setUnlinkedInstallations(unlinked);
+                    toast({
+                        title: "Installation Found!",
+                        description: "Click 'Link to Workspace' to complete the setup.",
+                    });
+                }
+            }
+        } catch (error: any) {
+            toast({
+                title: "Installation failed",
+                description: error.message || "Could not complete the installation",
+                variant: "destructive",
+            });
+        } finally {
+            setConnectInstallStatus(null);
+        }
+    };
+    
+    const isConnectInstalling = connectInstallStatus === 'starting' || connectInstallStatus === 'waiting' || connectInstallStatus === 'checking';
+    
+    /**
+     * Link an unlinked Bitbucket Connect installation to the current workspace.
+     */
+    const handleLinkInstallation = async (installationId: number) => {
+        if (!currentWorkspace) return;
+        
+        try {
+            setLinkingInstallationId(installationId);
+            await integrationService.linkConnectInstallation(installationId, currentWorkspace.id);
+            
+            toast({
+                title: "Installation Linked!",
+                description: "The Bitbucket workspace has been linked to your CodeCrow workspace",
+            });
+            
+            // Refresh data
+            await fetchConnections();
+            
+            // Remove from unlinked list
+            setUnlinkedInstallations(prev => prev.filter(i => i.id !== installationId));
+        } catch (error: any) {
+            toast({
+                title: "Failed to link installation",
+                description: error.message || "Could not link the installation",
+                variant: "destructive",
+            });
+        } finally {
+            setLinkingInstallationId(null);
         }
     };
 
@@ -272,26 +394,102 @@ export default function HostingSettings() {
                                         Automatic token refresh
                                     </li>
                                 </ul>
-                                <Button 
-                                    onClick={handleInstallApp}
-                                    disabled={isInstallingApp}
-                                    className="bg-blue-600 hover:bg-blue-700"
-                                >
-                                    {isInstallingApp ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Connecting...
-                                        </>
+                                <div className="flex flex-col gap-2 items-end">
+                                    {isConnectAppConfigured ? (
+                                        <Button 
+                                            onClick={handleConnectAppInstall}
+                                            disabled={isConnectInstalling}
+                                            className="bg-blue-600 hover:bg-blue-700"
+                                        >
+                                            {isConnectInstalling ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Installing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                                    Install from Bitbucket
+                                                </>
+                                            )}
+                                        </Button>
                                     ) : (
-                                        <>
-                                            <ExternalLink className="h-4 w-4 mr-2" />
-                                            Install Bitbucket App
-                                        </>
+                                        <Button 
+                                            onClick={handleInstallApp}
+                                            disabled={isInstallingApp}
+                                            className="bg-blue-600 hover:bg-blue-700"
+                                        >
+                                            {isInstallingApp ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Connecting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                                    Install Bitbucket App
+                                                </>
+                                            )}
+                                        </Button>
                                     )}
-                                </Button>
+                                    {connectInstallStatus && (
+                                        <span className="text-sm text-muted-foreground">{connectInstallStatus}</span>
+                                    )}
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Unlinked Installations Section */}
+                    {unlinkedInstallations.length > 0 && (
+                        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                                    <AlertCircle className="h-5 w-5" />
+                                    Pending Bitbucket Installations
+                                </CardTitle>
+                                <CardDescription>
+                                    These Bitbucket workspaces have installed CodeCrow but haven't been linked to your CodeCrow workspace yet.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {unlinkedInstallations.map((installation) => (
+                                    <div 
+                                        key={installation.id}
+                                        className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Cloud className="h-5 w-5 text-blue-500" />
+                                            <div>
+                                                <p className="font-medium">{installation.bitbucketWorkspaceName || installation.bitbucketWorkspaceSlug}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    @{installation.bitbucketWorkspaceSlug}
+                                                    {installation.installedByUsername && ` • Installed by ${installation.installedByUsername}`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            onClick={() => handleLinkInstallation(installation.id)}
+                                            disabled={linkingInstallationId === installation.id}
+                                            size="sm"
+                                        >
+                                            {linkingInstallationId === installation.id ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Linking...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Link to Workspace
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* App Connections Section */}
                     {appConnections.length > 0 && (

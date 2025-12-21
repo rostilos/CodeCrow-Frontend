@@ -13,6 +13,8 @@ interface IssuesByFileDisplayProps {
   issues: AnalysisIssue[];
   projectNamespace: string;
   branchName?: string;
+  prNumber?: number;
+  prVersion?: number;
   onUpdateIssueStatus?: (issueId: string, status: 'open' | 'resolved') => void;
   selectedIssues?: Set<string>;
   onSelectionChange?: (issueId: string, selected: boolean) => void;
@@ -23,6 +25,8 @@ export default function IssuesByFileDisplay({
   issues, 
   projectNamespace,
   branchName,
+  prNumber,
+  prVersion,
   onUpdateIssueStatus,
   selectedIssues = new Set(),
   onSelectionChange,
@@ -75,6 +79,14 @@ export default function IssuesByFileDisplay({
     // Pass the branch for sidebar scope
     if (branchName) {
       params.set('branch', branchName);
+    }
+    
+    // Pass PR params for sidebar scope (PR issues take precedence over branch)
+    if (prNumber) {
+      params.set('prNumber', String(prNumber));
+      if (prVersion) {
+        params.set('prVersion', String(prVersion));
+      }
     }
     
     navigate(`/dashboard/projects/${projectNamespace}/issues/${issueId}?${params.toString()}`);

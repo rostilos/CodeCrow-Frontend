@@ -172,6 +172,168 @@ class IntegrationService extends ApiService {
     const { installUrl } = await this.getInstallUrl(workspaceSlug, provider);
     window.location.href = installUrl;
   }
+  
+  // ==================== Bitbucket Connect App Methods ====================
+  
+  /**
+   * Get Bitbucket Connect App status.
+   */
+  async getBitbucketConnectStatus(): Promise<{ configured: boolean }> {
+    return this.request<{ configured: boolean }>(
+      '/bitbucket/connect/status',
+      { method: 'GET' }
+    );
+  }
+  
+  /**
+   * Get unlinked Bitbucket Connect App installations.
+   */
+  async getUnlinkedConnectInstallations(): Promise<BitbucketConnectInstallation[]> {
+    return this.request<BitbucketConnectInstallation[]>(
+      '/bitbucket/connect/installations/unlinked',
+      { method: 'GET' }
+    );
+  }
+  
+  /**
+   * Get Bitbucket Connect App installations for a workspace.
+   */
+  async getConnectInstallationsForWorkspace(workspaceId: number): Promise<BitbucketConnectInstallation[]> {
+    return this.request<BitbucketConnectInstallation[]>(
+      `/bitbucket/connect/installations/workspace/${workspaceId}`,
+      { method: 'GET' }
+    );
+  }
+  
+  /**
+   * Link a Bitbucket Connect App installation to a CodeCrow workspace.
+   */
+  async linkConnectInstallation(installationId: number, workspaceId: number): Promise<VcsConnection> {
+    return this.request<VcsConnection>(
+      `/bitbucket/connect/installations/${installationId}/link?workspaceId=${workspaceId}`,
+      { method: 'POST' }
+    );
+  }
+  
+  /**
+   * Start the 1-click Bitbucket Connect App installation flow.
+   * Returns the install URL and state for tracking.
+   */
+  async startBitbucketConnectInstallFlow(workspaceId: number, workspaceSlug?: string): Promise<ConnectInstallStartResponse> {
+    return this.request<ConnectInstallStartResponse>(
+      `/bitbucket/connect/install/start?workspaceId=${workspaceId}${workspaceSlug ? `&workspaceSlug=${workspaceSlug}` : ''}`,
+      { method: 'POST' }
+    );
+  }
+  
+  /**
+   * Check the status of a pending Connect App installation.
+   */
+  async checkConnectInstallStatus(state: string): Promise<ConnectInstallStatusResponse> {
+    return this.request<ConnectInstallStatusResponse>(
+      `/bitbucket/connect/install/status?state=${encodeURIComponent(state)}`,
+      { method: 'GET' }
+    );
+  }
+  
+  /**
+   * Start and track the full 1-click Bitbucket Connect App installation.
+   * Opens a popup for Bitbucket authorization.
+   * 
+   * Note: Bitbucket Connect Apps don't pass state back in the /installed callback,
+   * so we can't automatically link. Instead, we:
+   * 1. Open popup for installation
+   * 2. Wait for popup to close
+   * 3. Check for new unlinked installations
+   * 4. Return status so frontend can refresh and show the "Link" option
+   */
+  async startBitbucketConnectInstallWithTracking(
+    workspaceId: number, 
+    workspaceSlug?: string,
+    onStatusChange?: (status: string) => void
+  ): Promise<ConnectInstallStatusResponse> {
+    // Start the install flow to get the URL
+    const { installUrl } = await this.startBitbucketConnectInstallFlow(workspaceId, workspaceSlug);
+    
+    // Open popup
+    const popup = window.open(installUrl, 'bitbucket_connect_install', 'width=800,height=700');
+    
+    onStatusChange?.('waiting');
+    
+    // Wait for popup to close
+    return new Promise((resolve) => {
+      const checkPopupClosed = setInterval(async () => {
+        if (popup?.closed) {
+          clearInterval(checkPopupClosed);
+          onStatusChange?.('checking');
+          
+          // Give Bitbucket a moment to call our /installed endpoint
+          await new Promise(r => setTimeout(r, 2000));
+          
+          // Check for unlinked installations
+          try {
+            const unlinked = await this.getUnlinkedConnectInstallations();
+            if (unlinked.length > 0) {
+              onStatusChange?.('installed');
+              resolve({
+                status: 'installed_pending_link',
+                installationId: unlinked[0].id,
+                workspaceSlug: unlinked[0].bitbucketWorkspaceSlug
+              });
+            } else {
+              onStatusChange?.('no_installation');
+              resolve({ status: 'no_installation' });
+            }
+          } catch {
+            onStatusChange?.('completed');
+            resolve({ status: 'popup_closed' });
+          }
+        }
+      }, 500);
+      
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(checkPopupClosed);
+        popup?.close();
+        onStatusChange?.('timeout');
+        resolve({ status: 'timeout' });
+      }, 300000);
+    });
+  }
+}
+
+/**
+ * Response from starting Connect App installation.
+ */
+export interface ConnectInstallStartResponse {
+  installUrl: string;
+  state: string;
+}
+
+/**
+ * Response from checking Connect App installation status.
+ */
+export interface ConnectInstallStatusResponse {
+  status: 'pending' | 'completed' | 'expired' | 'not_found' | 'installed_pending_link' | 'no_installation' | 'popup_closed' | 'timeout';
+  installationId?: number;
+  connectionId?: number;
+  workspaceSlug?: string;
+}
+
+/**
+ * Bitbucket Connect App installation details.
+ */
+export interface BitbucketConnectInstallation {
+  id: number;
+  clientKey: string;
+  bitbucketWorkspaceUuid: string;
+  bitbucketWorkspaceSlug: string;
+  bitbucketWorkspaceName: string;
+  installedByUsername: string | null;
+  installedAt: string;
+  enabled: boolean;
+  linkedWorkspaceId: number | null;
+  hasVcsConnection: boolean;
 }
 
 export const integrationService = new IntegrationService();

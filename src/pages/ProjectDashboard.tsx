@@ -1136,6 +1136,7 @@ export default function ProjectDashboard() {
                           <IssuesByFileDisplay
                             issues={currentFilteredIssues}
                             projectNamespace={namespace!}
+                            branchName={selectedBranch || undefined}
                             onUpdateIssueStatus={handleUpdateIssueStatus}
                             selectionEnabled={true}
                             selectedIssues={selectedIssues}
@@ -1439,6 +1440,8 @@ export default function ProjectDashboard() {
                         <IssuesByFileDisplay
                           issues={currentFilteredIssues}
                           projectNamespace={namespace!}
+                          prNumber={selectedPR?.prNumber}
+                          prVersion={selectedVersion}
                           onUpdateIssueStatus={handleUpdateIssueStatus}
                           selectionEnabled={true}
                           selectedIssues={selectedIssues}

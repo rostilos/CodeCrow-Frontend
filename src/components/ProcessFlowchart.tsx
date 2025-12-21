@@ -96,7 +96,7 @@ export const ProcessFlowchart = () => {
             <div
                 className={`hidden md:block absolute left-1/2 top-16 
                             bottom-16 w-0.5 bg-gradient-to-b from-muted-foreground/40 to-muted-foreground/10 transform 
-                            mt-[30px] mb-[140px]
+                            mt-[30px] mb-[11 0px]
                             -translate-x-1/2 transition-all duration-1000 ${
                     isVisible ? "scale-y-100" : "scale-y-0"
                 }`}
@@ -127,7 +127,7 @@ export const ProcessFlowchart = () => {
                                 )}
                             </div>
 
-                            <div className="hidden md:flex justify-center relative mb-16">
+                            <div className="hidden md:flex justify-center relative mb-6">
                                 <div
                                     className={`absolute left-1/2 top-8 transform -translate-x-1/2 -translate-y-1/2 z-20 transition-all duration-700 ${
                                         isVisible ? "opacity-100 scale-100" : "opacity-0 scale-50"

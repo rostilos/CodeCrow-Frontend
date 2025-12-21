@@ -144,7 +144,7 @@ export default function Register() {
               Start Your Journey
             </h1>
             <p className="text-lg text-muted-foreground">
-              Join thousands of developers using AI-powered code review.
+              Join the alpha and start getting AI-powered insights on your codebase today.
             </p>
           </div>
           
