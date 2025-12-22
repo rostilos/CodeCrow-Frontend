@@ -44,8 +44,10 @@ export default function ProjectSetupInstructions() {
   
   // Check if project uses webhook installation method or app-based connection
   const isWebhookInstallation = project?.installationMethod === 'WEBHOOK';
-  const isAppBasedConnection = project?.vcsConnectionType === 'APP' || project?.vcsConnectionType === 'GITHUB_APP';
-  const isAutoIntegration = isWebhookInstallation || isAppBasedConnection;
+  const isAppBasedConnection = project?.vcsConnectionType === 'APP' || project?.vcsConnectionType === 'CONNECT_APP' || project?.vcsConnectionType === 'GITHUB_APP';
+  const isOAuthConnection = project?.vcsConnectionType === 'OAUTH_MANUAL';
+  // Both app connections and OAuth connections with webhooks count as auto-integration
+  const isAutoIntegration = isWebhookInstallation || isAppBasedConnection || isOAuthConnection;
   
   // Determine which provider is being used
   const isGitHub = project?.vcsProvider === 'GITHUB';

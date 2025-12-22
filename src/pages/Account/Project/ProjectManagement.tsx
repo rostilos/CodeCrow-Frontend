@@ -324,7 +324,7 @@ export default function ProjectSettings() {
                               <div className="flex flex-col">
                                 <span>{conn.connectionName}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {conn.connectionType === 'APP' ? 'App Installation' : 'OAuth'} • {conn.repoCount} repos
+                                  {conn.connectionType === 'APP' || conn.connectionType === 'CONNECT_APP' ? 'App Installation' : 'OAuth'} • {conn.repoCount} repos
                                 </span>
                               </div>
                             </DropdownMenuItem>

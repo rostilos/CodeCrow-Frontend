@@ -26,6 +26,7 @@ import demoProjectOverview from "@/assets/demo-project-overview.png";
 import demoRagContext from "@/assets/demo-rag-context.png";
 import demoVcsReport from "@/assets/demo-vcs-report.png";
 import demoInteractiveAgent from "@/assets/demo-interactive-agent.png";
+import demoEasySetup from "@/assets/demo-easy-setup.mp4";
 
 interface FeatureCard {
     title: string;
@@ -37,10 +38,16 @@ interface FeatureCard {
 
 const features: FeatureCard[] = [
     {
+        title: "Web Platform for Teams",
+        description: "Centralized dashboard for your entire team. Manage analysis, review reports, track historical data, and collaborate on code quality improvements together.",
+        mediaType: "screenshot",
+        imageSrc: demoProjectOverview,
+    },
+    {
         title: "Easy Setup",
         description: "Connect your repository in minutes. Automatic webhook and pipeline configuration with no complex setup required. Just install and start reviewing.",
         mediaType: "video",
-        videoSrc: undefined, // Add video URL when available
+        videoSrc: demoEasySetup,
     },
     {
         title: "Predictable and Concise Reports",
@@ -59,12 +66,6 @@ const features: FeatureCard[] = [
         description: "Track code quality across branches with incremental analysis. See historical trends, identify patterns, and watch your code quality improve over time.",
         mediaType: "screenshot",
         imageSrc: demoAnalysisDashboard,
-    },
-    {
-        title: "Web Platform for Teams",
-        description: "Centralized dashboard for your entire team. Manage analysis, review reports, track historical data, and collaborate on code quality improvements together.",
-        mediaType: "screenshot",
-        imageSrc: demoProjectOverview,
     },
     {
         title: "Interactive AI Agent",
@@ -196,24 +197,27 @@ const StackedCards = ({
                             >
                                 <div className="flex flex-col lg:flex-row h-full">
                                     {/* Text Side */}
-                                    <div className="lg:w-2/5 p-6 flex flex-col justify-center border-t border-border/20">
+                                    <div className={`${feature.mediaType === 'video' ? 'lg:w-2/6' : 'lg:w-2/5'} p-6 flex flex-col justify-center border-t border-border/20`}>
                                         <p className="text-muted-foreground text-base leading-relaxed">
                                             {feature.description}
                                         </p>
                                     </div>
 
                                     {/* Media Side */}
-                                    <div className="lg:w-3/5 relative bg-muted/10 border-t lg:border-t-0 lg:border-l border-border/20 overflow-hidden">
+                                    <div className={`${feature.mediaType === 'video' ? 'lg:w-4/6' : 'lg:w-3/5'} relative bg-muted/10 border-t lg:border-t-0 lg:border-l border-border/20 overflow-hidden`}>
                                         <div className="absolute inset-0 flex items-center justify-center">
                                             {feature.mediaType === 'video' && feature.videoSrc ? (
                                                 <video
-                                                    src={feature.videoSrc}
+                                                    poster={demoAnalysisDashboard}
                                                     autoPlay
                                                     loop
                                                     muted
                                                     playsInline
+                                                    preload="none"
                                                     className="w-full h-full object-cover"
-                                                />
+                                                >
+                                                    <source src={feature.videoSrc} type="video/mp4" />
+                                                </video>
                                             ) : feature.imageSrc ? (
                                                 <img
                                                     src={feature.imageSrc}
@@ -432,7 +436,7 @@ const WorksWhereYouCodeSection = () => {
                 key={integration.name}
                 className={`
                   group relative p-6 lg:p-8 rounded-2xl border bg-card
-                  transition-all duration-300 hover:-translate-y-1
+                  transition-all duration-300 hover:-translate-y-1 flex-col flex
                   ${integration.available 
                     ? 'border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:border-primary/50' 
                     : 'border-border/50 hover:border-primary/30'
@@ -471,7 +475,7 @@ const WorksWhereYouCodeSection = () => {
                     </Badge>
                   </div>
                 </div>
-                <p className="text-muted-foreground leading-relaxed">{integration.description}</p>
+                <p className="text-muted-foreground leading-relaxed grow">{integration.description}</p>
                 
                 {integration.available && (
                   <div className="mt-4 pt-4 border-t border-primary/20">

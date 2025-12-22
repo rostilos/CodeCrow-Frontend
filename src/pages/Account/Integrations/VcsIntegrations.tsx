@@ -9,7 +9,10 @@ import {
   Plus,
   ExternalLink,
   Loader2,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Shield,
+  Info,
+  Copy
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +26,8 @@ import {
   PROVIDERS,
   ProviderInfo 
 } from "@/api_service/integration/integration.interface";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /**
  * VCS Integrations settings page.
@@ -141,7 +146,6 @@ export default function VcsIntegrations() {
       setConnectInstallStatus('starting');
       
       const result = await integrationService.startBitbucketConnectInstallWithTracking(
-        currentWorkspace.id,
         currentWorkspace.slug,
         (status) => setConnectInstallStatus(status)
       );
@@ -286,49 +290,7 @@ export default function VcsIntegrations() {
         </Card>
       )}
 
-      {/* Legacy connections section */}
-      {connections.some(c => c.connectionType === 'OAUTH_MANUAL') && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="text-lg">Legacy Connections</CardTitle>
-            <CardDescription>
-              Manual OAuth connections from the previous integration method
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {connections
-                .filter(c => c.connectionType === 'OAUTH_MANUAL')
-                .map(connection => (
-                  <div 
-                    key={connection.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(connection.status)}
-                      <div>
-                        <div className="font-medium">{connection.connectionName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {connection.repoCount} repositories
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(connection.status)}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate(`/dashboard/hosting/configure/${connection.id}`)}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Legacy connections section - removed since OAuth is now a primary method */}
     </div>
   );
 }
@@ -354,10 +316,22 @@ function ProviderCard({
   onConnectAppInstall,
   connectInstallStatus
 }: ProviderCardProps) {
-  const appConnections = connections.filter(c => c.connectionType === 'APP');
-  const hasAppConnection = appConnections.length > 0;
-  const activeConnection = appConnections.find(c => c.status === 'CONNECTED');
+  const { toast } = useToast();
+  const appConnections = connections.filter(c => c.connectionType === 'APP' || c.connectionType === 'CONNECT_APP');
+  const oauthConnections = connections.filter(c => c.connectionType === 'OAUTH_MANUAL');
+  const allConnections = [...appConnections, ...oauthConnections];
+  const hasConnection = allConnections.length > 0;
   const isConnectInstalling = connectInstallStatus === 'starting' || connectInstallStatus === 'waiting';
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: "Descriptor URL copied to clipboard",
+    });
+  };
+  
+  const descriptorUrl = `${window.location.origin}/api/atlassian-connect/descriptor`;
   
   return (
     <Card className={!provider.isSupported ? 'opacity-60' : ''}>
@@ -380,9 +354,9 @@ function ProviderCard({
           <p className="text-sm text-muted-foreground">
             Support for {provider.name} is coming soon.
           </p>
-        ) : hasAppConnection ? (
+        ) : hasConnection ? (
           <div className="space-y-3">
-            {appConnections.map(connection => (
+            {allConnections.map(connection => (
               <div 
                 key={connection.id}
                 className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
@@ -390,7 +364,14 @@ function ProviderCard({
                 <div className="flex items-center gap-3">
                   <CheckCircle className="h-5 w-5 text-success" />
                   <div>
-                    <div className="font-medium">{connection.connectionName}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {connection.connectionName}
+                      <Badge variant="outline" className="text-xs">
+                        {connection.connectionType === 'APP' || connection.connectionType === 'CONNECT_APP' 
+                          ? 'Connect App' 
+                          : 'OAuth'}
+                      </Badge>
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {connection.externalWorkspaceSlug || 'Connected'} • {connection.repoCount} repos
                     </div>
@@ -419,42 +400,97 @@ function ProviderCard({
                 ) : (
                   <Plus className="h-4 w-4 mr-2" />
                 )}
-                Add Another (OAuth)
+                Add Another Workspace (OAuth)
               </Button>
-              
-              {/* Connect App option for Bitbucket */}
-              {provider.id === 'bitbucket-cloud' && connectConfigured && onConnectAppInstall && (
-                <Button 
-                  variant="outline"
-                  className="w-full"
-                  onClick={onConnectAppInstall}
-                  disabled={isConnectInstalling}
-                >
-                  {isConnectInstalling ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      {connectInstallStatus === 'waiting' ? 'Waiting...' : 'Starting...'}
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Add via Bitbucket App (Teams)
-                    </>
-                  )}
-                </Button>
-              )}
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          /* No connections yet - show setup options */
+          provider.id === 'bitbucket-cloud' ? (
+            <BitbucketSetupOptions
+              onOAuthInstall={onInstall}
+              isInstalling={isInstalling}
+              onConnectAppInstall={onConnectAppInstall}
+              isConnectInstalling={isConnectInstalling}
+              connectInstallStatus={connectInstallStatus}
+              descriptorUrl={descriptorUrl}
+              copyToClipboard={copyToClipboard}
+            />
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Connect your {provider.name} account to enable code analysis.
+              </p>
+              <Button 
+                className="w-full"
+                onClick={onInstall}
+                disabled={isInstalling}
+              >
+                {isInstalling ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                )}
+                Connect with {provider.name}
+              </Button>
+            </div>
+          )
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Bitbucket-specific setup options with OAuth and Connect App tabs
+ */
+interface BitbucketSetupOptionsProps {
+  onOAuthInstall: () => void;
+  isInstalling: boolean;
+  onConnectAppInstall?: () => void;
+  isConnectInstalling: boolean;
+  connectInstallStatus?: string | null;
+  descriptorUrl: string;
+  copyToClipboard: (text: string) => void;
+}
+
+function BitbucketSetupOptions({
+  onOAuthInstall,
+  isInstalling,
+  onConnectAppInstall,
+  isConnectInstalling,
+  connectInstallStatus,
+  descriptorUrl,
+  copyToClipboard
+}: BitbucketSetupOptionsProps) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Connect your Bitbucket Cloud workspace. Both methods provide full functionality including automatic webhook setup.
+      </p>
+      
+      <Tabs defaultValue="oauth" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="oauth">OAuth</TabsTrigger>
+          <TabsTrigger value="connect">Connect App</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="oauth" className="space-y-4 pt-4">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">Recommended</Badge>
+            </div>
             <p className="text-sm text-muted-foreground">
-              Connect your {provider.name} workspace to enable code analysis.
+              Quick setup via OAuth 2.0. CodeCrow will automatically configure webhooks when you add repositories.
             </p>
-            
-            {/* OAuth flow (user-based) */}
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Works with any Bitbucket workspace</li>
+              <li>Automatic webhook configuration</li>
+              <li>Review comments posted as you</li>
+            </ul>
             <Button 
               className="w-full"
-              onClick={onInstall}
+              onClick={onOAuthInstall}
               disabled={isInstalling}
             >
               {isInstalling ? (
@@ -462,39 +498,71 @@ function ProviderCard({
               ) : (
                 <ExternalLink className="h-4 w-4 mr-2" />
               )}
-              Connect with {provider.name}
+              Connect with OAuth
             </Button>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="connect" className="space-y-4 pt-4">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Development Mode</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Install CodeCrow as a Bitbucket Connect app. Appears in your Bitbucket workspace's app menu.
+            </p>
             
-            {/* Connect App flow (workspace-based) - only for Bitbucket */}
-            {provider.id === 'bitbucket-cloud' && connectConfigured && onConnectAppInstall && (
-              <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground mb-2">
-                  Or install the CodeCrow app for workspace-level access (recommended for teams):
-                </p>
-                <Button 
-                  variant="outline"
-                  className="w-full"
-                  onClick={onConnectAppInstall}
-                  disabled={isConnectInstalling}
-                >
-                  {isConnectInstalling ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      {connectInstallStatus === 'waiting' ? 'Waiting for authorization...' : 'Starting...'}
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Install from Bitbucket
-                    </>
-                  )}
-                </Button>
-              </div>
+            <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
+              <Shield className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-amber-800 dark:text-amber-200 text-sm">
+                Manual Installation Required
+              </AlertTitle>
+              <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
+                <ol className="list-decimal list-inside space-y-1 mt-2">
+                  <li>Go to your Bitbucket workspace settings</li>
+                  <li>Navigate to <strong>Apps</strong> → <strong>Manage apps</strong></li>
+                  <li>Enable <strong>"Enable development mode"</strong> at the bottom</li>
+                  <li>Click <strong>"Install app from URL"</strong></li>
+                  <li>Paste the descriptor URL below</li>
+                </ol>
+              </AlertDescription>
+            </Alert>
+            
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+              <code className="text-xs flex-1 truncate">{descriptorUrl}</code>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyToClipboard(descriptorUrl)}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {onConnectAppInstall && (
+              <Button 
+                variant="outline"
+                className="w-full"
+                onClick={onConnectAppInstall}
+                disabled={isConnectInstalling}
+              >
+                {isConnectInstalling ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    {connectInstallStatus === 'waiting' ? 'Waiting for authorization...' : 'Starting...'}
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open Bitbucket to Install
+                  </>
+                )}
+              </Button>
             )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 

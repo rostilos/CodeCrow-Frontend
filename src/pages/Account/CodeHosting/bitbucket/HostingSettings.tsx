@@ -151,7 +151,6 @@ export default function HostingSettings() {
             setConnectInstallStatus('starting');
             
             const result = await integrationService.startBitbucketConnectInstallWithTracking(
-                currentWorkspace.id,
                 currentWorkspace.slug,
                 (status) => setConnectInstallStatus(status)
             );
@@ -281,8 +280,9 @@ export default function HostingSettings() {
         }
     };
 
-    const openAppConnectionDetails = (connectionId: number) => {
-        navigate(`/dashboard/hosting/bitbucket-cloud/success?connectionId=${connectionId}`);
+    const openAppConnectionDetails = (connection: VcsConnection) => {
+        // Use unified import flow for APP connections
+        navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=bitbucket-cloud&connectionType=${connection.connectionType}`);
     };
 
     if (isFetchingData) {
@@ -335,6 +335,7 @@ export default function HostingSettings() {
     const getConnectionTypeBadge = (type: VcsConnectionType) => {
         switch (type) {
             case 'APP':
+            case 'CONNECT_APP':
                 return <Badge variant="outline" className="border-blue-500 text-blue-600"><Zap className="h-3 w-3 mr-1" />App</Badge>;
             case 'OAUTH_MANUAL':
                 return <Badge variant="outline"><Settings className="h-3 w-3 mr-1" />OAuth</Badge>;
@@ -533,7 +534,7 @@ export default function HostingSettings() {
                                                     variant="outline"
                                                     size="sm"
                                                     className="flex-1"
-                                                    onClick={() => openAppConnectionDetails(connection.id)}
+                                                    onClick={() => openAppConnectionDetails(connection)}
                                                 >
                                                     <Settings className="h-4 w-4 mr-1"/>
                                                     Configure

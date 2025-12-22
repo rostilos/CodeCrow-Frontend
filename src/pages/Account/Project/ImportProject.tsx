@@ -15,7 +15,9 @@ import {
   GitPullRequest,
   GitCommit,
   X,
-  Info
+  Info,
+  Webhook,
+  Workflow
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +59,7 @@ export default function ImportProject() {
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   
-  // Current step: 1 = repo selection, 2 = project details, 3 = AI connection, 4 = analysis config
+  // Current step: 1 = repo selection, 2 = project details, 3 = AI connection, 4 = analysis config, 5 = installation method
   const [currentStep, setCurrentStep] = useState(1);
   
   // Connection & Repository state
@@ -99,6 +101,9 @@ export default function ImportProject() {
   const [branchPushPatterns, setBranchPushPatterns] = useState<string[]>([]);
   const [newPrPattern, setNewPrPattern] = useState("");
   const [newBranchPattern, setNewBranchPattern] = useState("");
+  
+  // Installation method state: 'WEBHOOK' or 'PIPELINE'
+  const [installationMethod, setInstallationMethod] = useState<'WEBHOOK' | 'PIPELINE'>('WEBHOOK');
   
   // Creating state
   const [isCreating, setIsCreating] = useState(false);
@@ -364,6 +369,8 @@ export default function ImportProject() {
     } else if (currentStep === 3) {
       setCurrentStep(4);
       loadBranches();
+    } else if (currentStep === 4) {
+      setCurrentStep(5);
     }
   };
   
@@ -379,83 +386,42 @@ export default function ImportProject() {
     try {
       setIsCreating(true);
       
-      // Check if this is an OAuth/manual connection - use URL param directly
-      // Note: connectionType can be "null" string if backend returns null
-      const isManualConnection = !connectionType || 
-        connectionType === 'null' ||
-        connectionType === 'OAUTH_MANUAL' || 
-        connectionType === 'ACCESS_TOKEN';
-      
       console.log('[ImportProject] handleCreateProject called', {
         connectionType,
-        isManualConnection,
         provider,
         connectionId,
-        selectedRepo: selectedRepo?.slug
+        selectedRepo: selectedRepo?.slug,
+        installationMethod
       });
       
-      let result: { projectId: number; projectName: string; projectNamespace: string };
+      // Determine whether to setup webhooks based on installation method
+      const shouldSetupWebhooks = installationMethod === 'WEBHOOK';
       
-      if (isManualConnection) {
-        // For OAuth connections, use projectService.createProject
-        const namespace = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        
-        // Clean UUID by removing braces if present
-        const cleanUUID = selectedRepo.id ? String(selectedRepo.id).replace(/[{}]/g, '') : undefined;
-        
-        const createdProject = await projectService.createProject(currentWorkspace.slug, {
-          name: projectName,
-          namespace: namespace,
-          description: projectDescription || '',
-          creationMode: 'IMPORT',
-          vcsProvider: provider.toUpperCase() as 'BITBUCKET_CLOUD' | 'GITHUB',
+      // Use unified onboardRepository flow for all connection types
+      // This enables automatic webhook setup for both APP and OAUTH_MANUAL connections
+      const onboardResult = await integrationService.onboardRepository(
+        currentWorkspace.slug,
+        provider,
+        selectedRepo.slug,
+        {
           vcsConnectionId: parseInt(connectionId),
-          repositorySlug: selectedRepo.slug,
-          repositoryUUID: cleanUUID,
-        });
-        
-        // Bind AI connection if selected
-        if (selectedAiConnectionId && createdProject.namespace) {
-          try {
-            await projectService.bindAiConnection(currentWorkspace.slug, createdProject.namespace, selectedAiConnectionId);
-          } catch (aiErr: any) {
-            console.warn("Failed to bind AI connection:", aiErr);
-          }
+          projectName: projectName,
+          projectNamespace: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
+          projectDescription: projectDescription || undefined,
+          aiConnectionId: selectedAiConnectionId || undefined,
+          defaultBranch: selectedDefaultBranch || undefined,
+          prAnalysisEnabled: prAnalysisEnabled,
+          branchAnalysisEnabled: branchAnalysisEnabled,
+          setupWebhooks: shouldSetupWebhooks,
         }
-        
-        // Update analysis settings
-        if (createdProject.namespace) {
-          await projectService.updateAnalysisSettings(currentWorkspace.slug, createdProject.namespace, {
-            prAnalysisEnabled,
-            branchAnalysisEnabled,
-            installationMethod: 'WEBHOOK'
-          });
-        }
-        
-        result = {
-          projectId: typeof createdProject.id === 'string' ? parseInt(createdProject.id) : createdProject.id,
-          projectName: createdProject.name,
-          projectNamespace: createdProject.namespace,
-        };
-      } else {
-        // For App connections, use integrationService.onboardRepository
-        const onboardResult = await integrationService.onboardRepository(
-          currentWorkspace.slug,
-          provider,
-          selectedRepo.slug,
-          {
-            vcsConnectionId: parseInt(connectionId),
-            projectName: projectName,
-            projectDescription: projectDescription || undefined,
-            aiConnectionId: selectedAiConnectionId || undefined,
-            defaultBranch: selectedDefaultBranch || undefined,
-            prAnalysisEnabled: prAnalysisEnabled,
-            branchAnalysisEnabled: branchAnalysisEnabled,
-            setupWebhooks: true,
-          }
-        );
-        result = onboardResult;
-      }
+      );
+      
+      const result = {
+        projectId: onboardResult.projectId,
+        projectName: onboardResult.projectName,
+        projectNamespace: onboardResult.projectNamespace,
+        webhooksConfigured: onboardResult.webhooksConfigured
+      };
       
       // Update branch patterns if any are set
       if ((prTargetPatterns.length > 0 || branchPushPatterns.length > 0) && result.projectNamespace) {
@@ -465,9 +431,16 @@ export default function ImportProject() {
         });
       }
       
+      // Determine the actual installation method based on user choice and webhook setup result
+      const finalInstallationMethod = installationMethod === 'WEBHOOK' && result.webhooksConfigured 
+        ? 'WEBHOOK' 
+        : 'PIPELINE';
+      
       toast({
         title: "Project created",
-        description: `Successfully created project "${result.projectName}"`,
+        description: result.webhooksConfigured 
+          ? `Successfully created project "${result.projectName}" with automatic PR reviews enabled`
+          : `Successfully created project "${result.projectName}". Configure pipelines to trigger reviews.`,
       });
       
       // Navigate to success page
@@ -478,7 +451,8 @@ export default function ImportProject() {
             name: result.projectName,
             namespace: result.projectNamespace,
           },
-          installationMethod: 'WEBHOOK',
+          installationMethod: finalInstallationMethod,
+          webhooksConfigured: result.webhooksConfigured,
           prAnalysisEnabled,
           branchAnalysisEnabled,
           prTargetPatterns,
@@ -550,9 +524,16 @@ export default function ImportProject() {
         <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
         <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'text-primary' : 'text-muted-foreground'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            4
+            {currentStep > 4 ? <CheckCircle className="h-4 w-4" /> : '4'}
           </div>
           <span className="hidden sm:inline font-medium">Analysis</span>
+        </div>
+        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 5 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`flex items-center gap-2 ${currentStep >= 5 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 5 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+            5
+          </div>
+          <span className="hidden sm:inline font-medium">Install</span>
         </div>
       </div>
       
@@ -1141,6 +1122,151 @@ export default function ImportProject() {
           </Card>
           
           {/* Step 4 Actions */}
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePreviousStep}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <Button onClick={handleNextStep}>
+              Next: Installation Method
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </>
+      )}
+      
+      {/* Step 5: Installation Method */}
+      {currentStep === 5 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Webhook className="h-5 w-5" />
+                Installation Method
+              </CardTitle>
+              <CardDescription>
+                Choose how CodeCrow will receive events from your repository
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Webhook Option */}
+              <div 
+                className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                  installationMethod === 'WEBHOOK' 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-border hover:border-primary/50'
+                }`}
+                onClick={() => setInstallationMethod('WEBHOOK')}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`p-2 rounded-lg ${installationMethod === 'WEBHOOK' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    <Webhook className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium">Webhook (Recommended)</div>
+                      <Badge variant="secondary" className="text-xs">Automatic</Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      CodeCrow will automatically create webhooks in your repository. 
+                      Analysis triggers automatically when PRs are created or code is pushed.
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        No setup required
+                      </Badge>
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Instant triggers
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      installationMethod === 'WEBHOOK' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {installationMethod === 'WEBHOOK' && (
+                        <div className="w-3 h-3 rounded-full bg-primary" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Pipeline Option */}
+              <div 
+                className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                  installationMethod === 'PIPELINE' 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-border hover:border-primary/50'
+                }`}
+                onClick={() => setInstallationMethod('PIPELINE')}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`p-2 rounded-lg ${installationMethod === 'PIPELINE' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    <Workflow className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium">Bitbucket Pipelines</div>
+                      <Badge variant="secondary" className="text-xs">Manual Setup</Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Configure your bitbucket-pipelines.yml to call CodeCrow. 
+                      Useful when you want full control over when analysis runs.
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        Full control
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        Custom triggers
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      installationMethod === 'PIPELINE' ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {installationMethod === 'PIPELINE' && (
+                        <div className="w-3 h-3 rounded-full bg-primary" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Info Alert */}
+              {installationMethod === 'PIPELINE' && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    After project creation, you'll see setup instructions for configuring your pipeline.
+                    You will also need to configure webhooks manually in order to use (<code className="px-1 bg-muted rounded">/codecrow</code>) commands.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Final Summary */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                <div className="font-medium">Final Summary</div>
+                <div className="text-sm space-y-1">
+                  <div><span className="text-muted-foreground">Repository:</span> {selectedRepo?.fullName}</div>
+                  <div><span className="text-muted-foreground">Project Name:</span> {projectName}</div>
+                  <div><span className="text-muted-foreground">Default Branch:</span> {selectedDefaultBranch}</div>
+                  <div><span className="text-muted-foreground">PR Analysis:</span> {prAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
+                  <div><span className="text-muted-foreground">Branch Analysis:</span> {branchAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
+                  <div><span className="text-muted-foreground">Installation:</span> {installationMethod === 'WEBHOOK' ? 'Automatic Webhook' : 'Bitbucket Pipelines'}</div>
+                  {selectedAiConnectionId && (
+                    <div><span className="text-muted-foreground">AI Connection:</span> {aiConnections.find(c => c.id === selectedAiConnectionId)?.aiModel}</div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Step 5 Actions */}
           <div className="flex justify-between">
             <Button variant="outline" onClick={handlePreviousStep}>
               <ArrowLeft className="h-4 w-4 mr-2" />

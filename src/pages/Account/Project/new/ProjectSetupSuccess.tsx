@@ -32,7 +32,10 @@ export default function ProjectSetupSuccess() {
   const [loading, setLoading] = useState(!project);
   
   // Get configuration from location state
-  const installationMethod = (location.state as any)?.installationMethod as InstallationMethod | null;
+  const webhooksConfigured = (location.state as any)?.webhooksConfigured as boolean | undefined;
+  // Support both new installationMethod and legacy webhooksConfigured
+  const installationMethod = ((location.state as any)?.installationMethod as InstallationMethod | null) 
+    ?? (webhooksConfigured === true ? 'WEBHOOK' : webhooksConfigured === false ? 'PIPELINE' : null);
   const prAnalysisEnabled = (location.state as any)?.prAnalysisEnabled ?? true;
   const branchAnalysisEnabled = (location.state as any)?.branchAnalysisEnabled ?? true;
   const prTargetPatterns = (location.state as any)?.prTargetPatterns as string[] || [];
