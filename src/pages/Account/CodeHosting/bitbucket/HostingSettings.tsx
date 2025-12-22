@@ -2,14 +2,18 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import {Button} from "@/components/ui/button.tsx";
 import {Badge} from "@/components/ui/badge.tsx";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs.tsx";
+import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert.tsx";
+import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible.tsx";
 import {
     AlertCircle, 
     CheckCircle, 
+    ChevronDown,
     Cloud,
     Edit, 
     ExternalLink,
     GitBranch, 
     Github,
+    Info,
     Loader2, 
     Plus, 
     RefreshCw,
@@ -41,6 +45,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import GitHubHostingSettings from "@/pages/Account/CodeHosting/github/GitHubHostingSettings.tsx";
+import bitbucketAppSetupImg from "@/assets/bitbucket-app-setup.png";
 
 interface BitbucketConnection {
     id: string;
@@ -141,8 +146,8 @@ export default function HostingSettings() {
     
     /**
      * Handle Bitbucket Connect App installation.
-     * Opens popup for Bitbucket authorization, then checks for new installations.
-     * User will need to manually link if an installation is found.
+     * Opens popup for Bitbucket authorization. User enables dev mode in Bitbucket,
+     * app installs automatically, then user clicks "Manage App" to complete setup.
      */
     const handleConnectAppInstall = async () => {
         if (!currentWorkspace) return;
@@ -151,6 +156,7 @@ export default function HostingSettings() {
             setConnectInstallStatus('starting');
             
             const result = await integrationService.startBitbucketConnectInstallWithTracking(
+                currentWorkspace.id,
                 currentWorkspace.slug,
                 (status) => setConnectInstallStatus(status)
             );
@@ -175,7 +181,7 @@ export default function HostingSettings() {
             } else if (result.status === 'no_installation') {
                 toast({
                     title: "No Installation Found",
-                    description: "The app wasn't installed or you don't have access to the Bitbucket workspace. Make sure you have an existing Bitbucket connection first.",
+                    description: "The app wasn't installed. Please try again and make sure to enable development mode in Bitbucket when prompted.",
                     variant: "destructive",
                 });
                 
@@ -367,58 +373,56 @@ export default function HostingSettings() {
                 </TabsContent>
 
                 <TabsContent value="bitbucket" className="space-y-6">
-                    {/* App Installation Card - Always show at top */}
+                    {/* New Connection Options Card with 3 tabs */}
                     <Card className="border-2 border-dashed border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Sparkles className="h-5 w-5 text-blue-500" />
-                                Bitbucket Cloud App
-                                <Badge variant="secondary" className="ml-2">Recommended</Badge>
+                                Connect Bitbucket Cloud
                             </CardTitle>
                             <CardDescription>
-                                1-click integration with automatic webhook setup. Connect your entire Bitbucket workspace in seconds.
+                                Choose your preferred method to connect your Bitbucket workspace.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center justify-between">
-                                <ul className="text-sm text-muted-foreground space-y-1">
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                        Automatic webhook configuration
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                        Workspace-level access to all repositories
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                        Automatic token refresh
-                                    </li>
-                                </ul>
-                                <div className="flex flex-col gap-2 items-end">
-                                    {isConnectAppConfigured ? (
-                                        <Button 
-                                            onClick={handleConnectAppInstall}
-                                            disabled={isConnectInstalling}
-                                            className="bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            {isConnectInstalling ? (
-                                                <>
-                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                    Installing...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                                    Install from Bitbucket
-                                                </>
-                                            )}
-                                        </Button>
-                                    ) : (
+                            <Tabs defaultValue="oauth-app" className="w-full">
+                                <TabsList className="grid w-full grid-cols-3">
+                                    <TabsTrigger value="oauth-app">OAuth App</TabsTrigger>
+                                    <TabsTrigger value="connect-app">Connect App</TabsTrigger>
+                                    <TabsTrigger value="manual">Manual OAuth</TabsTrigger>
+                                </TabsList>
+                                
+                                {/* Option 1: OAuth App (Recommended - 1-click) */}
+                                <TabsContent value="oauth-app" className="space-y-4 pt-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">Recommended for personal workspaces</Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Quick 1-click setup via OAuth 2.0. Review comments will be posted as your Bitbucket account.
+                                        </p>
+                                        <ul className="text-sm text-muted-foreground space-y-1">
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Fastest setup - just authorize and go
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                User-level integration (tied to personal account)
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Works with any Bitbucket workspace you have access to
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Automatic webhook configuration
+                                            </li>
+                                        </ul>
                                         <Button 
                                             onClick={handleInstallApp}
                                             disabled={isInstallingApp}
-                                            className="bg-blue-600 hover:bg-blue-700"
+                                            className="w-full bg-blue-600 hover:bg-blue-700"
                                         >
                                             {isInstallingApp ? (
                                                 <>
@@ -428,16 +432,163 @@ export default function HostingSettings() {
                                             ) : (
                                                 <>
                                                     <ExternalLink className="h-4 w-4 mr-2" />
-                                                    Install Bitbucket App
+                                                    Connect with Bitbucket
                                                 </>
                                             )}
                                         </Button>
-                                    )}
-                                    {connectInstallStatus && (
-                                        <span className="text-sm text-muted-foreground">{connectInstallStatus}</span>
-                                    )}
-                                </div>
-                            </div>
+                                    </div>
+                                </TabsContent>
+                                
+                                {/* Option 2: Connect App (Workspace-level) */}
+                                <TabsContent value="connect-app" className="space-y-4 pt-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline">Workspace Integration</Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Install CodeCrow as a Bitbucket Connect app at the workspace level. Comments are posted by the CodeCrow app.
+                                        </p>
+                                        <ul className="text-sm text-muted-foreground space-y-1">
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Workspace-level integration (not tied to personal account)
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Comments appear as "CodeCrow" bot
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Requires workspace admin + enabling development mode
+                                            </li>
+                                        </ul>
+                                        
+                                        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+                                            <Info className="h-4 w-4 text-blue-600" />
+                                            <AlertTitle className="text-blue-800 dark:text-blue-200 text-sm">
+                                                How it works
+                                            </AlertTitle>
+                                            <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs flex justify-between gap-x-4">
+                                                
+                                                <div className="w-1/2">
+                                                    <ol className="list-decimal list-inside space-y-1 mt-2 mb-4">
+                                                        <li>Click "Install Connect App" below</li>
+                                                        <li>Bitbucket will ask you to <strong>enable development mode</strong> - click to enable</li>
+                                                        <li>Authorize the app installation</li>
+                                                        <li>After install, click <strong>"Manage App"</strong> in Bitbucket to complete setup</li>
+                                                    </ol>
+                                                    <Collapsible>
+                                                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group">
+                                                            <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+                                                            <span>Why development mode is required?</span>
+                                                        </CollapsibleTrigger>
+                                                        <CollapsibleContent className="mt-2 text-xs text-muted-foreground space-y-2">
+                                                            <p>
+                                                                <strong>Bitbucket deprecated OAuth Connect Apps</strong> from being listed on the Atlassian Marketplace. 
+                                                                New Connect apps must use development mode for installation.
+                                                            </p>
+                                                            <p>
+                                                                <strong>Forge is not suitable</strong> for CodeCrow's use case — it cannot provide the speed and quality 
+                                                                of analysis we deliver, nor support full auto-setup of webhooks and repositories.
+                                                            </p>
+                                                            <p className="text-muted-foreground/70">
+                                                                Development mode is a one-time setup per workspace and doesn't affect your other apps.
+                                                            </p>
+                                                        </CollapsibleContent>
+                                                    </Collapsible>
+                                                </div>
+                                                <img 
+                                                    src={bitbucketAppSetupImg} 
+                                                    alt="Bitbucket Manage App button location" 
+                                                    className="rounded-lg border shadow-sm max-h-96 object-contain"
+                                                />
+                                            </AlertDescription>
+                                        </Alert>
+     
+                                        
+                                        <Button 
+                                            className="w-full"
+                                            onClick={handleConnectAppInstall}
+                                            disabled={isConnectInstalling}
+                                        >
+                                            {isConnectInstalling ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                    {connectInstallStatus === 'waiting' ? 'Waiting for Bitbucket...' : 
+                                                     connectInstallStatus === 'checking' ? 'Checking installation...' : 'Starting...'}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Zap className="h-4 w-4 mr-2" />
+                                                    Install Connect App
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </TabsContent>
+                                
+                                {/* Option 3: Manual OAuth (Bring your own credentials) */}
+                                <TabsContent value="manual" className="space-y-4 pt-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="secondary">Advanced</Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Use your own Bitbucket OAuth consumer credentials. Best for enterprise setups or when you want full control.
+                                        </p>
+                                        <ul className="text-sm text-muted-foreground space-y-1">
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Full control over OAuth credentials
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Can use existing OAuth consumers
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                                Enterprise/compliance friendly
+                                            </li>
+                                        </ul>
+                                        
+                                        <Alert>
+                                            <Info className="h-4 w-4" />
+                                            <AlertTitle className="text-sm">Setup Required</AlertTitle>
+                                            <AlertDescription className="text-xs space-y-2">
+                                                <p>
+                                                    You'll need to create an OAuth consumer in your Bitbucket workspace settings.{' '}
+                                                    <a 
+                                                        href="https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/" 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                                                    >
+                                                        Official docs <ExternalLink className="h-3 w-3" />
+                                                    </a>
+                                                </p>
+                                                <div className="mt-2">
+                                                    <p className="font-medium text-foreground mb-1">Required permissions:</p>
+                                                    <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                                                        <li><strong>Account</strong> → Read</li>
+                                                        <li><strong>Repositories</strong> → Read</li>
+                                                        <li><strong>Pull Requests</strong> → Read</li>
+                                                        <li><strong>Webhooks</strong> → Read & Write</li>
+                                                    </ul>
+                                                </div>
+                                            </AlertDescription>
+                                        </Alert>
+                                        
+                                        <Button 
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => navigate('/dashboard/hosting/add-connection')}
+                                        >
+                                            <Settings className="h-4 w-4 mr-2" />
+                                            Configure Manual OAuth
+                                        </Button>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
                         </CardContent>
                     </Card>
 
