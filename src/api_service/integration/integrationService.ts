@@ -176,6 +176,21 @@ class IntegrationService extends ApiService {
   // ==================== Bitbucket Connect App Methods ====================
   
   /**
+   * Start Connect App installation flow.
+   * Returns the Bitbucket authorization URL to redirect the user to.
+   */
+  async startConnectAppInstall(workspaceId: number, workspaceSlug?: string): Promise<ConnectInstallStartResponse> {
+    const params = new URLSearchParams({ workspaceId: workspaceId.toString() });
+    if (workspaceSlug) {
+      params.append('workspaceSlug', workspaceSlug);
+    }
+    return this.request<ConnectInstallStartResponse>(
+      `/bitbucket/connect/install/start?${params.toString()}`,
+      { method: 'POST' }
+    );
+  }
+
+  /**
    * Get Bitbucket Connect App status.
    */
   async getBitbucketConnectStatus(): Promise<{ configured: boolean }> {
@@ -227,23 +242,24 @@ class IntegrationService extends ApiService {
   }
   
   /**
-   * Start and track the full 1-click Bitbucket App installation.
+   * Start and track the full 1-click Bitbucket Connect App installation.
    * Opens a popup for Bitbucket authorization.
-   * Uses the secure endpoint that binds the installation to the authenticated user.
+   * Uses the Connect App endpoint that generates the Bitbucket addon authorization URL.
    */
   async startBitbucketConnectInstallWithTracking(
+    workspaceId: number,
     workspaceSlug: string,
     onStatusChange?: (status: string) => void
   ): Promise<ConnectInstallStatusResponse> {
-    // Start the install flow using the secure endpoint
-    const { installUrl } = await this.getInstallUrl(workspaceSlug, 'bitbucket-cloud');
+    // Start the Connect App install flow
+    const { installUrl, state } = await this.startConnectAppInstall(workspaceId, workspaceSlug);
     
     // Open popup
     const popup = window.open(installUrl, 'bitbucket_connect_install', 'width=800,height=700');
     
     onStatusChange?.('waiting');
     
-    // Wait for popup to close
+    // Wait for popup to close or check status
     return new Promise((resolve) => {
       const checkPopupClosed = setInterval(async () => {
         if (popup?.closed) {
@@ -253,7 +269,19 @@ class IntegrationService extends ApiService {
           // Give Bitbucket a moment to call our /installed endpoint
           await new Promise(r => setTimeout(r, 2000));
           
-          // Check for unlinked installations
+          // Check install status using state
+          try {
+            const statusResult = await this.checkConnectInstallStatus(state);
+            if (statusResult.status === 'completed') {
+              onStatusChange?.('completed');
+              resolve(statusResult);
+              return;
+            }
+          } catch {
+            // Ignore status check errors
+          }
+          
+          // Check for unlinked installations as fallback
           try {
             const unlinked = await this.getUnlinkedConnectInstallations();
             if (unlinked.length > 0) {
