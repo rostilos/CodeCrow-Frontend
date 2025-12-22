@@ -1033,7 +1033,7 @@ export default function ProjectDashboard() {
                   onFileClick={handleFileClick}
                 />
               ) : (
-                <Alert className="max-w-xl mx-auto">
+                <Alert className="mx-auto">
                   <Info className="h-4 w-4" />
                   <AlertTitle>No statistics available</AlertTitle>
                   <AlertDescription>
@@ -1470,7 +1470,7 @@ export default function ProjectDashboard() {
           /* No branch or PR selected - show content based on active tab */
           <div className="space-y-4">
             {(selectionType === 'branch' ? branchTab : prTab) === 'preview' && (
-              <Alert className="max-w-xl mx-auto">
+              <Alert className="mx-auto">
                 <Info className="h-4 w-4" />
                 <AlertTitle>No selection</AlertTitle>
                 <AlertDescription>
@@ -1479,7 +1479,7 @@ export default function ProjectDashboard() {
               </Alert>
             )}
             {(selectionType === 'branch' ? branchTab : prTab) === 'issues' && (
-              <Alert className="max-w-xl mx-auto">
+              <Alert className="mx-auto">
                 <Info className="h-4 w-4" />
                 <AlertTitle>No selection</AlertTitle>
                 <AlertDescription>
@@ -1488,7 +1488,7 @@ export default function ProjectDashboard() {
               </Alert>
             )}
             {(selectionType === 'branch' ? branchTab : prTab) === 'activity' && (
-              <Card className="max-w-xl mx-auto">
+              <Card className="mx-auto">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Activity className="h-5 w-5" />
