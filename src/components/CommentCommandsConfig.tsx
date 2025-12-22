@@ -34,9 +34,11 @@ export default function CommentCommandsConfig({ project, onUpdate }: CommentComm
   const [allowPublicRepoCommands, setAllowPublicRepoCommands] = useState(false);
   const [allowedCommands, setAllowedCommands] = useState<string[]>(["analyze", "summarize", "ask"]);
   
-  // Check if App integration is available
+  // Check if App integration is available (includes OAuth which now also has webhooks)
   const isAppIntegration = project.vcsConnectionType === 'APP' || 
-                           project.vcsConnectionType === 'GITHUB_APP';
+                           project.vcsConnectionType === 'CONNECT_APP' ||
+                           project.vcsConnectionType === 'GITHUB_APP' ||
+                           project.vcsConnectionType === 'OAUTH_MANUAL';
   
   useEffect(() => {
     if (project.commentCommandsConfig) {

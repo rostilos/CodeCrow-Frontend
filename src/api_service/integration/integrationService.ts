@@ -216,18 +216,8 @@ class IntegrationService extends ApiService {
   }
   
   /**
-   * Start the 1-click Bitbucket Connect App installation flow.
-   * Returns the install URL and state for tracking.
-   */
-  async startBitbucketConnectInstallFlow(workspaceId: number, workspaceSlug?: string): Promise<ConnectInstallStartResponse> {
-    return this.request<ConnectInstallStartResponse>(
-      `/bitbucket/connect/install/start?workspaceId=${workspaceId}${workspaceSlug ? `&workspaceSlug=${workspaceSlug}` : ''}`,
-      { method: 'POST' }
-    );
-  }
-  
-  /**
    * Check the status of a pending Connect App installation.
+   * @deprecated - No longer needed with Forge app flow
    */
   async checkConnectInstallStatus(state: string): Promise<ConnectInstallStatusResponse> {
     return this.request<ConnectInstallStatusResponse>(
@@ -237,23 +227,16 @@ class IntegrationService extends ApiService {
   }
   
   /**
-   * Start and track the full 1-click Bitbucket Connect App installation.
+   * Start and track the full 1-click Bitbucket App installation.
    * Opens a popup for Bitbucket authorization.
-   * 
-   * Note: Bitbucket Connect Apps don't pass state back in the /installed callback,
-   * so we can't automatically link. Instead, we:
-   * 1. Open popup for installation
-   * 2. Wait for popup to close
-   * 3. Check for new unlinked installations
-   * 4. Return status so frontend can refresh and show the "Link" option
+   * Uses the secure endpoint that binds the installation to the authenticated user.
    */
   async startBitbucketConnectInstallWithTracking(
-    workspaceId: number, 
-    workspaceSlug?: string,
+    workspaceSlug: string,
     onStatusChange?: (status: string) => void
   ): Promise<ConnectInstallStatusResponse> {
-    // Start the install flow to get the URL
-    const { installUrl } = await this.startBitbucketConnectInstallFlow(workspaceId, workspaceSlug);
+    // Start the install flow using the secure endpoint
+    const { installUrl } = await this.getInstallUrl(workspaceSlug, 'bitbucket-cloud');
     
     // Open popup
     const popup = window.open(installUrl, 'bitbucket_connect_install', 'width=800,height=700');

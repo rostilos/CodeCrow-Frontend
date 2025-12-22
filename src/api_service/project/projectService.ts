@@ -41,7 +41,7 @@ export interface BindRepositoryRequest {
   name?: string;
 }
 
-export type VcsConnectionType = 'OAUTH_MANUAL' | 'APP' | 'GITHUB_APP' | 'OAUTH_APP' | 'PERSONAL_TOKEN' | 'APPLICATION';
+export type VcsConnectionType = 'OAUTH_MANUAL' | 'APP' | 'CONNECT_APP' | 'GITHUB_APP' | 'OAUTH_APP' | 'PERSONAL_TOKEN' | 'APPLICATION' | 'ACCESS_TOKEN';
 export type VcsProvider = 'BITBUCKET_CLOUD' | 'GITHUB' | 'GITLAB';
 
 export interface ProjectDTO {

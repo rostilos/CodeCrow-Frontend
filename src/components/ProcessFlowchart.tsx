@@ -96,7 +96,7 @@ export const ProcessFlowchart = () => {
             <div
                 className={`hidden md:block absolute left-1/2 top-16 
                             bottom-16 w-0.5 bg-gradient-to-b from-muted-foreground/40 to-muted-foreground/10 transform 
-                            mt-[30px] mb-[11 0px]
+                            mt-[30px] mb-[110px]
                             -translate-x-1/2 transition-all duration-1000 ${
                     isVisible ? "scale-y-100" : "scale-y-0"
                 }`}
