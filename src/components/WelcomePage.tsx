@@ -24,54 +24,144 @@ import demoAnalysisDashboard from "@/assets/demo-analysis-dashboard.png";
 import demoDetailedInfo from "@/assets/demo-detailed-info.png";
 import demoProjectOverview from "@/assets/demo-project-overview.png";
 import demoRagContext from "@/assets/demo-rag-context.png";
-import demoVcsReport from "@/assets/demo-vcs-report.png";
-import demoInteractiveAgent from "@/assets/demo-interactive-agent.png";
+import demoVcsReportBb from "@/assets/home-features-cards/demo-vcs-report-bb.png";
+import demoVcsReportGh from "@/assets/home-features-cards/demo-vcs-report-gh.png";
+import demoInteractiveAgentBb from "@/assets/home-features-cards/demo-interactive-agent-bb.png";
+import demoInteractiveAgentGh from "@/assets/home-features-cards/demo-interactive-agent-gh.png";
+import demoDetailedInfoOnVcsBb from "@/assets/home-features-cards/detailed-info-on-vcs-bb.png";
+import demoDetailedInfoOnVcsGh from "@/assets/home-features-cards/detailed-info-on-vcs-gh.png";
+
 import demoEasySetup from "@/assets/demo-easy-setup.mp4";
 
-interface FeatureCard {
-    title: string;
-    description: string;
+interface FeatureSlide {
     mediaType: 'video' | 'screenshot';
     videoSrc?: string;
     imageSrc?: string;
 }
 
+interface FeatureCard {
+    title: string;
+    description: string;
+    slides: FeatureSlide[];
+}
+
+// Zoomable Image Component
+const ZoomableImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+    const [isHovered, setIsHovered] = useState(false);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        setMousePos({ x, y });
+    };
+
+    return (
+        <div
+            ref={containerRef}
+            className={`relative overflow-hidden cursor-zoom-in ${className}`}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onMouseMove={handleMouseMove}
+        >
+            <img
+                src={src}
+                alt={alt}
+                className={`w-full h-full object-cover transition-transform duration-200 ease-out origin-center`}
+                style={{
+                    transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
+                    transform: isHovered ? 'scale(2)' : 'scale(1)',
+                }}
+            />
+        </div>
+    );
+};
+
 const features: FeatureCard[] = [
     {
         title: "Web Platform for Teams",
         description: "Centralized dashboard for your entire team. Manage analysis, review reports, track historical data, and collaborate on code quality improvements together.",
-        mediaType: "screenshot",
-        imageSrc: demoProjectOverview,
+        slides: [
+            {
+                mediaType: "screenshot",
+                imageSrc: demoProjectOverview,
+            }
+        ]
     },
     {
         title: "Easy Setup",
         description: "Connect your repository in minutes. Automatic webhook and pipeline configuration with no complex setup required. Just install and start reviewing.",
-        mediaType: "video",
-        videoSrc: demoEasySetup,
+        slides: [
+            {
+                mediaType: "video",
+                videoSrc: demoEasySetup,
+            }
+        ]
     },
     {
         title: "Predictable and Concise Reports",
         description: "Get clear, actionable insights without the noise. Every issue is categorized, prioritized, and explained with suggested fixes that actually make sense.",
-        mediaType: "screenshot",
-        imageSrc: demoVcsReport,
+        slides: [
+            {
+                mediaType: "screenshot",
+                imageSrc: demoVcsReportBb,
+            },
+            {
+                mediaType: "screenshot",
+                imageSrc: demoVcsReportGh,
+            }
+        ]
     },
     {
         title: "Project-Aware Context, RAG Pipeline",
         description: "Our intelligent RAG pipeline understands your entire codebase. Only changed files are reprocessed — reducing API costs by up to 80% while maintaining full project context.",
-        mediaType: "screenshot",
-        imageSrc: demoRagContext,
+        slides: [
+            {
+                mediaType: "screenshot",
+                imageSrc: demoRagContext,
+            }
+        ]
     },
     {
         title: "Smart Cumulative Branch Analysis",
         description: "Track code quality across branches with incremental analysis. See historical trends, identify patterns, and watch your code quality improve over time.",
-        mediaType: "screenshot",
-        imageSrc: demoAnalysisDashboard,
+        slides: [
+            {
+                mediaType: "screenshot",
+                imageSrc: demoAnalysisDashboard,
+            }
+        ]
     },
     {
         title: "Interactive AI Agent",
         description: "Chat with CodeCrow's AI agent directly in your pull requests. Ask for clarification on analysis points, get detailed explanations of issues, or request specific suggestions on how to fix identified problems.",
-        mediaType: "screenshot",
-        imageSrc: demoInteractiveAgent,
+        slides: [
+            {
+                mediaType: "screenshot",
+                imageSrc: demoInteractiveAgentBb,
+            },
+            {
+                mediaType: "screenshot",
+                imageSrc: demoInteractiveAgentGh
+            }
+        ]
+    },
+    {
+        title: "Detailed info right on your VCS platform",
+        description: "Experience inline issues and analysis directly within your familiar VCS interface. No context switching needed.",
+        slides: [
+            {
+                mediaType: "screenshot",
+                imageSrc: demoDetailedInfoOnVcsBb
+            },
+            {
+                mediaType: "screenshot",
+                imageSrc: demoDetailedInfoOnVcsGh
+            }
+        ]
     }
 ];
 
@@ -82,10 +172,43 @@ const CARD_CONTENT_HEIGHT = 400; // px - height of expanded content
 const StackedCards = ({
     activeIndex,
     onCardSelect,
+    onHoverChange,
 }: {
     activeIndex: number;
     onCardSelect: (index: number) => void;
+    onHoverChange?: (isHovered: boolean) => void;
 }) => {
+    const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+    const [isAutoPlay, setIsAutoPlay] = useState(true);
+    const [isHovered, setIsHovered] = useState(false);
+
+    // Reset slide index and auto-play when active card changes
+    useEffect(() => {
+        setActiveSlideIndex(0);
+        setIsAutoPlay(true);
+    }, [activeIndex]);
+
+    // Handle hover changes to notify parent
+    useEffect(() => {
+        onHoverChange?.(isHovered);
+    }, [isHovered, onHoverChange]);
+
+    // Auto-play effect
+    useEffect(() => {
+        // Pause if manually stopped (isAutoPlay=false) or if user is hovering (isHovered=true)
+        if (!isAutoPlay || isHovered) return;
+
+        const currentFeature = features[activeIndex];
+        // SAFETY CHECK: Ensure we have a valid feature before accessing slides
+        if (!currentFeature || !currentFeature.slides || currentFeature.slides.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setActiveSlideIndex((prev) => (prev + 1) % currentFeature.slides.length);
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [activeIndex, isAutoPlay, isHovered]);
+
     // Calculate positions considering scaled headers
     const getScaledHeaderHeight = (distanceFromBottom: number) => {
         const scale = 1 - distanceFromBottom * 0.06;
@@ -101,9 +224,22 @@ const StackedCards = ({
     const totalHeight = totalInactiveHeight + CARD_HEADER_HEIGHT + CARD_CONTENT_HEIGHT;
 
     return (
-        <div className="relative w-full" style={{ height: `${totalHeight}px` }}>
+        <div
+            className="relative w-full"
+            style={{ height: `${totalHeight}px` }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
             {features.map((feature, index) => {
                 const isActive = activeIndex === index;
+                // Use active slide for active card, default to first for others
+                // SAFETY: Check bounds because activeSlideIndex might be stale from previous card before useEffect reset runs
+                const safeSlideIndex = (isActive && feature.slides && feature.slides[activeSlideIndex]) ? activeSlideIndex : 0;
+                // Double safety: ensure feature exists and slides array exists and has content
+                if (!feature || !feature.slides || feature.slides.length === 0) return null;
+
+                const currentSlide = feature.slides[safeSlideIndex];
+                if (!currentSlide) return null; // Should not happen with safeSlideIndex logic but safe guard
 
                 // Calculate visual position in the stack (0 = bottom/active, higher = further up)
                 let visualPosition: number;
@@ -197,16 +333,16 @@ const StackedCards = ({
                             >
                                 <div className="flex flex-col lg:flex-row h-full">
                                     {/* Text Side */}
-                                    <div className={`${feature.mediaType === 'video' ? 'lg:w-2/6' : 'lg:w-2/5'} p-6 flex flex-col justify-center border-t border-border/20`}>
+                                    <div className={`${currentSlide.mediaType === 'video' ? 'lg:w-2/6' : 'lg:w-2/5'} p-6 flex flex-col justify-center border-t border-border/20`}>
                                         <p className="text-muted-foreground text-base leading-relaxed">
                                             {feature.description}
                                         </p>
                                     </div>
 
                                     {/* Media Side */}
-                                    <div className={`${feature.mediaType === 'video' ? 'lg:w-4/6' : 'lg:w-3/5'} relative bg-muted/10 border-t lg:border-t-0 lg:border-l border-border/20 overflow-hidden`}>
+                                    <div className={`${currentSlide.mediaType === 'video' ? 'lg:w-4/6' : 'lg:w-3/5'} relative bg-muted/10 border-t lg:border-t-0 lg:border-l border-border/20 overflow-hidden group`}>
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            {feature.mediaType === 'video' && feature.videoSrc ? (
+                                            {currentSlide.mediaType === 'video' && currentSlide.videoSrc ? (
                                                 <video
                                                     poster={demoAnalysisDashboard}
                                                     autoPlay
@@ -216,29 +352,66 @@ const StackedCards = ({
                                                     preload="none"
                                                     className="w-full h-full object-cover"
                                                 >
-                                                    <source src={feature.videoSrc} type="video/mp4" />
+                                                    <source src={currentSlide.videoSrc} type="video/mp4" />
                                                 </video>
-                                            ) : feature.imageSrc ? (
-                                                <img
-                                                    src={feature.imageSrc}
+                                            ) : currentSlide.imageSrc ? (
+                                                <ZoomableImage
+                                                    src={currentSlide.imageSrc}
                                                     alt={feature.title}
-                                                    className="w-full h-full object-cover"
+                                                    className="w-full h-full"
                                                 />
                                             ) : (
                                                 <div className="text-center">
                                                     <div className="w-16 h-16 mx-auto mb-3 rounded-xl bg-muted/30 flex items-center justify-center border border-border/20">
-                                                        {feature.mediaType === 'video' ? (
+                                                        {currentSlide.mediaType === 'video' ? (
                                                             <Play className="w-8 h-8 text-muted-foreground" />
                                                         ) : (
                                                             <div className="w-8 h-8 rounded bg-muted-foreground/20" />
                                                         )}
                                                     </div>
                                                     <p className="text-sm text-muted-foreground">
-                                                        {feature.mediaType === 'video' ? 'Video placeholder' : 'Screenshot placeholder'}
+                                                        {currentSlide.mediaType === 'video' ? 'Video placeholder' : 'Screenshot placeholder'}
                                                     </p>
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Pagination Bullets - Only if multiple slides */}
+                                        {isActive && feature.slides.length > 1 && (
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 rounded-full bg-background/60 backdrop-blur-sm border border-border/10 z-10 transition-opacity duration-300">
+                                                {feature.slides.map((_, slideIndex) => (
+                                                    <button
+                                                        key={slideIndex}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); // Prevent card selection logic
+                                                            setActiveSlideIndex(slideIndex);
+                                                            setIsAutoPlay(false); // Stop auto-play on interaction
+                                                        }}
+                                                        className={`
+                              h-2.5 rounded-full transition-all duration-300 relative overflow-hidden
+                              ${slideIndex === activeSlideIndex
+                                                                ? 'w-8 bg-muted-foreground/30'
+                                                                : 'w-2.5 bg-muted-foreground/50 hover:bg-primary/50'
+                                                            }
+                            `}
+                                                        aria-label={`Go to slide ${slideIndex + 1}`}
+                                                    >
+                                                        {slideIndex === activeSlideIndex && (
+                                                            <div
+                                                                className={`absolute inset-0 bg-primary ${isAutoPlay ? 'animate-progress origin-left' : 'w-full'}`}
+                                                            />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Optional: Slide counter for clarity if requested */}
+                                        {isActive && feature.slides.length > 1 && (
+                                            <div className="absolute top-4 right-4 px-2 py-1 rounded-md bg-background/60 backdrop-blur-sm text-xs font-medium text-muted-foreground border border-border/10">
+                                                {activeSlideIndex + 1} / {feature.slides.length}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -759,7 +932,21 @@ export default function WelcomePage() {
     const [isHeaderVisible, setIsHeaderVisible] = useState(true);
     const [lastScrollY, setLastScrollY] = useState(0);
     const [activeTab, setActiveTab] = useState(0);
+    const [isTabAutoPlay, setIsTabAutoPlay] = useState(true);
+    const [isInteractionPaused, setIsInteractionPaused] = useState(false);
     const cardsRef = useRef<HTMLDivElement>(null);
+
+    // Tab Auto-Play Effect
+    useEffect(() => {
+        // Pause if auto-play is disabled or user is interacting (hovering)
+        if (!isTabAutoPlay || isInteractionPaused) return;
+
+        const interval = setInterval(() => {
+            setActiveTab((prev) => (prev + 1) % features.length);
+        }, 6000);
+
+        return () => clearInterval(interval);
+    }, [isTabAutoPlay, isInteractionPaused]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -791,6 +978,7 @@ export default function WelcomePage() {
 
     const handleTabChange = (index: number) => {
         setActiveTab(index);
+        setIsTabAutoPlay(false); // Stop auto-play on manual interaction
     };
 
     return (
@@ -828,6 +1016,7 @@ export default function WelcomePage() {
                 handleDocs={handleDocs}
                 activeTab={activeTab}
                 onTabChange={handleTabChange}
+                onHoverChange={setIsInteractionPaused}
             />
 
             {/* Works Where You Code */}

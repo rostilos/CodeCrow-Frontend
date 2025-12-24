@@ -109,7 +109,7 @@ const ragGuideItems = [
 const commandItems = [
   { title: "Overview", url: "/docs/commands/overview", icon: MessageSquare },
   { title: "/analyze", url: "/docs/commands/analyze", icon: Terminal },
-  { title: "/summarize", url: "/docs/commands/summarize", icon: Terminal },
+  { title: "/analyze", url: "/docs/commands/analyze", icon: Terminal },
   { title: "/ask", url: "/docs/commands/ask", icon: Terminal },
 ];
 

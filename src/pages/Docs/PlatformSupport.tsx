@@ -16,7 +16,7 @@ export default function PlatformSupport() {
         { name: "Branch Analysis", bitbucket: true, github: true, gitlab: false },
         { name: "Task Context Retrieval", bitbucket: false, github: false, gitlab: false },
         { name: "/ask", bitbucket: true, github: true, gitlab: false },
-        { name: "/summarize", bitbucket: true, github: true, gitlab: false },
+        { name: "/analyze", bitbucket: true, github: true, gitlab: false },
         { name: "/review", bitbucket: true, github: true, gitlab: false },
         { name: "Continuous Analysis", bitbucket: true, github: true, gitlab: false },
         { name: "RAG Pipeline", bitbucket: true, github: true, gitlab: false },

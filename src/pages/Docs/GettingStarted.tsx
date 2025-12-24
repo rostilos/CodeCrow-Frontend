@@ -113,7 +113,7 @@ export default function GettingStarted() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <step.icon className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium text-sm">{step.title}</h3>
+                <h3 className="font-medium text-sm no-toc">{step.title}</h3>
               </div>
               <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {step.description}
@@ -169,7 +169,7 @@ export default function GettingStarted() {
       {/* Step 1 - Common */}
       <div className="space-y-3">
         <h2 className="text-xl font-bold flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold">1</span>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold no-toc-text">1</span>
           Initial Setup
         </h2>
         {renderSteps(commonSteps)}
@@ -178,7 +178,7 @@ export default function GettingStarted() {
       {/* Understanding VCS Section */}
       <section className="space-y-4">
         <h2 className="text-xl font-bold flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold">2</span>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold no-toc-text">2</span>
           Connect VCS Platform
         </h2>
         <Card className="border-border/50">
@@ -228,7 +228,7 @@ export default function GettingStarted() {
       {/* AI Connection Selection */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold">3</span>
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold no-toc-text">3</span>
           Finalize Configuration
         </h2>
 

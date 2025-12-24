@@ -16,11 +16,11 @@ export function TableOfContents() {
     useEffect(() => {
         // Delay slightly to ensure DOM is rendered after route transition
         const timer = setTimeout(() => {
-            const elements = Array.from(document.querySelectorAll("h1, h2, h3"))
+            const elements = Array.from(document.querySelectorAll("main h1, main h2, main h3"))
                 .filter((element) => {
-                    // Filter out hidden elements (e.g., in inactive tabs)
                     const htmlElement = element as HTMLElement;
-                    return htmlElement.offsetParent !== null;
+                    // Filter out hidden elements or explicit no-toc
+                    return htmlElement.offsetParent !== null && !htmlElement.classList.contains("no-toc");
                 })
                 .map((element) => {
                     if (!element.id) {
@@ -31,9 +31,15 @@ export function TableOfContents() {
                             .replace(/\s+/g, "-")
                             .replace(/[^\w-]/g, "") || "id-" + Math.random().toString(36).substr(2, 5);
                     }
+
+                    // Extract text, excluding children with 'no-toc-text' class
+                    const clone = element.cloneNode(true) as HTMLElement;
+                    clone.querySelectorAll(".no-toc-text").forEach(el => el.remove());
+                    const cleanText = clone.textContent?.trim() || "";
+
                     return {
                         id: element.id,
-                        text: element.textContent || "",
+                        text: cleanText,
                         level: parseInt(element.tagName.substring(1)),
                     };
                 });
