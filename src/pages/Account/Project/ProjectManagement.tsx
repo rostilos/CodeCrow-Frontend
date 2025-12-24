@@ -34,7 +34,7 @@ interface Project {
   projectRepoSlug?: string;
   isActive?: boolean;
   createdAt: string;
-  defaultBranch: string|null;
+  defaultBranch: string | null;
   defaultBranchStats?: {
     branchName: string;
     totalIssues: number;
@@ -63,7 +63,7 @@ interface TaskManagementConfig {
 function BitbucketIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z"/>
+      <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z" />
     </svg>
   );
 }
@@ -86,7 +86,7 @@ export default function ProjectSettings() {
   const { currentWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(true);
   const { canManageWorkspace } = usePermissions();
-  
+
   // VCS connections grouped by provider for import dropdown
   const [vcsConnections, setVcsConnections] = useState<VcsConnection[]>([]);
 
@@ -95,15 +95,15 @@ export default function ProjectSettings() {
     setLoading(true);
     try {
       let projList, bbConnections;
-      if(canManageWorkspace) {
-          projList = await projectService.listProjects(currentWorkspace.slug)
+      if (canManageWorkspace) {
+        projList = await projectService.listProjects(currentWorkspace.slug)
       } else {
-          [projList, bbConnections] = await Promise.all([
-              projectService.listProjects(currentWorkspace.slug),
-              bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => [])
-          ]);
+        [projList, bbConnections] = await Promise.all([
+          projectService.listProjects(currentWorkspace.slug),
+          bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => [])
+        ]);
       }
-      
+
       // Also fetch all VCS connections for the import dropdown
       const allVcsConnections = await integrationService.getAllConnections(currentWorkspace.slug).catch(() => []);
       setVcsConnections(allVcsConnections);
@@ -241,13 +241,13 @@ export default function ProjectSettings() {
   const handleProjectSettings = (namespace: string) => {
     navigate(`/dashboard/projects/${namespace}/settings`);
   };
-  
+
   const handleImportFromConnection = (connection: VcsConnection) => {
     // Use the step-by-step import flow for all connection types
     // This provides proper project naming, AI selection, and analysis configuration
     navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=${connection.provider}&connectionType=${connection.connectionType}`);
   };
-  
+
   // Group connections by provider
   const connectionsByProvider = vcsConnections.reduce((acc, conn) => {
     if (!acc[conn.provider]) {
@@ -285,68 +285,70 @@ export default function ProjectSettings() {
                 Manage your projects and their configurations
               </p>
             </div>
-            <div className="flex gap-2">
-              {/* Import Project Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Import Project
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  {Object.keys(connectionsByProvider).length === 0 ? (
-                    <>
-                      <DropdownMenuLabel className="text-muted-foreground font-normal">
-                        No VCS connections configured
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate('/dashboard/hosting')}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add VCS Connection
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
-                    <>
-                      {Object.entries(connectionsByProvider).map(([provider, connections]) => (
-                        <div key={provider}>
-                          <DropdownMenuLabel className="flex items-center gap-2">
-                            {provider === 'bitbucket-cloud' && <BitbucketIcon className="h-4 w-4" />}
-                            {PROVIDERS.find(p => p.id === provider)?.name || provider}
-                          </DropdownMenuLabel>
-                          {connections.map((conn) => (
-                            <DropdownMenuItem
-                              key={conn.id}
-                              onClick={() => handleImportFromConnection(conn)}
-                              className="pl-6"
-                            >
-                              <div className="flex flex-col">
-                                <span>{conn.connectionName}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {conn.connectionType === 'APP' || conn.connectionType === 'CONNECT_APP' ? 'App Installation' : 'OAuth'} • {conn.repoCount} repos
-                                </span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                          <DropdownMenuSeparator />
-                        </div>
-                      ))}
-                      <DropdownMenuItem onClick={() => navigate('/dashboard/hosting')}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add New Connection
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              {/* New Project Button */}
-              <Button onClick={() => navigate('/dashboard/projects/new')}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Project
-              </Button>
-            </div>
+            {canManageWorkspace() && (
+              <div className="flex gap-2">
+                {/* Import Project Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Download className="mr-2 h-4 w-4" />
+                      Import Project
+                      <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    {Object.keys(connectionsByProvider).length === 0 ? (
+                      <>
+                        <DropdownMenuLabel className="text-muted-foreground font-normal">
+                          No VCS connections configured
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate('/dashboard/hosting')}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add VCS Connection
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        {Object.entries(connectionsByProvider).map(([provider, connections]) => (
+                          <div key={provider}>
+                            <DropdownMenuLabel className="flex items-center gap-2">
+                              {provider === 'bitbucket-cloud' && <BitbucketIcon className="h-4 w-4" />}
+                              {PROVIDERS.find(p => p.id === provider)?.name || provider}
+                            </DropdownMenuLabel>
+                            {connections.map((conn) => (
+                              <DropdownMenuItem
+                                key={conn.id}
+                                onClick={() => handleImportFromConnection(conn)}
+                                className="pl-6"
+                              >
+                                <div className="flex flex-col">
+                                  <span>{conn.connectionName}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {conn.connectionType === 'APP' || conn.connectionType === 'CONNECT_APP' ? 'App Installation' : 'OAuth'} • {conn.repoCount} repos
+                                  </span>
+                                </div>
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                          </div>
+                        ))}
+                        <DropdownMenuItem onClick={() => navigate('/dashboard/hosting')}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add New Connection
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* New Project Button */}
+                <Button onClick={() => navigate('/dashboard/projects/new')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Project
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -400,96 +402,98 @@ export default function ProjectSettings() {
                     project.name.toLowerCase().includes(projectSearchQuery.toLowerCase())
                   )
                   .map((project) => (
-                  <Card 
-                    key={project.id} 
-                    className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/20"
-                    onClick={() => navigate(`/dashboard/projects/${project.namespace || project.id}`)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3">
-                            <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                              {project.name}
-                            </CardTitle>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                          </div>
-                          <CardDescription className="mt-1.5 text-sm line-clamp-1">
-                            {project.description || "No description provided"}
-                          </CardDescription>
-                        </div>
-                        <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/dashboard/projects/${project.namespace || project.id}`)}
-                            className="hidden sm:flex"
-                          >
-                            View Details
-                          </Button>
-                          {canManageWorkspace() && (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => handleProjectSettings(project.namespace || String(project.id))}
-                            >
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0 pb-4">
-                      <div className="space-y-3">
-                        {/* Project Stats */}
-                        {projectStats[project.id] ? (
-                          <ProjectStats stats={projectStats[project.id]} compact={true} />
-                        ) : (
-                          <div className="h-6 bg-muted/50 rounded w-32 animate-pulse"></div>
-                        )}
-
-                        {/* Empty state for new projects with no analysis yet */}
-                        {!project.defaultBranchStats && (
-                          <Alert className="bg-muted/30 border-muted py-3">
-                            <Info className="h-4 w-4" />
-                            <AlertTitle className="text-sm font-medium">No analysis yet</AlertTitle>
-                            <AlertDescription className="flex items-center justify-between mt-1">
-                              <span className="text-xs text-muted-foreground">Results will appear after first analysis.</span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/dashboard/projects/${project.namespace || project.id}/setup`);
-                                }}
-                              >
-                                Setup
-                              </Button>
-                            </AlertDescription>
-                          </Alert>
-                        )}
-
-                        {/* Quick Info */}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground border-t border-border/50 pt-3">
-                          <div className="flex items-center gap-1.5">
-                            <GitBranch className="h-3.5 w-3.5" />
-                            <span className="truncate">{getRepositoryInfo(project.projectVcsWorkspace, project.projectRepoSlug)}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <GitBranch className="h-3.5 w-3.5" />
-                            <span className="truncate">{project.defaultBranch ?? "Default branch not configured"}</span>
-                          </div>
-                          {project.aiConnectionId && (
-                            <div className="flex items-center gap-1.5">
-                              <Zap className="h-3.5 w-3.5 text-primary" />
-                              <span>AI Enabled</span>
+                    <Card
+                      key={project.id}
+                      className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/20"
+                      onClick={() => navigate(`/dashboard/projects/${project.namespace || project.id}`)}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3">
+                              <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                                {project.name}
+                              </CardTitle>
+                              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                             </div>
-                          )}
+                            <CardDescription className="mt-1.5 text-sm line-clamp-1">
+                              {project.description || "No description provided"}
+                            </CardDescription>
+                          </div>
+                          <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/dashboard/projects/${project.namespace || project.id}`)}
+                              className="hidden sm:flex"
+                            >
+                              View Details
+                            </Button>
+                            {canManageWorkspace() && (
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => handleProjectSettings(project.namespace || String(project.id))}
+                              >
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardHeader>
+                      <CardContent className="pt-0 pb-4">
+                        <div className="space-y-3">
+                          {/* Project Stats */}
+                          {projectStats[project.id] ? (
+                            <ProjectStats stats={projectStats[project.id]} compact={true} />
+                          ) : (
+                            <div className="h-6 bg-muted/50 rounded w-32 animate-pulse"></div>
+                          )}
+
+                          {/* Empty state for new projects with no analysis yet */}
+                          {!project.defaultBranchStats && (
+                            <Alert className="bg-muted/30 border-muted py-3">
+                              <Info className="h-4 w-4" />
+                              <AlertTitle className="text-sm font-medium">No analysis yet</AlertTitle>
+                              <AlertDescription className="flex items-center justify-between mt-1">
+                                <span className="text-xs text-muted-foreground">Results will appear after first analysis.</span>
+                                {canManageWorkspace() && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/dashboard/projects/${project.namespace || project.id}/setup`);
+                                    }}
+                                  >
+                                    Setup
+                                  </Button>
+                                )}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+
+                          {/* Quick Info */}
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground border-t border-border/50 pt-3">
+                            <div className="flex items-center gap-1.5">
+                              <GitBranch className="h-3.5 w-3.5" />
+                              <span className="truncate">{getRepositoryInfo(project.projectVcsWorkspace, project.projectRepoSlug)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <GitBranch className="h-3.5 w-3.5" />
+                              <span className="truncate">{project.defaultBranch ?? "Default branch not configured"}</span>
+                            </div>
+                            {project.aiConnectionId && (
+                              <div className="flex items-center gap-1.5">
+                                <Zap className="h-3.5 w-3.5 text-primary" />
+                                <span>AI Enabled</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
             )}
           </TabsContent>

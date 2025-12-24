@@ -80,9 +80,9 @@ const CARD_CONTENT_HEIGHT = 400; // px - height of expanded content
 
 // Stacked Cards Component - inactive headers stack above with distance effect
 const StackedCards = ({
-                          activeIndex,
-                          onCardSelect,
-                      }: {
+    activeIndex,
+    onCardSelect,
+}: {
     activeIndex: number;
     onCardSelect: (index: number) => void;
 }) => {
@@ -161,9 +161,9 @@ const StackedCards = ({
                 overflow-hidden rounded-2xl border bg-card
                 transition-all duration-500 ease-out
                 ${isActive
-                                ? 'shadow-2xl shadow-primary/20 border-primary/50'
-                                : 'shadow-md border-border/50 hover:border-primary/30'
-                            }
+                                    ? 'shadow-2xl shadow-primary/20 border-primary/50'
+                                    : 'shadow-md border-border/50 hover:border-primary/30'
+                                }
               `}
                         >
                             {/* Card Header */}
@@ -252,11 +252,11 @@ const StackedCards = ({
 
 // Hero Section with cards starting at bottom
 const HeroSection = ({
-                         handleGetStarted,
-                         handleDocs,
-                         activeTab,
-                         onTabChange
-                     }: {
+    handleGetStarted,
+    handleDocs,
+    activeTab,
+    onTabChange
+}: {
     handleGetStarted: () => void;
     handleDocs: () => void;
     activeTab: number;
@@ -304,23 +304,23 @@ const HeroSection = ({
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
                             <span className="block text-foreground">AI-Powered</span>
                             <span className="block mt-1">
-                <span className="relative inline-block">
-                  <span className="relative z-10 text-primary">Code Review</span>
-                  <svg
-                      className="absolute -bottom-1 left-0 w-full h-3 text-primary/20"
-                      viewBox="0 0 200 12"
-                      preserveAspectRatio="none"
-                  >
-                    <path
-                        d="M0,8 Q50,0 100,8 T200,8"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                    />
-                  </svg>
-                </span>
-              </span>
+                                <span className="relative inline-block">
+                                    <span className="relative z-10 text-primary">Code Review</span>
+                                    <svg
+                                        className="absolute -bottom-1 left-0 w-full h-3 text-primary/20"
+                                        viewBox="0 0 200 12"
+                                        preserveAspectRatio="none"
+                                    >
+                                        <path
+                                            d="M0,8 Q50,0 100,8 T200,8"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                            strokeLinecap="round"
+                                        />
+                                    </svg>
+                                </span>
+                            </span>
                             <span className="block text-foreground mt-1">Platform</span>
                         </h1>
 
@@ -430,64 +430,64 @@ const WorksWhereYouCodeSection = () => {
                         </p>
                     </div>
 
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-            {integrations.map((integration) => (
-              <div 
-                key={integration.name}
-                className={`
+                    <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+                        {integrations.map((integration) => (
+                            <div
+                                key={integration.name}
+                                className={`
                   group relative p-6 lg:p-8 rounded-2xl border bg-card
                   transition-all duration-300 hover:-translate-y-1 flex-col flex
-                  ${integration.available 
-                    ? 'border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:border-primary/50' 
-                    : 'border-border/50 hover:border-primary/30'
-                  }
+                  ${integration.available
+                                        ? 'border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:border-primary/50'
+                                        : 'border-border/50 hover:border-primary/30'
+                                    }
                 `}
-              >
-                {integration.available && (
-                  <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
-                )}
-                <div className="flex items-center gap-4 mb-4">
-                  <div className={`
+                            >
+                                {integration.available && (
+                                    <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+                                )}
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className={`
                     w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden
                     ${integration.available ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}
                   `}>
-                    {integration.icon === 'bitbucket' && (
-                      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-                        <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z"/>
-                      </svg>
-                    )}
-                    {integration.icon === 'github' && (
-                      <Github className="h-6 w-6" />
-                    )}
-                    {integration.icon === 'gitlab' && (
-                      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-                        <path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 00-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 00-.867 0L1.386 9.45.044 13.587a.924.924 0 00.331 1.023L12 23.054l11.625-8.443a.92.92 0 00.33-1.024"/>
-                      </svg>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg">{integration.name}</h3>
-                    <Badge 
-                      variant={integration.available ? "default" : "secondary"}
-                      className={integration.available ? "bg-primary hover:bg-primary/90" : ""}
-                    >
-                      {integration.status}
-                    </Badge>
-                  </div>
-                </div>
-                <p className="text-muted-foreground leading-relaxed grow">{integration.description}</p>
-                
-                {integration.available && (
-                  <div className="mt-4 pt-4 border-t border-primary/20">
-                    <div className="flex items-center gap-2 text-sm text-primary font-medium">
-                      <Check className="h-4 w-4" />
-                      Ready to use
+                                        {integration.icon === 'bitbucket' && (
+                                            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
+                                                <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z" />
+                                            </svg>
+                                        )}
+                                        {integration.icon === 'github' && (
+                                            <Github className="h-6 w-6" />
+                                        )}
+                                        {integration.icon === 'gitlab' && (
+                                            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
+                                                <path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 00-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 00-.867 0L1.386 9.45.044 13.587a.924.924 0 00.331 1.023L12 23.054l11.625-8.443a.92.92 0 00.33-1.024" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-lg">{integration.name}</h3>
+                                        <Badge
+                                            variant={integration.available ? "default" : "secondary"}
+                                            className={integration.available ? "bg-primary hover:bg-primary/90" : ""}
+                                        >
+                                            {integration.status}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <p className="text-muted-foreground leading-relaxed grow">{integration.description}</p>
+
+                                {integration.available && (
+                                    <div className="mt-4 pt-4 border-t border-primary/20">
+                                        <div className="flex items-center gap-2 text-sm text-primary font-medium">
+                                            <Check className="h-4 w-4" />
+                                            Ready to use
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
                 </div>
             </div>
         </section>
@@ -507,7 +507,7 @@ const FAQSection = () => {
         },
         {
             question: "Which version control systems are supported?",
-            answer: "Currently, CodeCrow supports Bitbucket Cloud with OAuth2 authentication. GitHub and GitLab support are on our roadmap."
+            answer: "Currently, CodeCrow supports Bitbucket Cloud and GitHub. We plan to add support for other VCS platforms like GitLab in future releases."
         },
         {
             question: "How does the RAG pipeline work?",
@@ -535,16 +535,16 @@ const FAQSection = () => {
                         </p>
                     </div>
 
-          <Accordion type="single" collapsible className="w-full space-y-3">
-            {faqs.map((faq, index) => (
-              <AccordionItem 
-                key={index} 
-                value={`faq-${index}`}
-                className="border border-border/50 rounded-xl px-6 data-[state=open]:border-primary/30 data-[state=open]:bg-primary/5 transition-colors"
-              >
-                <AccordionTrigger className="text-left hover:text-primary py-5">
-                  {faq.question}
-                </AccordionTrigger>
+                    <Accordion type="single" collapsible className="w-full space-y-3">
+                        {faqs.map((faq, index) => (
+                            <AccordionItem
+                                key={index}
+                                value={`faq-${index}`}
+                                className="border border-border/50 rounded-xl px-6 data-[state=open]:border-primary/30 data-[state=open]:bg-primary/5 transition-colors"
+                            >
+                                <AccordionTrigger className="text-left hover:text-primary py-5">
+                                    {faq.question}
+                                </AccordionTrigger>
                                 <AccordionContent className="text-muted-foreground pb-5">
                                     {faq.answer}
                                 </AccordionContent>
@@ -609,8 +609,8 @@ const IntelligentContextSection = () => {
                             <h2 className="text-4xl sm:text-5xl font-bold mb-6">
                                 Intelligent Context, <br />
                                 <span className="text-primary">
-                    Minimal Cost
-                  </span>
+                                    Minimal Cost
+                                </span>
                             </h2>
                             <p className="text-xl text-muted-foreground leading-relaxed">
                                 Our Retrieval-Augmented Generation pipeline understands your entire codebase while processing only what's changed — dramatically reducing API costs and analysis time.

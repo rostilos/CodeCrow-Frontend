@@ -14,7 +14,7 @@ export default function Documentation() {
       {/* Header */}
       <header className="border-b border-border/40 sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
         <div className="container mx-auto px-4 lg:px-6 h-14 flex items-center justify-between">
-          <button 
+          <button
             onClick={() => navigate("/")}
             className="hover:opacity-80 transition-opacity"
           >
@@ -148,40 +148,49 @@ export default function Documentation() {
 
         <Separator className="my-16" />
 
-        {/* Configuration */}
+        {/* Setup & Configuration */}
         <section className="mb-16">
           <h2 className="text-3xl font-bold mb-8 flex items-center">
             <Settings className="mr-3 h-8 w-8 text-primary" />
-            Setup & Configuration
+            Administration & Setup
           </h2>
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle>Project Configuration</CardTitle>
-              <CardDescription>Customize CodeCrow for your project needs</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h4 className="font-semibold mb-3">Workspace Management</h4>
-                <p className="text-sm text-muted-foreground">
-                  [Placeholder] Learn how to create and manage workspaces, invite team members, and set up role-based access control.
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Project Administration</CardTitle>
+                <CardDescription>Manage project settings, analysis scope, and AI connections</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Configure how CodeCrow interacts with your repository:
                 </p>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold mb-3">AI Model Selection</h4>
-                <p className="text-sm text-muted-foreground">
-                  [Placeholder] Choose from various AI models including GPT-5, Claude, and custom models. Configure review depth and focus areas.
-                </p>
-              </div>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Analysis Configuration (Webhooks vs Pipelines)</li>
+                  <li>• Branch Analysis Scope</li>
+                  <li>• RAG Settings & Pipeline</li>
+                  <li>• AI Model Selection</li>
+                </ul>
+              </CardContent>
+            </Card>
 
-              <div>
-                <h4 className="font-semibold mb-3">Review Rules</h4>
-                <p className="text-sm text-muted-foreground">
-                  [Placeholder] Set up custom review rules, define coding standards, and configure automated checks for security and performance.
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Workspace & RAG</CardTitle>
+                <CardDescription>Manage your team and advanced AI capabilities</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Set up your organization and knowledge base:
                 </p>
-              </div>
-            </CardContent>
-          </Card>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li>• Workspace Member Permissions</li>
+                  <li>• RAG (Retrieval-Augmented Generation)</li>
+                  <li>• Activity Monitoring</li>
+                  <li>• Usage & Billing (if applicable)</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
         <Separator className="my-16" />
@@ -245,7 +254,7 @@ export default function Documentation() {
               <p className="text-sm text-muted-foreground">
                 [Placeholder] Complete API documentation with endpoints, authentication methods, and code examples.
               </p>
-              
+
               <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm">
                 <div className="text-muted-foreground mb-2">Example API Request:</div>
                 <code className="text-primary">

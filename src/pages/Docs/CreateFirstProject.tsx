@@ -67,110 +67,130 @@ export default function CreateFirstProject() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Step-by-Step Instructions</CardTitle>
-            <CardDescription>Create and configure your project using the step-by-step wizard</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">Option A: Import from VCS Connection (Recommended)</h4>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Use the "Import Project" button on the Projects page to start a guided wizard:
-                </p>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• <strong>Step 1</strong>: Select repository from your connected VCS account</li>
-                  <li>• <strong>Step 2</strong>: Enter project name and description (for manual OAuth connections)</li>
-                  <li>• <strong>Step 3</strong>: Select or create an AI connection</li>
-                </ul>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Project Creation Flow</CardTitle>
+              <CardDescription>From zero to your first AI-powered analysis</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="relative pb-4">
+                <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-muted"></div>
+
+                <div className="relative flex items-start mb-8">
+                  <div className="absolute left-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold z-10">1</div>
+                  <div className="ml-12">
+                    <h4 className="font-semibold">Create Workspace</h4>
+                    <p className="text-sm text-muted-foreground">Initialize your organization workspace. This is where your projects and team will reside.</p>
+                  </div>
+                </div>
+
+                <div className="relative flex items-start mb-8">
+                  <div className="absolute left-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold z-10">2</div>
+                  <div className="ml-12">
+                    <h4 className="font-semibold">Create VCS Connection</h4>
+                    <p className="text-sm text-muted-foreground">Link Bitbucket or GitHub. Choose between App installation (workspace access) or OAuth (user access).</p>
+                  </div>
+                </div>
+
+                <div className="relative flex items-start mb-8">
+                  <div className="absolute left-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold z-10">3</div>
+                  <div className="ml-12">
+                    <h4 className="font-semibold">Import/Create New Project</h4>
+                    <p className="text-sm text-muted-foreground">Select a repository from your VCS connection. CodeCrow will fetch the necessary metadata.</p>
+                  </div>
+                </div>
+
+                <div className="relative flex items-start mb-8">
+                  <div className="absolute left-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold z-10">4</div>
+                  <div className="ml-12">
+                    <h4 className="font-semibold">Follow Installation Steps</h4>
+                    <p className="text-sm text-muted-foreground">During project setup, you'll be prompted to choose an installation method (Webhook or Pipelines).</p>
+                  </div>
+                </div>
+
+                <div className="relative flex items-start mb-8">
+                  <div className="absolute left-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold z-10">5</div>
+                  <div className="ml-12">
+                    <h4 className="font-semibold">Configure Project Details</h4>
+                    <p className="text-sm text-muted-foreground">Give your project a name, namespace, and description.</p>
+                  </div>
+                </div>
+
+                <div className="relative flex items-start">
+                  <div className="absolute left-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold z-10">6</div>
+                  <div className="ml-12">
+                    <h4 className="font-semibold">Bind AI Connection</h4>
+                    <p className="text-sm text-muted-foreground">Select or create an AI connection (OpenAI, Claude, etc.) to power your code reviews.</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Analysis Configuration</CardTitle>
+              <CardDescription>Configure when and how CodeCrow should analyze your code</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-2">Pull Request Analysis</h4>
+                  <p className="text-sm text-muted-foreground">Automatically analyze PRs when they are created, updated, or synchronized.</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-2">Branch Analysis</h4>
+                  <p className="text-sm text-muted-foreground">Trigger analysis on every push to monitored branches.</p>
+                </div>
               </div>
 
-              <div className="border-l-2 border-muted pl-4">
-                <h4 className="font-semibold mb-2">Option B: App Installation Flow</h4>
-                <p className="text-sm text-muted-foreground mb-2">
-                  When installing via Bitbucket App, you'll be guided through:
-                </p>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• <strong>Step 1</strong>: Select repositories to import</li>
-                  <li>• <strong>Step 2</strong>: Select or create an AI connection</li>
-                </ul>
+              <div className="space-y-4">
+                <h4 className="font-semibold">Installation Methods</h4>
+                <div className="grid gap-3">
+                  <div className="p-4 border rounded-lg bg-primary/5 border-primary/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="default">Webhook (Recommended)</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Automatic triggers via Bitbucket/GitHub webhooks. No manual config required after initial authorization.
+                    </p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="outline">Bitbucket Pipelines</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Integrate with your existing CI/CD. Requires adding a step to your <code className="bg-muted px-1 rounded">bitbucket-pipelines.yml</code>.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="border-l-2 border-muted pl-4">
-                <h4 className="font-semibold mb-2">Option C: Manual Project Creation</h4>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Use "New Project" for full manual control:
-                </p>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• <strong>Step 1</strong>: Select repository from your VCS connections</li>
-                  <li>• <strong>Step 2</strong>: Enter project name, namespace, and description</li>
-                  <li>• <strong>Step 3</strong>: Select or create an AI connection</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>AI Connection Configuration</CardTitle>
-            <CardDescription>Configure AI provider during project creation</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              In the final step of project creation, you can select an existing AI connection or create a new one:
-            </p>
-            <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-              <li>• <strong>Provider</strong>: Choose from OpenRouter, OpenAI, or Anthropic</li>
-              <li>• <strong>Model</strong>: Enter the model identifier (e.g., "gpt-4", "claude-3-opus")</li>
-              <li>• <strong>API Key</strong>: Your provider's API key</li>
-              <li>• <strong>Token Limit</strong>: Maximum tokens for AI responses (optional)</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Post-Creation Configuration</CardTitle>
-            <CardDescription>Additional settings available after project creation</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">Change AI Connection</h4>
+              <div className="space-y-4">
+                <h4 className="font-semibold">Branch Filtering</h4>
                 <p className="text-sm text-muted-foreground">
-                  Navigate to <strong>Project Settings → AI</strong> to change or update the AI connection.
+                  Define which branches trigger automated analysis using wildcards (e.g., <code className="bg-muted px-1 rounded">main</code>, <code className="bg-muted px-1 rounded">release/*</code>).
                 </p>
-              </div>
-
-              <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">Configure Analysis Scope</h4>
-                <p className="text-sm text-muted-foreground mb-2">
-                  In <strong>Project Settings → Analysis Scope</strong>, configure which branches trigger analysis:
-                </p>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• <strong>PR Target Branches</strong>: Only analyze PRs targeting specific branches (e.g., <code className="bg-muted px-1 rounded">main</code>, <code className="bg-muted px-1 rounded">develop</code>)</li>
-                  <li>• <strong>Branch Push Patterns</strong>: Only analyze pushes to specific branches</li>
-                  <li>• Supports wildcards: <code className="bg-muted px-1 rounded">release/*</code> matches <code className="bg-muted px-1 rounded">release/1.0</code></li>
-                  <li>• Leave empty to analyze all branches (default)</li>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li>• <strong>PR Target Branches</strong>: Only analyze PRs targeting these branches.</li>
+                  <li>• <strong>Branch Push Patterns</strong>: Only analyze pushes to these branches.</li>
                 </ul>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>API Endpoints</CardTitle>
-            <CardDescription>For integration and automation</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
-              <div className="text-primary font-semibold">POST /{'{workspaceId}'}/project/create</div>
-              <div className="text-muted-foreground">Request Body:</div>
-              <pre className="text-xs overflow-x-auto">
-{`{
+          <Card>
+            <CardHeader>
+              <CardTitle>API Endpoints</CardTitle>
+              <CardDescription>For integration and automation</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
+                <div className="text-primary font-semibold">POST /{'{workspaceId}'}/project/create</div>
+                <div className="text-muted-foreground">Request Body:</div>
+                <pre className="text-xs overflow-x-auto">
+                  {`{
   "name": "string",
   "namespace": "string",
   "description": "string",
@@ -180,39 +200,40 @@ export default function CreateFirstProject() {
   "repositorySlug": "string",
   "repositoryUUID": "string"
 }`}
-              </pre>
-            </div>
+                </pre>
+              </div>
 
-            <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
-              <div className="text-primary font-semibold">PUT /{'{workspaceId}'}/project/{'{namespace}'}/ai/bind</div>
-              <div className="text-muted-foreground">Request Body:</div>
-              <pre className="text-xs overflow-x-auto">
-{`{
+              <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
+                <div className="text-primary font-semibold">PUT /{'{workspaceId}'}/project/{'{namespace}'}/ai/bind</div>
+                <div className="text-muted-foreground">Request Body:</div>
+                <pre className="text-xs overflow-x-auto">
+                  {`{
   "aiConnectionId": number
 }`}
-              </pre>
-            </div>
+                </pre>
+              </div>
 
-            <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
-              <div className="text-primary font-semibold">PUT /{'{workspaceId}'}/project/{'{namespace}'}/branch-analysis-config</div>
-              <div className="text-muted-foreground">Request Body:</div>
-              <pre className="text-xs overflow-x-auto">
-{`{
+              <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
+                <div className="text-primary font-semibold">PUT /{'{workspaceId}'}/project/{'{namespace}'}/branch-analysis-config</div>
+                <div className="text-muted-foreground">Request Body:</div>
+                <pre className="text-xs overflow-x-auto">
+                  {`{
   "prTargetBranches": ["main", "develop", "release/*"],
   "branchPushPatterns": ["main", "develop"]
 }`}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Namespace Tip:</strong> The namespace is permanent and used in URLs and API calls.
-            Choose a meaningful, lowercase identifier without spaces (e.g., use hyphens for separation).
-          </AlertDescription>
-        </Alert>
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Namespace Tip:</strong> The namespace is permanent and used in URLs and API calls.
+              Choose a meaningful, lowercase identifier without spaces (e.g., use hyphens for separation).
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     </div>
   );
