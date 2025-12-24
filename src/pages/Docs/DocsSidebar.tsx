@@ -41,7 +41,8 @@ import {
   Hammer,
   MessageSquare,
   Info,
-  Github
+  Github,
+  CheckCircle2
 } from "lucide-react";
 
 // Bitbucket logo SVG component
@@ -126,6 +127,7 @@ const developerDocsItems = [
 ];
 
 const faqItem = { title: "FAQ", url: "/docs/faq", icon: HelpCircle };
+const capabilitiesItem = { title: "Capabilities", url: "/docs/capabilities", icon: CheckCircle2 };
 
 interface NavItem {
   title: string;
@@ -246,6 +248,28 @@ export function DocsSidebar() {
         <SidebarGroup className="px-2 py-3 flex-1">
           <SidebarGroupContent className="grow">
             <div className="space-y-2">
+              {/* Product Capabilities - High-level Link */}
+              {!collapsed ? (
+                <NavLink
+                  to={capabilitiesItem.url}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground/80 hover:bg-muted/50"
+                    }`
+                  }
+                >
+                  <capabilitiesItem.icon className="h-4 w-4" />
+                  <span>{capabilitiesItem.title}</span>
+                </NavLink>
+              ) : (
+                <div className="flex items-center justify-center p-2">
+                  <NavLink to={capabilitiesItem.url}>
+                    <capabilitiesItem.icon className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                  </NavLink>
+                </div>
+              )}
+
               {/* Getting Started Section */}
               <NavSection
                 title="Getting Started"

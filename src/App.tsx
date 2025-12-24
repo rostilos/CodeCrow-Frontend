@@ -26,6 +26,7 @@ const SetupPipelines = lazy(() => import("./pages/Docs/SetupPipelines"));
 const SetupRAG = lazy(() => import("./pages/Docs/SetupRAG"));
 const CreatePullRequest = lazy(() => import("./pages/Docs/CreatePullRequest"));
 const FAQ = lazy(() => import("./pages/Docs/FAQ"));
+const PlatformSupport = lazy(() => import("./pages/Docs/PlatformSupport"));
 const VCSBitbucket = lazy(() => import("./pages/Docs/VCS/Bitbucket"));
 const VCSGitHub = lazy(() => import("./pages/Docs/VCS/GitHub"));
 const ProjectAdministration = lazy(() => import("./pages/Docs/ProjectAdministration"));
@@ -114,6 +115,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/docs" element={<DocsLayout />}>
                 <Route index element={<GettingStarted />} />
+                <Route path="capabilities" element={<PlatformSupport />} />
                 <Route path="workspace" element={<CreateWorkspace />} />
                 <Route path="vcs-connection" element={<CreateVCSConnection />} />
                 <Route path="vcs-connection/bitbucket" element={<VCSBitbucket />} />
