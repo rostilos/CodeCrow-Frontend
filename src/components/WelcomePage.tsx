@@ -28,6 +28,7 @@ import demoVcsReportBb from "@/assets/home-features-cards/demo-vcs-report-bb.png
 import demoVcsReportGh from "@/assets/home-features-cards/demo-vcs-report-gh.png";
 import demoInteractiveAgentBb from "@/assets/home-features-cards/demo-interactive-agent-bb.png";
 import demoInteractiveAgentGh from "@/assets/home-features-cards/demo-interactive-agent-gh.png";
+import demoInteractiveAgentGh2 from "@/assets/home-features-cards/demo-interactive-agent-gh-2.png";
 import demoDetailedInfoOnVcsBb from "@/assets/home-features-cards/detailed-info-on-vcs-bb.png";
 import demoDetailedInfoOnVcsGh from "@/assets/home-features-cards/detailed-info-on-vcs-gh.png";
 
@@ -70,7 +71,7 @@ const ZoomableImage = ({ src, alt, className }: { src: string; alt: string; clas
             <img
                 src={src}
                 alt={alt}
-                className={`w-full h-full object-cover transition-transform duration-200 ease-out origin-center`}
+                className={`object-contain w-full h-full bg-white object-right transition-transform duration-200 ease-out origin-center`}
                 style={{
                     transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
                     transform: isHovered ? 'scale(2)' : 'scale(1)',
@@ -92,12 +93,34 @@ const features: FeatureCard[] = [
         ]
     },
     {
-        title: "Easy Setup",
-        description: "Connect your repository in minutes. Automatic webhook and pipeline configuration with no complex setup required. Just install and start reviewing.",
+        title: "Interactive AI Agent",
+        description: "Chat with CodeCrow's AI agent directly in your pull requests. Ask for clarification on analysis points, get detailed explanations of issues, or request specific suggestions on how to fix identified problems.",
         slides: [
             {
-                mediaType: "video",
-                videoSrc: demoEasySetup,
+                mediaType: "screenshot",
+                imageSrc: demoInteractiveAgentBb,
+            },
+            {
+                mediaType: "screenshot",
+                imageSrc: demoInteractiveAgentGh
+            },
+            {
+                mediaType: "screenshot",
+                imageSrc: demoInteractiveAgentGh2
+            }
+        ]
+    },
+    {
+        title: "Detailed info right on your VCS platform",
+        description: "Experience inline issues and analysis directly within your familiar VCS interface. No context switching needed.",
+        slides: [
+            {
+                mediaType: "screenshot",
+                imageSrc: demoDetailedInfoOnVcsBb
+            },
+            {
+                mediaType: "screenshot",
+                imageSrc: demoDetailedInfoOnVcsGh
             }
         ]
     },
@@ -136,30 +159,12 @@ const features: FeatureCard[] = [
         ]
     },
     {
-        title: "Interactive AI Agent",
-        description: "Chat with CodeCrow's AI agent directly in your pull requests. Ask for clarification on analysis points, get detailed explanations of issues, or request specific suggestions on how to fix identified problems.",
+        title: "Easy Setup",
+        description: "Connect your repository in minutes. Automatic webhook and pipeline configuration with no complex setup required. Just install and start reviewing.",
         slides: [
             {
-                mediaType: "screenshot",
-                imageSrc: demoInteractiveAgentBb,
-            },
-            {
-                mediaType: "screenshot",
-                imageSrc: demoInteractiveAgentGh
-            }
-        ]
-    },
-    {
-        title: "Detailed info right on your VCS platform",
-        description: "Experience inline issues and analysis directly within your familiar VCS interface. No context switching needed.",
-        slides: [
-            {
-                mediaType: "screenshot",
-                imageSrc: demoDetailedInfoOnVcsBb
-            },
-            {
-                mediaType: "screenshot",
-                imageSrc: demoDetailedInfoOnVcsGh
+                mediaType: "video",
+                videoSrc: demoEasySetup,
             }
         ]
     }
