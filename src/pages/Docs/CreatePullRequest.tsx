@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GitPullRequest, Info, CheckCircle2, Clock } from "lucide-react";
 
+import { DocNavigation } from "./DocNavigation";
+
 export default function CreatePullRequest() {
   return (
     <div className="container mx-auto px-6 py-12 max-w-4xl">
@@ -29,19 +31,19 @@ export default function CreatePullRequest() {
             <ol className="space-y-3 text-muted-foreground">
               <li className="flex items-start">
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold mr-3 mt-0.5 flex-shrink-0">1</span>
-                <span>Receives webhook notification from Bitbucket Pipelines</span>
+                <span>Receives event notification from your VCS (Webhook or Pipeline)</span>
               </li>
               <li className="flex items-start">
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold mr-3 mt-0.5 flex-shrink-0">2</span>
-                <span>Fetches code changes from your repository</span>
+                <span>Calculates diff and pulls relevant context from your <strong>RAG Index</strong> (if enabled)</span>
               </li>
               <li className="flex items-start">
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold mr-3 mt-0.5 flex-shrink-0">3</span>
-                <span>Analyzes code using your configured AI model</span>
+                <span>Analyzes code using your configured AI model and project-wide context</span>
               </li>
               <li className="flex items-start">
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold mr-3 mt-0.5 flex-shrink-0">4</span>
-                <span>Generates comprehensive code review report</span>
+                <span>Generates comprehensive code review report and posts findings</span>
               </li>
               <li className="flex items-start">
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-bold mr-3 mt-0.5 flex-shrink-0">5</span>
@@ -240,6 +242,10 @@ export default function CreatePullRequest() {
             </div>
           </CardContent>
         </Card>
+
+        <DocNavigation
+          prev={{ title: "Pipeline Setup", url: "/docs/pipeline-setup" }}
+        />
       </div>
     </div>
   );

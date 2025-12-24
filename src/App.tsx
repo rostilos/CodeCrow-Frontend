@@ -22,10 +22,12 @@ const CreateVCSConnection = lazy(() => import("./pages/Docs/CreateVCSConnection"
 const CreateAIConnection = lazy(() => import("./pages/Docs/CreateAIConnection"));
 const CreateFirstProject = lazy(() => import("./pages/Docs/CreateFirstProject"));
 const GenerateProjectToken = lazy(() => import("./pages/Docs/GenerateProjectToken"));
-const SetupBitbucketPipelines = lazy(() => import("./pages/Docs/SetupBitbucketPipelines"));
+const SetupPipelines = lazy(() => import("./pages/Docs/SetupPipelines"));
+const SetupRAG = lazy(() => import("./pages/Docs/SetupRAG"));
 const CreatePullRequest = lazy(() => import("./pages/Docs/CreatePullRequest"));
 const FAQ = lazy(() => import("./pages/Docs/FAQ"));
-const BitbucketAppInstall = lazy(() => import("./pages/Docs/BitbucketAppInstall"));
+const VCSBitbucket = lazy(() => import("./pages/Docs/VCS/Bitbucket"));
+const VCSGitHub = lazy(() => import("./pages/Docs/VCS/GitHub"));
 const ProjectAdministration = lazy(() => import("./pages/Docs/ProjectAdministration"));
 const ProjectAdminGeneral = lazy(() => import("./pages/Docs/ProjectAdmin/General"));
 const ProjectAdminHosting = lazy(() => import("./pages/Docs/ProjectAdmin/CodeHosting"));
@@ -114,13 +116,15 @@ const App = () => (
                 <Route index element={<GettingStarted />} />
                 <Route path="workspace" element={<CreateWorkspace />} />
                 <Route path="vcs-connection" element={<CreateVCSConnection />} />
+                <Route path="vcs-connection/bitbucket" element={<VCSBitbucket />} />
+                <Route path="vcs-connection/github" element={<VCSGitHub />} />
                 <Route path="ai-connection" element={<CreateAIConnection />} />
                 <Route path="first-project" element={<CreateFirstProject />} />
+                <Route path="setup-rag" element={<SetupRAG />} />
                 <Route path="project-token" element={<GenerateProjectToken />} />
-                <Route path="bitbucket-pipelines" element={<SetupBitbucketPipelines />} />
+                <Route path="pipeline-setup" element={<SetupPipelines />} />
                 <Route path="pull-request" element={<CreatePullRequest />} />
                 <Route path="faq" element={<FAQ />} />
-                <Route path="bitbucket-app-install" element={<BitbucketAppInstall />} />
 
                 <Route path="admin/project" element={<ProjectAdministration />} />
                 <Route path="admin/project/general" element={<ProjectAdminGeneral />} />

@@ -3,13 +3,15 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Key, Info, CheckCircle2, AlertTriangle } from "lucide-react";
 
+import { DocNavigation } from "./DocNavigation";
+
 export default function GenerateProjectToken() {
   return (
     <div className="container mx-auto px-6 py-12 max-w-4xl">
       <div className="mb-8">
         <Badge className="mb-4 bg-primary/20 text-primary border-primary/30">
           <Key className="mr-2 h-4 w-4 inline" />
-          Step 5
+          Step 6
         </Badge>
         <h1 className="text-4xl font-bold mb-4">Generate Project Token</h1>
         <p className="text-xl text-muted-foreground">
@@ -18,6 +20,15 @@ export default function GenerateProjectToken() {
       </div>
 
       <div className="space-y-6">
+        <Alert className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>IMPORTANT:</strong> Project Tokens are <strong>only needed</strong> if you chose the
+            <strong> Pipeline Installation</strong> method during project creation. If you are using Webhooks,
+            authentication is handled automatically.
+          </AlertDescription>
+        </Alert>
+
         <Card>
           <CardHeader>
             <CardTitle>What is a Project Token?</CardTitle>
@@ -82,7 +93,7 @@ export default function GenerateProjectToken() {
               <div className="border-l-2 border-primary pl-4">
                 <h4 className="font-semibold mb-2">4. Copy and Secure the Token</h4>
                 <p className="text-sm text-muted-foreground">
-                  After generation, the token will be displayed <strong>only once</strong>. 
+                  After generation, the token will be displayed <strong>only once</strong>.
                   Copy it immediately and store it securely. You'll need this token in the next step for Bitbucket Pipelines configuration.
                 </p>
               </div>
@@ -107,7 +118,7 @@ export default function GenerateProjectToken() {
             <div>
               <h4 className="font-semibold mb-2">Viewing Active Tokens</h4>
               <p className="text-sm text-muted-foreground">
-                You can see all active tokens in the Token Management section, including their names, 
+                You can see all active tokens in the Token Management section, including their names,
                 creation dates, and expiration dates.
               </p>
             </div>
@@ -121,7 +132,7 @@ export default function GenerateProjectToken() {
             <div>
               <h4 className="font-semibold mb-2">Token Rotation</h4>
               <p className="text-sm text-muted-foreground">
-                For security best practices, rotate tokens periodically by creating a new token, 
+                For security best practices, rotate tokens periodically by creating a new token,
                 updating your pipeline configuration, and revoking the old token.
               </p>
             </div>
@@ -138,14 +149,14 @@ export default function GenerateProjectToken() {
               <div className="text-primary font-semibold">POST /{'{workspaceId}'}/project/{'{namespace}'}/token/generate</div>
               <div className="text-muted-foreground">Request Body:</div>
               <pre className="text-xs overflow-x-auto">
-{`{
+                {`{
   "name": "string",
   "lifetime": "string"
 }`}
               </pre>
               <div className="text-muted-foreground">Response:</div>
               <pre className="text-xs overflow-x-auto">
-{`{
+                {`{
   "token": "string"
 }`}
               </pre>
@@ -161,6 +172,11 @@ export default function GenerateProjectToken() {
             in your CI/CD system. If a token is compromised, revoke it immediately.
           </AlertDescription>
         </Alert>
+
+        <DocNavigation
+          prev={{ title: "Setup RAG (Optional)", url: "/docs/setup-rag" }}
+          next={{ title: "Pipeline Setup", url: "/docs/pipeline-setup" }}
+        />
       </div>
     </div>
   );
