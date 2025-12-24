@@ -8,6 +8,7 @@ import { AlertCircle, CheckCircle, BarChart3, XCircle, FileCode, ChevronRight, C
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { getCategoryInfo } from "@/config/issueCategories";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface IssuesByFileDisplayProps {
   issues: AnalysisIssue[];
@@ -21,8 +22,8 @@ interface IssuesByFileDisplayProps {
   selectionEnabled?: boolean;
 }
 
-export default function IssuesByFileDisplay({ 
-  issues, 
+export default function IssuesByFileDisplay({
+  issues,
   projectNamespace,
   branchName,
   prNumber,
@@ -34,6 +35,8 @@ export default function IssuesByFileDisplay({
 }: IssuesByFileDisplayProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { canManageWorkspace } = usePermissions();
+
 
   // Group issues by filename
   const issuesByFile = issues.reduce((acc, issue) => {
@@ -60,7 +63,7 @@ export default function IssuesByFileDisplay({
       medium: "secondary",
       low: "outline"
     } as const;
-    
+
     return (
       <Badge variant={variants[severity as keyof typeof variants] || "secondary"}>
         {severity.toUpperCase()}
@@ -72,15 +75,15 @@ export default function IssuesByFileDisplay({
     // Preserve current URL path and params when navigating to issue details
     const currentPath = window.location.pathname;
     const params = new URLSearchParams(searchParams);
-    
+
     // Store the return path in the URL so we can come back to it
     params.set('returnPath', currentPath + (searchParams.toString() ? '?' + searchParams.toString() : ''));
-    
+
     // Pass the branch for sidebar scope
     if (branchName) {
       params.set('branch', branchName);
     }
-    
+
     // Pass PR params for sidebar scope (PR issues take precedence over branch)
     if (prNumber) {
       params.set('prNumber', String(prNumber));
@@ -88,7 +91,7 @@ export default function IssuesByFileDisplay({
         params.set('prVersion', String(prVersion));
       }
     }
-    
+
     navigate(`/dashboard/projects/${projectNamespace}/issues/${issueId}?${params.toString()}`);
   };
 
@@ -124,7 +127,7 @@ export default function IssuesByFileDisplay({
           {/* Issues for this file */}
           <div className="space-y-3">
             {fileIssues.map((issue) => (
-              <Card 
+              <Card
                 key={issue.id}
                 className={cn(
                   "group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30",
@@ -147,14 +150,14 @@ export default function IssuesByFileDisplay({
                         />
                       </div>
                     )}
-                    
+
                     {/* Icon - only show when no checkbox */}
                     {!selectionEnabled && (
                       <div className="p-2 rounded-lg bg-muted shrink-0 h-fit">
                         {getIssueIcon(issue.type)}
                       </div>
                     )}
-                    
+
                     {/* Main content */}
                     <div className="flex-1 min-w-0 space-y-3">
                       {/* Title row */}
@@ -168,13 +171,13 @@ export default function IssuesByFileDisplay({
                           <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0 mt-1" />
                         )}
                       </div>
-                      
+
                       {/* Badges row */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {getSeverityBadge(issue.severity)}
                         {issue.issueCategory && (
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className={cn(
                               "text-xs",
                               getCategoryInfo(issue.issueCategory).color,
@@ -186,40 +189,42 @@ export default function IssuesByFileDisplay({
                           </Badge>
                         )}
                       </div>
-                      
+
                       {/* Separator */}
                       <Separator />
-                      
+
                       {/* Bottom row: status select left, meta right */}
                       <div className="flex items-end justify-between gap-3">
                         {/* Status dropdown - hide when items are selected for bulk actions */}
-                        <div className="flex items-center gap-2">
-                          {onUpdateIssueStatus && selectedIssues.size === 0 && (
-                            <div onClick={(e) => e.stopPropagation()}>
-                              <Select 
-                                value={issue.status} 
-                                onValueChange={(value) => {
-                                  onUpdateIssueStatus(issue.id, value as 'open' | 'resolved');
-                                }}
-                              >
-                                <SelectTrigger className="w-[100px] h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>  
-                                <SelectContent>
-                                  <SelectItem value="open">Open</SelectItem>
-                                  <SelectItem value="resolved">Resolved</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          {/* Show status badge when items are selected */}
-                          {selectedIssues.size > 0 && (
-                            <Badge variant={issue.status === 'resolved' ? 'secondary' : 'outline'} className="text-xs">
-                              {issue.status === 'resolved' ? 'Resolved' : 'Open'}
-                            </Badge>
-                          )}
-                        </div>
-                        
+                        {canManageWorkspace() && (
+                          <div className="flex items-center gap-2">
+                            {onUpdateIssueStatus && selectedIssues.size === 0 && (
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <Select
+                                  value={issue.status}
+                                  onValueChange={(value) => {
+                                    onUpdateIssueStatus(issue.id, value as 'open' | 'resolved');
+                                  }}
+                                >
+                                  <SelectTrigger className="w-[100px] h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="open">Open</SelectItem>
+                                    <SelectItem value="resolved">Resolved</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            {/* Show status badge when items are selected */}
+                            {selectedIssues.size > 0 && (
+                              <Badge variant={issue.status === 'resolved' ? 'secondary' : 'outline'} className="text-xs">
+                                {issue.status === 'resolved' ? 'Resolved' : 'Open'}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+
                         {/* Meta info - bottom right */}
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">

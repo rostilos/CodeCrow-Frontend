@@ -53,17 +53,19 @@ export default function SetupBitbucketPipelines() {
             <ul className="space-y-2 text-muted-foreground">
               <li className="flex items-start">
                 <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                <span>Completed Steps 1-5 (workspace, connections, project, token)</span>
-              </li>
-              <li className="flex items-start">
-                <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
                 <span>Bitbucket Pipelines enabled for your repository</span>
               </li>
               <li className="flex items-start">
                 <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                <span>Your project token from Step 5</span>
+                <span>Your project token (only required if NOT using the recommended Webhook installation)</span>
               </li>
             </ul>
+            <Alert className="bg-primary/5 border-primary/20">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                <strong>Important Note:</strong> If you are using the <strong>Webhook (Recommended)</strong> installation method, you do not need to configure a Project Token or manually edit your pipeline file. CodeCrow handles the triggers automatically via Bitbucket webhooks. This guide is only for manual <strong>Bitbucket Pipelines</strong> integration.
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
 
@@ -118,7 +120,7 @@ export default function SetupBitbucketPipelines() {
 
             <div className="bg-muted/50 p-4 rounded-lg">
               <pre className="text-xs overflow-x-auto">
-{`pipelines:
+                {`pipelines:
   branches:
     develop:
       - parallel:
@@ -167,10 +169,10 @@ export default function SetupBitbucketPipelines() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">
-              Instead of filtering branches in the pipeline script, you can configure branch patterns in CodeCrow 
+              Instead of filtering branches in the pipeline script, you can configure branch patterns in CodeCrow
               to control which branches trigger analysis. This provides centralized control without modifying pipeline configuration.
             </p>
-            
+
             <div className="border-l-2 border-primary pl-4">
               <h4 className="font-semibold mb-2">Configure in Project Settings</h4>
               <p className="text-sm text-muted-foreground mb-2">
@@ -196,7 +198,7 @@ export default function SetupBitbucketPipelines() {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                <strong>Default Behavior:</strong> If no patterns are configured, all branches are analyzed. 
+                <strong>Default Behavior:</strong> If no patterns are configured, all branches are analyzed.
                 This maintains backward compatibility with existing pipelines.
               </AlertDescription>
             </Alert>
