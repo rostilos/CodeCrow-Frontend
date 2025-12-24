@@ -156,8 +156,17 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
   }
 
   /* Smooth scrolling */
@@ -175,6 +184,7 @@
 }
 
 @layer utilities {
+
   /* Glass morphism effect */
   .glass {
     @apply bg-background/80 backdrop-blur-lg;
@@ -196,12 +206,29 @@
   }
 
   @keyframes gradient-shift {
-    0%, 100% {
+
+    0%,
+    100% {
       background-position: 0% 50%;
     }
+
     50% {
       background-position: 100% 50%;
     }
+  }
+
+  @keyframes progress-loading {
+    0% {
+      width: 0%;
+    }
+
+    100% {
+      width: 100%;
+    }
+  }
+
+  .animate-progress {
+    animation: progress-loading 3s linear forwards;
   }
 
   /* Status indicator dot */
@@ -230,25 +257,25 @@
   /* Clean white background */
   --background: 0 0% 99%;
   --card: 0 0% 100%;
-  
+
   /* Primary colors - vibrant but not too bright */
   --primary: 24 90% 45%;
   --primary-glow: 24 90% 55%;
-  
+
   /* Secondary/muted - MORE VISIBLE for tabs, badges etc */
   --secondary: 220 15% 88%;
   --muted: 220 15% 90%;
   --muted-foreground: 220 12% 35%;
-  
+
   /* Accent */
   --accent: 221 85% 50%;
   --accent-foreground: 0 0% 100%;
-  
+
   /* Status colors - richer */
   --destructive: 0 75% 48%;
   --success: 142 65% 35%;
   --warning: 38 85% 45%;
-  
+
   /* Borders - clearly visible */
   --border: 220 15% 78%;
   --input: 220 15% 78%;

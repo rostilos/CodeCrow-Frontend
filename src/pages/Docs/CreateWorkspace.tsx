@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Briefcase, Info, CheckCircle2 } from "lucide-react";
 
+import { DocNavigation } from "./DocNavigation";
+
 export default function CreateWorkspace() {
   return (
     <div className="container mx-auto px-6 py-12 max-w-4xl">
@@ -97,7 +99,7 @@ export default function CreateWorkspace() {
               <div className="text-primary font-semibold">POST /workspace/create</div>
               <div className="text-muted-foreground">Request Body:</div>
               <pre className="text-xs overflow-x-auto">
-{`{
+                {`{
   "name": "string",
   "description": "string" (optional)
 }`}
@@ -113,6 +115,11 @@ export default function CreateWorkspace() {
             You can invite other team members and assign roles (ADMIN, MEMBER, VIEWER) after creation.
           </AlertDescription>
         </Alert>
+
+        <DocNavigation
+          prev={{ title: "Overview", url: "/docs" }}
+          next={{ title: "Connect VCS", url: "/docs/vcs-connection" }}
+        />
       </div>
     </div>
   );

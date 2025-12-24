@@ -1,8 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { GitBranch, Info, CheckCircle2, ExternalLink } from "lucide-react";
+import { GitBranch, Info, CheckCircle2, ExternalLink, Github, ArrowRight, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NavLink } from "react-router-dom";
+
+import { DocNavigation } from "./DocNavigation";
 
 export default function CreateVCSConnection() {
   return (
@@ -10,155 +13,133 @@ export default function CreateVCSConnection() {
       <div className="mb-8">
         <Badge className="mb-4 bg-primary/20 text-primary border-primary/30">
           <GitBranch className="mr-2 h-4 w-4 inline" />
-          Step 2
+          VCS Connection
         </Badge>
-        <h1 className="text-4xl font-bold mb-4">Create VCS Connection</h1>
+        <h1 className="text-4xl font-bold mb-4">Connect Your Source Control</h1>
         <p className="text-xl text-muted-foreground">
-          Connect CodeCrow to your Bitbucket Cloud account to access repositories and enable automated code reviews.
+          Link CodeCrow to your repository provider to enable automated AI code reviews.
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold">What is a VCS Connection?</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            In CodeCrow, a <strong>VCS (Version Control System) Connection</strong> is a secure link
+            between our platform and your repository hosting provider. It literally connects
+            CodeCrow to your <strong>Bitbucket Workspace</strong> or <strong>GitHub Organization</strong>.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-4 mt-4">
+            <div className="p-4 border rounded-xl bg-card/50">
+              <h4 className="font-bold flex items-center gap-2 mb-2 text-primary">
+                <GitBranch className="h-4 w-4" />
+                Workspace Sync
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Once connected, CodeCrow can discover all repositories within your workspace/org,
+                making project creation a 1-click experience.
+              </p>
+            </div>
+            <div className="p-4 border rounded-xl bg-card/50">
+              <h4 className="font-bold flex items-center gap-2 mb-2 text-primary">
+                <Shield className="h-4 w-4" />
+                Secure Access
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Connections use fine-grained permissions. We only request access to what we need
+                to read code and post comments.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <Card>
           <CardHeader>
-            <CardTitle>What is a VCS Connection?</CardTitle>
+            <CardTitle>Supported Platforms</CardTitle>
+            <CardDescription>CodeCrow integrates deeply with leading VCS providers.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">
-              A Version Control System (VCS) connection allows CodeCrow to securely access your code repositories.
-              CodeCrow supports Bitbucket Cloud and GitHub with flexible authentication methods tailored to your security needs.
-            </p>
-
-            <div className="space-y-4">
-              <h4 className="font-semibold text-foreground">Bitbucket Connection Options</h4>
-              <div className="grid gap-4">
-                <div className="p-4 border rounded-lg bg-primary/5 border-primary/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="default" className="bg-primary/80">Connect App</Badge>
-                    <span className="font-medium">Workspace-based Permissions</span>
+          <CardContent className="grid md:grid-cols-2 gap-6 pt-2">
+            {/* Bitbucket Card */}
+            <NavLink to="/docs/vcs-connection/bitbucket" className="group">
+              <div className="p-6 border rounded-xl hover:border-primary/50 hover:bg-primary/5 transition-all h-full flex flex-col justify-between">
+                <div>
+                  <div className="bg-primary/10 p-3 rounded-lg w-fit mb-4 group-hover:bg-primary/20 transition-colors">
+                    <BitbucketIcon className="h-6 w-6 text-primary" />
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Best for complete workspace automation. Requires allowing "Apps from untrusted URLs" in Bitbucket settings during installation.
+                  <h3 className="text-xl font-bold mb-2">Bitbucket Cloud</h3>
+                  <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                    Choose between <strong>OAuth App</strong> (personal), <strong>Connect App</strong> (workspace),
+                    or <strong>Manual OAuth</strong> for full enterprise control.
                   </p>
-                  <ul className="text-xs text-muted-foreground list-disc ml-4 space-y-1">
-                    <li>Automatic webhook management</li>
-                    <li>Full workspace repository access</li>
-                    <li>Synchronized user permissions</li>
-                  </ul>
                 </div>
-
-                <div className="p-4 border rounded-lg bg-muted/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline">OAuth App</Badge>
-                    <span className="font-medium">User-based Permissions</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Standard OAuth approach. Access is limited to repositories the authorizing user can see.
-                  </p>
-                  <ul className="text-xs text-muted-foreground list-disc ml-4 space-y-1">
-                    <li>Easiest setup flow</li>
-                    <li>Respects personal Bitbucket permissions</li>
-                    <li>Supports webhook triggers</li>
-                  </ul>
-                </div>
-
-                <div className="p-4 border rounded-lg bg-muted/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline">Manual OAuth</Badge>
-                    <span className="font-medium">Granular Control</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Manually create your own OAuth consumer in Bitbucket. Best for strict corporate policies.
-                  </p>
-                  <ul className="text-xs text-muted-foreground list-disc ml-4 space-y-1">
-                    <li>Custom consumer name and branding</li>
-                    <li>Specific permission selection</li>
-                    <li>Requires manual key/secret entry</li>
-                  </ul>
+                <div className="flex items-center text-primary font-medium text-sm">
+                  Setup Guide <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
               </div>
+            </NavLink>
 
-              <h4 className="font-semibold text-foreground mt-6">GitHub Integration</h4>
-              <Card className="border-primary/20 bg-primary/5">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                    <span className="font-medium">GitHub App (Recommended)</span>
+            {/* GitHub Card */}
+            <NavLink to="/docs/vcs-connection/github" className="group">
+              <div className="p-6 border rounded-xl hover:border-primary/50 hover:bg-primary/5 transition-all h-full flex flex-col justify-between">
+                <div>
+                  <div className="bg-primary/10 p-3 rounded-lg w-fit mb-4 group-hover:bg-primary/20 transition-colors">
+                    <Github className="h-6 w-6 text-primary" />
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Install the CodeCrow GitHub App to your organization or personal account. This provides the most secure and automated experience.
+                  <h3 className="text-xl font-bold mb-2">GitHub</h3>
+                  <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                    Install the CodeCrow GitHub App for organization-wide security analysis and PR feedback.
                   </p>
-                  <div className="space-y-2 text-xs text-muted-foreground">
-                    <p>• Automatic Webhook configuration</p>
-                    <p>• Granular repo selection</p>
-                    <p>• PR comment & Status check support</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+                <div className="flex items-center text-primary font-medium text-sm">
+                  Setup Guide <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </div>
+              </div>
+            </NavLink>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Bitbucket Manual Setup Steps</CardTitle>
-            <CardDescription>If choosing the Manual OAuth option</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">1. Create OAuth Consumer in Bitbucket</h4>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Navigate to your Bitbucket workspace settings and create an OAuth consumer:
-                </p>
-                <ul className="text-sm text-muted-foreground space-y-1 ml-4 mb-3">
-                  <li>• Go to <code className="bg-muted px-1 py-0.5 rounded">Workspace Settings → OAuth consumers</code></li>
-                  <li>• Click "Add consumer"</li>
-                  <li>• Set a name (e.g., "CodeCrow Integration")</li>
-                  <li>• Set callback URL to: <code className="bg-muted px-1 rounded">https://app.codecrow.io/api/vcs/callback</code></li>
-                  <li>• <strong>Permissions</strong>: Repository (Read), Pull Requests (Read/Write), Webhooks (Read/Write)</li>
-                </ul>
-              </div>
-
-              <div className="border-l-2 border-primary pl-4">
-                <h4 className="font-semibold mb-2">2. Register in CodeCrow</h4>
-                <p className="text-sm text-muted-foreground">
-                  Copy the <strong>Key</strong> and <strong>Secret</strong> from Bitbucket and enter them in CodeCrow under <strong>Settings → VCS Connections → Add Connection</strong>.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>API Endpoint</CardTitle>
-            <CardDescription>For integration and automation</CardDescription>
+            <CardTitle>Why Connect Your VCS?</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm space-y-2">
-              <div className="text-primary font-semibold">POST /{'{workspaceId}'}/vcs/bitbucket_cloud/create</div>
-              <div className="text-muted-foreground">Request Body:</div>
-              <pre className="text-xs overflow-x-auto">
-                {`{
-  "name": "string",
-  "oauthKey": "string",
-  "oauthSecret": "string",
-  "callbackUrl": "string"
-}`}
-              </pre>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <h4 className="font-bold text-sm">Automatic Triggers</h4>
+                <p className="text-xs text-muted-foreground">CodeCrow listens for PR events and pushes to start analysis instantly.</p>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-bold text-sm">Inline Comments</h4>
+                <p className="text-xs text-muted-foreground">AI findings are posted directly on the lines of code that need attention.</p>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-bold text-sm">Status Checks</h4>
+                <p className="text-xs text-muted-foreground">Gate your merge process based on AI security and quality reports.</p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Alert>
+        <Alert className="bg-muted/50">
           <Info className="h-4 w-4" />
           <AlertDescription>
-            <strong>Security Note:</strong> OAuth credentials are encrypted and stored securely.
-            CodeCrow never stores your Bitbucket password. You can revoke access at any time from your Bitbucket settings.
+            <strong>Security First:</strong> CodeCrow uses OAuth 2.0 and App Installations. We never see your VCS password, and you can revoke access anytime from your provider's settings.
           </AlertDescription>
         </Alert>
+
+        <DocNavigation
+          prev={{ title: "Create Workspace", url: "/docs/workspace" }}
+          next={{ title: "AI Connection", url: "/docs/ai-connection" }}
+        />
       </div>
     </div>
+  );
+}
+
+function BitbucketIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z" />
+    </svg>
   );
 }

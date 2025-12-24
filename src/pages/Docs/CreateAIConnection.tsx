@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, Info, CheckCircle2 } from "lucide-react";
 
+import { DocNavigation } from "./DocNavigation";
+
 export default function CreateAIConnection() {
   return (
     <div className="container mx-auto px-6 py-12 max-w-4xl">
@@ -128,7 +130,7 @@ export default function CreateAIConnection() {
               <div className="text-primary font-semibold">POST /{'{workspaceId}'}/ai/create</div>
               <div className="text-muted-foreground">Request Body:</div>
               <pre className="text-xs overflow-x-auto">
-{`{
+                {`{
   "providerKey": "OPENAI" | "ANTHROPIC" | "OPENROUTER",
   "aiModel": "string",
   "apiKey": "string"
@@ -146,6 +148,11 @@ export default function CreateAIConnection() {
             Consider starting with cost-effective models like GPT-5-mini or Google: Gemini 2.5 Flash for testing.
           </AlertDescription>
         </Alert>
+
+        <DocNavigation
+          prev={{ title: "Connect VCS", url: "/docs/vcs-connection" }}
+          next={{ title: "First Project", url: "/docs/first-project" }}
+        />
       </div>
     </div>
   );
