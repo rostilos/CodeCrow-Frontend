@@ -10,13 +10,15 @@ import {
     Hammer,
     AlertTriangle,
     LayoutDashboard,
-    MessageSquare
+    MessageSquare,
+    History
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 export default function ProjectAdministration() {
     const sections = [
         { title: "General", icon: Settings, desc: "Basics like name, description and project ID.", href: "general" },
+        { title: "Activity", icon: History, desc: "Track background jobs and analysis history.", href: "activity" },
         { title: "Code Hosting", icon: Globe, desc: "Manage VCS connections and repository settings.", href: "hosting" },
         { title: "Branches", icon: GitBranch, desc: "Define branches patterns for automatic analysis.", href: "branches" },
         { title: "Analysis Scope", icon: Filter, desc: "Include/exclude paths and toggle analysis triggers.", href: "scope" },

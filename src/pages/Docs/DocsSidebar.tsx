@@ -40,6 +40,7 @@ import {
   Filter,
   Hammer,
   MessageSquare,
+  History as HistoryIcon,
   Info,
   Github,
   CheckCircle2
@@ -91,6 +92,7 @@ const adminItems = [
 const projectAdminItems = [
   { title: "Overview", url: "/docs/admin/project", icon: LayoutDashboard },
   { title: "General", url: "/docs/admin/project/general", icon: Settings },
+  { title: "Activity", url: "/docs/admin/project/activity", icon: HistoryIcon },
   { title: "Code Hosting", url: "/docs/admin/project/hosting", icon: Globe },
   { title: "Branches", url: "/docs/admin/project/branches", icon: GitBranch },
   { title: "Analysis Scope", url: "/docs/admin/project/scope", icon: Filter },
@@ -109,7 +111,7 @@ const ragGuideItems = [
 const commandItems = [
   { title: "Overview", url: "/docs/commands/overview", icon: MessageSquare },
   { title: "/analyze", url: "/docs/commands/analyze", icon: Terminal },
-  { title: "/analyze", url: "/docs/commands/analyze", icon: Terminal },
+  { title: "/summarize", url: "/docs/commands/summarize", icon: Terminal },
   { title: "/ask", url: "/docs/commands/ask", icon: Terminal },
 ];
 

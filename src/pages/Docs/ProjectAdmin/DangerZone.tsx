@@ -1,57 +1,57 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertTriangle, Trash2, Archive, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Trash2, Link2Off, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function DangerZoneSettings() {
     return (
         <div className="space-y-6">
-            <div className="space-y-2 text-destructive">
+            <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Danger Zone</h1>
                 <p className="text-muted-foreground">
-                    Heavy-duty destructive actions. Use with caution.
+                    Irreversible and destructive actions. Please proceed with caution.
                 </p>
             </div>
 
             <Card className="border-destructive/30">
                 <CardHeader className="bg-destructive/5">
-                    <CardTitle className="flex items-center gap-2 text-destructive">
-                        <ShieldAlert className="h-5 w-5" />
-                        Destructive Actions
+                    <CardTitle className="flex items-center gap-2 text-destructive font-bold text-lg">
+                        <AlertTriangle className="h-5 w-5" />
+                        Danger Zone
                     </CardTitle>
-                    <CardDescription>Permanent changes that cannot be undone.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    <div className="flex items-start gap-4">
-                        <div className="p-2 bg-destructive/10 rounded-md shrink-0">
-                            <Archive className="h-5 w-5 text-destructive" />
-                        </div>
-                        <div>
-                            <h4 className="font-semibold text-sm">Transfer Ownership</h4>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Move this project to another workspace. You must be an owner in both workspaces to
-                                perform this action.
+                <CardContent className="space-y-8 pt-6">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <h4 className="font-bold flex items-center gap-2">
+                                <Link2Off className="h-4 w-4" />
+                                Disconnect Repository
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                                Remove the VCS connection from this project. Analysis history will be preserved.
                             </p>
                         </div>
+                        <Button variant="destructive" size="sm" className="shrink-0">Disconnect</Button>
                     </div>
 
-                    <div className="flex items-start gap-4">
-                        <div className="p-2 bg-destructive/10 rounded-md shrink-0">
-                            <Trash2 className="h-5 w-5 text-destructive" />
-                        </div>
-                        <div>
-                            <h4 className="font-semibold text-sm text-destructive">Delete Project</h4>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Completely remove this project from CodeCrow. This will delete all analysis history,
-                                RAG indexes, and stored settings. This action is irreversible.
+                    <div className="border-t pt-6 flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <h4 className="font-bold flex items-center gap-2 text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                                Delete Project
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                                Permanently delete this project and all its data including analysis history, branches, and settings. This action cannot be undone.
                             </p>
                         </div>
+                        <Button variant="destructive" size="sm" className="shrink-0">Delete Project</Button>
                     </div>
                 </CardContent>
             </Card>
 
-            <div className="p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900/50 flex gap-3">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
-                <p className="text-sm text-yellow-800 dark:text-yellow-400">
-                    Only Workspace Admins or the Project Creator have permission to access the Danger Zone.
+            <div className="p-4 border rounded-lg bg-primary/5 border-primary/10 flex gap-3 items-center">
+                <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+                <p className="text-sm font-medium">
+                    Two-factor authentication is enabled. You'll need to verify your identity for destructive actions.
                 </p>
             </div>
         </div>
