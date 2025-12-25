@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { analysisService, type PullRequestsByBranchResponse, type PullRequestDTO, type DetailedStatsResponse } from "@/api_service/analysis/analysisService";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { projectService } from "@/api_service/project/projectService";
 import DetailedProjectStats from "@/components/DetailedProjectStats";
 
@@ -34,6 +35,7 @@ export default function BranchPRHierarchy({ projectNamespace, onSelectBranch, on
   const { toast } = useToast();
   const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
   const [prsByBranch, setPrsByBranch] = useState<PullRequestsByBranchResponse>({});
   const [loading, setLoading] = useState(false);
   const [selectedBranchName, setSelectedBranchName] = useState<string | null>(null);
@@ -160,7 +162,7 @@ export default function BranchPRHierarchy({ projectNamespace, onSelectBranch, on
 
   const handleViewBranchIssues = () => {
     if (selectedBranchName) {
-      navigate(`/dashboard/projects/${projectNamespace}/branches/${encodeURIComponent(selectedBranchName)}/issues`);
+      navigate(routes.branchIssues(projectNamespace, selectedBranchName));
     }
   };
 

@@ -8,10 +8,12 @@ import { analysisService, type AnalysisIssue } from '@/api_service/analysis/anal
 import { useToast } from '@/hooks/use-toast';
 import IssuesByFileDisplay from '@/components/IssuesByFileDisplay';
 import IssueFilterPanel, { type IssueFilters } from '@/components/IssueFilterPanel';
+import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 
 export default function BranchIssues() {
   const { namespace, branchName } = useParams<{ namespace: string; branchName: string }>();
   const navigate = useNavigate();
+  const routes = useWorkspaceRoutes();
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
@@ -98,6 +100,16 @@ export default function BranchIssues() {
         setIssues([]);
       }
     } catch (error: any) {
+      // If 404, the project/branch doesn't exist in this workspace - navigate away
+      if (error.response?.status === 404 || error.status === 404) {
+        toast({
+          title: "Not found",
+          description: "This project or branch doesn't exist in this workspace",
+          variant: "destructive",
+        });
+        navigate(routes.projects());
+        return;
+      }
       toast({
         title: "Failed to load branch issues",
         description: error.message || "Could not load branch data",
@@ -248,7 +260,7 @@ export default function BranchIssues() {
   });
 
   const handleGoBack = () => {
-    navigate(`/dashboard/projects/${namespace}`);
+    navigate(routes.projectDetail(namespace!));
   };
 
   if (loading) {

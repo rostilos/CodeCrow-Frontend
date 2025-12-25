@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { integrationService } from "@/api_service/integration/integrationService";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService";
 import { 
@@ -40,6 +41,7 @@ export default function IntegrationSuccess() {
   const [searchParams] = useSearchParams();
   const connectionId = searchParams.get('connectionId');
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
   const { toast } = useToast();
   
   // Current step: 1 = repository selection, 2 = AI connection
@@ -273,7 +275,7 @@ export default function IntegrationSuccess() {
       setSelectedRepos(new Set());
       
       // Navigate to projects page
-      navigate('/dashboard/projects');
+      navigate(routes.projects());
       
     } catch (error: any) {
       toast({
@@ -287,7 +289,7 @@ export default function IntegrationSuccess() {
   };
   
   const handleFinish = () => {
-    navigate('/dashboard/projects');
+    navigate(routes.projects());
   };
   
   if (isLoading && !connection) {

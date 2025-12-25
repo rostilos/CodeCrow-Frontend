@@ -167,7 +167,7 @@ const App = () => (
                   </WorkspaceProvider>
                 </ProtectedRoute>
               } />
-              <Route path="/dashboard/*" element={
+              <Route path="/dashboard/:workspaceSlug/*" element={
                 <ProtectedRoute>
                   <WorkspaceProvider>
                     <WorkspaceGuard>

@@ -14,8 +14,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form.tsx";
 import { GitHubConnection } from "@/api_service/codeHosting/github/githubService.interface.ts";
-import { APP_CONFIG } from "@/config/app-config.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 const githubConnectionSchema = z.object({
     connectionName: z.string().min(1, "Connection name is required"),
@@ -30,6 +30,7 @@ export default function GitHubAddConnection() {
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const { currentWorkspace } = useWorkspace();
+    const routes = useWorkspaceRoutes();
 
     const form = useForm<GitHubConnectionForm>({
         resolver: zodResolver(githubConnectionSchema),
@@ -55,7 +56,7 @@ export default function GitHubAddConnection() {
                 title: "New GitHub connection successfully created"
             });
 
-            navigate(`${APP_CONFIG.ENDPOINTS.CODE_HOSTING.GITHUB.CONFIGURE_CONNECTION}/${response.id}`)
+            navigate(routes.hostingGitHubConfigure(response.id))
         } catch (error: any) {
             toast({
                 title: "An error occurred while creating GitHub connection.",
@@ -72,7 +73,7 @@ export default function GitHubAddConnection() {
             <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/dashboard/hosting')}
+                onClick={() => navigate(routes.hostingSettings())}
                 className="flex items-center space-x-2"
             >
                 <ArrowLeft className="h-4 w-4" />
@@ -177,7 +178,7 @@ export default function GitHubAddConnection() {
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => navigate('/dashboard/hosting')}
+                            onClick={() => navigate(routes.hostingSettings())}
                         >
                             Cancel
                         </Button>

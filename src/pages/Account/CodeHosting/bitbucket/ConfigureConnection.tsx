@@ -12,7 +12,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import { BitbucketConnection, BitbucketConnectionCreateRequest } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.interface.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import {useToast} from "@/hooks/use-toast.ts";
+import { useToast } from "@/hooks/use-toast.ts";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 interface ConnectionConfig {
   id: number;
@@ -44,6 +45,7 @@ export default function ConfigureConnection() {
   const [config, setConfig] = useState<ConnectionConfig | null>(null);
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
+  const routes = useWorkspaceRoutes();
 
   useEffect(() => {
     fetchConnectionConfig();
@@ -105,7 +107,7 @@ export default function ConfigureConnection() {
     if (!config || !connectionId || !confirm('Are you sure you want to delete this connection? This action cannot be undone.')) return;
     try {
       await bitbucketCloudService.deleteConnection(currentWorkspace!.slug, Number(connectionId));
-      navigate('/dashboard/hosting');
+      navigate(routes.hostingSettings());
     } catch (error) {
       console.error('Failed to delete connection:', error);
     }
@@ -136,7 +138,7 @@ export default function ConfigureConnection() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => navigate('/dashboard/hosting')}
+        onClick={() => navigate(routes.hostingSettings())}
         className="flex items-center space-x-2"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -335,7 +337,7 @@ export default function ConfigureConnection() {
         <div className="flex justify-end space-x-4">
           <Button
             variant="outline"
-            onClick={() => navigate('/dashboard/hosting')}
+            onClick={() => navigate(routes.hostingSettings())}
           >
             Cancel
           </Button>

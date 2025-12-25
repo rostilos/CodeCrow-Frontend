@@ -32,6 +32,7 @@ import BranchPRHierarchy from '@/components/BranchPRHierarchy';
 import IssuesByFileDisplay from '@/components/IssuesByFileDisplay';
 import IssueFilterPanel, { IssueFilters } from '@/components/IssueFilterPanel';
 import JobsList from '@/components/JobsList';
+import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 import type { 
   AnalysisIssue, 
   PullRequestSummary,
@@ -42,6 +43,7 @@ import type {
 export default function ProjectDashboard() {
   const { namespace } = useParams();
   const navigate = useNavigate();
+  const routes = useWorkspaceRoutes();
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
@@ -749,22 +751,22 @@ export default function ProjectDashboard() {
   };
 
   const handleGoBack = () => {
-    navigate('/dashboard/projects');
+    navigate(routes.projects());
   };
 
   const handleGoToSettings = () => {
-    navigate(`/dashboard/projects/${namespace}/settings`);
+    navigate(routes.projectSettings(namespace!));
   };
 
   const handleSeverityClick = (severity: 'HIGH' | 'MEDIUM' | 'LOW') => {
     if (selectedBranch) {
-      navigate(`/dashboard/projects/${namespace}/branches/${encodeURIComponent(selectedBranch)}/issues?severity=${severity}`);
+      navigate(routes.branchIssues(namespace!, selectedBranch, { severity }));
     }
   };
 
   const handleFileClick = (filename: string) => {
     if (selectedBranch) {
-      navigate(`/dashboard/projects/${namespace}/branches/${encodeURIComponent(selectedBranch)}/issues?filePath=${encodeURIComponent(filename)}`);
+      navigate(routes.branchIssues(namespace!, selectedBranch, { filePath: filename }));
     }
   };
 
@@ -793,7 +795,7 @@ export default function ProjectDashboard() {
           </div>
           <h1 className="text-2xl font-bold mb-2">Project Not Found</h1>
           <p className="text-muted-foreground mb-6">The requested project could not be found.</p>
-          <Button onClick={() => navigate('/dashboard/projects')}>
+          <Button onClick={() => navigate(routes.projects())}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Projects
           </Button>
@@ -1066,7 +1068,7 @@ export default function ProjectDashboard() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/dashboard/projects/${namespace}/branches/${encodeURIComponent(selectedBranch)}/issues`)}
+                          onClick={() => navigate(routes.branchIssues(namespace!, selectedBranch))}
                         >
                           View Full Page
                         </Button>

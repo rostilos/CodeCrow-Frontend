@@ -14,6 +14,7 @@ import {authService} from "@/api_service/auth/authService.ts";
 import { authUtils } from "@/lib/auth";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { GoogleSignInButtonCustom, GoogleCredentialResponse } from "@/components/GoogleSignInButton";
+import { ROUTES } from "@/lib/routes";
 
 const registerSchema = z.object({
   username: z.string().min(2, "Userame must be at least 2 characters"),
@@ -39,7 +40,7 @@ export default function Register() {
       // Check if there's a saved workspace
       const savedWorkspaceSlug = localStorage.getItem('currentWorkspaceSlug');
       if (savedWorkspaceSlug) {
-        navigate("/dashboard/projects");
+        navigate(ROUTES.PROJECTS(savedWorkspaceSlug));
       } else {
         navigate("/workspace");
       }

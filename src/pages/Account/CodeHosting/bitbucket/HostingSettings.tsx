@@ -34,6 +34,7 @@ import {
 import {VcsConnection, VcsConnectionType} from "@/api_service/integration/integration.interface.ts";
 import {integrationService, BitbucketConnectInstallation} from "@/api_service/integration/integrationService.ts";
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -60,6 +61,7 @@ interface BitbucketConnection {
 
 export default function HostingSettings() {
     const navigate = useNavigate();
+    const routes = useWorkspaceRoutes();
     const { currentWorkspace } = useWorkspace();
     const [manualConnections, setManualConnections] = useState<BitbucketConnections>([]);
     const [appConnections, setAppConnections] = useState<VcsConnection[]>([]);
@@ -288,7 +290,7 @@ export default function HostingSettings() {
 
     const openAppConnectionDetails = (connection: VcsConnection) => {
         // Use unified import flow for APP connections
-        navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=bitbucket-cloud&connectionType=${connection.connectionType}`);
+        navigate(routes.projectImport({ connectionId: connection.id, provider: 'bitbucket-cloud', connectionType: connection.connectionType }));
     };
 
     if (isFetchingData) {
@@ -303,15 +305,15 @@ export default function HostingSettings() {
     }
 
     const createBitbucketConnection = () => {
-        navigate('/dashboard/hosting/add-connection');
+        navigate(routes.hostingAddConnection());
     };
 
     const configureBitbucketConnection = (connectionId: number) => {
-        navigate(`/dashboard/hosting/configure/${connectionId}`);
+        navigate(routes.hostingConfigure(connectionId));
     };
 
     const modifyBitbucketConnection = (connectionId: number) => {
-        navigate(`/dashboard/hosting/configure/${connectionId}`);
+        navigate(routes.hostingConfigure(connectionId));
     };
 
     const getStatusIcon = (status: EGitSetupStatus) => {
@@ -581,7 +583,7 @@ export default function HostingSettings() {
                                         <Button 
                                             variant="outline"
                                             className="w-full"
-                                            onClick={() => navigate('/dashboard/hosting/add-connection')}
+                                            onClick={() => navigate(routes.hostingAddConnection())}
                                         >
                                             <Settings className="h-4 w-4 mr-2" />
                                             Configure Manual OAuth

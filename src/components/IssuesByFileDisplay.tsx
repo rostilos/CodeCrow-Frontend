@@ -9,6 +9,7 @@ import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { getCategoryInfo } from "@/config/issueCategories";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 interface IssuesByFileDisplayProps {
   issues: AnalysisIssue[];
@@ -36,6 +37,7 @@ export default function IssuesByFileDisplay({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { canManageWorkspace } = usePermissions();
+  const routes = useWorkspaceRoutes();
 
 
   // Group issues by filename
@@ -92,7 +94,7 @@ export default function IssuesByFileDisplay({
       }
     }
 
-    navigate(`/dashboard/projects/${projectNamespace}/issues/${issueId}?${params.toString()}`);
+    navigate(routes.issueDetail(projectNamespace, issueId, Object.fromEntries(params)));
   };
 
   if (issues.length === 0) {

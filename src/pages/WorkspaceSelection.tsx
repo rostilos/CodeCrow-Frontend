@@ -13,6 +13,7 @@ import { workspaceService, CreateWorkspaceRequest } from '@/api_service/workspac
 import { useToast } from '@/hooks/use-toast';
 import { CodeCrowLogo } from '@/components/CodeCrowLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ROUTES } from '@/lib/routes';
 
 export default function WorkspaceSelection() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function WorkspaceSelection() {
 
   const handleSelectWorkspace = (workspace: any) => {
     setCurrentWorkspace(workspace);
-    navigate('/dashboard/projects');
+    navigate(ROUTES.PROJECTS(workspace.slug));
   };
 
   const validateSlug = (slug: string): boolean => {
@@ -80,7 +81,7 @@ export default function WorkspaceSelection() {
         title: "Success",
         description: "Workspace created successfully",
       });
-      navigate('/dashboard/projects');
+      navigate(ROUTES.PROJECTS(created.slug));
     } catch (error: any) {
       toast({
         title: "Failed to create workspace",

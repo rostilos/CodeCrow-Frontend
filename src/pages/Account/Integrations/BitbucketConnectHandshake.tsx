@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 import { getApiUrl } from '@/config/api';
 
 interface ConnectLinkResponse {
@@ -19,6 +20,7 @@ const BitbucketConnectHandshake: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { workspaces, currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
   
   const clientKey = searchParams.get('clientKey');
   const bitbucketWorkspace = searchParams.get('workspace');
@@ -70,7 +72,7 @@ const BitbucketConnectHandshake: React.FC = () => {
         
         // Redirect to hosting settings after a short delay
         setTimeout(() => {
-          navigate('/dashboard/hosting', { 
+          navigate(routes.hostingSettings(), { 
             state: { 
               message: `Bitbucket workspace "${bitbucketWorkspace}" has been linked!`,
               connectionId: data.connectionId 

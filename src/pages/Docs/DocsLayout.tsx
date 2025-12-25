@@ -6,6 +6,7 @@ import { LayoutDashboard, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useEffect } from "react";
+import { ROUTES } from "@/lib/routes";
 
 export default function DocsLayout() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export default function DocsLayout() {
               </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
-                <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/projects")}>
+                <Button variant="ghost" size="sm" onClick={() => navigate(ROUTES.WORKSPACE_SELECTION)}>
                   <LayoutDashboard className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Dashboard</span>
                 </Button>

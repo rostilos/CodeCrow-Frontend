@@ -13,6 +13,7 @@ import { githubService } from "@/api_service/codeHosting/github/githubService.ts
 import { GitHubConnection, GitHubConnectionCreateRequest } from "@/api_service/codeHosting/github/githubService.interface.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast.ts";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 interface ConnectionConfig {
     id: number;
@@ -37,6 +38,7 @@ export default function GitHubConfigureConnection() {
     const [config, setConfig] = useState<ConnectionConfig | null>(null);
     const { currentWorkspace } = useWorkspace();
     const { toast } = useToast();
+    const routes = useWorkspaceRoutes();
 
     useEffect(() => {
         fetchConnectionConfig();
@@ -98,7 +100,7 @@ export default function GitHubConfigureConnection() {
         if (!config || !connectionId || !confirm('Are you sure you want to delete this connection? This action cannot be undone.')) return;
         try {
             await githubService.deleteConnection(currentWorkspace!.slug, Number(connectionId));
-            navigate('/dashboard/hosting');
+            navigate(routes.hostingSettings());
         } catch (error) {
             console.error('Failed to delete connection:', error);
             toast({ title: "Error", description: "Failed to delete connection.", variant: "destructive" });
@@ -130,7 +132,7 @@ export default function GitHubConfigureConnection() {
             <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/dashboard/hosting')}
+                onClick={() => navigate(routes.hostingSettings())}
                 className="flex items-center space-x-2"
             >
                 <ArrowLeft className="h-4 w-4" />
@@ -339,7 +341,7 @@ export default function GitHubConfigureConnection() {
                 <div className="flex justify-end space-x-4">
                     <Button
                         variant="outline"
-                        onClick={() => navigate('/dashboard/hosting')}
+                        onClick={() => navigate(routes.hostingSettings())}
                     >
                         Cancel
                     </Button>

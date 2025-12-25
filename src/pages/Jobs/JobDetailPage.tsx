@@ -8,6 +8,7 @@ import {
   JobLogLevel 
 } from '@/api_service/job/jobApi';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -129,6 +130,7 @@ export default function JobDetailPage() {
   }>();
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const routes = useWorkspaceRoutes();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [job, setJob] = useState<Job | null>(null);
@@ -442,7 +444,7 @@ export default function JobDetailPage() {
               </div>
               <Button onClick={() => {
                 // Navigate to analysis - adjust path as needed
-                navigate(`/dashboard/projects/${namespace}`);
+                navigate(routes.projectDetail(namespace!));
               }}>
                 View Analysis
               </Button>

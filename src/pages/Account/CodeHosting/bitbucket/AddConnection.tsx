@@ -15,8 +15,8 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {bitbucketCloudService} from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form.tsx";
 import {BitbucketConnection} from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.interface.ts";
-import {APP_CONFIG} from "@/config/app-config.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 
 const btibucketConnectionSchema = z.object({
@@ -33,6 +33,7 @@ export default function AddConnection() {
     const [isLoading, setIsLoading] = useState(false);
     const {toast} = useToast();
     const { currentWorkspace } = useWorkspace();
+    const routes = useWorkspaceRoutes();
 
     const form = useForm<BitbucketConnectionForm>({
         resolver: zodResolver(btibucketConnectionSchema),
@@ -60,7 +61,7 @@ export default function AddConnection() {
                 title: "New Bitbucket Cloud connection successfully created"
             });
 
-            navigate(`${APP_CONFIG.ENDPOINTS.CODE_HOSTING.BITBUCKET_CLOUD.CONFIGURE_CONNECTION}/${response.id}`)
+            navigate(routes.hostingConfigure(response.id))
         } catch (error: any) {
             toast({
                 title: "An error occurred while creating bitbucket connection.",
@@ -78,7 +79,7 @@ export default function AddConnection() {
             <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/dashboard/hosting')}
+                onClick={() => navigate(routes.hostingSettings())}
                 className="flex items-center space-x-2"
             >
                 <ArrowLeft className="h-4 w-4"/>
@@ -233,7 +234,7 @@ export default function AddConnection() {
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => navigate('/dashboard/hosting')}
+                            onClick={() => navigate(routes.hostingSettings())}
                         >
                             Cancel
                         </Button>

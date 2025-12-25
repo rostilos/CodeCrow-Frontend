@@ -4,6 +4,7 @@ import { Code, User, Brain, GitBranch, Users, FileCode, Rocket, Settings as Sett
 import { authUtils } from "@/lib/auth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TopNavigation } from "@/components/TopNavigation";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import {
   CommandDialog,
   CommandEmpty,
@@ -17,6 +18,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const { canManageWorkspace } = usePermissions();
   const [searchOpen, setSearchOpen] = useState(false);
+  const routes = useWorkspaceRoutes();
 
   useEffect(() => {
     if (!authUtils.isAuthenticated()) {
@@ -37,12 +39,12 @@ export default function DashboardLayout() {
   }, []);
 
   const searchItems = [
-    { title: "Projects", url: "/dashboard/projects", icon: Code, group: "Navigation" },
-    { title: "User Settings", url: "/dashboard/user", icon: User, group: "Navigation" },
+    { title: "Projects", url: routes.projects(), icon: Code, group: "Navigation" },
+    { title: "User Settings", url: routes.userSettings(), icon: User, group: "Navigation" },
     ...(canManageWorkspace() ? [
-      { title: "AI Connections", url: "/dashboard/ai", icon: Brain, group: "Navigation" },
-      { title: "VCS Connections", url: "/dashboard/hosting", icon: GitBranch, group: "Navigation" },
-      { title: "Workspace Settings", url: "/dashboard/workspace", icon: Users, group: "Navigation" },
+      { title: "AI Connections", url: routes.aiSettings(), icon: Brain, group: "Navigation" },
+      { title: "VCS Connections", url: routes.hostingSettings(), icon: GitBranch, group: "Navigation" },
+      { title: "Workspace Settings", url: routes.workspaceSettings(), icon: Users, group: "Navigation" },
     ] : []),
     { title: "Getting Started", url: "/docs", icon: Rocket, group: "Documentation" },
     { title: "Create Workspace", url: "/docs/workspace", icon: Users, group: "Documentation" },

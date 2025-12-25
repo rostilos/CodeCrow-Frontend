@@ -14,6 +14,7 @@ import { projectService, BindRepositoryRequest, ProjectDTO } from "@/api_service
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import { aiConnectionService, AIConnectionDTO } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProjectTokenManagement from "@/components/ProjectTokenManagement";
 import DefaultBranchSelector from "@/components/DefaultBranchSelector";
@@ -38,6 +39,7 @@ export default function ProjectConfiguration() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
   const { canManageWorkspace, canGenerateTokens, loading: permissionsLoading } = usePermissions();
   
   const activeTab = searchParams.get("tab") || "general";
@@ -64,7 +66,7 @@ export default function ProjectConfiguration() {
         description: "You don't have permission to access project settings",
         variant: "destructive",
       });
-      navigate('/dashboard/projects');
+      navigate(routes.projects());
     }
   }, [permissionsLoading, canManageWorkspace, navigate]);
 
@@ -295,7 +297,7 @@ export default function ProjectConfiguration() {
   };
 
   const handleGoBack = () => {
-    navigate("/dashboard/projects");
+    navigate(routes.projects());
   };
 
   const handleBindAiConnection = async (aiConnectionId: number) => {
@@ -355,7 +357,7 @@ export default function ProjectConfiguration() {
         <div className="text-center">
           <h1 className="text-2xl font-bold">Project Not Found</h1>
           <p className="text-muted-foreground mt-2">The requested project could not be found.</p>
-          <Button onClick={() => navigate(`/dashboard/projects/${namespace}`)} className="mt-4">
+          <Button onClick={() => navigate(routes.projectDetail(namespace!))} className="mt-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Project
           </Button>
@@ -366,7 +368,7 @@ export default function ProjectConfiguration() {
 
   return (
     <div className="container space-y-6 p-6">
-      <Button variant="ghost" onClick={() => navigate(`/dashboard/projects/${namespace}`)} size="sm">
+      <Button variant="ghost" onClick={() => navigate(routes.projectDetail(namespace!))} size="sm">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Project
       </Button>
@@ -437,7 +439,7 @@ export default function ProjectConfiguration() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={() => navigate(`/dashboard/projects/${namespace}/setup`)}
+                  onClick={() => navigate(routes.projectSetup(namespace!))}
                 >
                   <FileCode className="mr-2 h-4 w-4" />
                   View Pipeline Setup Instructions
@@ -754,7 +756,7 @@ export default function ProjectConfiguration() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Create AI connections in your workspace settings first, then bind them to projects.
                   </p>
-                  <Button onClick={() => navigate("/dashboard/ai")}>
+                  <Button onClick={() => navigate(routes.aiSettings())}>
                     <Plus className="mr-2 h-4 w-4" />
                     Manage AI Connections
                   </Button>

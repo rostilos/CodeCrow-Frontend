@@ -22,6 +22,7 @@ import { VcsConnection, VcsConnectionType, PROVIDERS } from "@/api_service/integ
 import { useWorkspace } from "@/context/WorkspaceContext";
 import ProjectStats, { ProjectStatsData } from "@/components/ProjectStats";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 interface Project {
   id: string;
@@ -70,6 +71,7 @@ function BitbucketIcon({ className }: { className?: string }) {
 
 export default function ProjectSettings() {
   const navigate = useNavigate();
+  const routes = useWorkspaceRoutes();
   const [projects, setProjects] = useState<Project[]>([]);
   const [codeHostingConfigs, setCodeHostingConfigs] = useState<CodeHostingConfig[]>([]);
   const [taskManagementConfigs, setTaskManagementConfigs] = useState<TaskManagementConfig[]>([]);
@@ -239,13 +241,13 @@ export default function ProjectSettings() {
   };
 
   const handleProjectSettings = (namespace: string) => {
-    navigate(`/dashboard/projects/${namespace}/settings`);
+    navigate(routes.projectSettings(namespace));
   };
 
   const handleImportFromConnection = (connection: VcsConnection) => {
     // Use the step-by-step import flow for all connection types
     // This provides proper project naming, AI selection, and analysis configuration
-    navigate(`/dashboard/projects/import?connectionId=${connection.id}&provider=${connection.provider}&connectionType=${connection.connectionType}`);
+    navigate(routes.projectImport({ connectionId: connection.id, provider: connection.provider, connectionType: connection.connectionType }));
   };
 
   // Group connections by provider
@@ -303,7 +305,7 @@ export default function ProjectSettings() {
                           No VCS connections configured
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate('/dashboard/hosting')}>
+                        <DropdownMenuItem onClick={() => navigate(routes.hostingSettings())}>
                           <Plus className="mr-2 h-4 w-4" />
                           Add VCS Connection
                         </DropdownMenuItem>
@@ -333,7 +335,7 @@ export default function ProjectSettings() {
                             <DropdownMenuSeparator />
                           </div>
                         ))}
-                        <DropdownMenuItem onClick={() => navigate('/dashboard/hosting')}>
+                        <DropdownMenuItem onClick={() => navigate(routes.hostingSettings())}>
                           <Plus className="mr-2 h-4 w-4" />
                           Add New Connection
                         </DropdownMenuItem>
@@ -343,7 +345,7 @@ export default function ProjectSettings() {
                 </DropdownMenu>
 
                 {/* New Project Button */}
-                <Button onClick={() => navigate('/dashboard/projects/new')}>
+                <Button onClick={() => navigate(routes.projectNew())}>
                   <Plus className="mr-2 h-4 w-4" />
                   New Project
                 </Button>
@@ -388,7 +390,7 @@ export default function ProjectSettings() {
                     {projectSearchQuery ? "No projects match your search." : "Get started by creating your first project."}
                   </p>
                   {!projectSearchQuery && (
-                    <Button onClick={() => navigate('/dashboard/projects/new')}>
+                    <Button onClick={() => navigate(routes.projectNew())}>
                       <Plus className="mr-2 h-4 w-4" />
                       New Project
                     </Button>
@@ -405,7 +407,7 @@ export default function ProjectSettings() {
                     <Card
                       key={project.id}
                       className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/20"
-                      onClick={() => navigate(`/dashboard/projects/${project.namespace || project.id}`)}
+                      onClick={() => navigate(routes.projectDetail(project.namespace || project.id))}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-4">
@@ -424,7 +426,7 @@ export default function ProjectSettings() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => navigate(`/dashboard/projects/${project.namespace || project.id}`)}
+                              onClick={() => navigate(routes.projectDetail(project.namespace || project.id))}
                               className="hidden sm:flex"
                             >
                               View Details
@@ -463,7 +465,7 @@ export default function ProjectSettings() {
                                     size="sm"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      navigate(`/dashboard/projects/${project.namespace || project.id}/setup`);
+                                      navigate(routes.projectSetup(project.namespace || project.id));
                                     }}
                                   >
                                     Setup

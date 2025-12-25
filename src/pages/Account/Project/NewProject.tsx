@@ -11,12 +11,14 @@ import { githubService } from "@/api_service/codeHosting/github/githubService.ts
 import { projectService } from "@/api_service/project/projectService.ts";
 import { aiConnectionService, AIConnectionDTO } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
 
   const [connections, setConnections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ export default function NewProjectPage() {
 
   const handleOpenRepoSelector = (connectionId: number, provider: string) => {
     // Navigate to repository selector first, no project name required
-    navigate(`/dashboard/projects/new/select-repo/${connectionId}`, { state: { projectName, provider } });
+    navigate(routes.projectSelectRepo(connectionId), { state: { projectName, provider } });
   };
 
   const handleCreate = async () => {
@@ -146,7 +148,7 @@ export default function NewProjectPage() {
         title: "Project created",
         description: "Project was created successfully"
       });
-      navigate("/dashboard/projects");
+      navigate(routes.projects());
     } catch (err: any) {
       toast({
         title: "Error",
@@ -162,7 +164,7 @@ export default function NewProjectPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/projects")}>
+          <Button variant="ghost" size="sm" onClick={() => navigate(routes.projects())}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
@@ -296,7 +298,7 @@ export default function NewProjectPage() {
             <div className="text-center py-8">
               <p className="text-muted-foreground">No connections found</p>
               <div className="mt-4 flex justify-center">
-                <Button onClick={() => navigate("/dashboard/hosting")}>
+                <Button onClick={() => navigate(routes.hostingSettings())}>
                   Manage Connections
                 </Button>
               </div>
@@ -330,7 +332,7 @@ export default function NewProjectPage() {
       </Card>
 
       <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={() => navigate("/dashboard/projects")}>
+        <Button variant="outline" onClick={() => navigate(routes.projects())}>
           Close
         </Button>
         <Button onClick={handleCreate} disabled={creating || !selectedRepo || !projectName || !projectNamespace} className="flex items-center">

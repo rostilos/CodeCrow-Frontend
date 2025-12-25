@@ -11,6 +11,7 @@ import { useDebounce } from "@/hooks/use-debounce.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 export default function SelectRepoPage() {
   const { connectionId } = useParams();
@@ -18,6 +19,7 @@ export default function SelectRepoPage() {
   const location = useLocation();
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
 
   const [repos, setRepos] = useState<any[]>([]);
   const [page, setPage] = useState<number>(0);
@@ -122,7 +124,7 @@ export default function SelectRepoPage() {
 
   const handleSelect = (repo: any) => {
     // return to NewProject page with the selected repo, connectionId, and provider in location.state
-    navigate("/dashboard/projects/new", { 
+    navigate(routes.projectNew(), { 
       state: { 
         selectedRepo: repo, 
         connectionId: Number(connectionId),
@@ -135,7 +137,7 @@ export default function SelectRepoPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/projects/new")}>
+          <Button variant="ghost" size="sm" onClick={() => navigate(routes.projectNew())}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>

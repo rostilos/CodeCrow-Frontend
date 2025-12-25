@@ -26,6 +26,7 @@ import {
 import { projectService, ProjectDTO } from "@/api_service/project/projectService";
 import { twoFactorService } from "@/api_service/auth/twoFactorService";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 interface DangerZoneProps {
   project: ProjectDTO;
@@ -36,6 +37,7 @@ interface DangerZoneProps {
 export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: DangerZoneProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const routes = useWorkspaceRoutes();
   const [loading, setLoading] = useState(false);
   const [has2FA, setHas2FA] = useState(false);
   const [twoFactorType, setTwoFactorType] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
         title: "Success",
         description: "Project deleted successfully",
       });
-      navigate("/dashboard/projects");
+      navigate(routes.projects());
     } catch (error: any) {
       toast({
         title: "Error",
@@ -183,7 +185,7 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
           title: "Success",
           description: "Project deleted successfully",
         });
-        navigate("/dashboard/projects");
+        navigate(routes.projects());
       } else if (pendingAction === "unbind") {
         const updated = await projectService.unbindRepositoryWithVerification(
           workspaceSlug,
