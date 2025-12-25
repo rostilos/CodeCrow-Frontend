@@ -17,6 +17,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { GoogleSignInButtonCustom, GoogleCredentialResponse } from "@/components/GoogleSignInButton";
 import { TwoFactorLoginDialog } from "@/components/Auth/TwoFactorLoginDialog";
 import { TwoFactorRequiredResponse } from "@/api_service/auth/twoFactorService.interface";
+import { ROUTES } from "@/lib/routes";
 
 const loginSchema = z.object({
   username: z.string(),
@@ -42,7 +43,7 @@ export default function Login() {
       } else {
         const savedWorkspaceSlug = localStorage.getItem('currentWorkspaceSlug');
         if (savedWorkspaceSlug) {
-          navigate("/dashboard/projects");
+          navigate(ROUTES.PROJECTS(savedWorkspaceSlug));
         } else {
           navigate("/workspace");
         }
@@ -159,7 +160,7 @@ export default function Login() {
     } else {
       const savedWorkspaceSlug = localStorage.getItem('currentWorkspaceSlug');
       if (savedWorkspaceSlug) {
-        navigate("/dashboard/projects");
+        navigate(ROUTES.PROJECTS(savedWorkspaceSlug));
       } else {
         navigate("/workspace");
       }

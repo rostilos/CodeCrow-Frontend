@@ -20,10 +20,12 @@ import { vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from "@/components/ThemeProvider";
 import { getCategoryInfo } from "@/config/issueCategories";
 import { cn } from "@/lib/utils";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 export default function IssueDetails() {
   const { namespace, issueId } = useParams<{ namespace: string; issueId: string }>();
   const navigate = useNavigate();
+  const routes = useWorkspaceRoutes();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { currentWorkspace } = useWorkspace();
@@ -56,6 +58,17 @@ export default function IssueDetails() {
       const issueData = await analysisService.getIssueById(currentWorkspace.slug, namespace, issueId);
       setIssue(issueData);
     } catch (error: any) {
+      // If 404, the issue doesn't exist in this workspace/project - navigate away
+      if (error.response?.status === 404 || error.status === 404) {
+        toast({
+          title: "Issue not found",
+          description: "This issue doesn't exist or doesn't belong to this workspace",
+          variant: "destructive",
+        });
+        // Navigate to projects list for this workspace
+        navigate(routes.projects());
+        return;
+      }
       toast({
         title: "Failed to load issue",
         description: error.message || "Could not load issue details",
@@ -147,7 +160,7 @@ export default function IssueDetails() {
     if (filterCategory) params.set('category', filterCategory);
     
     // Pass scopeIssues via route state to avoid reloading
-    navigate(`/dashboard/projects/${namespace}/issues/${targetIssueId}?${params.toString()}`, {
+    navigate(routes.issueDetail(namespace!, targetIssueId, Object.fromEntries(params)), {
       state: { scopeIssues },
       replace: false
     });
@@ -381,7 +394,7 @@ export default function IssueDetails() {
   }
 
   if (!issue) {
-    const backUrl = returnPath || `/dashboard/projects/${namespace}`;
+    const backUrl = returnPath || routes.projectDetail(namespace!);
     
     return (
       <div className="mx-auto p-6">
@@ -406,7 +419,7 @@ export default function IssueDetails() {
   const diffContent = issue.suggestedFixDiff;
   
   // Determine back URL
-  const backUrl = returnPath || `/dashboard/projects/${namespace}`;
+  const backUrl = returnPath || routes.projectDetail(namespace!);
 
   // Find current issue index in scope list
   const currentIndex = scopeIssues.findIndex(i => i.id === issueId);

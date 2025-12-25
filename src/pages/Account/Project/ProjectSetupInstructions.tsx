@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { projectService, ProjectDTO } from "@/api_service/project/projectService";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 const CODECROW_WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL;
 
@@ -16,6 +17,7 @@ export default function ProjectSetupInstructions() {
   const { namespace } = useParams<{ namespace: string }>();
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
   const [project, setProject] = useState<ProjectDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
@@ -185,7 +187,7 @@ jobs:
         <Button 
           variant="outline" 
           className="mt-4" 
-          onClick={() => navigate("/dashboard/projects")}
+          onClick={() => navigate(routes.projects())}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Projects
@@ -202,7 +204,7 @@ jobs:
             variant="ghost" 
             size="sm"
             className="mb-6"
-            onClick={() => navigate(`/dashboard/projects/${namespace}/settings`)}
+            onClick={() => navigate(routes.projectSettings(namespace!))}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Project
@@ -346,7 +348,7 @@ jobs:
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate(`/dashboard/projects/${namespace}/settings?tab=tokens`)}
+                onClick={() => navigate(routes.projectSettings(namespace!, 'tokens'))}
               >
                 Generate Token
               </Button>
@@ -434,7 +436,7 @@ jobs:
           View Full Documentation
         </Button>
         <Button
-          onClick={() => navigate(`/dashboard/projects/${namespace}/settings`)}
+          onClick={() => navigate(routes.projectSettings(namespace!))}
         >
           Go to Project Settings
         </Button>

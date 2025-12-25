@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import WorkspaceManagement from "@/components/WorkspaceManagement";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 export default function WorkspaceManagementPage() {
   const navigate = useNavigate();
   const { canManageWorkspace, loading } = usePermissions();
   const { toast } = useToast();
+  const routes = useWorkspaceRoutes();
 
   // Redirect if user doesn't have permission
   useEffect(() => {
@@ -17,7 +19,7 @@ export default function WorkspaceManagementPage() {
         description: "You don't have permission to manage workspace settings",
         variant: "destructive",
       });
-      navigate('/dashboard/projects');
+      navigate(routes.projects());
     }
   }, [loading, canManageWorkspace, navigate]);
 

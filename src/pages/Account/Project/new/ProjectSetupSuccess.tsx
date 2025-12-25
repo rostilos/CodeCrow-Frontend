@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { projectService, ProjectDTO, InstallationMethod } from "@/api_service/project/projectService";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 export default function ProjectSetupSuccess() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function ProjectSetupSuccess() {
   const { namespace } = useParams<{ namespace: string }>();
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
   
   const [project, setProject] = useState<ProjectDTO | null>(
     (location.state as any)?.project || null
@@ -217,7 +219,7 @@ export default function ProjectSetupSuccess() {
           
           <Button 
             variant="outline" 
-            onClick={() => navigate(`/dashboard/projects/${namespace}/settings?tab=rag`)}
+            onClick={() => navigate(routes.projectSettings(namespace!, 'rag'))}
           >
             <Database className="h-4 w-4 mr-2" />
             Configure RAG Indexing
@@ -246,7 +248,7 @@ export default function ProjectSetupSuccess() {
             </Alert>
             
             <Button 
-              onClick={() => navigate(`/dashboard/projects/${namespace}/setup`)}
+              onClick={() => navigate(routes.projectSetup(namespace!))}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               View Setup Instructions
@@ -283,13 +285,13 @@ export default function ProjectSetupSuccess() {
       <div className="flex flex-col sm:flex-row justify-center gap-4">
         <Button 
           variant="outline" 
-          onClick={() => navigate(`/dashboard/projects/${namespace}/settings`)}
+          onClick={() => navigate(routes.projectSettings(namespace!))}
         >
           <Settings className="h-4 w-4 mr-2" />
           Project Settings
         </Button>
         <Button 
-          onClick={() => navigate(`/dashboard/projects/${namespace}`)}
+          onClick={() => navigate(routes.projectDetail(namespace!))}
         >
           Go to Project Dashboard
           <ArrowRight className="h-4 w-4 ml-2" />

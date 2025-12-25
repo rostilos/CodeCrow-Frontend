@@ -8,6 +8,7 @@ import {
   JobFilters 
 } from '@/api_service/job/jobApi';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -92,6 +93,7 @@ interface JobsListProps {
 export default function JobsList({ projectNamespace, compact = false, maxItems }: JobsListProps) {
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const routes = useWorkspaceRoutes();
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +143,7 @@ export default function JobsList({ projectNamespace, compact = false, maxItems }
   }, [jobs, fetchJobs]);
 
   const handleJobClick = (jobId: string) => {
-    navigate(`/dashboard/projects/${projectNamespace}/jobs/${jobId}`);
+    navigate(routes.projectJobDetail(projectNamespace, jobId));
   };
 
   if (loading && jobs.length === 0) {

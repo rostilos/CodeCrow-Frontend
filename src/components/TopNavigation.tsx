@@ -23,6 +23,7 @@ import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { useState } from "react";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 interface TopNavigationProps {
   showSearch?: boolean;
@@ -35,6 +36,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
   const user = authUtils.getUser();
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const routes = useWorkspaceRoutes();
 
   const handleLogout = () => {
     authUtils.logout();
@@ -86,7 +88,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
               </SheetHeader>
               <nav className="flex flex-col p-4 gap-1">
                 <NavLink 
-                  to="/dashboard/projects" 
+                  to={routes.projects()} 
                   className={mobileNavLinkClass}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -96,7 +98,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 {canManageWorkspace() && (
                   <>
                     <NavLink 
-                      to="/dashboard/ai" 
+                      to={routes.aiSettings()} 
                       className={mobileNavLinkClass}
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -104,7 +106,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                       AI Connections
                     </NavLink>
                     <NavLink 
-                      to="/dashboard/hosting" 
+                      to={routes.hostingSettings()} 
                       className={mobileNavLinkClass}
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -112,7 +114,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                       VCS Connections
                     </NavLink>
                     <NavLink 
-                      to="/dashboard/workspace" 
+                      to={routes.workspaceSettings()} 
                       className={mobileNavLinkClass}
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -131,7 +133,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 </NavLink>
                 <div className="border-t my-2" />
                 <NavLink 
-                  to="/dashboard/user" 
+                  to={routes.userSettings()} 
                   className={mobileNavLinkClass}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -160,15 +162,15 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
           </button>
 
           <nav className="hidden md:flex items-center gap-6">
-            <NavLink to="/dashboard/projects" className={navLinkClass}>
+            <NavLink to={routes.projects()} className={navLinkClass}>
               Projects
             </NavLink>
             {canManageWorkspace() && (
               <>
-                <NavLink to="/dashboard/ai" className={navLinkClass}>
+                <NavLink to={routes.aiSettings()} className={navLinkClass}>
                   AI Connections
                 </NavLink>
-                <NavLink to="/dashboard/hosting" className={navLinkClass}>
+                <NavLink to={routes.hostingSettings()} className={navLinkClass}>
                   VCS Connections
                 </NavLink>
               </>
@@ -194,7 +196,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate("/dashboard/workspace")}>
+                <DropdownMenuItem onClick={() => navigate(routes.workspaceSettings())}>
                   <Users className="mr-2 h-4 w-4" />
                   Workspace Settings
                 </DropdownMenuItem>
@@ -221,7 +223,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/dashboard/user")}>
+              <DropdownMenuItem onClick={() => navigate(routes.userSettings())}>
                 <User className="mr-2 h-4 w-4" />
                 User Settings
               </DropdownMenuItem>

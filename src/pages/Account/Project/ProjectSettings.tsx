@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { projectService, ProjectDTO } from "@/api_service/project/projectService";
 import { analysisService, ProjectAnalysisSummary, PullRequestSummary, AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 // Remove old interfaces since we're importing them from the service
 
@@ -21,6 +22,7 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 export default function ProjectDashboard() {
   const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
   const { toast } = useToast();
   const [projects, setProjects] = useState<ProjectDTO[]>([]);
   const [selectedProject, setSelectedProject] = useState<ProjectDTO | null>(null);
@@ -382,11 +384,11 @@ export default function ProjectDashboard() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={() => navigate('/dashboard/projects/manage')}>
+          <Button variant="outline" onClick={() => navigate(routes.projects())}>
             <Settings className="mr-2 h-4 w-4" />
             Manage Projects
           </Button>
-          <Button onClick={() => navigate('/dashboard/projects/new')}>
+          <Button onClick={() => navigate(routes.projectNew())}>
             <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
@@ -401,7 +403,7 @@ export default function ProjectDashboard() {
             <p className="text-muted-foreground mb-6">
               Get started by creating your first project to begin code analysis.
             </p>
-            <Button onClick={() => navigate('/dashboard/projects/new')}>
+            <Button onClick={() => navigate(routes.projectNew())}>
               <Plus className="mr-2 h-4 w-4" />
               Create Project
             </Button>
@@ -517,7 +519,7 @@ export default function ProjectDashboard() {
                         </li>
                       </ol>
                       <Button 
-                        onClick={() => navigate(`/dashboard/projects/${selectedProject.namespace}/setup`)}
+                        onClick={() => navigate(routes.projectSetup(selectedProject.namespace))}
                         className="w-full"
                       >
                         <FileCode className="mr-2 h-4 w-4" />

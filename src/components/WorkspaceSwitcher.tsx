@@ -17,21 +17,31 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ROUTES } from "@/lib/routes";
 
 export function WorkspaceSwitcher() {
   const [open, setOpen] = useState(false);
   const { currentWorkspace, workspaces, setCurrentWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleWorkspaceSelect = (workspace: any) => {
     setCurrentWorkspace(workspace);
     setOpen(false);
+    
+    // Navigate to the same relative path but with new workspace
+    // Extract the path after /dashboard/{workspaceSlug}
+    const pathMatch = location.pathname.match(/^\/dashboard\/[^/]+(.*)$/);
+    const relativePath = pathMatch ? pathMatch[1] : '/projects';
+    
+    // Navigate to the new workspace with the same path
+    navigate(`/dashboard/${workspace.slug}${relativePath || '/projects'}`);
   };
 
   const handleCreateWorkspace = () => {
     setOpen(false);
-    navigate("/workspace");
+    navigate(ROUTES.WORKSPACE_SELECTION);
   };
 
   return (

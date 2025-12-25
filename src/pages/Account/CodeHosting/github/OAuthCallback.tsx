@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button.tsx";
 import { CheckCircle, Github, Loader2, XCircle } from "lucide-react";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 /**
  * GitHub OAuth callback page.
@@ -19,6 +20,7 @@ export default function GitHubOAuthCallback() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { currentWorkspace } = useWorkspace();
+    const routes = useWorkspaceRoutes();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [errorMessage, setErrorMessage] = useState<string>("");
     const [connectionId, setConnectionId] = useState<number | null>(null);
@@ -64,14 +66,14 @@ export default function GitHubOAuthCallback() {
 
     const handleContinue = () => {
         if (connectionId) {
-            navigate(`/dashboard/hosting/github/configure/${connectionId}`);
+            navigate(routes.hostingGitHubConfigure(connectionId));
         } else {
-            navigate('/dashboard/hosting');
+            navigate(routes.hostingSettings());
         }
     };
 
     const handleRetry = () => {
-        navigate('/dashboard/hosting');
+        navigate(routes.hostingSettings());
     };
 
     return (

@@ -9,6 +9,7 @@ import {
   JobFilters 
 } from '@/api_service/job/jobApi';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -89,6 +90,7 @@ export default function JobsPage() {
   const { namespace } = useParams<{ namespace: string }>();
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const routes = useWorkspaceRoutes();
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +140,7 @@ export default function JobsPage() {
   }, [jobs, fetchJobs]);
 
   const handleJobClick = (jobId: string) => {
-    navigate(`/dashboard/projects/${namespace}/jobs/${jobId}`);
+    navigate(routes.projectJobDetail(namespace!, jobId));
   };
 
   if (loading && jobs.length === 0) {
@@ -157,7 +159,7 @@ export default function JobsPage() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => navigate(`/dashboard/projects/${namespace}`)}
+            onClick={() => navigate(routes.projectDetail(namespace!))}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Back to Project

@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { integrationService } from "@/api_service/integration/integrationService";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService";
 import { githubService } from "@/api_service/codeHosting/github/githubService";
@@ -57,6 +58,7 @@ export default function ImportProject() {
   const provider = searchParams.get('provider') as VcsProvider;
   const connectionType = searchParams.get('connectionType');
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
   const { toast } = useToast();
   
   // Current step: 1 = repo selection, 2 = project details, 3 = AI connection, 4 = analysis config, 5 = installation method
@@ -444,7 +446,7 @@ export default function ImportProject() {
       });
       
       // Navigate to success page
-      navigate(`/dashboard/projects/${result.projectNamespace}/setup/success`, {
+      navigate(routes.projectSetupSuccess(result.projectNamespace), {
         state: {
           project: {
             id: result.projectId,
@@ -487,7 +489,7 @@ export default function ImportProject() {
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/projects")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(routes.projects())}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -632,7 +634,7 @@ export default function ImportProject() {
           
           {/* Step 1 Actions */}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => navigate('/dashboard/projects')}>
+            <Button variant="outline" onClick={() => navigate(routes.projects())}>
               Cancel
             </Button>
             <Button onClick={handleNextStep} disabled={!selectedRepo}>

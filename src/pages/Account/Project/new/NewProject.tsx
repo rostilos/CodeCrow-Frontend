@@ -32,12 +32,14 @@ import { githubService } from "@/api_service/codeHosting/github/githubService.ts
 import { projectService, InstallationMethod } from "@/api_service/project/projectService.ts";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
+  const routes = useWorkspaceRoutes();
 
   // Current step: 1 = connection/repo selection, 2 = project details, 3 = AI connection
   const [currentStep, setCurrentStep] = useState(1);
@@ -128,7 +130,7 @@ export default function NewProjectPage() {
   };
 
   const handleOpenRepoSelector = (connectionId: number, provider: string) => {
-    navigate(`/dashboard/projects/new/select-repo/${connectionId}`, { state: { projectName, provider } });
+    navigate(routes.projectSelectRepo(connectionId), { state: { projectName, provider } });
   };
   
   const loadAiConnections = async () => {
@@ -287,7 +289,7 @@ export default function NewProjectPage() {
       });
       
       // Navigate to success page with project info
-      navigate(`/dashboard/projects/${createdProject.namespace}/setup/success`, {
+      navigate(routes.projectSetupSuccess(createdProject.namespace), {
         state: {
           project: createdProject,
           installationMethod,
@@ -312,7 +314,7 @@ export default function NewProjectPage() {
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/projects")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(routes.projects())}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -395,7 +397,7 @@ export default function NewProjectPage() {
               ) : connections.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground mb-4">No connections found</p>
-                  <Button onClick={() => navigate("/dashboard/hosting")}>
+                  <Button onClick={() => navigate(routes.hostingSettings())}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add VCS Connection
                   </Button>
@@ -427,7 +429,7 @@ export default function NewProjectPage() {
 
           {/* Step 1 Actions */}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => navigate('/dashboard/projects')}>
+            <Button variant="outline" onClick={() => navigate(routes.projects())}>
               Cancel
             </Button>
             <Button onClick={handleNextStep} disabled={!selectedRepo}>

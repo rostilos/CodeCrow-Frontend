@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link2, CheckCircle, ArrowRight, Zap, Shield, Settings, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/lib/routes";
 
 export default function BitbucketAppInstall() {
   const navigate = useNavigate();
@@ -181,7 +182,7 @@ export default function BitbucketAppInstall() {
               CodeCrow is now connected and configured. Create a pull request in any of your enabled repositories to see it in action.
             </p>
             <div className="flex gap-3">
-              <Button onClick={() => navigate("/dashboard/projects")}>
+              <Button onClick={() => navigate(ROUTES.WORKSPACE_SELECTION)}>
                 Go to Dashboard
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

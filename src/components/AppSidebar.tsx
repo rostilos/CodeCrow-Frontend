@@ -18,6 +18,7 @@ import { authUtils } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { CodeCrowLogo, CodeCrowIcon } from "@/components/CodeCrowLogo";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 import {
   Sidebar,
@@ -42,15 +43,16 @@ export function AppSidebar() {
   const { canManageWorkspace } = usePermissions();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
+  const routes = useWorkspaceRoutes();
 
   const mainNavItems = [
-    { title: "Projects", url: "/dashboard/projects", icon: Code },
+    { title: "Projects", url: routes.projects(), icon: Code },
   ];
 
-  const workspaceItem = { title: "Workspace", url: "/dashboard/workspace", icon: Users };
-  const aiConnectionItem = { title: "AI Connections", url: "/dashboard/ai", icon: Brain };
-  const vcsConnectionItem = { title: "Code Hosting", url: "/dashboard/hosting", icon: GitBranch };
-  const userSettingsItem = { title: "User Settings", url: "/dashboard/user", icon: User };
+  const workspaceItem = { title: "Workspace", url: routes.workspaceSettings(), icon: Users };
+  const aiConnectionItem = { title: "AI Connections", url: routes.aiSettings(), icon: Brain };
+  const vcsConnectionItem = { title: "Code Hosting", url: routes.hostingSettings(), icon: GitBranch };
+  const userSettingsItem = { title: "User Settings", url: routes.userSettings(), icon: User };
   
   const navigationItems = canManageWorkspace() 
     ? [...mainNavItems, aiConnectionItem, vcsConnectionItem, workspaceItem]
