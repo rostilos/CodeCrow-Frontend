@@ -38,6 +38,7 @@ const ProjectAdminAI = lazy(() => import("./pages/Docs/ProjectAdmin/AIConnection
 const ProjectAdminRAG = lazy(() => import("./pages/Docs/ProjectAdmin/RAGIndexing"));
 const ProjectAdminTasks = lazy(() => import("./pages/Docs/ProjectAdmin/TaskManagement"));
 const ProjectAdminDanger = lazy(() => import("./pages/Docs/ProjectAdmin/DangerZone"));
+const ProjectAdminActivity = lazy(() => import("./pages/Docs/ProjectAdmin/Activity"));
 const WorkspaceAdministration = lazy(() => import("./pages/Docs/WorkspaceAdministration"));
 const RAGOverview = lazy(() => import("./pages/Docs/RAG/RAGOverview"));
 const RAGProjectSetup = lazy(() => import("./pages/Docs/RAG/RAGProjectSetup"));
@@ -136,6 +137,7 @@ const App = () => (
                 <Route path="admin/project/ai" element={<ProjectAdminAI />} />
                 <Route path="admin/project/rag" element={<ProjectAdminRAG />} />
                 <Route path="admin/project/tasks" element={<ProjectAdminTasks />} />
+                <Route path="admin/project/activity" element={<ProjectAdminActivity />} />
                 <Route path="admin/project/danger" element={<ProjectAdminDanger />} />
                 <Route path="admin/workspace" element={<WorkspaceAdministration />} />
 

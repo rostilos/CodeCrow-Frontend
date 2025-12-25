@@ -28,7 +28,7 @@ export default function CommandsOverview() {
                         <div className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                             <Terminal className="h-5 w-5 mb-2 text-primary" />
                             <h4 className="font-bold text-sm">Analyze</h4>
-                            <p className="text-xs text-muted-foreground">Force a re-analysis of the current PR state.</p>
+                            <p className="text-xs text-muted-foreground">Trigger analysis manually if auto-analysis is disabled in project settings.</p>
                         </div>
                         <div className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                             <Terminal className="h-5 w-5 mb-2 text-primary" />
