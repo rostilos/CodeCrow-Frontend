@@ -21,6 +21,8 @@ import { useTheme } from "@/components/ThemeProvider";
 import { getCategoryInfo } from "@/config/issueCategories";
 import { cn } from "@/lib/utils";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { usePermissions } from "@/hooks/usePermissions";
+
 
 export default function IssueDetails() {
   const { namespace, issueId } = useParams<{ namespace: string; issueId: string }>();
@@ -31,6 +33,8 @@ export default function IssueDetails() {
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   const { theme } = useTheme();
+  const { canManageWorkspace } = usePermissions();
+
 
   const [issue, setIssue] = useState<AnalysisIssue | null>(null);
   const [loading, setLoading] = useState(true);
@@ -572,20 +576,22 @@ export default function IssueDetails() {
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Select
-                value={issue.status}
-                onValueChange={(value) => handleUpdateIssueStatus(value as 'open' | 'resolved')}
-              >
-                <SelectTrigger className="w-[120px] h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {canManageWorkspace() && (
+              <div className="flex items-center gap-2">
+                <Select
+                  value={issue.status}
+                  onValueChange={(value) => handleUpdateIssueStatus(value as 'open' | 'resolved')}
+                >
+                  <SelectTrigger className="w-[120px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
