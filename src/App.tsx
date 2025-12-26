@@ -92,7 +92,7 @@ const JobDetailPage = lazy(() => import("./pages/Jobs/JobDetailPage.tsx"));
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="codecrow-ui-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="codecrow-ui-theme">
       <TooltipProvider>
         <Toaster />
         <Sonner />
