@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Database, Play, Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw, Square, Plus, X } from "lucide-react";
+import { Database, Play, Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw, Square, Plus, X, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   projectService,
   ProjectDTO,
@@ -341,6 +342,25 @@ export default function RagConfiguration({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Free Plan Info Banner */}
+        <Alert className="bg-blue-500/10 border-blue-500/30">
+          <Info className="h-4 w-4 text-blue-500" />
+          <AlertDescription className="text-blue-700 dark:text-blue-300 text-sm space-y-2">
+            <p>
+              <strong>Free Plan:</strong> RAG indexing supports up to <strong>70,000 chunks</strong> and <strong>40,000 files</strong> per branch.
+            </p>
+            <p>
+              <strong>Tip:</strong> Use <em>exclude patterns</em> below to skip large or unnecessary directories such as:
+            </p>
+            <ul className="list-disc list-inside ml-2 text-xs space-y-0.5">
+              <li><code className="bg-muted px-1 rounded">node_modules/**</code>, <code className="bg-muted px-1 rounded">vendor/**</code> - package dependencies</li>
+              <li><code className="bg-muted px-1 rounded">dist/**</code>, <code className="bg-muted px-1 rounded">build/**</code>, <code className="bg-muted px-1 rounded">target/**</code> - build outputs</li>
+              <li><code className="bg-muted px-1 rounded">*.generated.*</code>, <code className="bg-muted px-1 rounded">*.min.js</code> - generated files</li>
+              <li><code className="bg-muted px-1 rounded">.venv/**</code>, <code className="bg-muted px-1 rounded">__pycache__/**</code> - Python environments</li>
+            </ul>
+          </AlertDescription>
+        </Alert>
+
         {/* Enable/Disable Toggle */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
@@ -376,12 +396,13 @@ export default function RagConfiguration({
         <div className="space-y-2">
           <Label>Exclude Patterns</Label>
           <p className="text-sm text-muted-foreground mb-2">
-            Paths to exclude from indexing. Supports exact paths (e.g., <code className="text-xs bg-muted px-1 rounded">vendor/</code>) and glob patterns (e.g., <code className="text-xs bg-muted px-1 rounded">app/code/**</code>, <code className="text-xs bg-muted px-1 rounded">*.generated.ts</code>).
+            Add patterns to exclude large or unnecessary directories from indexing. 
+            Supports glob patterns (e.g., <code className="text-xs bg-muted px-1 rounded">vendor/**</code>, <code className="text-xs bg-muted px-1 rounded">*.generated.ts</code>).
           </p>
           
           <div className="flex gap-2">
             <Input
-              placeholder="e.g., vendor/** or *.min.js"
+              placeholder="e.g., node_modules/** or *.min.js"
               value={newPattern}
               onChange={(e) => setNewPattern(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -419,6 +440,12 @@ export default function RagConfiguration({
                 </Badge>
               ))}
             </div>
+          )}
+          
+          {excludePatterns.length === 0 && enabled && (
+            <p className="text-xs text-muted-foreground italic">
+              Consider excluding: <code className="bg-muted px-1 rounded">node_modules/**</code>, <code className="bg-muted px-1 rounded">vendor/**</code>, <code className="bg-muted px-1 rounded">dist/**</code>, <code className="bg-muted px-1 rounded">.venv/**</code>
+            </p>
           )}
         </div>
 
