@@ -25,8 +25,9 @@ export function SnowEffect({ count = 20, fallDistance = "500px" }: SnowEffectPro
             {snowflakes.map((flake) => (
                 <div
                     key={flake.id}
-                    className="absolute rounded-full bg-white animate-snow"
+                    className="absolute rounded-full animate-snow"
                     style={{
+                        backgroundColor: "hsl(var(--festive-snow-color))",
                         left: flake.left,
                         width: flake.size,
                         height: flake.size,

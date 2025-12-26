@@ -20,7 +20,7 @@ export function BulbGarland() {
             const t = (bulbInSegmentIndex + 1) / (bulbsPerSegment + 1);
 
             // Standard catenary-like curve for sagging: 4 * h * x * (1 - x)
-            const sag = 15; // pixels
+            const sag = 9; // Gentle curve (natural midpoint between 5 and 15)
             const yOffset = 4 * sag * t * (1 - t);
 
             const xPos = (i / (totalBulbs - 1)) * 100;
@@ -38,25 +38,26 @@ export function BulbGarland() {
         });
     }, [totalBulbs, bulbsPerSegment]);
 
-    // Create SVG path for the sagging wire
     const wirePath = useMemo(() => {
         let path = "M 0 0";
         const segmentWidth = 100 / segments;
-        const sag = 15;
+        const sagHeight = 9; // matched with bulbs for natural curve
 
         for (let i = 0; i < segments; i++) {
             const startX = i * segmentWidth;
             const endX = (i + 1) * segmentWidth;
             const midX = (startX + endX) / 2;
-            path += ` Q ${midX}% ${sag * 2}, ${endX}% 0`;
+            // Q controlX controlY, endX endY
+            // We use sagHeight * 2 as control point Y to reach sagHeight at the peak (t=0.5)
+            path += ` Q ${midX} ${sagHeight * 2}, ${endX} 0`;
         }
         return path;
     }, [segments]);
 
     return (
         <div className="bulb-garland !z-[-10]">
-            <svg className="garland-wire-svg" width="100%" height="40" preserveAspectRatio="none">
-                <path d={wirePath} fill="none" stroke="#1a1a1a" strokeWidth="1.5" />
+            <svg className="garland-wire-svg" width="100%" height="40" viewBox="0 0 100 40" preserveAspectRatio="none">
+                <path d={wirePath} fill="none" stroke="currentColor" strokeWidth="0.7" />
             </svg>
             {bulbs.map((bulb) => (
                 <div
@@ -68,7 +69,7 @@ export function BulbGarland() {
                         backgroundColor: bulb.color,
                         animationDelay: bulb.delay,
                         animationDuration: bulb.duration,
-                        boxShadow: `0 0 12px 2px ${bulb.glow}`,
+                        boxShadow: `0 0 12px 2px hsla(var(--primary), var(--festive-glow-opacity, 0.2))`,
                     } as React.CSSProperties}
                 />
             ))}
