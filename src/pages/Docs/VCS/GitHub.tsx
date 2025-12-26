@@ -52,7 +52,7 @@ export default function VCSGitHub() {
                             </div>
                             <div className="flex items-start gap-2">
                                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                                <span>No Personal Access Tokens required</span>
+                                <span>Required Scopes: <strong>repo, read:user, read:org</strong></span>
                             </div>
                             <div className="flex items-start gap-2">
                                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />

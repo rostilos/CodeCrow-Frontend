@@ -72,10 +72,6 @@ export default function CommandsOverview() {
                     </div>
                 </CardContent>
             </Card>
-
-            <div className="bg-muted/50 aspect-video rounded-xl border-2 border-dashed flex items-center justify-center">
-                <span className="text-muted-foreground">Screenshot Placeholder: Using commands in a PR comment</span>
-            </div>
         </div>
     );
 }

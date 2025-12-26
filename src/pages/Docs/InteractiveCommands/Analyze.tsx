@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Terminal, RefreshCw, Send, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import analyze from "@/assets/interactive-commands/analyze.png";
+
 
 export default function CommandAnalyze() {
     return (
@@ -50,7 +52,7 @@ export default function CommandAnalyze() {
             </Card>
 
             <div className="bg-muted/50 aspect-video rounded-xl border-2 border-dashed flex items-center justify-center">
-                <span className="text-muted-foreground">Screenshot Placeholder: Analysis trigger acknowledgment</span>
+                <img src={analyze} alt="Conversational AI in a PR thread" loading="lazy" />
             </div>
         </div>
     );
