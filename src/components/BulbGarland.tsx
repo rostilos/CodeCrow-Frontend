@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 
 const BULB_COLORS = [
     { color: "#f97316", glow: "rgba(249, 115, 22, 0.2)" },  // Platform Orange
@@ -9,8 +9,17 @@ const BULB_COLORS = [
 ];
 
 export function BulbGarland() {
-    const segments = 10; // Number of sagging segments
-    const bulbsPerSegment = 5;
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    const segments = isMobile ? 5 : 10; // Number of sagging segments
+    const bulbsPerSegment = isMobile ? 3 : 5;
     const totalBulbs = segments * bulbsPerSegment;
 
     const bulbs = useMemo(() => {

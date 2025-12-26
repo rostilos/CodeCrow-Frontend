@@ -340,14 +340,14 @@ const StackedCards = ({
                             >
                                 <div className="flex flex-col lg:flex-row h-full">
                                     {/* Text Side */}
-                                    <div className={`${currentSlide.mediaType === 'video' ? 'lg:w-2/6' : 'lg:w-2/5'} p-6 flex flex-col justify-center border-t border-border/20`}>
+                                    <div className={`flex-1 ${currentSlide.mediaType === 'video' ? 'lg:w-2/6' : 'lg:w-2/5'} p-6 flex flex-col justify-center border-t border-border/20 grow-0 lg:grow`}>
                                         <p className="text-muted-foreground text-base leading-relaxed">
                                             {feature.description}
                                         </p>
                                     </div>
 
                                     {/* Media Side */}
-                                    <div className={`${currentSlide.mediaType === 'video' ? 'lg:w-4/6' : 'lg:w-3/5'} relative bg-muted/10 border-t lg:border-t-0 lg:border-l border-border/20 overflow-hidden group`}>
+                                    <div className={`flex-1 ${currentSlide.mediaType === 'video' ? 'lg:w-4/6' : 'lg:w-3/5'} relative bg-muted/10 border-t lg:border-t-0 lg:border-l border-border/20 overflow-hidden group`}>
                                         <div className="absolute inset-0 flex items-center justify-center">
                                             {currentSlide.mediaType === 'video' && currentSlide.videoSrc ? (
                                                 <video
