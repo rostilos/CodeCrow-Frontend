@@ -24,6 +24,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { useState } from "react";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { SnowEffect } from "./SnowEffect";
 
 interface TopNavigationProps {
   showSearch?: boolean;
@@ -58,18 +59,17 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `text-sm transition-colors hover:text-foreground ${
-      isActive ? "text-orange-500 font-bold" : "font-medium text-muted-foreground"
+    `text-sm transition-colors hover:text-foreground ${isActive ? "text-orange-500 font-bold" : "font-medium text-muted-foreground"
     }`;
 
   const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-      isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
     }`;
 
   return (
     <header className="sticky top-0 z-50 h-14 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center justify-between px-4 lg:px-6 h-full">
+      <SnowEffect fallDistance="60px" />
+      <div className="flex items-center justify-between px-4 lg:px-6 h-full relative z-10">
         {/* Left side - Logo, Mobile Menu and Navigation */}
         <div className="flex items-center gap-4 lg:gap-8">
           {/* Mobile Menu */}
@@ -87,8 +87,8 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col p-4 gap-1">
-                <NavLink 
-                  to={routes.projects()} 
+                <NavLink
+                  to={routes.projects()}
                   className={mobileNavLinkClass}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -97,24 +97,24 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 </NavLink>
                 {canManageWorkspace() && (
                   <>
-                    <NavLink 
-                      to={routes.aiSettings()} 
+                    <NavLink
+                      to={routes.aiSettings()}
                       className={mobileNavLinkClass}
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Brain className="h-4 w-4" />
                       AI Connections
                     </NavLink>
-                    <NavLink 
-                      to={routes.hostingSettings()} 
+                    <NavLink
+                      to={routes.hostingSettings()}
                       className={mobileNavLinkClass}
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <GitBranch className="h-4 w-4" />
                       VCS Connections
                     </NavLink>
-                    <NavLink 
-                      to={routes.workspaceSettings()} 
+                    <NavLink
+                      to={routes.workspaceSettings()}
                       className={mobileNavLinkClass}
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -123,8 +123,8 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                     </NavLink>
                   </>
                 )}
-                <NavLink 
-                  to="/docs" 
+                <NavLink
+                  to="/docs"
                   className={mobileNavLinkClass}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -132,8 +132,8 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                   Documentation
                 </NavLink>
                 <div className="border-t my-2" />
-                <NavLink 
-                  to={routes.userSettings()} 
+                <NavLink
+                  to={routes.userSettings()}
                   className={mobileNavLinkClass}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -156,9 +156,12 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
 
           <button
             onClick={() => navigate("/")}
-            className="flex items-center hover:opacity-80 transition-opacity"
+            className="flex items-center hover:opacity-80 transition-opacity gap-2"
           >
-            <CodeCrowLogo size="sm" />
+            <CodeCrowLogo size="sm" festive={true} />
+            <span className="hidden xl:block text-xs font-bold text-primary animate-pulse festive-glow">
+              Happy New Year! 🎄
+            </span>
           </button>
 
           <nav className="hidden md:flex items-center gap-6">

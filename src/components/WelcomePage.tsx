@@ -19,6 +19,8 @@ import { useState, useEffect, useRef } from "react";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProcessFlowchart } from "./ProcessFlowchart";
+import { SnowEffect } from "./SnowEffect";
+import { BulbGarland } from "./BulbGarland";
 
 import demoAnalysisDashboard from "@/assets/demo-analysis-dashboard.png";
 import demoDetailedInfo from "@/assets/demo-detailed-info.png";
@@ -433,15 +435,18 @@ const HeroSection = ({
     handleGetStarted,
     handleDocs,
     activeTab,
-    onTabChange
+    onTabChange,
+    onHoverChange
 }: {
     handleGetStarted: () => void;
     handleDocs: () => void;
     activeTab: number;
     onTabChange: (index: number) => void;
+    onHoverChange?: (isHovered: boolean) => void;
 }) => {
     return (
-        <section className="relative">
+        <section className="relative overflow-hidden">
+            <SnowEffect count={40} fallDistance="800px" />
             {/* Background */}
             <div className="absolute inset-0 overflow-hidden">
                 <div
@@ -552,6 +557,7 @@ const HeroSection = ({
                         <StackedCards
                             activeIndex={activeTab}
                             onCardSelect={onTabChange}
+                            onHoverChange={onHoverChange}
                         />
                     </div>
                 </div>
@@ -994,9 +1000,13 @@ export default function WelcomePage() {
         ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}
         ${lastScrollY > 50 ? 'bg-background/95 backdrop-blur-md border-b border-border/40 shadow-sm' : ''}
       `}>
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <SnowEffect fallDistance="65px" />
+                <BulbGarland />
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                     <nav className="flex items-center justify-between h-16">
-                        <CodeCrowLogo size="md" />
+                        <div className="flex items-center gap-3">
+                            <CodeCrowLogo size="md" festive={true} />
+                        </div>
                         <div className="flex items-center gap-3">
                             <ThemeToggle />
                             {isAuthenticated ? (
