@@ -26,6 +26,7 @@ import {
 import { integrationService } from "@/api_service/integration/integrationService.ts";
 import { VcsConnection } from "@/api_service/integration/integration.interface.ts";
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -36,10 +37,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { APP_CONFIG } from "@/config/app-config.ts";
 
 export default function GitHubHostingSettings() {
     const navigate = useNavigate();
+    const routes = useWorkspaceRoutes();
     const { currentWorkspace } = useWorkspace();
     const [oauthConnections, setOauthConnections] = useState<GitHubConnections>([]);
     const [appConnections, setAppConnections] = useState<VcsConnection[]>([]);
@@ -144,12 +145,12 @@ export default function GitHubHostingSettings() {
         }
     };
 
-    const openConnectionDetails = (connectionId: number) => {
-        navigate(`${APP_CONFIG.ENDPOINTS.CODE_HOSTING.GITHUB.CONFIGURE_CONNECTION}/${connectionId}`);
+    const openConnectionDetails = (connection: VcsConnection) => {
+        navigate(routes.projectImport({ connectionId: connection.id, provider: 'github', connectionType: connection.connectionType }));
     };
 
     const createManualConnection = () => {
-        navigate(APP_CONFIG.ENDPOINTS.CODE_HOSTING.GITHUB.ADD_CONNECTION);
+        navigate(routes.hostingGitHubAdd());
     };
 
     if (isFetchingData) {
@@ -283,7 +284,7 @@ export default function GitHubHostingSettings() {
                                             variant="outline"
                                             size="sm"
                                             className="flex-1"
-                                            onClick={() => openConnectionDetails(connection.id)}
+                                            onClick={() => openConnectionDetails(connection)}
                                         >
                                             <Settings className="h-4 w-4 mr-1" />
                                             Configure
@@ -362,7 +363,7 @@ export default function GitHubHostingSettings() {
                                             variant="outline"
                                             size="sm"
                                             className="flex-1"
-                                            onClick={() => openConnectionDetails(connection.id)}
+                                            onClick={() => openConnectionDetails(connection)}
                                         >
                                             <Settings className="h-4 w-4 mr-1" />
                                             Configure
