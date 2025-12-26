@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MessageSquare, Cpu, Layers, Send, Brain } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import ask from "@/assets/interactive-commands/ask.png";
 
 export default function CommandAsk() {
     return (
@@ -87,7 +88,7 @@ export default function CommandAsk() {
             </Card>
 
             <div className="bg-muted/50 aspect-video rounded-xl border-2 border-dashed flex items-center justify-center">
-                <span className="text-muted-foreground">Screenshot Placeholder: Conversational AI in a PR thread</span>
+                <img src={ask} alt="Conversational AI in a PR thread" loading="lazy" />
             </div>
         </div>
     );

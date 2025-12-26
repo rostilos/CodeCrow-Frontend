@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Clock, Zap, AlertTriangle } from "lucide-react";
 
 export default function RAGLimitations() {
@@ -33,6 +33,47 @@ export default function RAGLimitations() {
                     </p>
                 </CardContent>
             </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Size restrictions</CardTitle>
+                </CardHeader>
+
+                {/* Free Plan Limitations Alert */}
+                <CardContent className="space-y-4">
+                    <div className="flex items-start gap-3 p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-100 dark:border-orange-900">
+                
+                        <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                        <div>
+                            <h4 className="font-medium text-orange-900 dark:text-orange-300">
+                                During the free plan, RAG indexing has the following limitations to ensure fair usage:
+                            </h4>
+                            <ul className="text-sm text-orange-800 dark:text-orange-400 mt-1 list-disc">
+                                 <li><strong>Maximum 70,000 chunks</strong> per indexed branch</li>
+                                 <li><strong>Maximum 40,000 files</strong> per indexed branch</li>
+                                 <li><strong>Maximum 1 MB</strong> per individual file</li>
+                             </ul>
+                        </div>
+                    </div>
+                    <p className="text-sm mt-2">
+                        These limits are designed to support most small to medium projects. We're working on expanded plans
+                        with higher limits for larger repositories. <strong>Contact support</strong> if you need increased capacity.
+                    </p>
+                </CardContent>
+             </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Limit on the number of branches</CardTitle>
+                </CardHeader>
+
+                {/* Free Plan Limitations Alert */}
+                <CardContent className="space-y-4">
+                     <p className="text-sm mt-2">
+                         During the alpha testing phase, it is possible to create a RAG index for a single branch. We are working on adding the ability to create RAG indexes for multiple branches.
+                     </p>
+                </CardContent>
+             </Card> 
 
             <Card>
                 <CardHeader>

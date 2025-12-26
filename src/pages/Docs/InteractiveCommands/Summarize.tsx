@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { FileText, Image as ImageIcon, Layout, Send } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import summarize from "@/assets/interactive-commands/summarize.png";
 
 export default function CommandSummarize() {
     return (
@@ -54,7 +55,7 @@ export default function CommandSummarize() {
             </Card>
 
             <div className="bg-muted/50 aspect-video rounded-xl border-2 border-dashed flex items-center justify-center">
-                <span className="text-muted-foreground">Screenshot Placeholder: Structural summary of a large PR</span>
+                <img src={summarize} alt="Conversational AI in a PR thread" loading="lazy" />
             </div>
         </div>
     );

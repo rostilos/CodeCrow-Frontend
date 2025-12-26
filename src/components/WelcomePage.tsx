@@ -687,7 +687,7 @@ const FAQSection = () => {
         },
         {
             question: "Do I need my own API key?",
-            answer: "Yes, CodeCrow uses a BYOK (Bring Your Own Key) model. You provide your own OpenAI API key, giving you full control over costs and usage limits."
+            answer: "Yes, CodeCrow uses a BYOK (Bring Your Own Key) model. You provide your own OpenRouter API key, giving you full control over costs and usage limits."
         },
         {
             question: "Which version control systems are supported?",
@@ -745,7 +745,7 @@ const FAQSection = () => {
 const SetupOnceSection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
     const steps = [
         { step: "1", title: "Connect Repository", description: "Link your Bitbucket account with secure OAuth2 authentication", icon: GitBranch },
-        { step: "2", title: "Add AI Key", description: "Configure your OpenAI API credentials in the dashboard", icon: Key },
+        { step: "2", title: "Add AI Key", description: "Configure your OpenRouter API credentials in the dashboard", icon: Key },
         { step: "3", title: "Configure Pipeline", description: "Add CodeCrow to your CI/CD workflow with one command", icon: Workflow },
     ];
 

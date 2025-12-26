@@ -57,9 +57,10 @@ export default function FAQ() {
               <AccordionItem value="item-4">
                 <AccordionTrigger>Is my code secure?</AccordionTrigger>
                 <AccordionContent>
-                  Yes, CodeCrow takes security seriously. We use OAuth2 for authentication, encrypt data in transit and at rest,
-                  and never store your source code permanently. Analysis is performed in isolated environments and results are
-                  stored securely in your workspace.
+                  Yes, CodeCrow takes security seriously. We use secure OAuth2 for authentication and encrypt all data both in transit and at rest.
+                  While we don't store your full source code for long-term use, we maintain a secure, encrypted index of your repository's
+                  structure and metadata (via RAG) to provide fast, context-aware analysis. This data is protected by the same
+                  rigorous security standards as all other system data.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -76,7 +77,7 @@ export default function FAQ() {
               <AccordionItem value="setup-1">
                 <AccordionTrigger>Do I need an AI connection to use CodeCrow?</AccordionTrigger>
                 <AccordionContent>
-                  Yes, CodeCrow requires an AI connection (currently supporting OpenAI) to perform code analysis.
+                  Yes, CodeCrow requires an AI connection (currently supporting OpenRouter) to perform code analysis.
                   You'll need to provide your own API key during the AI connection setup process.
                 </AccordionContent>
               </AccordionItem>
@@ -92,11 +93,26 @@ export default function FAQ() {
               <AccordionItem value="setup-3">
                 <AccordionTrigger>What permissions does CodeCrow need?</AccordionTrigger>
                 <AccordionContent>
-                  CodeCrow requires the following Bitbucket permissions:
-                  <ul className="list-disc ml-6 mt-2 space-y-1">
-                    <li><strong>Repository (Read)</strong>: To access repository content and pull requests</li>
-                    <li><strong>Pull Requests (Read/Write)</strong>: To read PR details and post analysis comments</li>
-                  </ul>
+                  CodeCrow requires the following permissions to operate:
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Bitbucket Cloud:</h4>
+                      <ul className="list-disc ml-6 space-y-1 text-sm">
+                        <li><strong>Account (Read)</strong>: To identify the connecting user</li>
+                        <li><strong>Repositories (Read)</strong>: To access repository content for analysis</li>
+                        <li><strong>Pull Requests (Read)</strong>: To read pull request details</li>
+                        <li><strong>Webhooks (Read & Write)</strong>: To automatically set up analysis triggers</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">GitHub:</h4>
+                      <ul className="list-disc ml-6 space-y-1 text-sm">
+                        <li><strong>repo</strong>: Full control of repositories (includes pull requests and webhooks)</li>
+                        <li><strong>read:user</strong>: To identify the connecting user</li>
+                        <li><strong>read:org</strong>: To read organization data when applicable</li>
+                      </ul>
+                    </div>
+                  </div>
                 </AccordionContent>
               </AccordionItem>
 
@@ -147,7 +163,7 @@ export default function FAQ() {
                 <AccordionTrigger>How long does analysis take?</AccordionTrigger>
                 <AccordionContent>
                   Analysis time depends on the size of the code changes and the complexity of the project.
-                  Typically, most pull requests are analyzed within 2-5 minutes. Large pull requests may take longer.
+                  Typically, most pull requests are analyzed within 1-2 minutes. Large pull requests may take longer.
                 </AccordionContent>
               </AccordionItem>
 
@@ -192,7 +208,7 @@ export default function FAQ() {
                 <AccordionTrigger>How does pricing work?</AccordionTrigger>
                 <AccordionContent>
                   CodeCrow offers flexible pricing plans based on the number of analyzed pull requests per month.
-                  We also offer a free tier for evaluation. Note that AI provider costs (e.g., OpenAI API usage)
+                  We also offer a free tier for evaluation. Note that AI provider costs (e.g., OpenRouter API usage)
                   are billed separately by the AI provider.
                 </AccordionContent>
               </AccordionItem>
