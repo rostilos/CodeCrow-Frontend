@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MessageSquare, Terminal, Shield, Clock, Info } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { MessageSquare, Terminal, Shield, Clock, Info, AlertTriangle, Settings } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
 export default function CommandsOverview() {
@@ -12,6 +12,25 @@ export default function CommandsOverview() {
                     Control CodeCrow and ask questions directly from your Pull Request comments.
                 </p>
             </div>
+
+            <Alert>
+                <Settings className="h-4 w-4" />
+                <AlertTitle>Enable Comment Commands</AlertTitle>
+                <AlertDescription>
+                    Comment commands must be enabled in your project settings before use. 
+                    Navigate to <strong>Project Settings → Analysis Settings → Comment Commands</strong> to enable this feature.
+                </AlertDescription>
+            </Alert>
+
+            <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800 dark:text-amber-200">AI Model Considerations</AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                    The quality of <code>/codecrow summarize</code> and <code>/codecrow ask</code> responses depends on your AI model. 
+                    Free-tier or low-parameter models may produce inconsistent results. 
+                    For best results, use models with 70B+ parameters or premium models (GPT-4, Claude 3, etc.).
+                </AlertDescription>
+            </Alert>
 
             <Card>
                 <CardHeader>

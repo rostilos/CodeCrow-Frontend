@@ -70,9 +70,14 @@ const JobTypeBadge = ({ type }: { type: JobType }) => {
     RAG_INCREMENTAL_INDEX: 'Incremental Index',
     MANUAL_ANALYSIS: 'Manual Analysis',
     REPO_SYNC: 'Repo Sync',
+    SUMMARIZE_COMMAND: 'Summarize',
+    ASK_COMMAND: 'Ask',
+    ANALYZE_COMMAND: 'Analyze',
+    REVIEW_COMMAND: 'Review',
+    IGNORED_COMMENT: 'Ignored Comment',
   };
 
-  return <Badge variant="outline">{labels[type]}</Badge>;
+  return <Badge variant="outline">{labels[type] || type}</Badge>;
 };
 
 const formatDuration = (ms?: number): string => {
@@ -119,7 +124,9 @@ export default function JobsList({ projectNamespace, compact = false, maxItems }
       };
 
       const response = await jobApi.listProjectJobs(currentWorkspace.slug, projectNamespace, filters);
-      setJobs(response.jobs);
+      // Filter out IGNORED_COMMENT jobs - they are internal and not useful for users
+      const filteredJobs = response.jobs.filter(job => job.jobType !== 'IGNORED_COMMENT');
+      setJobs(filteredJobs);
       setTotalPages(response.totalPages);
       setTotalElements(response.totalElements);
     } catch (err) {
@@ -200,6 +207,10 @@ export default function JobsList({ projectNamespace, compact = false, maxItems }
               <SelectItem value="BRANCH_ANALYSIS">Branch Analysis</SelectItem>
               <SelectItem value="RAG_INITIAL_INDEX">Initial Indexing</SelectItem>
               <SelectItem value="RAG_INCREMENTAL_INDEX">Incremental Index</SelectItem>
+              <SelectItem value="SUMMARIZE_COMMAND">Summarize</SelectItem>
+              <SelectItem value="ASK_COMMAND">Ask</SelectItem>
+              <SelectItem value="ANALYZE_COMMAND">Analyze</SelectItem>
+              <SelectItem value="REVIEW_COMMAND">Review</SelectItem>
             </SelectContent>
           </Select>
         </div>

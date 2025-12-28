@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, Save } from "lucide-react";
+import { Plus, Edit, Trash2, Save, Info, AlertTriangle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest, UpdateAiConnectionRequest } from "@/api_service/ai/aiConnectionService";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function AIConnectionsPage() {
   const { currentWorkspace } = useWorkspace();
@@ -123,6 +124,35 @@ export default function AIConnectionsPage() {
                   <CardDescription>Provider, model and API key</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Model Recommendations Alert */}
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Model Recommendations</AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      <p>
+                        For reliable code review, use <strong>mid-tier or higher models</strong> with at least <strong>200k context window</strong>.
+                      </p>
+                      <p className="text-sm">
+                        <strong>Recommended models:</strong>
+                      </p>
+                      <ul className="text-sm list-disc list-inside space-y-1">
+                        <li><code>google/gemini-2.5-flash</code> - 1M context, fast and reliable</li>
+                        <li><code>openai/gpt-5.1-codex-mini</code> - 200k context, good for code</li>
+                        <li><code>anthropic/claude-haiku-4.5</code> - 200k context, balanced</li>
+                        <li><code>x-ai/grok-4.1-fast</code> - 200k context, fast responses</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Low-Tier Models Warning</AlertTitle>
+                    <AlertDescription>
+                      Free-tier or low-parameter models (&lt;70B params) often produce <strong>incomplete, inconsistent, or incorrect</strong> analysis results, 
+                      especially for large PRs. They may also struggle with complex code patterns and multi-file changes.
+                    </AlertDescription>
+                  </Alert>
+
                   <div>
                     <Label>Provider</Label>
                     <Select value={editing.providerKey} onValueChange={(v) => setEditing({ ...editing, providerKey: v as any })}>

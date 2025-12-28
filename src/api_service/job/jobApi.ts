@@ -36,7 +36,12 @@ export type JobType =
   | 'RAG_INITIAL_INDEX'
   | 'RAG_INCREMENTAL_INDEX'
   | 'MANUAL_ANALYSIS'
-  | 'REPO_SYNC';
+  | 'REPO_SYNC'
+  | 'SUMMARIZE_COMMAND'
+  | 'ASK_COMMAND'
+  | 'ANALYZE_COMMAND'
+  | 'REVIEW_COMMAND'
+  | 'IGNORED_COMMENT';
 
 export type JobStatus = 
   | 'PENDING'

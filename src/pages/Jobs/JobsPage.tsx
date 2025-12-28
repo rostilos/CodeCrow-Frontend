@@ -72,9 +72,13 @@ const JobTypeBadge = ({ type }: { type: JobType }) => {
     RAG_INCREMENTAL_INDEX: 'Incremental Index',
     MANUAL_ANALYSIS: 'Manual Analysis',
     REPO_SYNC: 'Repo Sync',
+    SUMMARIZE_COMMAND: 'Summarize',
+    ASK_COMMAND: 'Ask',
+    ANALYZE_COMMAND: 'Analyze',
+    REVIEW_COMMAND: 'Review',
   };
 
-  return <Badge variant="outline">{labels[type]}</Badge>;
+  return <Badge variant="outline">{labels[type] || type}</Badge>;
 };
 
 const formatDuration = (ms?: number): string => {
@@ -209,6 +213,10 @@ export default function JobsPage() {
             <SelectItem value="BRANCH_ANALYSIS">Branch Analysis</SelectItem>
             <SelectItem value="RAG_INITIAL_INDEX">Initial Indexing</SelectItem>
             <SelectItem value="RAG_INCREMENTAL_INDEX">Incremental Index</SelectItem>
+            <SelectItem value="SUMMARIZE_COMMAND">Summarize Command</SelectItem>
+            <SelectItem value="ASK_COMMAND">Ask Command</SelectItem>
+            <SelectItem value="ANALYZE_COMMAND">Analyze Command</SelectItem>
+            <SelectItem value="REVIEW_COMMAND">Review Command</SelectItem>
           </SelectContent>
         </Select>
       </div>

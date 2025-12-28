@@ -779,6 +779,34 @@ export default function ImportProject() {
                         <Label className="text-base font-semibold">Create Your First AI Connection</Label>
                       )}
                       
+                      {/* Model Recommendations */}
+                      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-2">
+                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                          <span className="font-semibold">Model Recommendations</span>
+                        </div>
+                        <p className="text-sm text-blue-600 dark:text-blue-300">
+                          Use <strong>mid-tier or higher models</strong> with at least <strong>200k context window</strong> for reliable code review.
+                        </p>
+                        <ul className="text-xs text-blue-600 dark:text-blue-300 list-disc list-inside space-y-0.5">
+                          <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">google/gemini-2.5-flash</code> - 1M context</li>
+                          <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">openai/gpt-5.1-codex-mini</code> - 200k context</li>
+                          <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">anthropic/claude-haiku-4.5</code> - 200k context</li>
+                          <li><code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">x-ai/grok-4.1-fast</code> - 200k context</li>
+                        </ul>
+                      </div>
+
+                      {/* Low-tier Warning */}
+                      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-1">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                          <span className="font-semibold text-sm">Low-Tier Models Warning</span>
+                        </div>
+                        <p className="text-xs text-amber-600 dark:text-amber-300">
+                          Free-tier or low-parameter models (&lt;70B params) often produce incomplete or incorrect results for large PRs.
+                        </p>
+                      </div>
+                      
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <Label htmlFor="ai-name">Connection Name (Optional)</Label>

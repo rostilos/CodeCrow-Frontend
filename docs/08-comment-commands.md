@@ -6,6 +6,23 @@ CodeCrow supports triggering analysis and interacting with the AI directly from 
 - Generate summaries and documentation
 - Ask questions about code or issues
 
+> **✅ Enabled by Default**: Comment commands are enabled by default when you create a new project. You can disable or configure them in **Project Settings → Analysis Settings → Comment Commands**.
+
+> **📝 Note on AI Models**: The quality of responses from `/codecrow summarize` and `/codecrow ask` commands depends heavily on the AI model configured for your project. Low-tier or free models may produce inconsistent, incomplete, or incorrect results. For best results, we recommend using **mid-tier models** with at least **200k context window**. See recommended models below.
+
+## Recommended AI Models
+
+For reliable code review and command responses, use mid-tier or higher models:
+
+| Model | Provider | Context Window | Tier |
+|-------|----------|----------------|------|
+| `google/gemini-2.5-flash` | Google | 1M tokens | Mid-tier ✅ |
+| `openai/gpt-5.1-codex-mini` | OpenAI | 200k tokens | Mid-tier ✅ |
+| `anthropic/claude-haiku-4.5` | Anthropic | 200k tokens | Mid-tier ✅ |
+| `x-ai/grok-4.1-fast` | xAI | 200k tokens | Mid-tier ✅ |
+
+⚠️ **Not recommended**: Free-tier or low-parameter models (< 70B params) often produce incomplete or incorrect analysis results, especially for large PRs.
+
 ## Requirements
 
 Comment commands require:
@@ -20,9 +37,9 @@ Comment commands require:
 Triggers a full PR analysis on the current commit.
 
 **Behavior:**
-- If analysis exists for the same commit hash, returns cached results
-- If auto-PR analysis is enabled, posts the existing analysis as a new comment
-- Otherwise, runs a new analysis and posts results
+- Posts a **placeholder comment immediately** showing analysis has started
+- If analysis exists for the same commit hash, **updates the placeholder** with cached results
+- Otherwise, runs a new analysis and **updates the placeholder** with results
 
 **Example:**
 ```
@@ -41,10 +58,12 @@ Triggers a full PR analysis on the current commit.
 Generates a comprehensive summary of the PR changes with documentation and diagrams.
 
 **Behavior:**
+- Posts a **placeholder comment immediately** showing processing has started
 - Analyzes the PR diff and context
 - Retrieves relevant codebase information via RAG
 - Generates documentation for the changes
 - Creates diagrams (Mermaid for GitHub, ASCII for Bitbucket)
+- **Updates the placeholder** with the summary when complete
 - Caches results per commit hash
 
 **Example:**
@@ -65,11 +84,12 @@ Generates a comprehensive summary of the PR changes with documentation and diagr
 Ask questions about the PR, code, or analysis results.
 
 **Behavior:**
+- Posts a **placeholder comment** while processing your question
 - Processes your question with context from:
   - Current PR analysis results
   - PR diff
   - RAG-indexed codebase
-- Responds as a reply to your comment
+- **Responds as a reply** to your comment (placeholder is deleted)
 - No caching (each question is processed fresh)
 
 **Examples:**
@@ -103,10 +123,12 @@ Ask questions about the PR, code, or analysis results.
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `commentCommandsEnabled` | Enable/disable comment commands | `false` |
+| `commentCommandsEnabled` | Enable/disable comment commands | `true` |
 | `commentRateLimit` | Max commands per hour | `10` |
 | `commentRateLimitWindow` | Rate limit window (minutes) | `60` |
 | `allowPublicRepoCommands` | Allow commands on public repos | `false` |
+
+> **💡 Tip**: Comment commands can be enabled or disabled at the project level. This allows you to control which projects have access to interactive commands without affecting automatic PR analysis.
 
 ### Rate Limiting
 
@@ -139,14 +161,34 @@ These events are automatically configured when using App-based integration.
 
 ## Response Behavior
 
+### Immediate Feedback (Placeholder Comments)
+
+When you trigger a CodeCrow command or when auto-PR analysis starts, CodeCrow immediately posts a **placeholder comment** to let you know processing has begun:
+
+```
+🔄 **CodeCrow is analyzing this PR...**
+
+This may take a few minutes depending on the size of the changes.
+This comment will be updated with the results when complete.
+```
+
+Once processing completes, the placeholder comment is **updated in place** with the actual results. This provides:
+- **Immediate feedback** - Know your command was received
+- **Single comment** - No clutter from multiple comments
+- **Progress visibility** - Clear indication that analysis is in progress
+
+> **Note**: If analysis fails, the placeholder comment is updated with an error message explaining what went wrong.
+
 ### Analyze & Summarize
-- Creates a **new PR comment** with results
-- For analyze: Deletes previous CodeCrow analysis comments first
-- For summarize: Deletes previous CodeCrow summary comments first
+- Posts a **placeholder comment** immediately when processing starts
+- **Updates the placeholder** with results when complete
+- For analyze: Deletes previous CodeCrow analysis comments before posting placeholder
+- For summarize: Deletes previous CodeCrow summary comments before posting placeholder
 
 ### Ask
-- Creates a **reply** to the triggering comment
-- Original comment preserved
+- Posts a **placeholder comment** while processing
+- Creates a **reply** to the triggering comment with the answer
+- Placeholder is deleted when the reply is posted
 - Multiple questions can be asked in sequence
 
 ## Caching
@@ -203,10 +245,11 @@ Can you explain why this is an issue and suggest a fix?
 
 ### Commands Not Working
 
-1. **Check if enabled**: Verify comment commands are enabled in project settings
-2. **Check integration type**: Only App integrations support comment commands
-3. **Check permissions**: Ensure you're a workspace member
-4. **Check rate limits**: You may have exceeded the rate limit
+1. **Check if enabled**: Verify comment commands are enabled in project settings (**Project Settings → Analysis Settings → Comment Commands**)
+2. **Check integration type**: Only App integrations support comment commands (Bitbucket App or GitHub App)
+3. **Check permissions**: Ensure you're a workspace member for private repositories
+4. **Check rate limits**: You may have exceeded the rate limit (default: 10 commands/hour)
+5. **Check AI configuration**: Ensure an AI connection is configured for your project
 
 ### Slow Responses
 
@@ -214,8 +257,28 @@ Can you explain why this is an issue and suggest a fix?
 - Complex questions may take 30-60 seconds
 - Check MCP client and RAG pipeline logs for bottlenecks
 
-### Incorrect Responses
+### Incorrect or Weird Responses
 
-- Ensure RAG indexing is enabled and complete
-- Check if the AI connection is properly configured
-- Review the prompt context in MCP client logs
+AI model quality significantly impacts response quality:
+
+| Model Tier | Expected Behavior |
+|------------|-------------------|
+| **Premium** (GPT-4, Claude 3, etc.) | Consistent, high-quality responses |
+| **Mid-tier** (70B+ params) | Good responses, occasional inconsistencies |
+| **Free/Low-tier** (<30B params) | May produce incomplete, incorrect, or nonsensical results |
+
+**Recommendations:**
+- Use a model with at least 70B parameters for reliable results
+- Enable RAG indexing for better codebase context
+- Ensure adequate token limits in AI configuration (8K+ recommended)
+- Review the prompt context in MCP client logs for debugging
+
+### Job Marked as Failed
+
+When a command job fails, check:
+1. **AI provider rate limits**: OpenRouter, OpenAI, and other providers may rate limit requests
+2. **MCP tool errors**: VCS API calls may fail due to authentication or permission issues
+3. **Token limit exceeded**: Large PRs may exceed the model's context window
+4. **Network issues**: Connectivity problems between services
+
+The job details page shows error messages with specific failure reasons.
