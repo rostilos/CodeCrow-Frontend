@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, Info, CheckCircle2 } from "lucide-react";
+import { Sparkles, Info, CheckCircle2, ExternalLink } from "lucide-react";
 
 import { DocNavigation } from "./DocNavigation";
 
@@ -32,7 +32,7 @@ export default function CreateAIConnection() {
             <ul className="space-y-2 text-muted-foreground">
               <li className="flex items-start">
                 <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                <span>Support for OpenAI, Anthropic, and OpenRouter providers</span>
+                <span>Support for OpenRouter, OpenAI, Anthropic, and Google AI providers</span>
               </li>
               <li className="flex items-start">
                 <CheckCircle2 className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
@@ -51,21 +51,85 @@ export default function CreateAIConnection() {
             <CardTitle>Supported AI Providers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="border border-primary/50 bg-primary/5 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold">OpenRouter</h4>
+                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Access multiple AI providers through a single API. Best for flexibility and trying different models.
+                </p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong>Example models:</strong>
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 font-mono">
+                  <li>• anthropic/claude-sonnet-4</li>
+                  <li>• google/gemini-2.5-flash</li>
+                  <li>• openai/gpt-4o</li>
+                  <li>• x-ai/grok-3</li>
+                </ul>
+                <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" 
+                   className="text-xs text-primary hover:underline flex items-center mt-2">
+                  Get API Key <ExternalLink className="h-3 w-3 ml-1" />
+                </a>
+              </div>
+              
               <div className="border border-border rounded-lg p-4">
                 <h4 className="font-semibold mb-2">OpenAI</h4>
-                <p className="text-sm text-muted-foreground mb-2">Industry-leading models including GPT-5</p>
-                <p className="text-xs text-muted-foreground">Recommended Models: gpt-5-mini, gpt-5</p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Direct access to OpenAI's GPT models. Excellent for code understanding.
+                </p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong>Example models:</strong>
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 font-mono">
+                  <li>• gpt-4o</li>
+                  <li>• gpt-4-turbo</li>
+                  <li>• gpt-4o-mini</li>
+                </ul>
+                <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" 
+                   className="text-xs text-primary hover:underline flex items-center mt-2">
+                  Get API Key <ExternalLink className="h-3 w-3 ml-1" />
+                </a>
               </div>
+              
               <div className="border border-border rounded-lg p-4">
                 <h4 className="font-semibold mb-2">Anthropic</h4>
-                <p className="text-sm text-muted-foreground mb-2">Advanced Claude models with long context</p>
-                <p className="text-xs text-muted-foreground">Recommended Models: claude-4-opus, claude-4-sonnet</p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Direct access to Claude models. Known for detailed explanations and long context.
+                </p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong>Example models:</strong>
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 font-mono">
+                  <li>• claude-sonnet-4-20250514</li>
+                  <li>• claude-3-5-sonnet-20241022</li>
+                  <li>• claude-3-opus-20240229</li>
+                </ul>
+                <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" 
+                   className="text-xs text-primary hover:underline flex items-center mt-2">
+                  Get API Key <ExternalLink className="h-3 w-3 ml-1" />
+                </a>
               </div>
+              
               <div className="border border-border rounded-lg p-4">
-                <h4 className="font-semibold mb-2">OpenRouter</h4>
-                <p className="text-sm text-muted-foreground mb-2">Access multiple AI models through one API</p>
-                <p className="text-xs text-muted-foreground">Models: Various providers available</p>
+                <h4 className="font-semibold mb-2">Google AI</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Direct access to Gemini models. Great performance with long context windows.
+                </p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong>Example models:</strong>
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 font-mono">
+                  <li>• gemini-2.5-flash</li>
+                  <li>• gemini-2.5-pro</li>
+                  <li>• gemini-1.5-pro</li>
+                </ul>
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" 
+                   className="text-xs text-primary hover:underline flex items-center mt-2">
+                  Get API Key <ExternalLink className="h-3 w-3 ml-1" />
+                </a>
               </div>
             </div>
           </CardContent>
@@ -84,9 +148,10 @@ export default function CreateAIConnection() {
                   Get an API key from your chosen provider:
                 </p>
                 <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• <strong>OpenAI</strong>: Visit platform.openai.com and create an API key</li>
-                  <li>• <strong>Anthropic</strong>: Go to console.anthropic.com to get your key</li>
-                  <li>• <strong>OpenRouter</strong>: Sign up at openrouter.ai for API access</li>
+                  <li>• <strong>OpenRouter</strong>: Visit openrouter.ai and create an API key</li>
+                  <li>• <strong>OpenAI</strong>: Go to platform.openai.com/api-keys</li>
+                  <li>• <strong>Anthropic</strong>: Visit console.anthropic.com for your key</li>
+                  <li>• <strong>Google AI</strong>: Get your key from aistudio.google.com/apikey</li>
                 </ul>
               </div>
 
@@ -103,8 +168,9 @@ export default function CreateAIConnection() {
                   Provide the following information:
                 </p>
                 <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <li>• <strong>Provider</strong>: Select OPENAI, ANTHROPIC, or OPENROUTER</li>
-                  <li>• <strong>Model</strong>: Choose the specific model (e.g., gpt-5-mini, claude-4-sonnet)</li>
+                  <li>• <strong>Name</strong>: A friendly name for your connection (e.g., "Claude Sonnet", "GPT-4")</li>
+                  <li>• <strong>Provider</strong>: Select OPENAI, ANTHROPIC, GOOGLE, or OPENROUTER</li>
+                  <li>• <strong>Model</strong>: Enter the model ID (e.g., gpt-4o-mini, claude-sonnet-4-20250514, gemini-2.5-flash)</li>
                   <li>• <strong>API Key</strong>: Paste your API key from step 1</li>
                 </ul>
               </div>
@@ -131,7 +197,8 @@ export default function CreateAIConnection() {
               <div className="text-muted-foreground">Request Body:</div>
               <pre className="text-xs overflow-x-auto">
                 {`{
-  "providerKey": "OPENAI" | "ANTHROPIC" | "OPENROUTER",
+  "name": "string",
+  "providerKey": "OPENAI" | "ANTHROPIC" | "GOOGLE" | "OPENROUTER",
   "aiModel": "string",
   "apiKey": "string"
 }`}

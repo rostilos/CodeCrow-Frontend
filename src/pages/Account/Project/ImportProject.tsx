@@ -822,17 +822,24 @@ export default function ImportProject() {
                           <Label htmlFor="ai-provider">AI Provider</Label>
                           <Select
                             value={newAiConnection.providerKey}
-                            onValueChange={(value) => setNewAiConnection(prev => ({ ...prev, providerKey: value as 'OPENAI' | 'OPENROUTER' | 'ANTHROPIC' }))}
+                            onValueChange={(value) => setNewAiConnection(prev => ({ ...prev, providerKey: value as 'OPENAI' | 'OPENROUTER' | 'ANTHROPIC' | 'GOOGLE' }))}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select provider" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="OPENROUTER">OpenRouter</SelectItem>
+                              <SelectItem value="OPENROUTER">OpenRouter (Recommended)</SelectItem>
                               <SelectItem value="OPENAI">OpenAI</SelectItem>
                               <SelectItem value="ANTHROPIC">Anthropic</SelectItem>
+                              <SelectItem value="GOOGLE">Google AI</SelectItem>
                             </SelectContent>
                           </Select>
+                          <p className="text-xs text-muted-foreground">
+                            {newAiConnection.providerKey === 'OPENROUTER' && 'Access multiple AI providers through one API'}
+                            {newAiConnection.providerKey === 'OPENAI' && 'Direct OpenAI API - GPT-4o, GPT-4-turbo'}
+                            {newAiConnection.providerKey === 'ANTHROPIC' && 'Direct Anthropic API - Claude 3 models'}
+                            {newAiConnection.providerKey === 'GOOGLE' && 'Direct Google AI API - Gemini models'}
+                          </p>
                         </div>
                         
                         <div className="space-y-2">
@@ -841,7 +848,12 @@ export default function ImportProject() {
                             id="ai-model"
                             value={newAiConnection.aiModel}
                             onChange={(e) => setNewAiConnection(prev => ({ ...prev, aiModel: e.target.value }))}
-                            placeholder={newAiConnection.providerKey === 'OPENROUTER' ? 'anthropic/claude-sonnet-4' : 'gpt-4o'}
+                            placeholder={
+                              newAiConnection.providerKey === 'OPENROUTER' ? 'anthropic/claude-sonnet-4' :
+                              newAiConnection.providerKey === 'OPENAI' ? 'gpt-4o' :
+                              newAiConnection.providerKey === 'ANTHROPIC' ? 'claude-3-opus-20240229' :
+                              newAiConnection.providerKey === 'GOOGLE' ? 'gemini-1.5-pro' : 'model-name'
+                            }
                           />
                         </div>
                         

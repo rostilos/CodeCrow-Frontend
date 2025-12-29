@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Settings, Brain, Trash2, Edit, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Plus, Settings, Brain, Trash2, Edit, CheckCircle, XCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService";
@@ -154,7 +155,8 @@ export default function AISettings() {
     const colors = {
       OPENAI: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
       ANTHROPIC: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-      OPENROUTER: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+      OPENROUTER: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+      GOOGLE: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
     };
     
     return (
@@ -190,7 +192,7 @@ export default function AISettings() {
               <span>Add AI Connection</span>
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create AI Connection</DialogTitle>
               <DialogDescription>
@@ -198,6 +200,37 @@ export default function AISettings() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Model Recommendations Alert */}
+              <div className="flex justify-between gap-x-4">
+                <Alert>
+                    <Info className="h-4 w-4 mb-2" />
+                    <AlertTitle className="mb-2 font-bold text-sm">Model Recommendations</AlertTitle>
+                    <AlertDescription className="space-y-2 text-xs">
+                        <p>
+                            For reliable code review, use <strong>mid-tier or higher models</strong> with at least <strong>200k context window</strong>.
+                        </p>
+                        <p>
+                            <strong>Recommended models:</strong>
+                        </p>
+                        <ul className="list-disc list-inside space-y-1">
+                            <li><code>google/gemini-2.5-flash</code> - 1M context, fast and reliable</li>
+                            <li><code>openai/gpt-5.1-codex-mini</code> - 400k context, good for code</li>
+                            <li><code>x-ai/grok-4-fast</code> - 2M context, balanced</li>
+                        </ul>
+                    </AlertDescription>
+                </Alert>
+
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle className="mb-2 font-bold text-sm">Low-Tier Models Warning</AlertTitle>
+                    <AlertDescription className="text-xs">
+                        Free-tier or low-parameter models (&lt;70B params) often produce <strong>incomplete, inconsistent, or incorrect</strong> analysis results,
+                        especially for large PRs. They may also struggle with complex code patterns and multi-file changes.
+                        <p>You also need a model that supports tools, otherwise many functions will not work.</p>
+                    </AlertDescription>
+                </Alert>
+              </div>
+
               <div>
                 <Label htmlFor="name">Connection Name</Label>
                 <Input
@@ -222,8 +255,9 @@ export default function AISettings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="OPENAI" disabled={true}>OpenAI</SelectItem>
-                    <SelectItem value="ANTHROPIC" disabled={true}>Anthropic</SelectItem>
+                    <SelectItem value="OPENAI">OpenAI</SelectItem>
+                    <SelectItem value="ANTHROPIC">Anthropic</SelectItem>
+                    <SelectItem value="GOOGLE">Google AI</SelectItem>
                     <SelectItem value="OPENROUTER">OpenRouter</SelectItem>
                   </SelectContent>
                 </Select>
@@ -234,7 +268,12 @@ export default function AISettings() {
                   id="model"
                   value={newConnection.aiModel}
                   onChange={(e) => setNewConnection({ ...newConnection, aiModel: e.target.value })}
-                  placeholder="e.g., gpt-5, claude-4-sonnet"
+                  placeholder={
+                    newConnection.providerKey === 'OPENAI' ? 'e.g., gpt-4o-mini, gpt-4o' :
+                    newConnection.providerKey === 'ANTHROPIC' ? 'e.g., claude-sonnet-4-20250514' :
+                    newConnection.providerKey === 'GOOGLE' ? 'e.g., gemini-2.5-flash' :
+                    'e.g., anthropic/claude-sonnet-4, openai/gpt-4o'
+                  }
                 />
               </div>
               <div>
@@ -281,7 +320,7 @@ export default function AISettings() {
         </Dialog>
 
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent>
+          <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit AI Connection</DialogTitle>
               <DialogDescription>
@@ -311,8 +350,9 @@ export default function AISettings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="OPENAI" disabled={true}>OpenAI</SelectItem>
-                      <SelectItem value="ANTHROPIC" disabled={true}>Anthropic</SelectItem>
+                      <SelectItem value="OPENAI">OpenAI</SelectItem>
+                      <SelectItem value="ANTHROPIC">Anthropic</SelectItem>
+                      <SelectItem value="GOOGLE">Google AI</SelectItem>
                       <SelectItem value="OPENROUTER">OpenRouter</SelectItem>
                     </SelectContent>
                   </Select>
@@ -323,7 +363,12 @@ export default function AISettings() {
                     id="edit-model"
                     value={editingConnection.aiModel}
                     onChange={(e) => setEditingConnection({ ...editingConnection, aiModel: e.target.value })}
-                    placeholder="e.g., gpt-4, claude-3-opus"
+                    placeholder={
+                      editingConnection.providerKey === 'OPENAI' ? 'e.g., gpt-4o-mini, gpt-4o' :
+                      editingConnection.providerKey === 'ANTHROPIC' ? 'e.g., claude-sonnet-4-20250514' :
+                      editingConnection.providerKey === 'GOOGLE' ? 'e.g., gemini-2.5-flash' :
+                      'e.g., anthropic/claude-sonnet-4, openai/gpt-4o'
+                    }
                   />
                 </div>
                 <div>
