@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  ArrowLeft, CheckCircle, FileText, Clock, GitBranch, GitPullRequest, ChevronRight, ChevronLeft
+  ArrowLeft, CheckCircle, FileText, Clock, GitBranch, GitPullRequest, ChevronRight, ChevronLeft, Copy
 } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -22,6 +22,7 @@ import { getCategoryInfo } from "@/config/issueCategories";
 import { cn } from "@/lib/utils";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { usePermissions } from "@/hooks/usePermissions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 export default function IssueDetails() {
@@ -192,16 +193,20 @@ export default function IssueDetails() {
     }
   };
 
-  const getSeverityBadge = (severity: string) => {
+  const getSeverityBadge = (severity: string, minimal: boolean = false) => {
     const colors = {
-      high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-      medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-      low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      high: "bg-red-200 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+      medium: "bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+      low: "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
     };
 
       const displayText = severity.toUpperCase();
 
-
+      if(minimal) {
+          return (
+              <Badge className={`shrink-0 h-4 w-4 ${colors[severity as keyof typeof colors] || colors.medium}`}/>
+          )
+      }
       return (
       <Badge className={colors[severity as keyof typeof colors] || colors.medium}>
         {displayText}
@@ -476,10 +481,10 @@ export default function IssueDetails() {
                     )}
                   >
                     <div className="flex items-start gap-2">
-                      {getSeverityBadge(scopeIssue.severity)}
+                      {getSeverityBadge(scopeIssue.severity, true)}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{scopeIssue.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{scopeIssue.file}</p>
+                        <p className="text-xs font-medium truncate" title={scopeIssue.title}>{scopeIssue.title}</p>
+                        <p className="text-xs text-muted-foreground truncate" title={scopeIssue.file}>{scopeIssue.file}</p>
                       </div>
                       {scopeIssue.status === 'resolved' && (
                         <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
@@ -548,13 +553,33 @@ export default function IssueDetails() {
                     {getCategoryInfo(issue.issueCategory).label}
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-xs">{issue.type || 'Quality'}</Badge>
                 <Separator orientation="vertical" className="h-4" />
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <FileText className="h-3 w-3" />
-                  {issue.file}
-                  {issue.line > 0 && `:${issue.line}`}
-                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => {
+                          const fullPath = `${issue.file}${issue.line > 0 ? `:${issue.line}` : ''}`;
+                          navigator.clipboard.writeText(fullPath);
+                          toast({
+                            title: "Copied to clipboard",
+                            description: fullPath,
+                          });
+                        }}
+                        className="text-xs text-muted-foreground flex items-center gap-1 max-w-[200px] lg:max-w-[500px] hover:text-foreground transition-colors cursor-pointer group"
+                      >
+                        <FileText className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{issue.file}</span>
+                        {issue.line > 0 && <span className="flex-shrink-0">:{issue.line}</span>}
+                        <Copy className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="font-mono text-xs">{issue.file}{issue.line > 0 ? `:${issue.line}` : ''}</p>
+                      <p className="text-xs text-muted-foreground">Click to copy</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <Separator orientation="vertical" className="h-4" />
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <GitBranch className="h-3 w-3" />

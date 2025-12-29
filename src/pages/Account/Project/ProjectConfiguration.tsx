@@ -656,42 +656,44 @@ export default function ProjectConfiguration() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <GitPullRequest className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">Pull Request Analysis</div>
-                    <div className="text-sm text-muted-foreground">
-                      Automatically analyze PRs when created or updated
-                    </div>
+              <div className="md:flex justify-between gap-4">
+                  <div className="w-full flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                          <GitPullRequest className="h-5 w-5 text-primary" />
+                          <div>
+                              <div className="font-medium">Pull Request Analysis</div>
+                              <div className="text-sm text-muted-foreground">
+                                  Automatically analyze PRs when created or updated
+                              </div>
+                          </div>
+                      </div>
+                      <Switch
+                          checked={prAnalysisEnabled}
+                          onCheckedChange={setPrAnalysisEnabled}
+                      />
                   </div>
-                </div>
-                <Switch 
-                  checked={prAnalysisEnabled}
-                  onCheckedChange={setPrAnalysisEnabled}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <GitCommit className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">Branch Analysis</div>
-                    <div className="text-sm text-muted-foreground">
-                      Analyze code when branches are pushed
-                      {project?.ragConfig?.enabled && (
-                        <span className="block text-xs text-amber-600 mt-1">
+
+                  <div className="w-full flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                          <GitCommit className="h-5 w-5 text-primary" />
+                          <div>
+                              <div className="font-medium">Branch Analysis</div>
+                              <div className="text-sm text-muted-foreground">
+                                  Analyze code when branches are pushed
+                                  {project?.ragConfig?.enabled && (
+                                      <span className="block text-xs text-amber-600 mt-1">
                           Branch analysis is required when RAG indexing is enabled (for incremental updates)
                         </span>
-                      )}
-                    </div>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                      <Switch
+                          checked={branchAnalysisEnabled}
+                          onCheckedChange={setBranchAnalysisEnabled}
+                          disabled={project?.ragConfig?.enabled}
+                      />
                   </div>
-                </div>
-                <Switch 
-                  checked={branchAnalysisEnabled}
-                  onCheckedChange={setBranchAnalysisEnabled}
-                  disabled={project?.ragConfig?.enabled}
-                />
               </div>
               
               <Button 
@@ -774,6 +776,9 @@ export default function ProjectConfiguration() {
                     <div key={connection.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
+                          <h2 className="font-bold mb-2">
+                              {connection.name}
+                          </h2>
                           <div className="flex items-center space-x-2 mb-2">
                             <h3 className="font-medium">
                               {connection.providerKey} - {connection.aiModel}

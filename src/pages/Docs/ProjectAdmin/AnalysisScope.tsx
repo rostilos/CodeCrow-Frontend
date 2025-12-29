@@ -149,15 +149,15 @@ export default function AnalysisScopeSettings() {
                         </Alert>
                     </div>
 
-                    <div className="pt-4 border-t">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h4 className="font-bold">Allow on Public Repositories</h4>
-                                <p className="text-xs text-muted-foreground">Only high-privilege users can trigger commands on public repos.</p>
-                            </div>
-                            <Badge variant="outline">Restricted</Badge>
-                        </div>
-                    </div>
+                    {/*<div className="pt-4 border-t">*/}
+                    {/*    <div className="flex items-center justify-between">*/}
+                    {/*        <div>*/}
+                    {/*            <h4 className="font-bold">Allow on Public Repositories</h4>*/}
+                    {/*            <p className="text-xs text-muted-foreground">Only high-privilege users can trigger commands on public repos.</p>*/}
+                    {/*        </div>*/}
+                    {/*        <Badge variant="outline">Restricted</Badge>*/}
+                    {/*    </div>*/}
+                    {/*</div>*/}
                 </CardContent>
             </Card>
         </div>

@@ -219,7 +219,7 @@ DELETE FROM analysis_lock WHERE locked_at < NOW() - INTERVAL '30 minutes';`}</Co
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Verify MCP servers JAR exists:</p>
-                  <CodeBlock>{`docker exec codecrow-mcp-client ls -la /app/codecrow-mcp-servers-1.0.jar`}</CodeBlock>
+                  <CodeBlock>{`docker exec codecrow-mcp-client ls -la /app/codecrow-vcs-mcp-1.0.jar`}</CodeBlock>
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Check API key:</p>
