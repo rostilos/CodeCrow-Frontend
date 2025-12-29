@@ -155,151 +155,153 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
         </AlertDescription>
       </Alert>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <GitBranch className="h-5 w-5" />
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  Pull Request Target Branches
-                  {savingPr && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                </CardTitle>
-                <CardDescription>
-                  Only analyze PRs targeting these branches (e.g., main, develop, release/*)
-                </CardDescription>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadConfig}
-              disabled={loading || isSaving}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter pattern (e.g., main, develop, release/*)"
-              value={newPrPattern}
-              onChange={(e) => setNewPrPattern(e.target.value)}
-              onKeyPress={(e) => handleKeyPress(e, handleAddPrPattern)}
-              disabled={loading || savingPr}
-            />
-            <Button 
-              onClick={handleAddPrPattern} 
-              disabled={!newPrPattern.trim() || loading || savingPr}
-            >
-              {savingPr ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
-                </>
-              )}
-            </Button>
-          </div>
-          
-          {prPatterns.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-4 text-center border rounded-md bg-muted/30">
-              No patterns configured. All PR target branches will be analyzed.
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {prPatterns.map((pattern) => (
-                <Badge 
-                  key={pattern} 
-                  variant="secondary"
-                  className="pl-3 pr-1 py-1.5 flex items-center gap-1"
-                >
-                  <code className="text-xs">{pattern}</code>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 hover:bg-destructive/20"
-                    onClick={() => handleRemovePrPattern(pattern)}
-                    disabled={savingPr}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </Badge>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="md:flex justify-between gap-4">
+          <Card className="w-full">
+              <CardHeader>
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                          <GitBranch className="h-5 w-5" />
+                          <div>
+                              <CardTitle className="flex items-center gap-2">
+                                  Pull Request Target Branches
+                                  {savingPr && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                              </CardTitle>
+                              <CardDescription>
+                                  Only analyze PRs targeting these branches (e.g., main, develop, release/*)
+                              </CardDescription>
+                          </div>
+                      </div>
+                      <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={loadConfig}
+                          disabled={loading || isSaving}
+                      >
+                          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                      </Button>
+                  </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                      <Input
+                          placeholder="Enter pattern (e.g., main, develop, release/*)"
+                          value={newPrPattern}
+                          onChange={(e) => setNewPrPattern(e.target.value)}
+                          onKeyPress={(e) => handleKeyPress(e, handleAddPrPattern)}
+                          disabled={loading || savingPr}
+                      />
+                      <Button
+                          onClick={handleAddPrPattern}
+                          disabled={!newPrPattern.trim() || loading || savingPr}
+                      >
+                          {savingPr ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                              <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add
+                              </>
+                          )}
+                      </Button>
+                  </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center space-x-2">
-            <GitBranch className="h-5 w-5" />
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                Branch Push Patterns
-                {savingBranch && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-              </CardTitle>
-              <CardDescription>
-                Only analyze pushes to branches matching these patterns (e.g., main, develop)
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter pattern (e.g., main, develop)"
-              value={newBranchPattern}
-              onChange={(e) => setNewBranchPattern(e.target.value)}
-              onKeyPress={(e) => handleKeyPress(e, handleAddBranchPattern)}
-              disabled={loading || savingBranch}
-            />
-            <Button 
-              onClick={handleAddBranchPattern} 
-              disabled={!newBranchPattern.trim() || loading || savingBranch}
-            >
-              {savingBranch ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
-                </>
-              )}
-            </Button>
-          </div>
-          
-          {branchPatterns.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-4 text-center border rounded-md bg-muted/30">
-              No patterns configured. All branch pushes will be analyzed.
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {branchPatterns.map((pattern) => (
-                <Badge 
-                  key={pattern} 
-                  variant="secondary"
-                  className="pl-3 pr-1 py-1.5 flex items-center gap-1"
-                >
-                  <code className="text-xs">{pattern}</code>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 hover:bg-destructive/20"
-                    onClick={() => handleRemoveBranchPattern(pattern)}
-                    disabled={savingBranch}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </Badge>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  {prPatterns.length === 0 ? (
+                      <div className="text-sm text-muted-foreground py-4 text-center border rounded-md bg-muted/30">
+                          No patterns configured. All PR target branches will be analyzed.
+                      </div>
+                  ) : (
+                      <div className="flex flex-wrap gap-2">
+                          {prPatterns.map((pattern) => (
+                              <Badge
+                                  key={pattern}
+                                  variant="secondary"
+                                  className="pl-3 pr-1 py-1.5 flex items-center gap-1"
+                              >
+                                  <code className="text-xs">{pattern}</code>
+                                  <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-5 w-5 p-0 hover:bg-destructive/20"
+                                      onClick={() => handleRemovePrPattern(pattern)}
+                                      disabled={savingPr}
+                                  >
+                                      <X className="h-3 w-3" />
+                                  </Button>
+                              </Badge>
+                          ))}
+                      </div>
+                  )}
+              </CardContent>
+          </Card>
+
+          <Card className="w-full">
+              <CardHeader>
+                  <div className="flex items-center space-x-2">
+                      <GitBranch className="h-5 w-5" />
+                      <div>
+                          <CardTitle className="flex items-center gap-2">
+                              Branch Push Patterns
+                              {savingBranch && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                          </CardTitle>
+                          <CardDescription>
+                              Only analyze pushes to branches matching these patterns (e.g., main, develop)
+                          </CardDescription>
+                      </div>
+                  </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                      <Input
+                          placeholder="Enter pattern (e.g., main, develop)"
+                          value={newBranchPattern}
+                          onChange={(e) => setNewBranchPattern(e.target.value)}
+                          onKeyPress={(e) => handleKeyPress(e, handleAddBranchPattern)}
+                          disabled={loading || savingBranch}
+                      />
+                      <Button
+                          onClick={handleAddBranchPattern}
+                          disabled={!newBranchPattern.trim() || loading || savingBranch}
+                      >
+                          {savingBranch ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                              <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add
+                              </>
+                          )}
+                      </Button>
+                  </div>
+
+                  {branchPatterns.length === 0 ? (
+                      <div className="text-sm text-muted-foreground py-4 text-center border rounded-md bg-muted/30">
+                          No patterns configured. All branch pushes will be analyzed.
+                      </div>
+                  ) : (
+                      <div className="flex flex-wrap gap-2">
+                          {branchPatterns.map((pattern) => (
+                              <Badge
+                                  key={pattern}
+                                  variant="secondary"
+                                  className="pl-3 pr-1 py-1.5 flex items-center gap-1"
+                              >
+                                  <code className="text-xs">{pattern}</code>
+                                  <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-5 w-5 p-0 hover:bg-destructive/20"
+                                      onClick={() => handleRemoveBranchPattern(pattern)}
+                                      disabled={savingBranch}
+                                  >
+                                      <X className="h-3 w-3" />
+                                  </Button>
+                              </Badge>
+                          ))}
+                      </div>
+                  )}
+              </CardContent>
+          </Card>
+      </div>
     </div>
   );
 }
