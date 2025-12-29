@@ -124,6 +124,9 @@ export interface UpdateAnalysisSettingsRequest {
   installationMethod?: InstallationMethod | null;
 }
 
+// Authorization modes for comment commands
+export type CommandAuthorizationMode = 'ANYONE' | 'ALLOWED_USERS_ONLY' | 'PR_AUTHOR_ONLY';
+
 // Comment Commands Configuration types
 export interface CommentCommandsConfigDTO {
   enabled: boolean;
@@ -131,6 +134,8 @@ export interface CommentCommandsConfigDTO {
   rateLimitWindowMinutes: number | null;
   allowPublicRepoCommands: boolean | null;
   allowedCommands: string[] | null;
+  authorizationMode: CommandAuthorizationMode | null;
+  allowPrAuthor: boolean | null;
 }
 
 export interface UpdateCommentCommandsConfigRequest {
@@ -139,6 +144,45 @@ export interface UpdateCommentCommandsConfigRequest {
   rateLimitWindowMinutes?: number;
   allowPublicRepoCommands?: boolean;
   allowedCommands?: string[];
+  authorizationMode?: CommandAuthorizationMode;
+  allowPrAuthor?: boolean;
+}
+
+// Allowed command user types
+export interface AllowedUserDTO {
+  id: string;
+  vcsProvider: string;
+  vcsUserId: string;
+  vcsUsername: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  repoPermission: string | null;
+  syncedFromVcs: boolean;
+  enabled: boolean;
+  addedBy: string | null;
+  createdAt: string;
+  lastSyncedAt: string | null;
+}
+
+export interface AllowedUsersResponse {
+  users: AllowedUserDTO[];
+  totalCount: number;
+  enabledCount: number;
+}
+
+export interface AddAllowedUserRequest {
+  vcsUserId: string;
+  vcsUsername: string;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
+export interface SyncResultResponse {
+  success: boolean;
+  added: number;
+  updated: number;
+  totalFetched: number;
+  error: string | null;
 }
 
 export interface RagIndexStatusDTO {
@@ -441,6 +485,104 @@ class ProjectService extends ApiService {
         onError(error.message || 'Connection error');
       }
     }
+  }
+
+  // ==================== Allowed Command Users API ====================
+
+  /**
+   * Get all allowed command users for a project.
+   */
+  async getAllowedUsers(
+    workspaceSlug: string,
+    namespace: string,
+    enabledOnly: boolean = false
+  ): Promise<AllowedUsersResponse> {
+    const params = enabledOnly ? '?enabledOnly=true' : '';
+    return this.request<AllowedUsersResponse>(
+      `/${workspaceSlug}/project/${namespace}/allowed-users${params}`,
+      {},
+      true
+    );
+  }
+
+  /**
+   * Add a user to the allowed list.
+   */
+  async addAllowedUser(
+    workspaceSlug: string,
+    namespace: string,
+    request: AddAllowedUserRequest
+  ): Promise<AllowedUserDTO> {
+    return this.request<AllowedUserDTO>(
+      `/${workspaceSlug}/project/${namespace}/allowed-users`,
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+      true
+    );
+  }
+
+  /**
+   * Remove a user from the allowed list.
+   */
+  async removeAllowedUser(
+    workspaceSlug: string,
+    namespace: string,
+    vcsUserId: string
+  ): Promise<void> {
+    await this.request<void>(
+      `/${workspaceSlug}/project/${namespace}/allowed-users/${encodeURIComponent(vcsUserId)}`,
+      { method: 'DELETE' },
+      true
+    );
+  }
+
+  /**
+   * Enable or disable a user.
+   */
+  async setAllowedUserEnabled(
+    workspaceSlug: string,
+    namespace: string,
+    vcsUserId: string,
+    enabled: boolean
+  ): Promise<AllowedUserDTO> {
+    return this.request<AllowedUserDTO>(
+      `/${workspaceSlug}/project/${namespace}/allowed-users/${encodeURIComponent(vcsUserId)}/enabled`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled }),
+      },
+      true
+    );
+  }
+
+  /**
+   * Sync allowed users from VCS collaborators.
+   */
+  async syncAllowedUsersFromVcs(
+    workspaceSlug: string,
+    namespace: string
+  ): Promise<SyncResultResponse> {
+    return this.request<SyncResultResponse>(
+      `/${workspaceSlug}/project/${namespace}/allowed-users/sync`,
+      { method: 'POST' },
+      true
+    );
+  }
+
+  /**
+   * Clear all allowed users for a project.
+   */
+  async clearAllowedUsers(
+    workspaceSlug: string,
+    namespace: string
+  ): Promise<void> {
+    await this.request<void>(
+      `/${workspaceSlug}/project/${namespace}/allowed-users`,
+      { method: 'DELETE' },
+      true
+    );
   }
 }
 

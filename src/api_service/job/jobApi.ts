@@ -50,7 +50,8 @@ export type JobStatus =
   | 'COMPLETED'
   | 'FAILED'
   | 'CANCELLED'
-  | 'WAITING';
+  | 'WAITING'
+  | 'SKIPPED';
 
 export type JobTriggerSource = 
   | 'WEBHOOK'

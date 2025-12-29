@@ -65,7 +65,7 @@ export default function Modules() {
 │   ├── pipeline-agent/        # Analysis processing engine
 │   └── web-server/            # REST API backend
 └── mcp-servers/               # MCP server implementations
-    └── bitbucket-mcp/         # Bitbucket MCP tools`}</pre>
+    └── vcs-mcp/         # Bitbucket MCP tools`}</pre>
                 </div>
               </div>
 
@@ -153,7 +153,7 @@ export default function Modules() {
                   <pre>{`python-ecosystem/
 ├── mcp-client/               # MCP client service
 │   ├── main.py              # FastAPI application
-│   ├── codecrow-mcp-servers-1.0.jar
+│   ├── codecrow-vcs-mcp-1.0.jar
 │   ├── llm/                 # LLM integration
 │   ├── model/               # Data models
 │   ├── server/              # MCP server management

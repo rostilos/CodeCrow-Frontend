@@ -51,6 +51,7 @@ const JobStatusBadge = ({ status }: { status: JobStatus }) => {
     FAILED: { variant: 'destructive', icon: <XCircle className="h-3 w-3" /> },
     CANCELLED: { variant: 'secondary', icon: <AlertTriangle className="h-3 w-3" /> },
     WAITING: { variant: 'secondary', icon: <Clock className="h-3 w-3" /> },
+    SKIPPED: { variant: 'outline', icon: <AlertTriangle className="h-3 w-3 text-yellow-500" /> },
   };
 
   const { variant, icon } = variants[status];
@@ -197,6 +198,7 @@ export default function JobsPage() {
             <SelectItem value="FAILED">Failed</SelectItem>
             <SelectItem value="PENDING">Pending</SelectItem>
             <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            <SelectItem value="SKIPPED">Skipped</SelectItem>
           </SelectContent>
         </Select>
 
