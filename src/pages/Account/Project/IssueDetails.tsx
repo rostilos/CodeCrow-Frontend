@@ -403,7 +403,15 @@ export default function IssueDetails() {
   }
 
   if (!issue) {
-    const backUrl = returnPath || routes.projectDetail(namespace!);
+    // Determine fallback URL - if we have branch scope, go back to branch issues
+    let backUrl = returnPath;
+    if (!backUrl) {
+      if (scopeBranch) {
+        backUrl = routes.branchIssues(namespace!, scopeBranch);
+      } else {
+        backUrl = routes.projectDetail(namespace!);
+      }
+    }
     
     return (
       <div className="mx-auto p-6">
@@ -427,8 +435,15 @@ export default function IssueDetails() {
   const descriptionText = issue.suggestedFixDescription || issue.description;
   const diffContent = issue.suggestedFixDiff;
   
-  // Determine back URL
-  const backUrl = returnPath || routes.projectDetail(namespace!);
+  // Determine back URL - if we have branch scope, go back to branch issues
+  let backUrl = returnPath;
+  if (!backUrl) {
+    if (scopeBranch) {
+      backUrl = routes.branchIssues(namespace!, scopeBranch);
+    } else {
+      backUrl = routes.projectDetail(namespace!);
+    }
+  }
 
   // Find current issue index in scope list
   const currentIndex = scopeIssues.findIndex(i => i.id === issueId);
