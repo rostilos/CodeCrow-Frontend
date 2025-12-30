@@ -146,8 +146,11 @@ export default function ProjectDashboard() {
 
   // Lazy load branch issues when switching to Issues tab
   useEffect(() => {
-    if (selectionType === 'branch' && branchTab === 'issues' && selectedBranch && branchIssues.length === 0 && !branchLoading) {
-      loadBranchIssues(selectedBranch);
+    if (selectionType === 'branch' && branchTab === 'issues' && selectedBranch && !branchLoading) {
+      // Always load issues when switching to issues tab (fresh load)
+      if (branchIssues.length === 0) {
+        loadBranchIssues(selectedBranch, 1, false);
+      }
     }
   }, [branchTab, selectionType, selectedBranch]);
 
@@ -429,6 +432,11 @@ export default function ProjectDashboard() {
     setSearchParams(newParams, { replace: true });
     
     await loadBranchData(branchName);
+    
+    // If we are on the issues tab, also load the issues for the new branch
+    if (branchTab === 'issues') {
+      await loadBranchIssues(branchName, 1, false);
+    }
   };
 
   const handleVersionChange = (version: string) => {
@@ -511,7 +519,7 @@ export default function ProjectDashboard() {
       id: pr.id,
       prNumber: pr.prNumber,
       commitHash: pr.commitHash,
-      sourceBranchName: pr.sourceBranchName || null,
+      sourceBranchName: pr.sourceBranchName,
       targetBranchName: pr.targetBranchName,
     };
     setSelectedPR(prSummary);
@@ -574,11 +582,34 @@ export default function ProjectDashboard() {
       );
       
       // Update local state for successful updates
-      setAnalysisIssues(prev => prev.map(issue => 
-        selectedIssues.has(issue.id) && !result.failedIds.includes(Number(issue.id))
-          ? { ...issue, status: newStatus } 
-          : issue
-      ));
+      if (selectionType === 'branch' && branchTab === 'issues') {
+        // Update branch issues state
+        setBranchIssues(prev => prev.map(issue => 
+          selectedIssues.has(issue.id) && !result.failedIds.includes(Number(issue.id))
+            ? { ...issue, status: newStatus } 
+            : issue
+        ));
+        // Reload branch issues to get updated count and filtered list
+        if (selectedBranch) {
+          await loadBranchIssues(selectedBranch, 1, false);
+          // Also reload stats to update the counter in the tab
+          await loadBranchData(selectedBranch);
+        }
+      } else if (selectionType === 'branch') {
+        // For branch preview tab, reload branch stats
+        if (selectedBranch) {
+          await loadBranchData(selectedBranch);
+          // Also reload issues if we're in branch mode
+          await loadBranchIssues(selectedBranch, 1, false);
+        }
+      } else {
+        // Update PR analysis issues state
+        setAnalysisIssues(prev => prev.map(issue => 
+          selectedIssues.has(issue.id) && !result.failedIds.includes(Number(issue.id))
+            ? { ...issue, status: newStatus } 
+            : issue
+        ));
+      }
       
       toast({
         title: "Bulk update complete",
