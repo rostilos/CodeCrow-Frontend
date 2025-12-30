@@ -105,6 +105,7 @@ export default function JobsList({ projectNamespace, compact = false, maxItems }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('ALL');
@@ -119,7 +120,7 @@ export default function JobsList({ projectNamespace, compact = false, maxItems }
     try {
       const filters: JobFilters = {
         page,
-        size: maxItems || 20,
+        size: maxItems || pageSize,
         ...(statusFilter !== 'ALL' && { status: statusFilter }),
         ...(typeFilter !== 'ALL' && { type: typeFilter }),
       };
@@ -135,7 +136,7 @@ export default function JobsList({ projectNamespace, compact = false, maxItems }
     } finally {
       setLoading(false);
     }
-  }, [currentWorkspace, projectNamespace, page, statusFilter, typeFilter, maxItems]);
+  }, [currentWorkspace, projectNamespace, page, pageSize, statusFilter, typeFilter, maxItems]);
 
   useEffect(() => {
     fetchJobs();
@@ -295,36 +296,55 @@ export default function JobsList({ projectNamespace, compact = false, maxItems }
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && !maxItems && (
+      {!maxItems && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Showing {jobs.length} of {totalElements} jobs
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7"
-              disabled={page === 0}
-              onClick={() => setPage(p => p - 1)}
-            >
-              <ChevronLeft className="h-3 w-3" />
-              Previous
-            </Button>
-            <span className="text-xs">
-              Page {page + 1} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7"
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage(p => p + 1)}
-            >
-              Next
-              <ChevronRight className="h-3 w-3" />
-            </Button>
+          <div className="flex items-center gap-4">
+            <p className="text-xs text-muted-foreground">
+              Showing {jobs.length} of {totalElements} jobs
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Per page:</span>
+              <Select 
+                value={pageSize.toString()} 
+                onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+              >
+                <SelectTrigger className="w-16 h-7">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7"
+                disabled={page === 0}
+                onClick={() => setPage(p => p - 1)}
+              >
+                <ChevronLeft className="h-3 w-3" />
+                Previous
+              </Button>
+              <span className="text-xs">
+                Page {page + 1} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage(p => p + 1)}
+              >
+                Next
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
