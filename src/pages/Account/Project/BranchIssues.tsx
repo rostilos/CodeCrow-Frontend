@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckSquare, Square } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { analysisService, type AnalysisIssue } from '@/api_service/analysis/analysisService';
@@ -19,8 +19,12 @@ export default function BranchIssues() {
   const { toast } = useToast();
   const [issues, setIssues] = useState<AnalysisIssue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalIssues, setTotalIssues] = useState(0);
+  const [pageSize] = useState(50);
   const [filters, setFilters] = useState<IssueFilters>({
     severity: 'ALL',
     status: 'open',
@@ -31,9 +35,7 @@ export default function BranchIssues() {
   });
 
   useEffect(() => {
-    loadBranchData();
-    
-    // Read filters from URL
+    // Read filters from URL first
     const newFilters: IssueFilters = {
       severity: 'ALL',
       status: 'open', // Default to showing only open issues
@@ -74,31 +76,39 @@ export default function BranchIssues() {
     }
     
     setFilters(newFilters);
+    // Load data with the parsed filters
+    loadBranchData(newFilters.status, 1, false);
   }, [namespace, branchName, currentWorkspace]);
 
-  const loadBranchData = async (statusFilter: string = filters.status) => {
+  const loadBranchData = async (statusFilter: string = filters.status, page: number = 1, append: boolean = false) => {
     if (!namespace || !branchName || !currentWorkspace) return;
     
-    setLoading(true);
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+    
     try {
       // Map frontend status to API status parameter
       const apiStatus = statusFilter === 'ALL' ? 'all' : statusFilter;
-      const issuesData = await analysisService.getBranchIssues(
+      const response = await analysisService.getBranchIssues(
         currentWorkspace.slug,
         namespace,
         decodeURIComponent(branchName),
-        apiStatus
+        apiStatus,
+        page,
+        pageSize,
+        true // excludeDiff
       );
-      // analysisService.getBranchIssues may return a paginated object { issues, total, page, pageSize }
-      // or (for backward-compatibility) an array. Normalize to an array for the component.
-      if (Array.isArray(issuesData)) {
-        setIssues(issuesData);
-      } else if (issuesData && Array.isArray((issuesData as any).issues)) {
-        setIssues((issuesData as any).issues);
+      
+      if (append) {
+        setIssues(prev => [...prev, ...response.issues]);
       } else {
-        // Defensive fallback: ensure we always have an array
-        setIssues([]);
+        setIssues(response.issues);
       }
+      setTotalIssues(response.total);
+      setCurrentPage(page);
     } catch (error: any) {
       // If 404, the project/branch doesn't exist in this workspace - navigate away
       if (error.response?.status === 404 || error.status === 404) {
@@ -117,14 +127,22 @@ export default function BranchIssues() {
       });
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMoreIssues = async () => {
+    if (issues.length < totalIssues) {
+      await loadBranchData(filters.status, currentPage + 1, true);
     }
   };
 
   const handleFiltersChange = (newFilters: IssueFilters) => {
     setFilters(newFilters);
-    // Reload data when status filter changes
+    // Reset pagination and reload data when status filter changes
     if (newFilters.status !== filters.status) {
-      loadBranchData(newFilters.status);
+      setCurrentPage(1);
+      loadBranchData(newFilters.status, 1, false);
     }
     const newParams = new URLSearchParams();
     
@@ -256,11 +274,16 @@ export default function BranchIssues() {
     const matchesDateFrom = !filters.dateFrom || !issueDate || issueDate >= filters.dateFrom;
     const matchesDateTo = !filters.dateTo || !issueDate || issueDate <= filters.dateTo;
     
-    return matchesSeverity && matchesStatus && matchesCategory && matchesFilePath && matchesDateFrom && matchesDateTo;
+    return matchesSeverity && matchesCategory && matchesFilePath && matchesDateFrom && matchesDateTo;
   });
 
   const handleGoBack = () => {
-    navigate(routes.projectDetail(namespace!));
+    // Navigate back to project dashboard with the branch selected and issues tab open
+    const params = new URLSearchParams();
+    if (branchName) {
+      params.set('branch', decodeURIComponent(branchName));
+    }
+    navigate(`${routes.projectDetail(namespace!)}?${params.toString()}`);
   };
 
   if (loading) {
@@ -294,7 +317,7 @@ export default function BranchIssues() {
           <IssueFilterPanel
             filters={filters}
             onFiltersChange={handleFiltersChange}
-            issueCount={filteredIssues.length}
+            issueCount={totalIssues}
           />
         </div>
 
@@ -302,8 +325,12 @@ export default function BranchIssues() {
         <div className="flex-1 min-w-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4 pb-4">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-1">
                 <CardTitle>Issues</CardTitle>
+                <CardDescription>
+                  {totalIssues} total issue{totalIssues !== 1 ? 's' : ''} found
+                  {filteredIssues.length !== issues.length && ` (${filteredIssues.length} shown after filters)`}
+                </CardDescription>
               </div>
             </CardHeader>
             
@@ -355,15 +382,29 @@ export default function BranchIssues() {
             
             <CardContent className={selectedIssues.size > 0 ? "pt-4" : ""}>
               {filteredIssues.length > 0 ? (
-                <IssuesByFileDisplay 
-                  issues={filteredIssues}
-                  projectNamespace={namespace || ''}
-                  branchName={branchName ? decodeURIComponent(branchName) : undefined}
-                  onUpdateIssueStatus={handleUpdateIssueStatus}
-                  selectionEnabled={true}
-                  selectedIssues={selectedIssues}
-                  onSelectionChange={handleSelectionChange}
-                />
+                <>
+                  <IssuesByFileDisplay 
+                    issues={filteredIssues}
+                    projectNamespace={namespace || ''}
+                    branchName={branchName ? decodeURIComponent(branchName) : undefined}
+                    onUpdateIssueStatus={handleUpdateIssueStatus}
+                    selectionEnabled={true}
+                    selectedIssues={selectedIssues}
+                    onSelectionChange={handleSelectionChange}
+                  />
+                  {/* Load More Button */}
+                  {issues.length < totalIssues && (
+                    <div className="flex justify-center mt-6">
+                      <Button
+                        variant="outline"
+                        onClick={loadMoreIssues}
+                        disabled={loadingMore}
+                      >
+                        {loadingMore ? 'Loading...' : `Load More (${issues.length} of ${totalIssues})`}
+                      </Button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">
