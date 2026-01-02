@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { projectService, ProjectDTO } from '@/api_service/project/projectService';
+import { projectService, ProjectDTO, VcsProvider } from '@/api_service/project/projectService';
 import { useToast } from '@/hooks/use-toast';
 import DetailedProjectStats, { DetailedProjectStatsData } from '@/components/DetailedProjectStats';
 import { analysisService } from '@/api_service/analysis/analysisService';
@@ -39,6 +39,32 @@ import type {
   PullRequestDTO,
   AnalysisIssueSummary
 } from '@/api_service/analysis/analysisService';
+
+// Helper function to build VCS PR URL
+function buildPrUrl(
+  vcsProvider: VcsProvider | null | undefined, 
+  vcsWorkspace: string | undefined, 
+  repoSlug: string | undefined, 
+  prNumber: number
+): string | null {
+  if (!vcsProvider || !vcsWorkspace || !repoSlug) return null;
+  
+  switch (vcsProvider) {
+    case 'BITBUCKET_CLOUD':
+      return `https://bitbucket.org/${vcsWorkspace}/${repoSlug}/pull-requests/${prNumber}`;
+    case 'GITHUB':
+      return `https://github.com/${vcsWorkspace}/${repoSlug}/pull/${prNumber}`;
+    case 'GITLAB':
+      return `https://gitlab.com/${vcsWorkspace}/${repoSlug}/-/merge_requests/${prNumber}`;
+    default:
+      return null;
+  }
+}
+
+// Helper to get repo slug from project (handles both field names)
+function getRepoSlug(project: ProjectDTO | null): string | undefined {
+  return project?.projectVcsRepoSlug || project?.projectRepoSlug;
+}
 
 export default function ProjectDashboard() {
   const { namespace } = useParams();
@@ -85,6 +111,7 @@ export default function ProjectDashboard() {
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [prTab, setPrTab] = useState<'preview' | 'issues' | 'activity'>('preview');
   const [branchTab, setBranchTab] = useState<'preview' | 'issues' | 'activity'>('preview');
+  const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
 
 
 
@@ -320,6 +347,7 @@ export default function ProjectDashboard() {
       setAnalysisIssues(response.issues);
       setIssueSummary(response.summary);
       setMaxVersion(response.maxVersion || 1);
+      setAnalysisSummary(response.analysisSummary || null);
       
       // Set version to what was actually loaded (version param or latest)
       const loadedVersion = version !== undefined ? version : (response.maxVersion || 1);
@@ -329,11 +357,15 @@ export default function ProjectDashboard() {
       setAnalysisIssues([]);
       setIssueSummary(null);
       setMaxVersion(1);
+      setAnalysisSummary(null);
     }
   };
 
-  const loadBranchIssues = async (branchName: string, page: number = 1, append: boolean = false) => {
+  const loadBranchIssues = async (branchName: string, page: number = 1, append: boolean = false, filterOverrides?: IssueFilters) => {
     if (!currentWorkspace || !namespace) return;
+
+    // Use passed filters or current state
+    const activeFilters = filterOverrides || filters;
 
     try {
       setBranchLoading(true);
@@ -341,10 +373,17 @@ export default function ProjectDashboard() {
         currentWorkspace.slug, 
         namespace, 
         branchName, 
-        'open', // status
+        activeFilters.status || 'open',
         page,
         branchIssuesPageSize,
-        true // excludeDiff
+        true, // excludeDiff
+        {
+          severity: activeFilters.severity,
+          category: activeFilters.category,
+          filePath: activeFilters.filePath,
+          dateFrom: activeFilters.dateFrom,
+          dateTo: activeFilters.dateTo,
+        }
       );
       if (append) {
         setBranchIssues(prev => [...prev, ...response.issues]);
@@ -512,6 +551,12 @@ export default function ProjectDashboard() {
     }
     
     setSearchParams(newParams);
+    
+    // Reload branch issues from backend with new filters when in branch mode
+    if (selectionType === 'branch' && selectedBranch && branchTab === 'issues') {
+      setBranchIssuesPage(1);
+      loadBranchIssues(selectedBranch, 1, false, newFilters);
+    }
   };
 
   const handlePRSelect = (pr: PullRequestDTO) => {
@@ -725,51 +770,9 @@ export default function ProjectDashboard() {
   });
 
   // Filtered issues based on current selection
+  // For branch issues: server returns pre-filtered results for status/severity/category/filePath/dates
   const currentFilteredIssues = selectionType === 'branch' 
-    ? branchIssues.filter((issue) => {
-        // Apply severity filter
-        if (filters.severity !== 'ALL' && issue.severity.toUpperCase() !== filters.severity) {
-          return false;
-        }
-        
-        // Apply status filter
-        if (filters.status === 'open' && issue.status !== 'open') {
-          return false;
-        }
-        if (filters.status === 'resolved' && issue.status !== 'resolved') {
-          return false;
-        }
-        
-        // Apply category filter
-        if (filters.category !== 'ALL') {
-          const issueCategory = issue.issueCategory?.toUpperCase().replace(/[- ]/g, '_') || 'CODE_QUALITY';
-          if (issueCategory !== filters.category) {
-            return false;
-          }
-        }
-        
-        // Apply file path filter
-        if (filters.filePath && !issue.file.toLowerCase().includes(filters.filePath.toLowerCase())) {
-          return false;
-        }
-        
-        // Apply date filters
-        if (filters.dateFrom) {
-          const issueDate = new Date(issue.createdAt);
-          if (issueDate < filters.dateFrom) {
-            return false;
-          }
-        }
-        
-        if (filters.dateTo) {
-          const issueDate = new Date(issue.createdAt);
-          if (issueDate > filters.dateTo) {
-            return false;
-          }
-        }
-        
-        return true;
-      })
+    ? branchIssues
     : filteredIssues;
 
   const getIssueIcon = (type: string) => {
@@ -917,25 +920,45 @@ export default function ProjectDashboard() {
 
                       {filteredPullRequests.length > 0 && (
                         <CommandGroup heading="Pull Requests">
-                          {filteredPullRequests.map((pr) => (
-                            <CommandItem
-                              key={pr.id}
-                              value={String(pr.id)}
-                              onSelect={() => handlePRChange(pr)}
-                              className="text-sm"
-                            >
-                              <GitBranch className="mr-2 h-4 w-4 shrink-0" />
-                              <span className="truncate">
-                                PR #{pr.prNumber} - {pr.sourceBranchName ? `${pr.sourceBranchName} → ${pr.targetBranchName}` : pr.targetBranchName}
-                              </span>
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4 shrink-0",
-                                  selectionType === 'pr' && selectedPR?.id === pr.id ? "opacity-100" : "opacity-0"
+                          {filteredPullRequests.map((pr) => {
+                            const prUrl = buildPrUrl(
+                              project?.vcsProvider, 
+                              project?.projectVcsWorkspace, 
+                              getRepoSlug(project), 
+                              pr.prNumber
+                            );
+                            return (
+                              <CommandItem
+                                key={pr.id}
+                                value={String(pr.id)}
+                                onSelect={() => handlePRChange(pr)}
+                                className="text-sm"
+                              >
+                                <GitBranch className="mr-2 h-4 w-4 shrink-0" />
+                                <span className="truncate flex-1">
+                                  PR #{pr.prNumber} - {pr.sourceBranchName ? `${pr.sourceBranchName} → ${pr.targetBranchName}` : pr.targetBranchName}
+                                </span>
+                                {prUrl && (
+                                  <a 
+                                    href={prUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="ml-2 text-muted-foreground hover:text-primary"
+                                    title="Open in VCS"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
                                 )}
-                              />
-                            </CommandItem>
-                          ))}
+                                <Check
+                                  className={cn(
+                                    "ml-2 h-4 w-4 shrink-0",
+                                    selectionType === 'pr' && selectedPR?.id === pr.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            );
+                          })}
                         </CommandGroup>
                       )}
                     </CommandList>
@@ -996,9 +1019,11 @@ export default function ProjectDashboard() {
                 }`}
               >
                 Issues
-                {selectionType === 'branch' && selectedBranch && branchStats && branchStats.totalIssues > 0 && (
+                {selectionType === 'branch' && selectedBranch && (
                   <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                    {branchStats.totalIssues}
+                    {branchTab === 'issues' && branchIssuesTotalCount > 0 
+                      ? branchIssuesTotalCount 
+                      : (branchStats?.totalIssues || 0)}
                   </Badge>
                 )}
                 {selectionType === 'pr' && selectedPR && currentFilteredIssues.length > 0 && (
@@ -1211,13 +1236,50 @@ export default function ProjectDashboard() {
             {prTab === 'preview' && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Analysis Overview</CardTitle>
-                  <CardDescription>
-                    Summary of code review findings for PR {selectedPR.sourceBranchName} → {selectedPR.targetBranchName}
-                    {selectedPR.commitHash && (
-                      <code className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded">{selectedPR.commitHash.slice(0, 7)}</code>
-                    )}
-                  </CardDescription>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        PR #{selectedPR.prNumber}
+                        {(() => {
+                          const prUrl = buildPrUrl(
+                            project?.vcsProvider, 
+                            project?.projectVcsWorkspace, 
+                            getRepoSlug(project), 
+                            selectedPR.prNumber
+                          );
+                          return prUrl ? (
+                            <a 
+                              href={prUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                              title={`Open PR #${selectedPR.prNumber} in ${project?.vcsProvider?.replace('_', ' ')}`}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          ) : null;
+                        })()}
+                      </CardTitle>
+                      <CardDescription className="mt-1 flex items-center">
+                        <span className="inline-flex items-center gap-2">
+                          <GitBranch className="h-3 w-3" />
+                          {selectedPR.sourceBranchName || 'unknown'} → {selectedPR.targetBranchName}
+                        </span>
+                        {selectedPR.commitHash && (
+                          <span className="inline-flex items-center gap-1 ml-2">
+                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{selectedPR.commitHash.slice(0, 7)}</code>
+                          </span>
+                        )}
+                      </CardDescription>
+                    </div>
+                    {/* PR Summary Stats */}
+                    <div className="text-right text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{currentFilteredIssues.length} issues found</span>
+                      </div>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {analysisLoading ? (
@@ -1309,6 +1371,21 @@ export default function ProjectDashboard() {
                           </CardContent>
                         </Card>
                       </div>
+
+                      {/* Analysis Summary */}
+                      {analysisSummary && (
+                        <Card className="bg-muted/30">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              Analysis Summary
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysisSummary}</p>
+                          </CardContent>
+                        </Card>
+                      )}
                       
                       {/* Files affected */}
                       {currentFilteredIssues.length > 0 && (

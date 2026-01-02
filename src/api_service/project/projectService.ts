@@ -53,7 +53,8 @@ export interface ProjectDTO {
   vcsProvider?: VcsProvider | null;
   aiConnectionId?: number;
   projectVcsWorkspace?: string;
-  projectRepoSlug?: string;
+  projectVcsRepoSlug?: string;  // Backend returns this name
+  projectRepoSlug?: string;     // Alias for compatibility
   namespace?: string;
   active?: boolean;
   createdAt?: string;

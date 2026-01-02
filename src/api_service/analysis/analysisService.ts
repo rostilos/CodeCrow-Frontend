@@ -140,6 +140,7 @@ export interface AnalysisIssuesResponse {
   issues: AnalysisIssue[];
   summary: AnalysisIssueSummary;
   maxVersion?: number;
+  analysisSummary?: string; // The comment/summary from the analysis
 }
 
 export interface AnalysisIssue {
@@ -164,6 +165,11 @@ export interface AnalysisIssue {
   aiProvider?: string | null;
   confidence?: number | null;
   issueCategory?: string;
+  // Detection info - where was this issue first found
+  analysisId?: number | null;
+  prNumber?: number | null;
+  commitHash?: string | null;
+  detectedAt?: string | null;
 }
 
 export interface AnalysisTrendData {
@@ -366,7 +372,14 @@ class AnalysisService extends ApiService {
     status: string = 'open',
     page: number = 1,
     pageSize: number = 50,
-    excludeDiff: boolean = true
+    excludeDiff: boolean = true,
+    filters?: {
+      severity?: string;
+      category?: string;
+      filePath?: string;
+      dateFrom?: Date;
+      dateTo?: Date;
+    }
   ): Promise<{ issues: AnalysisIssue[]; total: number; page: number; pageSize: number }> {
     const params = new URLSearchParams({ 
       status,
@@ -374,6 +387,24 @@ class AnalysisService extends ApiService {
       pageSize: pageSize.toString(),
       excludeDiff: excludeDiff.toString()
     });
+    
+    // Add optional filter params
+    if (filters?.severity && filters.severity !== 'ALL') {
+      params.append('severity', filters.severity);
+    }
+    if (filters?.category && filters.category !== 'ALL') {
+      params.append('category', filters.category);
+    }
+    if (filters?.filePath) {
+      params.append('filePath', filters.filePath);
+    }
+    if (filters?.dateFrom) {
+      params.append('dateFrom', filters.dateFrom.toISOString());
+    }
+    if (filters?.dateTo) {
+      params.append('dateTo', filters.dateTo.toISOString());
+    }
+    
     const response = await this.request<AnalysisIssue[] | { issues: AnalysisIssue[]; total: number; page: number; pageSize: number }>(
       `/${workspaceSlug}/project/${namespace}/pull-requests/branches/${encodeURIComponent(branchName)}/issues?${params.toString()}`, 
       {}, 
