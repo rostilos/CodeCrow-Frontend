@@ -55,6 +55,15 @@ function BitbucketIcon({ className }: { className?: string }) {
   );
 }
 
+// GitLab logo SVG component
+function GitLabIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
+    </svg>
+  );
+}
+
 // Getting Started navigation structure
 const gettingStartedItems = [
   { title: "Overview", url: "/docs", icon: BookOpen },
@@ -67,6 +76,7 @@ const gettingStartedItems = [
       { title: "Overview", url: "/docs/vcs-connection", icon: Info },
       { title: "Bitbucket", url: "/docs/vcs-connection/bitbucket", icon: BitbucketIcon },
       { title: "GitHub", url: "/docs/vcs-connection/github", icon: Github },
+      { title: "GitLab", url: "/docs/vcs-connection/gitlab", icon: GitLabIcon },
     ]
   },
   { title: "AI Connection", url: "/docs/ai-connection", icon: Cpu },

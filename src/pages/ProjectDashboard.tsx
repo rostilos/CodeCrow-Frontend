@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckCircle2, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +61,27 @@ function buildPrUrl(
   }
 }
 
+// Build URL for viewing a specific commit on the VCS platform
+function buildCommitUrl(
+  vcsProvider: VcsProvider | null | undefined, 
+  vcsWorkspace: string | undefined, 
+  repoSlug: string | undefined, 
+  commitHash: string
+): string | null {
+  if (!vcsProvider || !vcsWorkspace || !repoSlug || !commitHash) return null;
+  
+  switch (vcsProvider) {
+    case 'BITBUCKET_CLOUD':
+      return `https://bitbucket.org/${vcsWorkspace}/${repoSlug}/commits/${commitHash}`;
+    case 'GITHUB':
+      return `https://github.com/${vcsWorkspace}/${repoSlug}/commit/${commitHash}`;
+    case 'GITLAB':
+      return `https://gitlab.com/${vcsWorkspace}/${repoSlug}/-/commit/${commitHash}`;
+    default:
+      return null;
+  }
+}
+
 // Helper to get repo slug from project (handles both field names)
 function getRepoSlug(project: ProjectDTO | null): string | undefined {
   return project?.projectVcsRepoSlug || project?.projectRepoSlug;
@@ -84,6 +105,7 @@ export default function ProjectDashboard() {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [maxVersion, setMaxVersion] = useState<number>(1);
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
+  const [versionCommitHash, setVersionCommitHash] = useState<string | null>(null);
   const [prSelectOpen, setPrSelectOpen] = useState(false);
   const [prSearchQuery, setPrSearchQuery] = useState('');
   const [filters, setFilters] = useState<IssueFilters>({
@@ -348,6 +370,7 @@ export default function ProjectDashboard() {
       setIssueSummary(response.summary);
       setMaxVersion(response.maxVersion || 1);
       setAnalysisSummary(response.analysisSummary || null);
+      setVersionCommitHash(response.commitHash || null);
       
       // Set version to what was actually loaded (version param or latest)
       const loadedVersion = version !== undefined ? version : (response.maxVersion || 1);
@@ -358,6 +381,7 @@ export default function ProjectDashboard() {
       setIssueSummary(null);
       setMaxVersion(1);
       setAnalysisSummary(null);
+      setVersionCommitHash(null);
     }
   };
 
@@ -1088,6 +1112,10 @@ export default function ProjectDashboard() {
                   branchName={selectedBranch}
                   onSeverityClick={handleSeverityClick}
                   onViewAllIssues={() => setBranchTab('issues')}
+                  onViewResolvedIssues={() => {
+                    setFilters(prev => ({ ...prev, status: 'resolved' }));
+                    setBranchTab('issues');
+                  }}
                   onFileClick={handleFileClick}
                 />
               ) : (
@@ -1241,23 +1269,48 @@ export default function ProjectDashboard() {
                       <CardTitle className="text-lg flex items-center gap-2">
                         PR #{selectedPR.prNumber}
                         {(() => {
-                          const prUrl = buildPrUrl(
-                            project?.vcsProvider, 
-                            project?.projectVcsWorkspace, 
-                            getRepoSlug(project), 
-                            selectedPR.prNumber
-                          );
-                          return prUrl ? (
-                            <a 
-                              href={prUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-muted-foreground hover:text-primary transition-colors"
-                              title={`Open PR #${selectedPR.prNumber} in ${project?.vcsProvider?.replace('_', ' ')}`}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          ) : null;
+                          // For the latest version or single version, link to PR
+                          // For older versions, link to the specific commit
+                          const isLatestOrOnlyVersion = selectedVersion === maxVersion || maxVersion <= 1;
+                          
+                          if (isLatestOrOnlyVersion) {
+                            const prUrl = buildPrUrl(
+                              project?.vcsProvider, 
+                              project?.projectVcsWorkspace, 
+                              getRepoSlug(project), 
+                              selectedPR.prNumber
+                            );
+                            return prUrl ? (
+                              <a 
+                                href={prUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                title={`Open PR #${selectedPR.prNumber} in ${project?.vcsProvider?.replace('_', ' ')}`}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            ) : null;
+                          } else {
+                            // Older version - link to specific commit
+                            const commitUrl = versionCommitHash ? buildCommitUrl(
+                              project?.vcsProvider, 
+                              project?.projectVcsWorkspace, 
+                              getRepoSlug(project), 
+                              versionCommitHash
+                            ) : null;
+                            return commitUrl ? (
+                              <a 
+                                href={commitUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                title={`View commit ${versionCommitHash?.slice(0, 7)} (version ${selectedVersion}) in ${project?.vcsProvider?.replace('_', ' ')}`}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            ) : null;
+                          }
                         })()}
                       </CardTitle>
                       <CardDescription className="mt-1 flex items-center">
@@ -1265,9 +1318,15 @@ export default function ProjectDashboard() {
                           <GitBranch className="h-3 w-3" />
                           {selectedPR.sourceBranchName || 'unknown'} → {selectedPR.targetBranchName}
                         </span>
-                        {selectedPR.commitHash && (
+                        {/* Show the version's commit hash, not the PR's latest commit hash */}
+                        {(versionCommitHash || selectedPR.commitHash) && (
                           <span className="inline-flex items-center gap-1 ml-2">
-                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{selectedPR.commitHash.slice(0, 7)}</code>
+                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                              {(versionCommitHash || selectedPR.commitHash)?.slice(0, 7)}
+                            </code>
+                            {selectedVersion < maxVersion && maxVersion > 1 && (
+                              <span className="text-xs text-muted-foreground">(v{selectedVersion})</span>
+                            )}
                           </span>
                         )}
                       </CardDescription>
@@ -1276,7 +1335,7 @@ export default function ProjectDashboard() {
                     <div className="text-right text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <AlertCircle className="h-4 w-4" />
-                        <span>{currentFilteredIssues.length} issues found</span>
+                        <span>{analysisIssues.filter(i => i.status !== 'resolved').length} open issues</span>
                       </div>
                     </div>
                   </div>
@@ -1290,7 +1349,8 @@ export default function ProjectDashboard() {
                   ) : (
                     <div className="space-y-6">
                       {/* Issue counts summary - matching DetailedProjectStats style */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {/* Use analysisIssues for preview counts (unfiltered), exclude resolved from severity counts */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <Card
                           className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
                           onClick={() => setPrTab('issues')}
@@ -1298,8 +1358,8 @@ export default function ProjectDashboard() {
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">All Issues</p>
-                                <p className="text-2xl font-bold mt-1">{currentFilteredIssues.length}</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Open Issues</p>
+                                <p className="text-2xl font-bold mt-1">{analysisIssues.filter(i => i.status !== 'resolved').length}</p>
                               </div>
                               <div className="p-2 rounded-lg bg-primary/10">
                                 <Activity className="h-5 w-5 text-primary" />
@@ -1310,7 +1370,7 @@ export default function ProjectDashboard() {
                         <Card
                           className="border-l-4 border-l-destructive/80 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-destructive/30"
                           onClick={() => {
-                            setFilters(prev => ({ ...prev, severity: 'HIGH' }));
+                            setFilters(prev => ({ ...prev, severity: 'HIGH', status: 'open' }));
                             setPrTab('issues');
                           }}
                         >
@@ -1319,7 +1379,7 @@ export default function ProjectDashboard() {
                               <div>
                                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">High</p>
                                 <p className="text-2xl font-bold mt-1">
-                                  {currentFilteredIssues.filter(i => i.severity?.toUpperCase() === 'HIGH').length}
+                                  {analysisIssues.filter(i => i.severity?.toUpperCase() === 'HIGH' && i.status !== 'resolved').length}
                                 </p>
                               </div>
                               <div className="p-2 rounded-lg bg-destructive/10">
@@ -1331,7 +1391,7 @@ export default function ProjectDashboard() {
                         <Card
                           className="border-l-4 border-l-warning cursor-pointer hover:shadow-md transition-all duration-200 hover:border-warning/30"
                           onClick={() => {
-                            setFilters(prev => ({ ...prev, severity: 'MEDIUM' }));
+                            setFilters(prev => ({ ...prev, severity: 'MEDIUM', status: 'open' }));
                             setPrTab('issues');
                           }}
                         >
@@ -1340,7 +1400,7 @@ export default function ProjectDashboard() {
                               <div>
                                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Medium</p>
                                 <p className="text-2xl font-bold mt-1">
-                                  {currentFilteredIssues.filter(i => i.severity?.toUpperCase() === 'MEDIUM').length}
+                                  {analysisIssues.filter(i => i.severity?.toUpperCase() === 'MEDIUM' && i.status !== 'resolved').length}
                                 </p>
                               </div>
                               <div className="p-2 rounded-lg bg-warning/10">
@@ -1352,7 +1412,7 @@ export default function ProjectDashboard() {
                         <Card
                           className="border-l-4 border-l-muted-foreground/30 cursor-pointer hover:shadow-md transition-all duration-200"
                           onClick={() => {
-                            setFilters(prev => ({ ...prev, severity: 'LOW' }));
+                            setFilters(prev => ({ ...prev, severity: 'LOW', status: 'open' }));
                             setPrTab('issues');
                           }}
                         >
@@ -1361,11 +1421,32 @@ export default function ProjectDashboard() {
                               <div>
                                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Low</p>
                                 <p className="text-2xl font-bold mt-1">
-                                  {currentFilteredIssues.filter(i => i.severity?.toUpperCase() === 'LOW').length}
+                                  {analysisIssues.filter(i => i.severity?.toUpperCase() === 'LOW' && i.status !== 'resolved').length}
                                 </p>
                               </div>
                               <div className="p-2 rounded-lg bg-muted">
                                 <Info className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card
+                          className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-green-400/30"
+                          onClick={() => {
+                            setFilters(prev => ({ ...prev, status: 'resolved', severity: 'ALL' }));
+                            setPrTab('issues');
+                          }}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resolved</p>
+                                <p className="text-2xl font-bold mt-1 text-green-600">
+                                  {analysisIssues.filter(i => i.status === 'resolved').length}
+                                </p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <CheckCircle2 className="h-5 w-5 text-green-600" />
                               </div>
                             </div>
                           </CardContent>

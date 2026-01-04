@@ -140,7 +140,9 @@ export interface AnalysisIssuesResponse {
   issues: AnalysisIssue[];
   summary: AnalysisIssueSummary;
   maxVersion?: number;
+  currentVersion?: number;
   analysisSummary?: string; // The comment/summary from the analysis
+  commitHash?: string; // The commit hash for this specific analysis version
 }
 
 export interface AnalysisIssue {

@@ -11,6 +11,34 @@ import {
 } from './integration.interface';
 
 /**
+ * Normalize provider string from backend format (BITBUCKET_CLOUD) to frontend format (bitbucket-cloud)
+ */
+function normalizeProvider(provider: string): VcsProvider {
+  const mapping: Record<string, VcsProvider> = {
+    'BITBUCKET_CLOUD': 'bitbucket-cloud',
+    'BITBUCKET_SERVER': 'bitbucket-server',
+    'GITHUB': 'github',
+    'GITLAB': 'gitlab',
+    // Also handle already-normalized values
+    'bitbucket-cloud': 'bitbucket-cloud',
+    'bitbucket-server': 'bitbucket-server',
+    'github': 'github',
+    'gitlab': 'gitlab',
+  };
+  return mapping[provider] || (provider.toLowerCase().replace('_', '-') as VcsProvider);
+}
+
+/**
+ * Normalize a VcsConnection object from backend format
+ */
+function normalizeConnection(conn: any): VcsConnection {
+  return {
+    ...conn,
+    provider: normalizeProvider(conn.provider),
+  };
+}
+
+/**
  * Service for VCS provider integrations.
  * Provides methods for app installation, connection management, and repository onboarding.
  */
@@ -38,7 +66,9 @@ class IntegrationService extends ApiService {
     if (connectionType) {
       url += `?connectionType=${connectionType}`;
     }
-    return this.request<VcsConnection[]>(url, { method: 'GET' });
+    const connections = await this.request<VcsConnection[]>(url, { method: 'GET' });
+    // Normalize provider format from backend (BITBUCKET_CLOUD) to frontend (bitbucket-cloud)
+    return connections.map(normalizeConnection);
   }
   
   /**
@@ -53,9 +83,12 @@ class IntegrationService extends ApiService {
    */
   async getAllConnections(workspaceSlug: string): Promise<VcsConnection[]> {
     // Get connections for all supported providers
-    const providers: VcsProvider[] = ['bitbucket-cloud', 'github'];
+    const providers: VcsProvider[] = ['bitbucket-cloud', 'github', 'gitlab'];
     const connectionPromises = providers.map(p => 
-      this.getConnections(workspaceSlug, p).catch(() => [])
+      this.getConnections(workspaceSlug, p).catch((err) => {
+        console.warn(`Failed to load ${p} connections:`, err);
+        return [];
+      })
     );
     const results = await Promise.all(connectionPromises);
     return results.flat();
@@ -65,10 +98,11 @@ class IntegrationService extends ApiService {
    * Get a specific VCS connection.
    */
   async getConnection(workspaceSlug: string, provider: VcsProvider, connectionId: number): Promise<VcsConnection> {
-    return this.request<VcsConnection>(
+    const connection = await this.request<VcsConnection>(
       `/${workspaceSlug}/integrations/${provider}/connections/${connectionId}`,
       { method: 'GET' }
     );
+    return normalizeConnection(connection);
   }
   
   /**
@@ -85,10 +119,11 @@ class IntegrationService extends ApiService {
    * Sync a VCS connection (refresh status and repo count).
    */
   async syncConnection(workspaceSlug: string, provider: VcsProvider, connectionId: number): Promise<VcsConnection> {
-    return this.request<VcsConnection>(
+    const connection = await this.request<VcsConnection>(
       `/${workspaceSlug}/integrations/${provider}/connections/${connectionId}/sync`,
       { method: 'POST' }
     );
+    return normalizeConnection(connection);
   }
   
   /**
