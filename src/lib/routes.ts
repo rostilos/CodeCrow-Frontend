@@ -19,7 +19,7 @@ export const ROUTES = {
   
   // Project routes
   PROJECTS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/projects`,
-  PROJECT_NEW: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/projects/new`,
+  PROJECT_NEW: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/projects/import`, // Redirect to unified import flow
   PROJECT_IMPORT: (workspaceSlug: string, params?: { connectionId?: string | number; provider?: string; connectionType?: string }) => {
     const base = `/dashboard/${workspaceSlug}/projects/import`;
     if (params) {
@@ -85,6 +85,9 @@ export const ROUTES = {
   HOSTING_GITHUB_CONFIGURE: (workspaceSlug: string, connectionId: string | number) => 
     `/dashboard/${workspaceSlug}/hosting/github/configure/${connectionId}`,
   HOSTING_GITHUB_CALLBACK: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/hosting/github/callback`,
+  HOSTING_GITLAB_ADD: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/hosting/gitlab/add-connection`,
+  HOSTING_GITLAB_CONFIGURE: (workspaceSlug: string, connectionId: string | number) => 
+    `/dashboard/${workspaceSlug}/hosting/gitlab/configure/${connectionId}`,
   HOSTING_SUCCESS: (workspaceSlug: string, provider: string) => 
     `/dashboard/${workspaceSlug}/hosting/${provider}/success`,
   AI_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/ai`,
@@ -128,6 +131,9 @@ export function createWorkspaceRoutes(workspaceSlug: string) {
     hostingGitHubConfigure: (connectionId: string | number) => 
       ROUTES.HOSTING_GITHUB_CONFIGURE(workspaceSlug, connectionId),
     hostingGitHubCallback: () => ROUTES.HOSTING_GITHUB_CALLBACK(workspaceSlug),
+    hostingGitLabAdd: () => ROUTES.HOSTING_GITLAB_ADD(workspaceSlug),
+    hostingGitLabConfigure: (connectionId: string | number) => 
+      ROUTES.HOSTING_GITLAB_CONFIGURE(workspaceSlug, connectionId),
     hostingSuccess: (provider: string) => ROUTES.HOSTING_SUCCESS(workspaceSlug, provider),
     aiSettings: () => ROUTES.AI_SETTINGS(workspaceSlug),
     workspaceSettings: () => ROUTES.WORKSPACE_SETTINGS(workspaceSlug),

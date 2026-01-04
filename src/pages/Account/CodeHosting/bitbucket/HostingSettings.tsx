@@ -46,6 +46,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import GitHubHostingSettings from "@/pages/Account/CodeHosting/github/GitHubHostingSettings.tsx";
+import GitLabHostingSettings from "@/pages/Account/CodeHosting/gitlab/GitLabHostingSettings.tsx";
 import bitbucketAppSetupImg from "@/assets/bitbucket-app-setup.png";
 
 interface BitbucketConnection {
@@ -367,11 +368,15 @@ export default function HostingSettings() {
                 <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="bitbucket">Bitbucket</TabsTrigger>
                     <TabsTrigger value="github">GitHub</TabsTrigger>
-                    <TabsTrigger value="gitlab" disabled>GitLab (Coming Soon)</TabsTrigger>
+                    <TabsTrigger value="gitlab">GitLab</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="github" className="space-y-6">
                     <GitHubHostingSettings />
+                </TabsContent>
+
+                <TabsContent value="gitlab" className="space-y-6">
+                    <GitLabHostingSettings />
                 </TabsContent>
 
                 <TabsContent value="bitbucket" className="space-y-6">
@@ -811,30 +816,6 @@ export default function HostingSettings() {
                             </div>
                         )}
                     </div>
-                </TabsContent>
-
-                <TabsContent value="github">
-                    <Card>
-                        <CardContent className="p-12 text-center">
-                            <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4"/>
-                            <h3 className="text-xl font-semibold mb-2">GitHub Integration Coming Soon</h3>
-                            <p className="text-muted-foreground">
-                                We're working on GitHub integration. It will be available in the next update.
-                            </p>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="gitlab">
-                    <Card>
-                        <CardContent className="p-12 text-center">
-                            <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4"/>
-                            <h3 className="text-xl font-semibold mb-2">GitLab Integration Coming Soon</h3>
-                            <p className="text-muted-foreground">
-                                We're working on GitLab integration. It will be available in the next update.
-                            </p>
-                        </CardContent>
-                    </Card>
                 </TabsContent>
             </Tabs>
 

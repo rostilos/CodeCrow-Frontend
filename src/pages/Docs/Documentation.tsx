@@ -133,13 +133,13 @@ export default function Documentation() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  [Placeholder] Instructions for GitHub and GitLab integration coming soon:
+                  Connect GitHub and GitLab repositories with 1-click OAuth integration:
                 </p>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• GitHub App installation</li>
-                  <li>• GitLab webhook configuration</li>
-                  <li>• Branch protection rules</li>
-                  <li>• Status check integration</li>
+                  <li>• GitHub App installation & OAuth</li>
+                  <li>• GitLab OAuth application setup</li>
+                  <li>• Automatic webhook configuration</li>
+                  <li>• Merge/Pull request analysis</li>
                 </ul>
               </CardContent>
             </Card>

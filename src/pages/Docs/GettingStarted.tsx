@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, ArrowRight, Clock, BookOpen, Briefcase, GitBranch, FolderGit2, Key, Workflow, GitPullRequest, MousePointer, Settings, Github, DatabaseZap, CheckCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Zap, ArrowRight, Clock, BookOpen, Briefcase, GitBranch, FolderGit2, Key, Workflow, GitPullRequest, MousePointer, Settings, Github, DatabaseZap, CheckCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +13,15 @@ function BitbucketIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z" />
+    </svg>
+  );
+}
+
+// GitLab logo SVG component
+function GitLabIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
     </svg>
   );
 }
@@ -155,7 +165,7 @@ export default function GettingStarted() {
           <p className="text-sm text-muted-foreground leading-relaxed">
             CodeCrow uses advanced LLMs and Retrieval-Augmented Generation (RAG) to provide
             intelligent, context-aware code reviews. It integrates directly with your VCS
-            (GitHub/Bitbucket) to analyze every PR and push.
+            (GitHub, Bitbucket, or GitLab) to analyze every PR and push.
           </p>
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -180,16 +190,27 @@ export default function GettingStarted() {
         <h2 className="text-xl font-bold flex items-center gap-2">
           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold no-toc-text">2</span>
           Connect VCS Platform
+          <Badge variant="outline" className="ml-2 text-xs">Optional</Badge>
         </h2>
         <Card className="border-border/50">
           <CardContent className="pt-6 space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
               A <strong>VCS Connection</strong> is a secure bridge between CodeCrow and your Git provider.
-              It allows CodeCrow to automatically discover repositories in your <strong>Bitbucket Workspace</strong>
-              or <strong>GitHub Organization</strong>.
+              It allows CodeCrow to automatically discover repositories in your <strong>Bitbucket Workspace</strong>,
+              <strong> GitHub Organization</strong>, or <strong>GitLab Group</strong>.
             </p>
+            
+            <Alert className="border-primary/30 bg-primary/5">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-sm">
+                <strong>This step is optional but recommended.</strong> Creating a workspace-level VCS connection 
+                lets you import any repository from your organization in seconds. However, if you don't have 
+                full workspace access or prefer per-repository control, you can skip this and use a{' '}
+                <strong>Repository Access Token</strong> when creating projects.
+              </AlertDescription>
+            </Alert>
 
-            <div className="grid md:grid-cols-2 gap-4 pb-4">
+            <div className="grid md:grid-cols-3 gap-4 pb-4">
               {/* Provider choice inside Step 2 */}
               <Card className="cursor-pointer hover:border-primary transition-colors bg-muted/30" onClick={() => navigate("/docs/vcs-connection/github")}>
                 <CardContent className="p-4 flex items-center gap-3">
@@ -201,6 +222,12 @@ export default function GettingStarted() {
                 <CardContent className="p-4 flex items-center gap-3">
                   <BitbucketIcon className="h-5 w-5 text-primary" />
                   <div className="text-sm font-bold">Bitbucket Integration</div>
+                </CardContent>
+              </Card>
+              <Card className="cursor-pointer hover:border-primary transition-colors bg-muted/30" onClick={() => navigate("/docs/vcs-connection/gitlab")}>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <GitLabIcon className="h-5 w-5 text-primary" />
+                  <div className="text-sm font-bold">GitLab Integration</div>
                 </CardContent>
               </Card>
             </div>
@@ -231,16 +258,44 @@ export default function GettingStarted() {
           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold no-toc-text">3</span>
           Finalize Configuration
         </h2>
+        
+        {/* Repository-based VCS Connection info */}
+        <Card className="border-orange-500/30 bg-orange-500/5">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-orange-500/10 shrink-0">
+                <Key className="h-4 w-4 text-orange-600" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-bold text-sm">Repository Access Token</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Skipped the VCS connection in step 2? No problem! During project creation, you can use a{' '}
+                  <strong>Repository Access Token</strong> (like GitLab's Project Access Token) to connect 
+                  a single repository. This is ideal for:
+                </p>
+                <ul className="text-xs text-muted-foreground list-disc list-inside mt-2 space-y-1">
+                  <li>Projects where you don't have group/organization access</li>
+                  <li>Multi-team repositories with strict access control</li>
+                  <li>CI/CD bot users that need per-repo permissions</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="github" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsList className="grid w-full grid-cols-3 h-auto">
             <TabsTrigger value="github" className="py-3">
               <Github className="h-4 w-4 mr-2" />
               GitHub
             </TabsTrigger>
             <TabsTrigger value="bitbucket" className="py-3">
               <BitbucketIcon className="h-4 w-4 mr-2" />
-              Bitbucket Cloud
+              Bitbucket
+            </TabsTrigger>
+            <TabsTrigger value="gitlab" className="py-3">
+              <GitLabIcon className="h-4 w-4 mr-2" />
+              GitLab
             </TabsTrigger>
           </TabsList>
 
@@ -311,6 +366,30 @@ export default function GettingStarted() {
                 {renderSteps(bitbucketManualSteps)}
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="gitlab" className="mt-4 space-y-6">
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="border-primary/50 bg-primary/5">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">OAuth App</CardTitle>
+                  <Badge className="w-fit scale-75 origin-left">Recommended</Badge>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground">
+                  1-click OAuth setup. Supports GitLab.com and self-hosted instances.
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Personal Access Token</CardTitle>
+                  <Badge variant="outline" className="w-fit scale-75 origin-left">Manual</Badge>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground">
+                  Token-based authentication with manual webhook configuration.
+                </CardContent>
+              </Card>
+            </div>
+            {renderSteps(bitbucketAutoSteps)}
           </TabsContent>
         </Tabs>
       </div>

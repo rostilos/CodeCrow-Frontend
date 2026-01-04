@@ -41,7 +41,7 @@ export interface BindRepositoryRequest {
   name?: string;
 }
 
-export type VcsConnectionType = 'OAUTH_MANUAL' | 'APP' | 'CONNECT_APP' | 'GITHUB_APP' | 'OAUTH_APP' | 'PERSONAL_TOKEN' | 'APPLICATION' | 'ACCESS_TOKEN';
+export type VcsConnectionType = 'OAUTH_MANUAL' | 'APP' | 'CONNECT_APP' | 'GITHUB_APP' | 'OAUTH_APP' | 'PERSONAL_TOKEN' | 'APPLICATION' | 'ACCESS_TOKEN' | 'REPOSITORY_TOKEN';
 export type VcsProvider = 'BITBUCKET_CLOUD' | 'GITHUB' | 'GITLAB';
 
 export interface ProjectDTO {
@@ -53,7 +53,8 @@ export interface ProjectDTO {
   vcsProvider?: VcsProvider | null;
   aiConnectionId?: number;
   projectVcsWorkspace?: string;
-  projectRepoSlug?: string;
+  projectVcsRepoSlug?: string;  // Backend returns this name
+  projectRepoSlug?: string;     // Alias for compatibility
   namespace?: string;
   active?: boolean;
   createdAt?: string;
@@ -71,6 +72,7 @@ export interface ProjectDTO {
   branchAnalysisEnabled?: boolean;
   installationMethod?: InstallationMethod | null;
   commentCommandsConfig?: CommentCommandsConfigDTO | null;
+  webhooksConfigured?: boolean | null;
   // other fields from ProjectDTO are allowed
   [key: string]: any;
 }
@@ -195,6 +197,32 @@ export interface RagIndexStatusDTO {
   errorMessage: string | null;
   collectionName: string | null;
   failedIncrementalCount: number | null;
+}
+
+// Webhook Management types
+export interface WebhookSetupResponse {
+  success: boolean;
+  message: string;
+  webhookId?: string;
+}
+
+export interface WebhookInfoResponse {
+  webhooksConfigured: boolean;
+  webhookId?: string;
+  webhookUrl?: string;
+  provider?: string;
+}
+
+// Change VCS Connection types
+export interface ChangeVcsConnectionRequest {
+  connectionId: number;
+  repositoryId?: string;
+  repositorySlug: string;
+  namespace: string;
+  defaultBranch?: string;
+  setupWebhooks?: boolean;
+  provider: string;
+  clearAnalysisData?: boolean;
 }
 
 export interface RagStatusResponse {
@@ -581,6 +609,56 @@ class ProjectService extends ApiService {
     await this.request<void>(
       `/${workspaceSlug}/project/${namespace}/allowed-users`,
       { method: 'DELETE' },
+      true
+    );
+  }
+
+  // ==================== Webhook Management ====================
+
+  /**
+   * Setup webhooks for a project
+   */
+  async setupWebhooks(
+    workspaceSlug: string,
+    namespace: string
+  ): Promise<WebhookSetupResponse> {
+    return this.request<WebhookSetupResponse>(
+      `/${workspaceSlug}/project/${namespace}/webhooks/setup`,
+      { method: 'POST' },
+      true
+    );
+  }
+
+  /**
+   * Get webhook info for a project
+   */
+  async getWebhookInfo(
+    workspaceSlug: string,
+    namespace: string
+  ): Promise<WebhookInfoResponse> {
+    return this.request<WebhookInfoResponse>(
+      `/${workspaceSlug}/project/${namespace}/webhooks/info`,
+      {},
+      true
+    );
+  }
+
+  // ==================== VCS Connection Management ====================
+
+  /**
+   * Change VCS connection for a project
+   */
+  async changeVcsConnection(
+    workspaceSlug: string,
+    namespace: string,
+    request: ChangeVcsConnectionRequest
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/vcs-connection`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(request),
+      },
       true
     );
   }

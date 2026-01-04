@@ -67,11 +67,17 @@ export default function CommentCommandsConfig({ project, onUpdate }: CommentComm
     );
   }, [allowedUsers, userSearchQuery]);
   
-  // Check if App integration is available (includes OAuth which now also has webhooks)
+  // Check if webhooks are configured (comment commands require webhooks, not specific connection type)
+  const hasWebhooksConfigured = project.webhooksConfigured === true;
+  
+  // Legacy check for app integrations (these always have webhooks)
   const isAppIntegration = project.vcsConnectionType === 'APP' || 
                            project.vcsConnectionType === 'CONNECT_APP' ||
                            project.vcsConnectionType === 'GITHUB_APP' ||
                            project.vcsConnectionType === 'OAUTH_MANUAL';
+  
+  // Comment commands are available if webhooks are configured OR if it's an app integration
+  const canUseCommentCommands = hasWebhooksConfigured || isAppIntegration;
   
   useEffect(() => {
     if (project.commentCommandsConfig) {
@@ -223,7 +229,7 @@ export default function CommentCommandsConfig({ project, onUpdate }: CommentComm
     }
   };
   
-  if (!isAppIntegration) {
+  if (!canUseCommentCommands) {
     return (
       <Card>
         <CardHeader>
@@ -238,14 +244,12 @@ export default function CommentCommandsConfig({ project, onUpdate }: CommentComm
         <CardContent>
           <Alert>
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>App Integration Required</AlertTitle>
+            <AlertTitle>Webhook Setup Required</AlertTitle>
             <AlertDescription>
-              Comment commands are only available when your project is connected via a 
-              Bitbucket Cloud App or GitHub App integration. This ensures proper webhook 
-              configuration and user authorization.
+              Comment commands require webhooks to be configured for your project.
               <br /><br />
-              To enable this feature, reconnect your repository using the App integration 
-              method in the Code Hosting settings tab.
+              Go to the <strong>Code Hosting</strong> settings tab and click the 
+              <strong> Setup Webhooks</strong> button to enable this feature.
             </AlertDescription>
           </Alert>
         </CardContent>

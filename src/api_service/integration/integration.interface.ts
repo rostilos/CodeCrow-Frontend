@@ -4,7 +4,7 @@
 
 export type VcsProvider = 'bitbucket-cloud' | 'bitbucket-server' | 'github' | 'gitlab';
 
-export type VcsConnectionType = 'OAUTH_MANUAL' | 'APP' | 'CONNECT_APP' | 'GITHUB_APP' | 'OAUTH_APP' | 'PERSONAL_TOKEN' | 'APPLICATION' | 'ACCESS_TOKEN' | 'WORKSPACE_TOKEN';
+export type VcsConnectionType = 'OAUTH_MANUAL' | 'APP' | 'CONNECT_APP' | 'GITHUB_APP' | 'OAUTH_APP' | 'PERSONAL_TOKEN' | 'APPLICATION' | 'ACCESS_TOKEN' | 'WORKSPACE_TOKEN' | 'REPOSITORY_TOKEN';
 
 export type VcsSetupStatus = 'PENDING' | 'CONNECTED' | 'ERROR' | 'DISABLED';
 

@@ -17,8 +17,11 @@ import {
   X,
   Info,
   Webhook,
-  Workflow
+  Workflow,
+  RefreshCw,
+  Key
 } from "lucide-react";
+import { Github } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,17 +38,63 @@ import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { integrationService } from "@/api_service/integration/integrationService";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService";
 import { githubService } from "@/api_service/codeHosting/github/githubService";
+import { gitlabService } from "@/api_service/codeHosting/gitlab/gitlabService";
 import { projectService } from "@/api_service/project/projectService";
 import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService";
+import { GitLabRepositoryTokenForm } from "@/components/gitlab/GitLabRepositoryTokenForm";
+import { RepositoryTokenForm, RepositoryTokenData } from "@/components/common/RepositoryTokenForm";
+import { GitLabRepositoryTokenRequest } from "@/api_service/codeHosting/gitlab/gitlabService.interface";
 import { 
   VcsConnection, 
   VcsProvider, 
   VcsRepository 
 } from "@/api_service/integration/integration.interface";
 
+// Bitbucket logo SVG component
+function BitbucketIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z" />
+    </svg>
+  );
+}
+
+// GitLab logo SVG component
+function GitLabIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 01-.3-.94l1.22-3.78 2.44-7.51a.42.42 0 01.82 0l2.44 7.51h8.06l2.44-7.51a.42.42 0 01.82 0l2.44 7.51 1.22 3.78a.84.84 0 01-.3.94z"/>
+    </svg>
+  );
+}
+
+// Provider display info
+const PROVIDER_INFO: Record<VcsProvider, { name: string; color: string }> = {
+  'bitbucket-cloud': { name: 'Bitbucket Cloud', color: 'text-blue-500' },
+  'bitbucket-server': { name: 'Bitbucket Server', color: 'text-blue-600' },
+  'github': { name: 'GitHub', color: 'text-gray-900 dark:text-gray-100' },
+  'gitlab': { name: 'GitLab', color: 'text-orange-500' },
+};
+
+function getProviderIcon(provider: VcsProvider, className: string = "h-6 w-6") {
+  const color = PROVIDER_INFO[provider]?.color || '';
+  switch (provider) {
+    case 'bitbucket-cloud':
+    case 'bitbucket-server':
+      return <BitbucketIcon className={`${className} ${color}`} />;
+    case 'github':
+      return <Github className={`${className} ${color}`} />;
+    case 'gitlab':
+      return <GitLabIcon className={`${className} ${color}`} />;
+    default:
+      return <GitBranch className={className} />;
+  }
+}
+
 /**
  * Import Project Flow for Manual OAuth connections.
  * Steps:
+ * 0. Select VCS connection (if not provided in URL)
  * 1. Select repository from VCS connection
  * 2. Set project name and description
  * 3. Select or create AI connection
@@ -53,7 +102,7 @@ import {
  */
 export default function ImportProject() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const connectionId = searchParams.get('connectionId');
   const provider = searchParams.get('provider') as VcsProvider;
   const connectionType = searchParams.get('connectionType');
@@ -61,8 +110,17 @@ export default function ImportProject() {
   const routes = useWorkspaceRoutes();
   const { toast } = useToast();
   
-  // Current step: 1 = repo selection, 2 = project details, 3 = AI connection, 4 = analysis config, 5 = installation method
-  const [currentStep, setCurrentStep] = useState(1);
+  // Current step: 0 = connection selection (if no connectionId), 1 = repo selection, 2 = project details, 3 = AI connection, 4 = analysis config, 5 = installation method
+  const [currentStep, setCurrentStep] = useState(connectionId ? 1 : 0);
+  
+  // Connection selection state (step 0)
+  const [allConnections, setAllConnections] = useState<VcsConnection[]>([]);
+  const [isLoadingConnections, setIsLoadingConnections] = useState(true); // Start as true, will be set to false after load
+  const [selectedProvider, setSelectedProvider] = useState<VcsProvider | null>(null);
+  
+  // GitLab Repository Token mode (for single-repo access without group/org)
+  const [showRepoTokenForm, setShowRepoTokenForm] = useState(false);
+  const [isCreatingRepoToken, setIsCreatingRepoToken] = useState(false);
   
   // Connection & Repository state
   const [connection, setConnection] = useState<VcsConnection | null>(null);
@@ -110,12 +168,110 @@ export default function ImportProject() {
   // Creating state
   const [isCreating, setIsCreating] = useState(false);
   
+  // Load all connections if no connectionId is provided (step 0)
+  useEffect(() => {
+    if (connectionId) {
+      // If connectionId is provided, we don't need to load all connections
+      setIsLoadingConnections(false);
+      return;
+    }
+    if (currentWorkspace) {
+      loadAllConnections();
+    }
+  }, [currentWorkspace, connectionId]);
+  
   useEffect(() => {
     if (currentWorkspace && connectionId && provider) {
       loadConnection();
       loadRepositories();
     }
   }, [currentWorkspace, connectionId, provider]);
+  
+  const loadAllConnections = async () => {
+    if (!currentWorkspace) return;
+    setIsLoadingConnections(true);
+    try {
+      const data = await integrationService.getAllConnections(currentWorkspace.slug);
+      console.log('Loaded connections:', data);
+      setAllConnections(data);
+    } catch (error: any) {
+      console.error('Failed to load connections:', error);
+      toast({
+        title: "Failed to load connections",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingConnections(false);
+    }
+  };
+  
+  const handleSelectConnection = (conn: VcsConnection) => {
+    // Update URL params and move to step 1
+    setSearchParams({
+      connectionId: String(conn.id),
+      provider: conn.provider,
+      connectionType: conn.connectionType || ''
+    });
+    setConnection(conn);
+    setCurrentStep(1);
+  };
+  
+  /**
+   * Handle GitLab Repository Token submission.
+   * Creates a connection with the token, then moves to step 1 with the single repo.
+   */
+  const handleRepositoryTokenSubmit = async (data: GitLabRepositoryTokenRequest) => {
+    if (!currentWorkspace) return;
+    
+    setIsCreatingRepoToken(true);
+    try {
+      // Create the repository token connection
+      const createdConnection = await gitlabService.createRepositoryTokenConnection(
+        currentWorkspace.slug,
+        data
+      );
+      
+      toast({
+        title: "Connection Created",
+        description: `GitLab repository "${data.repositoryPath}" connected successfully.`,
+      });
+      
+      // Navigate to step 1 with the new connection
+      setSearchParams({
+        connectionId: String(createdConnection.id),
+        provider: 'gitlab',
+        connectionType: 'REPOSITORY_TOKEN'
+      });
+      setConnection({
+        id: createdConnection.id,
+        provider: 'gitlab',
+        connectionType: 'REPOSITORY_TOKEN',
+        connectionName: createdConnection.connectionName,
+        status: createdConnection.setupStatus as any,
+        externalWorkspaceId: null,
+        externalWorkspaceSlug: null,
+        repoCount: 1,
+        createdAt: '',
+        updatedAt: '',
+      });
+      setShowRepoTokenForm(false);
+      setCurrentStep(1);
+      
+      // Reload connections in case user goes back
+      loadAllConnections();
+    } catch (error: any) {
+      console.error('Failed to create repository token connection:', error);
+      toast({
+        title: "Failed to Create Connection",
+        description: error.message || "Could not connect to GitLab repository",
+        variant: "destructive",
+      });
+      throw error; // Re-throw so the form can display the error
+    } finally {
+      setIsCreatingRepoToken(false);
+    }
+  };
   
   const loadConnection = async () => {
     if (!currentWorkspace || !connectionId || !provider) return;
@@ -174,13 +330,11 @@ export default function ImportProject() {
       // For OAuth manual connections (or null/undefined), use provider-specific legacy services
       // For APP connections, use integrationService
       // Note: connectionType from URL can be "null" string if backend returns null
+      // IMPORTANT: Don't rely on connection state here since loadConnection() is async
       const isManualConnection = !connectionType || 
         connectionType === 'null' ||
         connectionType === 'OAUTH_MANUAL' || 
-        connectionType === 'ACCESS_TOKEN' ||
-        !connection?.connectionType || 
-        connection?.connectionType === 'OAUTH_MANUAL' || 
-        connection?.connectionType === 'ACCESS_TOKEN';
+        connectionType === 'ACCESS_TOKEN';
       
       if (isManualConnection) {
         // Use legacy OAuth endpoint for manual connections based on provider
@@ -193,6 +347,25 @@ export default function ImportProject() {
             pageNum,
             searchQuery || undefined
           );
+        } else if (provider === 'gitlab' || provider.toLowerCase() === 'gitlab') {
+          // GitLab doesn't have legacy manual connection support, use integration service
+          const gitlabResult = await integrationService.listRepositories(
+            currentWorkspace.slug,
+            provider,
+            parseInt(connectionId),
+            pageNum,
+            searchQuery || undefined
+          );
+          result = gitlabResult;
+          
+          if (append) {
+            setRepositories(prev => [...prev, ...result.items]);
+          } else {
+            setRepositories(result.items);
+          }
+          setPage(pageNum);
+          setHasMore(result.hasNext);
+          return; // Early return for GitLab
         } else {
           // Default to Bitbucket Cloud service
           res = await bitbucketCloudService.getRepositories(
@@ -472,7 +645,20 @@ export default function ImportProject() {
     }
   };
   
-  if (isLoading && !connection) {
+  if (isLoadingConnections) {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            <span>Loading connections...</span>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  if (connectionId && isLoading && !connection) {
     return (
       <div className="container mx-auto p-6 max-w-4xl">
         <Card>
@@ -489,55 +675,270 @@ export default function ImportProject() {
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(routes.projects())}>
+        <Button variant="ghost" size="sm" onClick={() => {
+          if (currentStep === 0) {
+            if (showRepoTokenForm) {
+              // Go back from repo token form to connection selection
+              setShowRepoTokenForm(false);
+            } else if (selectedProvider) {
+              // Go back from connection selection to provider selection
+              setSelectedProvider(null);
+            } else {
+              navigate(routes.projects());
+            }
+          } else if (currentStep === 1 && !connectionId) {
+            // If we selected a connection from step 0, go back to step 0
+            setCurrentStep(0);
+            setSearchParams({});
+          } else {
+            navigate(routes.projects());
+          }
+        }}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Import Project</h1>
+          <h1 className="text-2xl font-bold">Add Project</h1>
           <p className="text-muted-foreground">
-            Import a repository from {connection?.connectionName || 'your VCS connection'}
+            {currentStep === 0 
+              ? (showRepoTokenForm
+                  ? `Connect a ${selectedProvider ? PROVIDER_INFO[selectedProvider]?.name : ''} repository using Access Token`
+                  : selectedProvider 
+                    ? `Select a ${PROVIDER_INFO[selectedProvider]?.name} connection or use a repository access token` 
+                    : 'Select a VCS platform to add a project from')
+              : `Add a repository from ${connection?.connectionName || 'your VCS connection'}`}
           </p>
         </div>
       </div>
       
-      {/* Step indicator */}
-      <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
-        <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : '1'}
+      {/* Step indicator - only show when past step 0 */}
+      {currentStep >= 1 && (
+        <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
+          <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : '1'}
+            </div>
+            <span className="hidden sm:inline font-medium">Repository</span>
           </div>
-          <span className="hidden sm:inline font-medium">Repository</span>
-        </div>
-        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : '2'}
+          <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+          <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : '2'}
+            </div>
+            <span className="hidden sm:inline font-medium">Details</span>
           </div>
-          <span className="hidden sm:inline font-medium">Details</span>
-        </div>
-        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            {currentStep > 3 ? <CheckCircle className="h-4 w-4" /> : '3'}
+          <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+          <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              {currentStep > 3 ? <CheckCircle className="h-4 w-4" /> : '3'}
+            </div>
+            <span className="hidden sm:inline font-medium">AI</span>
           </div>
-          <span className="hidden sm:inline font-medium">AI</span>
-        </div>
-        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            {currentStep > 4 ? <CheckCircle className="h-4 w-4" /> : '4'}
+          <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
+          <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'text-primary' : 'text-muted-foreground'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              {currentStep > 4 ? <CheckCircle className="h-4 w-4" /> : '4'}
+            </div>
+            <span className="hidden sm:inline font-medium">Analysis</span>
           </div>
-          <span className="hidden sm:inline font-medium">Analysis</span>
-        </div>
-        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 5 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`flex items-center gap-2 ${currentStep >= 5 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 5 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            5
+          <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 5 ? 'bg-primary' : 'bg-muted'}`} />
+          <div className={`flex items-center gap-2 ${currentStep >= 5 ? 'text-primary' : 'text-muted-foreground'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 5 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              5
+            </div>
+            <span className="hidden sm:inline font-medium">Install</span>
           </div>
-          <span className="hidden sm:inline font-medium">Install</span>
         </div>
-      </div>
+      )}
+      
+      {/* Step 0: Connection Selection */}
+      {currentStep === 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                {showRepoTokenForm && selectedProvider 
+                  ? <Key className="h-5 w-5" />
+                  : selectedProvider 
+                    ? getProviderIcon(selectedProvider, "h-5 w-5") 
+                    : <GitBranch className="h-5 w-5" />}
+                {showRepoTokenForm 
+                  ? 'Repository Access Token'
+                  : selectedProvider 
+                    ? 'Select Connection' 
+                    : 'Select VCS Platform'}
+              </CardTitle>
+              <CardDescription>
+                {showRepoTokenForm
+                  ? `Connect a single ${PROVIDER_INFO[selectedProvider!]?.name || selectedProvider} repository using an access token`
+                  : selectedProvider 
+                    ? `Choose how to connect to ${PROVIDER_INFO[selectedProvider]?.name || selectedProvider}`
+                    : 'Choose a version control platform to import repositories from'}
+              </CardDescription>
+            </div>
+            {(selectedProvider || showRepoTokenForm) && (
+              <Button variant="outline" size="sm" onClick={() => {
+                if (showRepoTokenForm) {
+                  setShowRepoTokenForm(false);
+                } else {
+                  setSelectedProvider(null);
+                }
+              }}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {/* Provider Selection */}
+            {!selectedProvider && !showRepoTokenForm && (
+              <>
+                {(() => {
+                  const allProviders: VcsProvider[] = ['github', 'gitlab', 'bitbucket-cloud'];
+                  
+                  return (
+                    <div className="space-y-6">
+                      {/* Provider Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {allProviders.map((providerKey) => {
+                          const providerConns = allConnections.filter(c => c.provider === providerKey);
+                          const hasConnections = providerConns.length > 0;
+                          
+                          return (
+                            <div
+                              key={providerKey}
+                              className="flex flex-col items-center gap-3 p-6 border rounded-xl transition-all cursor-pointer hover:border-primary hover:shadow-md hover:bg-muted/30"
+                              onClick={() => setSelectedProvider(providerKey)}
+                            >
+                              {getProviderIcon(providerKey, "h-12 w-12")}
+                              <div className="text-center">
+                                <div className="font-semibold">{PROVIDER_INFO[providerKey]?.name || providerKey}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {hasConnections 
+                                    ? `${providerConns.length} connection${providerConns.length > 1 ? 's' : ''}`
+                                    : 'Click to connect'}
+                                </div>
+                              </div>
+                              {hasConnections && (
+                                <Badge variant="secondary">{providerConns.reduce((sum, c) => sum + c.repoCount, 0)} repos</Badge>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+            
+            {/* Connection Selection (after provider is selected) */}
+            {selectedProvider && !showRepoTokenForm && (
+              <>
+                {(() => {
+                  const providerConnections = allConnections.filter(c => c.provider === selectedProvider);
+                  
+                  return (
+                    <div className="space-y-6">
+                      {/* Connection Method Info */}
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="space-y-2">
+                            <p><strong>VCS Connection</strong> — Connect to an organization/workspace to access multiple repositories. Requires org-level permissions.</p>
+                            <p><strong>Repository Token</strong> — Connect to a single repository using an access token. Ideal when you don't have org-level access.</p>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                      
+                      {/* Existing Connections */}
+                      {providerConnections.length > 0 && (
+                        <div className="space-y-3">
+                          <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Your Connections</h3>
+                          {providerConnections.map((conn) => (
+                            <div
+                              key={conn.id}
+                              className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:border-primary hover:shadow-md hover:bg-muted/30 transition-all"
+                              onClick={() => handleSelectConnection(conn)}
+                            >
+                              {getProviderIcon(conn.provider, "h-10 w-10")}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-lg">{conn.connectionName}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {conn.connectionType === 'APP' || conn.connectionType === 'CONNECT_APP' 
+                                    ? 'App Installation' 
+                                    : conn.connectionType === 'REPOSITORY_TOKEN'
+                                    ? 'Repository Access Token'
+                                    : 'OAuth Connection'}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <Badge variant="outline" className="text-base">{conn.repoCount} repos</Badge>
+                              </div>
+                              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Connection Options */}
+                      <div className="space-y-3">
+                        <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                          {providerConnections.length > 0 ? 'Add Another Connection' : 'Connect to ' + PROVIDER_INFO[selectedProvider]?.name}
+                        </h3>
+                        
+                        {/* Add VCS Connection (org-level) */}
+                        <div
+                          className="flex items-center gap-3 p-4 border border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-all"
+                          onClick={() => navigate(routes.hostingSettings())}
+                        >
+                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                            <Plus className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium">Add VCS Connection</div>
+                            <div className="text-sm text-muted-foreground">
+                              Connect to {selectedProvider === 'github' ? 'an organization' : selectedProvider === 'gitlab' ? 'a group' : 'a workspace'} for multi-repo access
+                            </div>
+                          </div>
+                          <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        
+                        {/* Use Repository Access Token */}
+                        <div
+                          className="flex items-center gap-3 p-4 border border-dashed rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50/50 dark:hover:bg-orange-950/20 transition-all"
+                          onClick={() => setShowRepoTokenForm(true)}
+                        >
+                          <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                            <Key className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium">Use Repository Access Token</div>
+                            <div className="text-sm text-muted-foreground">
+                              Connect a single repository without {selectedProvider === 'github' ? 'organization' : selectedProvider === 'gitlab' ? 'group' : 'workspace'} access
+                            </div>
+                          </div>
+                          <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+            
+            {/* Repository Token Form - shown for any provider */}
+            {showRepoTokenForm && selectedProvider && (
+              <RepositoryTokenForm
+                provider={selectedProvider}
+                onSubmit={handleRepositoryTokenSubmit}
+                onCancel={() => setShowRepoTokenForm(false)}
+                isLoading={isCreatingRepoToken}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
       
       {/* Step 1: Repository Selection */}
       {currentStep === 1 && (
@@ -545,11 +946,11 @@ export default function ImportProject() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <GitBranch className="h-5 w-5" />
+                {connection ? getProviderIcon(connection.provider, "h-5 w-5") : <GitBranch className="h-5 w-5" />}
                 Select Repository
               </CardTitle>
               <CardDescription>
-                Choose a repository to import as a project
+                Choose a repository from {connection?.connectionName || 'your connection'} to import as a project
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

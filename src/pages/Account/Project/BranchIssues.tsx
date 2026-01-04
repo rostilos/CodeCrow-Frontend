@@ -77,11 +77,14 @@ export default function BranchIssues() {
     
     setFilters(newFilters);
     // Load data with the parsed filters
-    loadBranchData(newFilters.status, 1, false);
+    loadBranchData(newFilters, 1, false);
   }, [namespace, branchName, currentWorkspace]);
 
-  const loadBranchData = async (statusFilter: string = filters.status, page: number = 1, append: boolean = false) => {
+  const loadBranchData = async (filterOverrides?: Partial<IssueFilters>, page: number = 1, append: boolean = false) => {
     if (!namespace || !branchName || !currentWorkspace) return;
+    
+    // Use passed filters or current state
+    const activeFilters = { ...filters, ...filterOverrides };
     
     if (append) {
       setLoadingMore(true);
@@ -91,7 +94,7 @@ export default function BranchIssues() {
     
     try {
       // Map frontend status to API status parameter
-      const apiStatus = statusFilter === 'ALL' ? 'all' : statusFilter;
+      const apiStatus = activeFilters.status === 'ALL' ? 'all' : activeFilters.status;
       const response = await analysisService.getBranchIssues(
         currentWorkspace.slug,
         namespace,
@@ -99,7 +102,12 @@ export default function BranchIssues() {
         apiStatus,
         page,
         pageSize,
-        true // excludeDiff
+        true, // excludeDiff
+        {
+          severity: activeFilters.severity,
+          category: activeFilters.category,
+          filePath: activeFilters.filePath,
+        }
       );
       
       if (append) {
@@ -133,17 +141,16 @@ export default function BranchIssues() {
 
   const loadMoreIssues = async () => {
     if (issues.length < totalIssues) {
-      await loadBranchData(filters.status, currentPage + 1, true);
+      await loadBranchData(undefined, currentPage + 1, true);
     }
   };
 
   const handleFiltersChange = (newFilters: IssueFilters) => {
     setFilters(newFilters);
-    // Reset pagination and reload data when status filter changes
-    if (newFilters.status !== filters.status) {
-      setCurrentPage(1);
-      loadBranchData(newFilters.status, 1, false);
-    }
+    // Reset pagination and reload data when any filter changes
+    setCurrentPage(1);
+    loadBranchData(newFilters, 1, false);
+    
     const newParams = new URLSearchParams();
     
     if (newFilters.severity !== 'ALL') {
@@ -250,31 +257,15 @@ export default function BranchIssues() {
     }
   };
 
+  // Server returns pre-filtered results for status/severity/category/filePath
+  // We only apply date filters client-side (not yet supported on backend)
   const filteredIssues = issues.filter(issue => {
-    // Severity filter
-    const validSeverities = ['HIGH', 'MEDIUM', 'LOW'];
-    const normalizedSeverity = issue.severity?.toUpperCase();
-    const matchesSeverity = filters.severity === 'ALL' || 
-      (validSeverities.includes(normalizedSeverity || '') && normalizedSeverity === filters.severity);
-    
-    // Status filter
-    const normalizedStatus = issue.status?.toLowerCase();
-    const matchesStatus = filters.status === 'ALL' || normalizedStatus === filters.status.toLowerCase();
-    
-    // Category filter
-    const issueCategory = issue.issueCategory?.toUpperCase().replace(/[- ]/g, '_') || 'CODE_QUALITY';
-    const matchesCategory = filters.category === 'ALL' || issueCategory === filters.category;
-    
-    // File path filter
-    const matchesFilePath = !filters.filePath || 
-      issue.file?.toLowerCase().includes(filters.filePath.toLowerCase());
-    
-    // Date range filter
+    // Date range filter (client-side only)
     const issueDate = issue.createdAt ? new Date(issue.createdAt) : null;
     const matchesDateFrom = !filters.dateFrom || !issueDate || issueDate >= filters.dateFrom;
     const matchesDateTo = !filters.dateTo || !issueDate || issueDate <= filters.dateTo;
     
-    return matchesSeverity && matchesCategory && matchesFilePath && matchesDateFrom && matchesDateTo;
+    return matchesDateFrom && matchesDateTo;
   });
 
   const handleGoBack = () => {
