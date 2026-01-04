@@ -29,6 +29,7 @@ const FAQ = lazy(() => import("./pages/Docs/FAQ"));
 const PlatformSupport = lazy(() => import("./pages/Docs/PlatformSupport"));
 const VCSBitbucket = lazy(() => import("./pages/Docs/VCS/Bitbucket"));
 const VCSGitHub = lazy(() => import("./pages/Docs/VCS/GitHub"));
+const VCSGitLab = lazy(() => import("./pages/Docs/VCS/GitLab"));
 const ProjectAdministration = lazy(() => import("./pages/Docs/ProjectAdministration"));
 const ProjectAdminGeneral = lazy(() => import("./pages/Docs/ProjectAdmin/General"));
 const ProjectAdminHosting = lazy(() => import("./pages/Docs/ProjectAdmin/CodeHosting"));
@@ -75,6 +76,7 @@ const ConfigureConnection = lazy(() => import("./pages/Account/CodeHosting/bitbu
 const GitHubAddConnection = lazy(() => import("./pages/Account/CodeHosting/github/AddConnection.tsx"));
 const GitHubConfigureConnection = lazy(() => import("./pages/Account/CodeHosting/github/ConfigureConnection.tsx"));
 const GitHubOAuthCallback = lazy(() => import("./pages/Account/CodeHosting/github/OAuthCallback.tsx"));
+const GitLabAddConnection = lazy(() => import("./pages/Account/CodeHosting/gitlab/AddConnection.tsx"));
 const TaskSettings = lazy(() => import("./pages/Account/TaskSettings/TaskSettings.tsx"));
 const AISettings = lazy(() => import("./pages/Account/AI/AISettings.tsx"));
 const NewProjectPage = lazy(() => import("./pages/Account/Project/new/NewProject.tsx"));
@@ -121,6 +123,7 @@ const App = () => (
                 <Route path="vcs-connection" element={<CreateVCSConnection />} />
                 <Route path="vcs-connection/bitbucket" element={<VCSBitbucket />} />
                 <Route path="vcs-connection/github" element={<VCSGitHub />} />
+                <Route path="vcs-connection/gitlab" element={<VCSGitLab />} />
                 <Route path="ai-connection" element={<CreateAIConnection />} />
                 <Route path="first-project" element={<CreateFirstProject />} />
                 <Route path="setup-rag" element={<SetupRAG />} />
@@ -194,6 +197,7 @@ const App = () => (
                           <Route path="hosting/github/add-connection" element={<GitHubAddConnection />} />
                           <Route path="hosting/github/configure/:connectionId" element={<GitHubConfigureConnection />} />
                           <Route path="hosting/github/callback" element={<GitHubOAuthCallback />} />
+                          <Route path="hosting/gitlab/add-connection" element={<GitLabAddConnection />} />
                           <Route path="ai" element={<AISettings />} />
                           <Route path="workspace" element={<WorkspaceManagementPage />} />
                           <Route path="tasks" element={<TaskSettings />} />

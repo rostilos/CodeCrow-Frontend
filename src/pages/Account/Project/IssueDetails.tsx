@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { 
+import {
   ArrowLeft, CheckCircle, FileText, Clock, GitBranch, GitPullRequest, ChevronRight, ChevronLeft, Copy
 } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
@@ -57,7 +57,7 @@ export default function IssueDetails() {
 
   const loadIssue = async () => {
     if (!currentWorkspace || !namespace || !issueId) return;
-    
+
     try {
       setLoading(true);
       const issueData = await analysisService.getIssueById(currentWorkspace.slug, namespace, issueId);
@@ -86,11 +86,11 @@ export default function IssueDetails() {
 
   const loadScopeIssues = async () => {
     if (!currentWorkspace || !namespace) return;
-    
+
     setScopeLoading(true);
     try {
       let issues: AnalysisIssue[] = [];
-      
+
       // If PR scope is specified, load PR issues
       if (scopePrNumber) {
         const version = scopePrVersion ? parseInt(scopePrVersion) : undefined;
@@ -108,7 +108,7 @@ export default function IssueDetails() {
           setScopeLoading(false);
           return;
         }
-        
+
         // Use filter parameters from URL if available
         const statusFilter = filterStatus || 'all';
         const response = await analysisService.getBranchIssues(
@@ -122,7 +122,7 @@ export default function IssueDetails() {
         );
         issues = response.issues;
       }
-      
+
       // Apply additional filters if present
       if (filterSeverity && filterSeverity !== 'ALL') {
         issues = issues.filter(i => i.severity.toLowerCase() === filterSeverity.toLowerCase());
@@ -130,7 +130,7 @@ export default function IssueDetails() {
       if (filterCategory && filterCategory !== 'ALL') {
         issues = issues.filter(i => i.issueCategory?.toLowerCase() === filterCategory.toLowerCase());
       }
-      
+
       setScopeIssues(issues);
     } catch (error: any) {
       console.error('Failed to load scope issues:', error);
@@ -146,7 +146,7 @@ export default function IssueDetails() {
   useEffect(() => {
     // Skip loading if we already have scope issues from route state
     if (scopeIssues.length > 0) return;
-    
+
     if (issue || scopeBranch || scopePrNumber) {
       loadScopeIssues();
     }
@@ -163,7 +163,7 @@ export default function IssueDetails() {
     if (filterSeverity) params.set('severity', filterSeverity);
     if (filterStatus) params.set('status', filterStatus);
     if (filterCategory) params.set('category', filterCategory);
-    
+
     // Pass scopeIssues via route state to avoid reloading
     navigate(routes.issueDetail(namespace!, targetIssueId, Object.fromEntries(params)), {
       state: { scopeIssues },
@@ -173,7 +173,7 @@ export default function IssueDetails() {
 
   const handleUpdateIssueStatus = async (newStatus: 'open' | 'resolved') => {
     if (!currentWorkspace || !namespace || !issueId) return;
-    
+
     try {
       const isResolved = newStatus === 'resolved';
       await analysisService.updateIssueStatus(currentWorkspace.slug, namespace, issueId, isResolved);
@@ -263,7 +263,7 @@ export default function IssueDetails() {
           currentHunk = [];
           inHunkContent = false;
         }
-        
+
         // Detect language from file path
         if (line.startsWith('+++') || line.startsWith('---')) {
           const match = line.match(/[ab]\/(.*)/);
@@ -271,7 +271,7 @@ export default function IssueDetails() {
             currentLanguage = detectLanguage(match[1]);
           }
         }
-        
+
         sections.push({ type: 'header', content: line });
       }
       // Hunk header
@@ -303,19 +303,19 @@ export default function IssueDetails() {
         <div className="inline-block min-w-full">{sections.map((section, idx) => {
           if (section.type === 'header') {
             return (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 className="bg-muted px-4 py-2 text-sm font-mono text-muted-foreground border-b border-border"
               >
                 {section.content}
               </div>
             );
           }
-          
+
           if (section.type === 'hunk') {
             return (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 className="bg-accent/50 px-4 py-1.5 text-sm font-mono text-accent-foreground border-b border-border"
               >
                 {section.content}
@@ -331,13 +331,13 @@ export default function IssueDetails() {
                 const isAddition = line.startsWith('+') && !line.startsWith('+++');
                 const isDeletion = line.startsWith('-') && !line.startsWith('---');
                 const isContext = line.startsWith(' ');
-                
+
                 // Extract the actual code (remove +/- prefix)
                 const code = isAddition || isDeletion ? line.substring(1) : line;
-                
+
                 let bgClass = '';
                 let borderClass = '';
-                
+
                 if (isAddition) {
                   bgClass = 'bg-green-500/10 dark:bg-green-500/20';
                   borderClass = 'border-l-2 border-green-500';
@@ -345,10 +345,10 @@ export default function IssueDetails() {
                   bgClass = 'bg-red-500/10 dark:bg-red-500/20';
                   borderClass = 'border-l-2 border-red-500';
                 }
-                
+
                 return (
-                  <div 
-                    key={lineIdx} 
+                  <div
+                    key={lineIdx}
                     className={`flex font-mono text-sm ${bgClass} ${borderClass}`}
                   >
                     <span className="inline-block w-12 text-right pr-4 text-muted-foreground/50 select-none flex-shrink-0">
@@ -412,7 +412,7 @@ export default function IssueDetails() {
         backUrl = routes.projectDetail(namespace!);
       }
     }
-    
+
     return (
       <div className="mx-auto p-6">
         <Button variant="ghost" size="sm" onClick={() => navigate(backUrl)}>
@@ -434,7 +434,7 @@ export default function IssueDetails() {
   // Use new fields if available, fallback to description
   const descriptionText = issue.suggestedFixDescription || issue.description;
   const diffContent = issue.suggestedFixDiff;
-  
+
   // Determine back URL - if we have branch scope, go back to branch issues
   let backUrl = returnPath;
   if (!backUrl) {
@@ -521,7 +521,7 @@ export default function IssueDetails() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          
+
           {/* Navigation between issues */}
           {scopeIssues.length > 1 && (
             <div className="flex items-center gap-2">
@@ -549,71 +549,12 @@ export default function IssueDetails() {
         </div>
 
         {/* Issue Header - Compact Metadata Bar */}
-        <div className="bg-card border rounded-lg p-4 mb-6">
+        <div className="flex justify-between gap-x-4">
+          <div className="bg-card border rounded-lg p-4 mb-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2 flex-1 min-w-0">
               <h1 className="text-lg font-bold leading-tight">{issue.title}</h1>
-              <div className="flex flex-wrap items-center gap-2">
-                {getSeverityBadge(issue.severity)}
-                {issue.issueCategory && (
-                  <Badge 
-                    variant="outline" 
-                    className={cn(
-                      getCategoryInfo(issue.issueCategory).color,
-                      getCategoryInfo(issue.issueCategory).bgColor,
-                      getCategoryInfo(issue.issueCategory).borderColor,
-                      "text-xs"
-                    )}
-                  >
-                    {getCategoryInfo(issue.issueCategory).label}
-                  </Badge>
-                )}
-                <Separator orientation="vertical" className="h-4" />
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => {
-                          const fullPath = `${issue.file}${issue.line > 0 ? `:${issue.line}` : ''}`;
-                          navigator.clipboard.writeText(fullPath);
-                          toast({
-                            title: "Copied to clipboard",
-                            description: fullPath,
-                          });
-                        }}
-                        className="text-xs text-muted-foreground flex items-center gap-1 max-w-[200px] lg:max-w-[500px] hover:text-foreground transition-colors cursor-pointer group"
-                      >
-                        <FileText className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{issue.file}</span>
-                        {issue.line > 0 && <span className="flex-shrink-0">:{issue.line}</span>}
-                        <Copy className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="font-mono text-xs">{issue.file}{issue.line > 0 ? `:${issue.line}` : ''}</p>
-                      <p className="text-xs text-muted-foreground">Click to copy</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <Separator orientation="vertical" className="h-4" />
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <GitBranch className="h-3 w-3" />
-                  {issue.branch}
-                </span>
-                {issue.pullRequest && (
-                  <>
-                    <Separator orientation="vertical" className="h-4" />
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <GitPullRequest className="h-3 w-3" />
-                      #{issue.pullRequest}
-                    </span>
-                  </>
-                )}
-                <Separator orientation="vertical" className="h-4" />
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {new Date(issue.createdAt).toLocaleDateString()}
-                </span>
+              <div className="flex gap-x-4 text-xs">
               </div>
             </div>
             {canManageWorkspace() && (
@@ -633,6 +574,72 @@ export default function IssueDetails() {
               </div>
             )}
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+              {getSeverityBadge(issue.severity)}
+              {issue.issueCategory && (
+                  <Badge
+                      variant="outline"
+                      className={cn(
+                          getCategoryInfo(issue.issueCategory).color,
+                          getCategoryInfo(issue.issueCategory).bgColor,
+                          getCategoryInfo(issue.issueCategory).borderColor,
+                          "text-xs"
+                      )}
+                  >
+                      {getCategoryInfo(issue.issueCategory).label}
+                  </Badge>
+              )}
+              <Separator orientation="vertical" className="h-4" />
+              <TooltipProvider>
+                  <Tooltip>
+                      <TooltipTrigger asChild>
+                          <button
+                              onClick={() => {
+                                  const fullPath = `${issue.file}${issue.line > 0 ? `:${issue.line}` : ''}`;
+                                  navigator.clipboard.writeText(fullPath);
+                                  toast({
+                                      title: "Copied to clipboard",
+                                      description: fullPath,
+                                  });
+                              }}
+                              className="text-xs text-muted-foreground flex items-center gap-1 max-w-[200px] lg:max-w-[500px] hover:text-foreground transition-colors cursor-pointer group"
+                          >
+                              <FileText className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{issue.file}</span>
+                              {issue.line > 0 && <span className="flex-shrink-0">:{issue.line}</span>}
+                              <Copy className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                          <p className="font-mono text-xs">{issue.file}{issue.line > 0 ? `:${issue.line}` : ''}</p>
+                          <p className="text-xs text-muted-foreground">Click to copy</p>
+                      </TooltipContent>
+                  </Tooltip>
+              </TooltipProvider>
+              <Separator orientation="vertical" className="h-4" />
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <GitBranch className="h-3 w-3" />
+                  {issue.branch}
+          </span>
+              <Separator orientation="vertical" className="h-4" />
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+                  {new Date(issue.createdAt).toLocaleDateString()}
+          </span>
+              <Separator orientation="vertical" className="h-4" />
+              {issue.prNumber && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    PR #{issue.prNumber}
+                  </span>
+              )}
+              <Separator orientation="vertical" className="h-4" />
+              {issue.commitHash && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    {issue.commitHash.substring(0, 8)}
+                  </span>
+              )}
+          </div>
+            </div>
         </div>
 
         {/* Issue Content */}

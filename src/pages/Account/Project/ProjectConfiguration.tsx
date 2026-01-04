@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
-import { projectService, BindRepositoryRequest, ProjectDTO } from "@/api_service/project/projectService.ts";
+import { projectService, BindRepositoryRequest, ProjectDTO, WebhookInfoResponse } from "@/api_service/project/projectService.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import { aiConnectionService, AIConnectionDTO } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -57,6 +58,11 @@ export default function ProjectConfiguration() {
   const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
   const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
   const [savingAnalysisSettings, setSavingAnalysisSettings] = useState(false);
+
+  // Webhook management state
+  const [webhookInfo, setWebhookInfo] = useState<WebhookInfoResponse | null>(null);
+  const [settingUpWebhooks, setSettingUpWebhooks] = useState(false);
+  const [loadingWebhookInfo, setLoadingWebhookInfo] = useState(false);
 
   // Redirect if user doesn't have permission
   useEffect(() => {
@@ -120,6 +126,61 @@ export default function ProjectConfiguration() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [namespace]);
+
+  // Load webhook info when project is loaded and has VCS connection
+  const loadWebhookInfo = async () => {
+    if (!namespace || !currentWorkspace || !project?.vcsConnectionId) return;
+    
+    setLoadingWebhookInfo(true);
+    try {
+      const info = await projectService.getWebhookInfo(currentWorkspace.slug, namespace);
+      setWebhookInfo(info);
+    } catch (err: any) {
+      console.error('Failed to load webhook info:', err);
+      // Don't show error toast - webhook info is supplementary
+    } finally {
+      setLoadingWebhookInfo(false);
+    }
+  };
+
+  useEffect(() => {
+    if (project?.vcsConnectionId) {
+      loadWebhookInfo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.vcsConnectionId]);
+
+  const handleSetupWebhooks = async () => {
+    if (!namespace || !currentWorkspace) return;
+    
+    setSettingUpWebhooks(true);
+    try {
+      const result = await projectService.setupWebhooks(currentWorkspace.slug, namespace);
+      
+      if (result.success) {
+        toast({
+          title: "Webhooks Configured",
+          description: result.message || "Webhooks have been set up successfully"
+        });
+        // Reload webhook info to reflect the new state
+        await loadWebhookInfo();
+      } else {
+        toast({
+          title: "Webhook Setup Failed",
+          description: result.message || "Failed to configure webhooks",
+          variant: "destructive"
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to setup webhooks",
+        variant: "destructive"
+      });
+    } finally {
+      setSettingUpWebhooks(false);
+    }
+  };
   
   const handleSaveAnalysisSettings = async () => {
     if (!namespace || !currentWorkspace) return;
@@ -499,7 +560,7 @@ export default function ProjectConfiguration() {
                           })}
                         >
                           <Edit className="h-4 w-4 mr-2" />
-                          Change Repository
+                          Change VCS Connection
                         </Button>
                         {/* Unbind moved to Danger Zone tab */}
                       </div>
@@ -532,7 +593,7 @@ export default function ProjectConfiguration() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <GitBranch className="mr-2 h-5 w-5" />
-                  {project.vcsConnectionId ? 'Change Repository Connection' : 'Connect Repository'}
+                  {project.vcsConnectionId ? 'Change VCS Connection' : 'Connect Repository'}
                 </CardTitle>
                 <CardDescription>
                   Select a VCS connection and repository to bind to this project
@@ -631,6 +692,99 @@ export default function ProjectConfiguration() {
                     Cancel
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Webhook Management Card - only show when project has a VCS connection */}
+          {project.vcsConnectionId && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center">
+                      <Webhook className="mr-2 h-5 w-5" />
+                      Webhook Management
+                    </CardTitle>
+                    <CardDescription>
+                      Configure webhooks for automatic code analysis triggers
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Current webhook status */}
+                <div className="border rounded-lg p-4 bg-muted/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        {loadingWebhookInfo ? (
+                          <RefreshCw className="h-5 w-5 text-muted-foreground animate-spin" />
+                        ) : webhookInfo?.webhooksConfigured ? (
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        ) : (
+                          <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                        )}
+                        <h3 className="font-medium">
+                          {loadingWebhookInfo ? 'Loading...' : 
+                            webhookInfo?.webhooksConfigured ? 'Webhooks Configured' : 'Webhooks Not Configured'}
+                        </h3>
+                      </div>
+                      {webhookInfo && !loadingWebhookInfo && (
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {webhookInfo.webhookId && (
+                            <p><strong>Webhook ID:</strong> {webhookInfo.webhookId}</p>
+                          )}
+                          {webhookInfo.provider && (
+                            <p><strong>Provider:</strong> {webhookInfo.provider}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant={webhookInfo?.webhooksConfigured ? "outline" : "default"}
+                        size="sm"
+                        onClick={handleSetupWebhooks}
+                        disabled={settingUpWebhooks}
+                      >
+                        {settingUpWebhooks ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Webhook className="h-4 w-4 mr-2" />
+                        )}
+                        {webhookInfo?.webhooksConfigured ? 'Reconfigure Webhooks' : 'Setup Webhooks'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Information about when to use webhook setup */}
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>When to use this feature</AlertTitle>
+                  <AlertDescription className="space-y-2 mt-2">
+                    <p>Manual webhook setup is useful in the following scenarios:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li><strong>Repository migration:</strong> When you've moved your repository to a different location or renamed it</li>
+                      <li><strong>Connection type change:</strong> After switching from PAT to Repository Token or vice versa</li>
+                      <li><strong>Webhook deletion:</strong> If webhooks were accidentally deleted from your VCS provider</li>
+                      <li><strong>Troubleshooting:</strong> When automatic analysis isn't triggering as expected</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                {/* Warning about old webhooks */}
+                {webhookInfo?.webhooksConfigured && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Important Notice</AlertTitle>
+                    <AlertDescription>
+                      If you're changing VCS connections or repositories, remember to manually delete 
+                      the old webhooks from your VCS provider to avoid duplicate triggers or errors.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </CardContent>
             </Card>
           )}

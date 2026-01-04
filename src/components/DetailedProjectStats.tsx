@@ -8,7 +8,8 @@ import {
     Calendar,
     GitBranch,
     Activity,
-    BarChart3
+    BarChart3,
+    CheckCircle2
 } from 'lucide-react';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
@@ -68,6 +69,7 @@ interface DetailedProjectStatsProps {
     branchName?: string;
     onSeverityClick?: (severity: 'HIGH' | 'MEDIUM' | 'LOW') => void;
     onViewAllIssues?: () => void;
+    onViewResolvedIssues?: () => void;
     onFileClick?: (filename: string) => void;
 }
 
@@ -78,6 +80,7 @@ export default function DetailedProjectStats({
                                                  branchName,
                                                  onSeverityClick,
                                                  onViewAllIssues,
+                                                 onViewResolvedIssues,
                                                  onFileClick
                                              }: DetailedProjectStatsProps) {
     const [selectedTab, setSelectedTab] = useState('overview');
@@ -173,7 +176,7 @@ export default function DetailedProjectStats({
     return (
         <div className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {onViewAllIssues && (
                     <Card
                         className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
@@ -182,7 +185,7 @@ export default function DetailedProjectStats({
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">All Issues</p>
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Open Issues</p>
                                     <p className="text-2xl font-bold mt-1">{stats.totalIssues}</p>
                                 </div>
                                 <div className="p-2 rounded-lg bg-primary/10">
@@ -247,6 +250,27 @@ export default function DetailedProjectStats({
                             </div>
                             <div className="p-2 rounded-lg bg-muted">
                                 {getSeverityIcon('low', 'h-5 w-5')}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Resolved Issues Card */}
+                <Card
+                    className={cn(
+                        "border-l-4 border-l-green-500",
+                        onViewResolvedIssues && "cursor-pointer hover:shadow-md transition-all duration-200 hover:border-green-400/30"
+                    )}
+                    onClick={onViewResolvedIssues}
+                >
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resolved</p>
+                                <p className="text-2xl font-bold mt-1 text-green-600">{stats.resolvedIssuesCount || 0}</p>
+                            </div>
+                            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <CheckCircle2 className="h-5 w-5 text-green-600"/>
                             </div>
                         </div>
                     </CardContent>

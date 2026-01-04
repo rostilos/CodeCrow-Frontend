@@ -6,7 +6,7 @@ import {
     AlertCircle,
     CheckCircle,
     ExternalLink,
-    Github,
+    Key,
     Loader2,
     Plus,
     RefreshCw,
@@ -14,16 +14,17 @@ import {
     Sparkles,
     Trash2,
     XCircle,
-    Zap
+    Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast.ts";
-import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
+import { gitlabService } from "@/api_service/codeHosting/gitlab/gitlabService.ts";
 import {
-    GitHubConnections,
+    GitLabConnection,
+    GitLabConnections,
     EGitSetupStatus
-} from "@/api_service/codeHosting/github/githubService.interface.ts";
+} from "@/api_service/codeHosting/gitlab/gitlabService.interface.ts";
 import { integrationService } from "@/api_service/integration/integrationService.ts";
 import { VcsConnection } from "@/api_service/integration/integration.interface.ts";
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -39,35 +40,50 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export default function GitHubHostingSettings() {
+// GitLab icon component
+const GitLabIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
+    </svg>
+);
+
+export default function GitLabHostingSettings() {
     const navigate = useNavigate();
     const routes = useWorkspaceRoutes();
     const { currentWorkspace } = useWorkspace();
-    const [oauthConnections, setOauthConnections] = useState<GitHubConnections>([]);
-    const [appConnections, setAppConnections] = useState<VcsConnection[]>([]);
+    const [patConnections, setPATConnections] = useState<GitLabConnections>([]);
+    const [repoTokenConnections, setRepoTokenConnections] = useState<GitLabConnections>([]);
+    const [oauthConnections, setOAuthConnections] = useState<VcsConnection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFetchingData, setIsFetchingData] = useState(true);
     const [isConnecting, setIsConnecting] = useState(false);
     const [syncingConnectionId, setSyncingConnectionId] = useState<number | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [connectionToDelete, setConnectionToDelete] = useState<{ id: number, type: 'app' | 'oauth' } | null>(null);
+    const [connectionToDelete, setConnectionToDelete] = useState<{ id: number, type: 'oauth' | 'pat' | 'repo-token' } | null>(null);
     const { toast } = useToast();
 
     const fetchConnections = async () => {
         if (!currentWorkspace) return;
         try {
             setIsFetchingData(true);
-            // Fetch APP connections via integration API
-            const appConns = await integrationService.getAppConnections(currentWorkspace.slug, 'github').catch(() => []);
-
-            // Fetch OAuth connections
-            const oauthConns = await githubService.getUserConnections(currentWorkspace.slug).catch(() => []);
-            // Filter to only show connections that are NOT in the APP connections list
-            const appConnIds = new Set(appConns.map(c => c.id));
-            const filteredOauthConns = oauthConns.filter(c => !appConnIds.has(c.id));
-
-            setOauthConnections(filteredOauthConns || []);
-            setAppConnections(appConns || []);
+            
+            // Fetch OAuth connections via integration API (connectionType = APP)
+            const oauthConns = await integrationService.getAppConnections(currentWorkspace.slug, 'gitlab').catch(() => []);
+            
+            // Fetch PAT/Token connections
+            const tokenConns = await gitlabService.getUserConnections(currentWorkspace.slug).catch(() => []);
+            
+            // Filter out OAuth connections (avoid duplicates)
+            const oauthConnIds = new Set(oauthConns.map(c => c.id));
+            const filteredTokenConns = tokenConns.filter(c => !oauthConnIds.has(c.id));
+            
+            // Separate PAT and REPOSITORY_TOKEN connections
+            const patConns = filteredTokenConns.filter(c => c.connectionType !== 'REPOSITORY_TOKEN');
+            const repoConns = filteredTokenConns.filter(c => c.connectionType === 'REPOSITORY_TOKEN');
+            
+            setOAuthConnections(oauthConns || []);
+            setPATConnections(patConns || []);
+            setRepoTokenConnections(repoConns || []);
         } catch (error: any) {
             toast({
                 title: "Failed to load connections",
@@ -85,26 +101,30 @@ export default function GitHubHostingSettings() {
         fetchConnections();
     }, [toast, currentWorkspace]);
 
-    const handleConnectGitHub = async () => {
+    const handleConnectGitLab = async () => {
         if (!currentWorkspace) return;
         try {
             setIsConnecting(true);
-            await githubService.startOAuthFlow(currentWorkspace.slug);
+            await gitlabService.startOAuthFlow(currentWorkspace.slug);
         } catch (error: any) {
             toast({
-                title: "Failed to start GitHub connection",
-                description: error.message || "Could not start GitHub OAuth flow",
+                title: "Failed to start GitLab connection",
+                description: error.message || "Could not start GitLab OAuth flow",
                 variant: "destructive",
             });
             setIsConnecting(false);
         }
     };
 
-    const handleSyncConnection = async (connectionId: number) => {
+    const handleSyncConnection = async (connectionId: number, type: 'oauth' | 'pat') => {
         if (!currentWorkspace) return;
         try {
             setSyncingConnectionId(connectionId);
-            await integrationService.syncConnection(currentWorkspace.slug, 'github', connectionId);
+            if (type === 'oauth') {
+                await integrationService.syncConnection(currentWorkspace.slug, 'gitlab', connectionId);
+            } else {
+                await gitlabService.syncConnection(currentWorkspace.slug, connectionId);
+            }
             toast({
                 title: "Connection synced",
                 description: "Connection status and repository count updated.",
@@ -124,10 +144,11 @@ export default function GitHubHostingSettings() {
     const handleDeleteConnection = async () => {
         if (!currentWorkspace || !connectionToDelete) return;
         try {
-            if (connectionToDelete.type === 'app') {
-                await integrationService.deleteConnection(currentWorkspace.slug, 'github', connectionToDelete.id);
+            if (connectionToDelete.type === 'oauth') {
+                await integrationService.deleteConnection(currentWorkspace.slug, 'gitlab', connectionToDelete.id);
             } else {
-                await githubService.deleteConnection(currentWorkspace.slug, connectionToDelete.id);
+                // Both 'pat' and 'repo-token' use the same delete endpoint
+                await gitlabService.deleteConnection(currentWorkspace.slug, connectionToDelete.id);
             }
             toast({
                 title: "Connection deleted",
@@ -146,12 +167,12 @@ export default function GitHubHostingSettings() {
         }
     };
 
-    const openConnectionDetails = (connection: VcsConnection) => {
-        navigate(routes.projectImport({ connectionId: connection.id, provider: 'github', connectionType: connection.connectionType }));
+    const openConnectionDetails = (connection: VcsConnection | GitLabConnection, connectionType: string) => {
+        navigate(routes.projectImport({ connectionId: connection.id, provider: 'gitlab', connectionType }));
     };
 
     const createManualConnection = () => {
-        navigate(routes.hostingGitHubAdd());
+        navigate(routes.hostingGitLabAdd());
     };
 
     if (isFetchingData) {
@@ -164,19 +185,6 @@ export default function GitHubHostingSettings() {
             </Card>
         );
     }
-
-    const getStatusIcon = (status: EGitSetupStatus | string) => {
-        switch (status) {
-            case EGitSetupStatus.CONNECTED:
-            case 'CONNECTED':
-                return <CheckCircle className="h-5 w-5 text-success" />;
-            case EGitSetupStatus.ERROR:
-            case 'ERROR':
-                return <XCircle className="h-5 w-5 text-destructive" />;
-            default:
-                return <AlertCircle className="h-5 w-5 text-warning" />;
-        }
-    };
 
     const getStatusBadge = (status: EGitSetupStatus | string) => {
         switch (status) {
@@ -191,19 +199,19 @@ export default function GitHubHostingSettings() {
         }
     };
 
-    const hasNoConnections = oauthConnections.length === 0 && appConnections.length === 0;
+    const hasNoConnections = patConnections.length === 0 && oauthConnections.length === 0 && repoTokenConnections.length === 0;
 
     return (
         <div className="space-y-6">
-            {/* Connect GitHub Card with Tabs */}
-            <Card className="border-2 border-dashed border-purple-200 bg-purple-50/50 dark:bg-purple-950/20 dark:border-purple-800">
+            {/* Connect GitLab Card with Tabs */}
+            <Card className="border-2 border-dashed border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 dark:border-orange-800">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-purple-500" />
-                        Connect GitHub
+                        <Sparkles className="h-5 w-5 text-orange-500" />
+                        Connect GitLab
                     </CardTitle>
                     <CardDescription>
-                        Choose your preferred method to connect your GitHub account.
+                        Choose your preferred method to connect your GitLab account.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -220,26 +228,26 @@ export default function GitHubHostingSettings() {
                                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">Recommended</Badge>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Quick 1-click setup via OAuth 2.0. Review comments will be posted as your GitHub account.
+                                    Quick 1-click setup via OAuth 2.0. Review comments will be posted as your GitLab account.
                                 </p>
                                 <ul className="text-sm text-muted-foreground space-y-1">
                                     <li className="flex items-center gap-2">
                                         <CheckCircle className="h-4 w-4 text-green-500" />
-                                        Access to your GitHub repositories
+                                        One-click secure authentication
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <CheckCircle className="h-4 w-4 text-green-500" />
-                                        Pull request and commit analysis
+                                        Automatic webhook setup
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <CheckCircle className="h-4 w-4 text-green-500" />
-                                        Organization and user repositories
+                                        Support for GitLab.com & self-hosted
                                     </li>
                                 </ul>
                                 <Button
-                                    onClick={handleConnectGitHub}
+                                    onClick={handleConnectGitLab}
                                     disabled={isConnecting}
-                                    className="w-full bg-purple-600 hover:bg-purple-700"
+                                    className="w-full bg-orange-600 hover:bg-orange-700"
                                 >
                                     {isConnecting ? (
                                         <>
@@ -249,7 +257,7 @@ export default function GitHubHostingSettings() {
                                     ) : (
                                         <>
                                             <ExternalLink className="h-4 w-4 mr-2" />
-                                            Connect with GitHub
+                                            Connect with GitLab
                                         </>
                                     )}
                                 </Button>
@@ -269,7 +277,7 @@ export default function GitHubHostingSettings() {
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <CheckCircle className="h-4 w-4 text-green-500" />
-                                        Works with GitHub Enterprise
+                                        Works with any GitLab instance
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <CheckCircle className="h-4 w-4 text-green-500" />
@@ -290,20 +298,20 @@ export default function GitHubHostingSettings() {
                 </CardContent>
             </Card>
 
-            {/* Existing Connections */}
-            {appConnections.length > 0 && (
+            {/* OAuth Connections */}
+            {oauthConnections.length > 0 && (
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <Zap className="h-5 w-5 text-purple-500" />
+                        <Zap className="h-5 w-5 text-orange-500" />
                         OAuth Connections
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {appConnections.map((connection) => (
-                            <Card key={connection.id} className="hover:shadow-md transition-shadow border-purple-200">
+                        {oauthConnections.map((connection) => (
+                            <Card key={connection.id} className="hover:shadow-md transition-shadow border-orange-200">
                                 <CardHeader>
                                     <CardTitle className="flex items-center justify-between">
                                         <div className="flex items-center space-x-2">
-                                            <Github className="h-5 w-5" />
+                                            <GitLabIcon className="h-5 w-5" />
                                             <span className="truncate">{connection.externalWorkspaceSlug || connection.connectionName}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -311,7 +319,7 @@ export default function GitHubHostingSettings() {
                                         </div>
                                     </CardTitle>
                                     <CardDescription className="flex items-center space-x-2">
-                                        <span>Organization: {connection.externalWorkspaceSlug || 'Personal'}</span>
+                                        <span>User: {connection.externalWorkspaceSlug || 'Unknown'}</span>
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -331,7 +339,7 @@ export default function GitHubHostingSettings() {
                                             variant="outline"
                                             size="sm"
                                             className="flex-1"
-                                            onClick={() => openConnectionDetails(connection)}
+                                            onClick={() => openConnectionDetails(connection, 'APP')}
                                         >
                                             <Settings className="h-4 w-4 mr-1" />
                                             Configure
@@ -339,7 +347,7 @@ export default function GitHubHostingSettings() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleSyncConnection(connection.id)}
+                                            onClick={() => handleSyncConnection(connection.id, 'oauth')}
                                             disabled={syncingConnectionId === connection.id}
                                         >
                                             {syncingConnectionId === connection.id ? (
@@ -352,7 +360,7 @@ export default function GitHubHostingSettings() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => {
-                                                setConnectionToDelete({ id: connection.id, type: 'app' });
+                                                setConnectionToDelete({ id: connection.id, type: 'oauth' });
                                                 setDeleteDialogOpen(true);
                                             }}
                                             className="text-destructive hover:text-destructive"
@@ -367,20 +375,20 @@ export default function GitHubHostingSettings() {
                 </div>
             )}
 
-            {/* OAuth Manual Connections */}
-            {oauthConnections.length > 0 && (
+            {/* PAT Connections */}
+            {patConnections.length > 0 && (
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                         <Settings className="h-5 w-5 text-gray-500" />
                         Personal Access Token Connections
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {oauthConnections.map((connection) => (
-                            <Card key={connection.id} className="hover:shadow-md transition-shadow">
+                        {patConnections.map((connection) => (
+                            <Card key={connection.id} className="hover:shadow-md transition-shadow border-gray-200">
                                 <CardHeader>
                                     <CardTitle className="flex items-center justify-between">
                                         <div className="flex items-center space-x-2">
-                                            <Github className="h-5 w-5" />
+                                            <GitLabIcon className="h-5 w-5" />
                                             <span className="truncate">{connection.connectionName}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -388,7 +396,7 @@ export default function GitHubHostingSettings() {
                                         </div>
                                     </CardTitle>
                                     <CardDescription className="flex items-center space-x-2">
-                                        <span>Organization: {connection.organizationId || 'Personal'}</span>
+                                        <span>Group: {connection.groupId || 'All accessible'}</span>
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -410,7 +418,7 @@ export default function GitHubHostingSettings() {
                                             variant="outline"
                                             size="sm"
                                             className="flex-1"
-                                            onClick={() => openConnectionDetails(connection)}
+                                            onClick={() => openConnectionDetails(connection, 'PERSONAL_TOKEN')}
                                         >
                                             <Settings className="h-4 w-4 mr-1" />
                                             Configure
@@ -418,8 +426,20 @@ export default function GitHubHostingSettings() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
+                                            onClick={() => handleSyncConnection(connection.id, 'pat')}
+                                            disabled={syncingConnectionId === connection.id}
+                                        >
+                                            {syncingConnectionId === connection.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <RefreshCw className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
                                             onClick={() => {
-                                                setConnectionToDelete({ id: connection.id, type: 'oauth' });
+                                                setConnectionToDelete({ id: connection.id, type: 'pat' });
                                                 setDeleteDialogOpen(true);
                                             }}
                                             className="text-destructive hover:text-destructive"
@@ -434,38 +454,106 @@ export default function GitHubHostingSettings() {
                 </div>
             )}
 
-            {/* Manual Connection Option */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Plus className="h-5 w-5" />
-                        Manual Connection
-                    </CardTitle>
-                    <CardDescription>
-                        Add a connection using a GitHub Personal Access Token for fine-grained access control.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button variant="outline" onClick={createManualConnection}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Personal Access Token
-                    </Button>
-                </CardContent>
-            </Card>
+            {/* Repository Token Connections */}
+            {repoTokenConnections.length > 0 && (
+                <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Key className="h-5 w-5 text-gray-500" />
+                        Repository Access Token Connections
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                        Single-repository connections using Project Access Tokens
+                    </p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {repoTokenConnections.map((connection) => (
+                            <Card key={connection.id} className="hover:shadow-md transition-shadow border-gray-200">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-2">
+                                            <GitLabIcon className="h-5 w-5" />
+                                            <span className="truncate">{connection.connectionName}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {getStatusBadge(connection.setupStatus || 'PENDING')}
+                                        </div>
+                                    </CardTitle>
+                                    <CardDescription className="flex items-center space-x-2">
+                                        <span>Repository: {connection.repositoryPath || connection.groupId || 'N/A'}</span>
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Badge variant="outline" className="text-xs">
+                                            Single Repository
+                                        </Badge>
+                                        {connection.updatedAt && (
+                                            <div className="text-sm">
+                                                <span className="text-muted-foreground">Updated: </span>
+                                                <span className="font-medium">{new Date(connection.updatedAt).toLocaleDateString()}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex space-x-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1"
+                                            onClick={() => openConnectionDetails(connection, 'REPOSITORY_TOKEN')}
+                                        >
+                                            <Settings className="h-4 w-4 mr-1" />
+                                            Use
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleSyncConnection(connection.id, 'pat')}
+                                            disabled={syncingConnectionId === connection.id}
+                                        >
+                                            {syncingConnectionId === connection.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <RefreshCw className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setConnectionToDelete({ id: connection.id, type: 'repo-token' });
+                                                setDeleteDialogOpen(true);
+                                            }}
+                                            className="text-destructive hover:text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Empty State */}
             {hasNoConnections && (
                 <Card className="border-dashed">
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                        <Github className="h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">No GitHub connections yet</h3>
+                        <GitLabIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No GitLab connections yet</h3>
                         <p className="text-muted-foreground text-center mb-4">
-                            Connect your GitHub account to start analyzing your repositories.
+                            Connect your GitLab account to start analyzing your repositories.
                         </p>
-                        <Button onClick={handleConnectGitHub} disabled={isConnecting}>
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Connect with GitHub
-                        </Button>
+                        <div className="flex gap-4">
+                            <Button onClick={handleConnectGitLab} className="bg-orange-600 hover:bg-orange-700">
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Connect with GitLab
+                            </Button>
+                            <Button onClick={createManualConnection} variant="outline">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Personal Access Token
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             )}

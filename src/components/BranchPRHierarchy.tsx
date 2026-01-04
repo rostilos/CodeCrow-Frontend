@@ -166,6 +166,12 @@ export default function BranchPRHierarchy({ projectNamespace, onSelectBranch, on
     }
   };
 
+  const handleViewResolvedIssues = () => {
+    if (selectedBranchName) {
+      navigate(routes.branchIssues(projectNamespace, selectedBranchName) + '?status=resolved');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -268,10 +274,18 @@ export default function BranchPRHierarchy({ projectNamespace, onSelectBranch, on
             </div>
           ) : detailedStats && currentWorkspace ? (
             <DetailedProjectStats 
-              stats={detailedStats}
+              stats={{
+                ...detailedStats,
+                securityIssues: detailedStats.securityIssues ?? 0,
+                qualityIssues: detailedStats.qualityIssues ?? 0,
+                performanceIssues: detailedStats.performanceIssues ?? 0,
+                styleIssues: detailedStats.styleIssues ?? 0,
+              }}
               workspaceSlug={currentWorkspace.slug}
               projectNamespace={projectNamespace}
               branchName={selectedBranchName}
+              onViewAllIssues={handleViewBranchIssues}
+              onViewResolvedIssues={handleViewResolvedIssues}
             />
           ) : (
             <Card>

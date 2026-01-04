@@ -228,10 +228,10 @@ export default function IssuesByFileDisplay({
                         )}
 
                         {/* Meta info - bottom right */}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center leading-none gap-4 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <Code className="h-3 w-3" />
-                            <span className="font-mono">Line {issue.line}</span>
+                              <span className="font-mono"> {issue.file}</span>
+                              <span className="font-mono">:{issue.line}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
