@@ -572,12 +572,17 @@ export default function ImportProject() {
       // Determine whether to setup webhooks based on installation method
       const shouldSetupWebhooks = installationMethod === 'WEBHOOK';
       
+      // For GitLab, use the numeric ID or fullName (path_with_namespace) instead of just slug
+      // This is necessary because GitLab OAuth tokens can access repos across multiple namespaces
+      // Using just the slug would fail for repos not in the user's own namespace
+      const repoIdentifier = provider === 'gitlab' ? selectedRepo.id : selectedRepo.slug;
+      
       // Use unified onboardRepository flow for all connection types
       // This enables automatic webhook setup for both APP and OAUTH_MANUAL connections
       const onboardResult = await integrationService.onboardRepository(
         currentWorkspace.slug,
         provider,
-        selectedRepo.slug,
+        repoIdentifier,
         {
           vcsConnectionId: parseInt(connectionId),
           projectName: projectName,
