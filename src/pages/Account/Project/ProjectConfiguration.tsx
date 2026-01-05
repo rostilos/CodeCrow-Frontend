@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
@@ -23,6 +22,7 @@ import BranchPatternConfig from "@/components/BranchPatternConfig";
 import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
 import CommentCommandsConfig from "@/components/CommentCommandsConfig";
+import { cn } from "@/lib/utils";
 
 interface ProjectCodeHostingConfig {
   id: string | number;
@@ -400,6 +400,23 @@ export default function ProjectConfiguration() {
     }
   };
 
+  // Navigation items configuration
+  const navItems = [
+    { id: "general", label: "General", icon: Settings },
+    { id: "codehosting", label: "Code Hosting", icon: FolderGit2 },
+    { id: "branches", label: "Branches", icon: GitBranch },
+    { id: "analysis-scope", label: "Analysis Scope", icon: Target },
+    { id: "ai", label: "AI Connections", icon: Cpu },
+    { id: "rag", label: "RAG Indexing", icon: Database },
+    { id: "tasks", label: "Task Management", icon: ListTodo },
+    ...(canGenerateTokens() ? [{ id: "tokens", label: "API Tokens", icon: KeyRound }] : []),
+    { id: "danger", label: "Danger Zone", icon: AlertTriangle, danger: true },
+  ];
+
+  const handleNavClick = (tabId: string) => {
+    navigate(`?tab=${tabId}`);
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -427,37 +444,11 @@ export default function ProjectConfiguration() {
     );
   }
 
-  return (
-    <div className="container space-y-6 p-6">
-      <Button variant="ghost" onClick={() => navigate(routes.projectDetail(namespace!))} size="sm">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Project
-      </Button>
-
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-        <p className="text-muted-foreground">Configure project settings and integrations</p>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={(value) => navigate(`?tab=${value}`)} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="codehosting">Code Hosting</TabsTrigger>
-          <TabsTrigger value="branches">Branches</TabsTrigger>
-          <TabsTrigger value="analysis-scope">Analysis Scope</TabsTrigger>
-          <TabsTrigger value="ai">AI Connections</TabsTrigger>
-          <TabsTrigger value="rag">RAG Indexing</TabsTrigger>
-          <TabsTrigger value="tasks">Task Management</TabsTrigger>
-          {canGenerateTokens() && (
-            <TabsTrigger value="tokens">API Tokens</TabsTrigger>
-          )}
-          <TabsTrigger value="danger" className="text-destructive data-[state=active]:text-destructive">
-            <AlertTriangle className="h-4 w-4 mr-1" />
-            Danger Zone
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-4">
+  // Render the content based on active tab
+  const renderContent = () => {
+    switch (activeTab) {
+      case "general":
+        return (
           <Card>
             <CardHeader>
               <CardTitle>Project Information</CardTitle>
@@ -508,374 +499,375 @@ export default function ProjectConfiguration() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        );
 
-        <TabsContent value="codehosting" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center">
-                <GitBranch className="mr-2 h-5 w-5" />
-                <div>
-                  <CardTitle>VCS Connection</CardTitle>
-                  <CardDescription>
-                    Repository connection for this project (only one repository can be bound)
-                  </CardDescription>
+      case "codehosting":
+        return (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center">
+                  <GitBranch className="mr-2 h-5 w-5" />
+                  <div>
+                    <CardTitle>VCS Connection</CardTitle>
+                    <CardDescription>
+                      Repository connection for this project (only one repository can be bound)
+                    </CardDescription>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {project.vcsConnectionId ? (
-                <div className="space-y-4">
-                  <div className="border rounded-lg p-4 bg-muted/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                          <h3 className="font-medium">Repository Connected</h3>
+              </CardHeader>
+              <CardContent>
+                {project.vcsConnectionId ? (
+                  <div className="space-y-4">
+                    <div className="border rounded-lg p-4 bg-muted/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                            <h3 className="font-medium">Repository Connected</h3>
+                          </div>
+                          <div className="text-sm space-y-1">
+                            <p><strong>Connection ID:</strong> {project.vcsConnectionId}</p>
+                            {project.projectVcsWorkspace && project.projectRepoSlug && (
+                              <p><strong>Repository:</strong> {project.projectVcsWorkspace}/{project.projectRepoSlug}</p>
+                            )}
+                            {project.projectVcsWorkspace && (
+                              <p><strong>Workspace:</strong> {project.projectVcsWorkspace}</p>
+                            )}
+                            {project.projectRepoSlug && (
+                              <p><strong>Repository Slug:</strong> {project.projectRepoSlug}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-sm space-y-1">
-                          <p><strong>Connection ID:</strong> {project.vcsConnectionId}</p>
-                          {project.projectVcsWorkspace && project.projectRepoSlug && (
-                            <p><strong>Repository:</strong> {project.projectVcsWorkspace}/{project.projectRepoSlug}</p>
-                          )}
-                          {project.projectVcsWorkspace && (
-                            <p><strong>Workspace:</strong> {project.projectVcsWorkspace}</p>
-                          )}
-                          {project.projectRepoSlug && (
-                            <p><strong>Repository Slug:</strong> {project.projectRepoSlug}</p>
-                          )}
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setEditingConfig({
+                              id: project.vcsConnectionId!,
+                              name: `Connection ${project.vcsConnectionId}`,
+                              repository: project.projectRepoSlug || '',
+                              workspace: project.projectVcsWorkspace || '',
+                              branch: 'main',
+                              provider: 'bitbucket'
+                            })}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Change VCS Connection
+                          </Button>
                         </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setEditingConfig({
-                            id: project.vcsConnectionId!,
-                            name: `Connection ${project.vcsConnectionId}`,
-                            repository: project.projectRepoSlug || '',
-                            workspace: project.projectVcsWorkspace || '',
-                            branch: 'main',
-                            provider: 'bitbucket'
-                          })}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Change VCS Connection
-                        </Button>
-                        {/* Unbind moved to Danger Zone tab */}
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <GitBranch className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="font-semibold mb-2">No Repository Connected</h3>
-                  <p className="text-muted-foreground mb-4">Connect a repository to enable code analysis and version control features.</p>
-                  <Button onClick={() => setEditingConfig({
-                    id: '',
-                    name: '',
-                    repository: '',
-                    workspace: '',
-                    branch: 'main',
-                    provider: 'bitbucket'
-                  })}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Connect Repository
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className="text-center py-8">
+                    <GitBranch className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="font-semibold mb-2">No Repository Connected</h3>
+                    <p className="text-muted-foreground mb-4">Connect a repository to enable code analysis and version control features.</p>
+                    <Button onClick={() => setEditingConfig({
+                      id: '',
+                      name: '',
+                      repository: '',
+                      workspace: '',
+                      branch: 'main',
+                      provider: 'bitbucket'
+                    })}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Connect Repository
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {editingConfig && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <GitBranch className="mr-2 h-5 w-5" />
-                  {project.vcsConnectionId ? 'Change VCS Connection' : 'Connect Repository'}
-                </CardTitle>
-                <CardDescription>
-                  Select a VCS connection and repository to bind to this project
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="vcs-connection">Available VCS Connections</Label>
-                  <Select 
-                    value={selectedConnectionId} 
-                    onValueChange={(value) => {
-                      setSelectedConnectionId(value);
-                      const connection = codeHostingConfigs.find(c => String(c.id) === value);
-                      if (connection) {
-                        setEditingConfig({
-                          ...editingConfig,
-                          id: connection.id,
-                          name: connection.name,
-                          workspace: connection.workspace || '',
-                          provider: connection.provider || 'bitbucket'
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a VCS connection" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {codeHostingConfigs.map((config) => (
-                        <SelectItem key={String(config.id)} value={String(config.id)}>
-                          {config.name} ({config.provider})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedConnectionId && availableRepos.length > 0 && (
+            {editingConfig && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <GitBranch className="mr-2 h-5 w-5" />
+                    {project.vcsConnectionId ? 'Change VCS Connection' : 'Connect Repository'}
+                  </CardTitle>
+                  <CardDescription>
+                    Select a VCS connection and repository to bind to this project
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
                   <div>
-                    <Label htmlFor="repository">Select Repository</Label>
+                    <Label htmlFor="vcs-connection">Available VCS Connections</Label>
                     <Select 
-                      value={editingConfig.repository} 
+                      value={selectedConnectionId} 
                       onValueChange={(value) => {
-                        const repo = availableRepos.find(r => r.name === value);
-                        setEditingConfig({
-                          ...editingConfig,
-                          repository: value,
-                          workspace: repo?.workspace?.slug || editingConfig.workspace
-                        });
+                        setSelectedConnectionId(value);
+                        const connection = codeHostingConfigs.find(c => String(c.id) === value);
+                        if (connection) {
+                          setEditingConfig({
+                            ...editingConfig,
+                            id: connection.id,
+                            name: connection.name,
+                            workspace: connection.workspace || '',
+                            provider: connection.provider || 'bitbucket'
+                          });
+                        }
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a repository" />
+                        <SelectValue placeholder="Select a VCS connection" />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableRepos.map((repo) => (
-                          <SelectItem key={repo.uuid || repo.name} value={repo.name}>
-                            {repo.workspace?.slug || 'Unknown'}/{repo.name}
+                        {codeHostingConfigs.map((config) => (
+                          <SelectItem key={String(config.id)} value={String(config.id)}>
+                            {config.name} ({config.provider})
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="workspace-display">Workspace</Label>
-                    <Input
-                      id="workspace-display"
-                      value={editingConfig.workspace}
-                      readOnly
-                      placeholder="Will be set when repository is selected"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="branch">Default Branch</Label>
-                    <Input
-                      id="branch"
-                      value={editingConfig.branch}
-                      onChange={(e) => setEditingConfig({ ...editingConfig, branch: e.target.value })}
-                      placeholder="main"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex space-x-2">
-                  <Button 
-                    onClick={handleSaveConnection}
-                    disabled={!selectedConnectionId || !editingConfig.repository}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    {project.vcsConnectionId ? 'Update Connection' : 'Bind Repository'}
-                  </Button>
-                  <Button variant="outline" onClick={handleCancelEdit}>
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Webhook Management Card - only show when project has a VCS connection */}
-          {project.vcsConnectionId && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center">
-                      <Webhook className="mr-2 h-5 w-5" />
-                      Webhook Management
-                    </CardTitle>
-                    <CardDescription>
-                      Configure webhooks for automatic code analysis triggers
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Current webhook status */}
-                <div className="border rounded-lg p-4 bg-muted/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        {loadingWebhookInfo ? (
-                          <RefreshCw className="h-5 w-5 text-muted-foreground animate-spin" />
-                        ) : webhookInfo?.webhooksConfigured ? (
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                        )}
-                        <h3 className="font-medium">
-                          {loadingWebhookInfo ? 'Loading...' : 
-                            webhookInfo?.webhooksConfigured ? 'Webhooks Configured' : 'Webhooks Not Configured'}
-                        </h3>
-                      </div>
-                      {webhookInfo && !loadingWebhookInfo && (
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          {webhookInfo.webhookId && (
-                            <p><strong>Webhook ID:</strong> {webhookInfo.webhookId}</p>
-                          )}
-                          {webhookInfo.provider && (
-                            <p><strong>Provider:</strong> {webhookInfo.provider}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant={webhookInfo?.webhooksConfigured ? "outline" : "default"}
-                        size="sm"
-                        onClick={handleSetupWebhooks}
-                        disabled={settingUpWebhooks}
+                  {selectedConnectionId && availableRepos.length > 0 && (
+                    <div>
+                      <Label htmlFor="repository">Select Repository</Label>
+                      <Select 
+                        value={editingConfig.repository} 
+                        onValueChange={(value) => {
+                          const repo = availableRepos.find(r => r.name === value);
+                          setEditingConfig({
+                            ...editingConfig,
+                            repository: value,
+                            workspace: repo?.workspace?.slug || editingConfig.workspace
+                          });
+                        }}
                       >
-                        {settingUpWebhooks ? (
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Webhook className="h-4 w-4 mr-2" />
-                        )}
-                        {webhookInfo?.webhooksConfigured ? 'Reconfigure Webhooks' : 'Setup Webhooks'}
-                      </Button>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a repository" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableRepos.map((repo) => (
+                            <SelectItem key={repo.uuid || repo.name} value={repo.name}>
+                              {repo.workspace?.slug || 'Unknown'}/{repo.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="workspace-display">Workspace</Label>
+                      <Input
+                        id="workspace-display"
+                        value={editingConfig.workspace}
+                        readOnly
+                        placeholder="Will be set when repository is selected"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="branch">Default Branch</Label>
+                      <Input
+                        id="branch"
+                        value={editingConfig.branch}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, branch: e.target.value })}
+                        placeholder="main"
+                      />
                     </div>
                   </div>
-                </div>
 
-                {/* Information about when to use webhook setup */}
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>When to use this feature</AlertTitle>
-                  <AlertDescription className="space-y-2 mt-2">
-                    <p>Manual webhook setup is useful in the following scenarios:</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li><strong>Repository migration:</strong> When you've moved your repository to a different location or renamed it</li>
-                      <li><strong>Connection type change:</strong> After switching from PAT to Repository Token or vice versa</li>
-                      <li><strong>Webhook deletion:</strong> If webhooks were accidentally deleted from your VCS provider</li>
-                      <li><strong>Troubleshooting:</strong> When automatic analysis isn't triggering as expected</li>
-                    </ul>
-                  </AlertDescription>
-                </Alert>
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={handleSaveConnection}
+                      disabled={!selectedConnectionId || !editingConfig.repository}
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      {project.vcsConnectionId ? 'Update Connection' : 'Bind Repository'}
+                    </Button>
+                    <Button variant="outline" onClick={handleCancelEdit}>
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-                {/* Warning about old webhooks */}
-                {webhookInfo?.webhooksConfigured && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Important Notice</AlertTitle>
-                    <AlertDescription>
-                      If you're changing VCS connections or repositories, remember to manually delete 
-                      the old webhooks from your VCS provider to avoid duplicate triggers or errors.
+            {/* Webhook Management Card */}
+            {project.vcsConnectionId && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center">
+                        <Webhook className="mr-2 h-5 w-5" />
+                        Webhook Management
+                      </CardTitle>
+                      <CardDescription>
+                        Configure webhooks for automatic code analysis triggers
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="border rounded-lg p-4 bg-muted/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          {loadingWebhookInfo ? (
+                            <RefreshCw className="h-5 w-5 text-muted-foreground animate-spin" />
+                          ) : webhookInfo?.webhooksConfigured ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                          )}
+                          <h3 className="font-medium">
+                            {loadingWebhookInfo ? 'Loading...' : 
+                              webhookInfo?.webhooksConfigured ? 'Webhooks Configured' : 'Webhooks Not Configured'}
+                          </h3>
+                        </div>
+                        {webhookInfo && !loadingWebhookInfo && (
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            {webhookInfo.webhookId && (
+                              <p><strong>Webhook ID:</strong> {webhookInfo.webhookId}</p>
+                            )}
+                            {webhookInfo.provider && (
+                              <p><strong>Provider:</strong> {webhookInfo.provider}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant={webhookInfo?.webhooksConfigured ? "outline" : "default"}
+                          size="sm"
+                          onClick={handleSetupWebhooks}
+                          disabled={settingUpWebhooks}
+                        >
+                          {settingUpWebhooks ? (
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Webhook className="h-4 w-4 mr-2" />
+                          )}
+                          {webhookInfo?.webhooksConfigured ? 'Reconfigure Webhooks' : 'Setup Webhooks'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>When to use this feature</AlertTitle>
+                    <AlertDescription className="space-y-2 mt-2">
+                      <p>Manual webhook setup is useful in the following scenarios:</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        <li><strong>Repository migration:</strong> When you've moved your repository to a different location or renamed it</li>
+                        <li><strong>Connection type change:</strong> After switching from PAT to Repository Token or vice versa</li>
+                        <li><strong>Webhook deletion:</strong> If webhooks were accidentally deleted from your VCS provider</li>
+                        <li><strong>Troubleshooting:</strong> When automatic analysis isn't triggering as expected</li>
+                      </ul>
                     </AlertDescription>
                   </Alert>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
 
-        <TabsContent value="branches" className="space-y-4">
+                  {webhookInfo?.webhooksConfigured && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Important Notice</AlertTitle>
+                      <AlertDescription>
+                        If you're changing VCS connections or repositories, remember to manually delete 
+                        the old webhooks from your VCS provider to avoid duplicate triggers or errors.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+
+      case "branches":
+        return (
           <DefaultBranchSelector 
             project={project} 
             onUpdate={(updatedProject) => setProject(updatedProject)}
           />
-        </TabsContent>
+        );
 
-        <TabsContent value="analysis-scope" className="space-y-4">
-          {/* Auto Analysis Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Auto Analysis Settings
-              </CardTitle>
-              <CardDescription>
-                Configure when CodeCrow should automatically analyze your code
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="md:flex justify-between gap-4">
+      case "analysis-scope":
+        return (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Auto Analysis Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure when CodeCrow should automatically analyze your code
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="md:flex justify-between gap-4">
                   <div className="w-full flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                          <GitPullRequest className="h-5 w-5 text-primary" />
-                          <div>
-                              <div className="font-medium">Pull Request Analysis</div>
-                              <div className="text-sm text-muted-foreground">
-                                  Automatically analyze PRs when created or updated
-                              </div>
-                          </div>
+                    <div className="flex items-center gap-3">
+                      <GitPullRequest className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-medium">Pull Request Analysis</div>
+                        <div className="text-sm text-muted-foreground">
+                          Automatically analyze PRs when created or updated
+                        </div>
                       </div>
-                      <Switch
-                          checked={prAnalysisEnabled}
-                          onCheckedChange={setPrAnalysisEnabled}
-                      />
+                    </div>
+                    <Switch
+                      checked={prAnalysisEnabled}
+                      onCheckedChange={setPrAnalysisEnabled}
+                    />
                   </div>
 
                   <div className="w-full flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                          <GitCommit className="h-5 w-5 text-primary" />
-                          <div>
-                              <div className="font-medium">Branch Analysis</div>
-                              <div className="text-sm text-muted-foreground">
-                                  Analyze code when branches are pushed
-                                  {project?.ragConfig?.enabled && (
-                                      <span className="block text-xs text-amber-600 mt-1">
-                          Branch analysis is required when RAG indexing is enabled (for incremental updates)
-                        </span>
-                                  )}
-                              </div>
-                          </div>
+                    <div className="flex items-center gap-3">
+                      <GitCommit className="h-5 w-5 text-primary" />
+                      <div>
+                        <div className="font-medium">Branch Analysis</div>
+                        <div className="text-sm text-muted-foreground">
+                          Analyze code when branches are pushed
+                          {project?.ragConfig?.enabled && (
+                            <span className="block text-xs text-amber-600 mt-1">
+                              Branch analysis is required when RAG indexing is enabled (for incremental updates)
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <Switch
-                          checked={branchAnalysisEnabled}
-                          onCheckedChange={setBranchAnalysisEnabled}
-                          disabled={project?.ragConfig?.enabled}
-                      />
+                    </div>
+                    <Switch
+                      checked={branchAnalysisEnabled}
+                      onCheckedChange={setBranchAnalysisEnabled}
+                      disabled={project?.ragConfig?.enabled}
+                    />
                   </div>
-              </div>
-              
-              <Button 
-                onClick={handleSaveAnalysisSettings}
-                disabled={savingAnalysisSettings}
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {savingAnalysisSettings ? "Saving..." : "Save Analysis Settings"}
-              </Button>
-            </CardContent>
-          </Card>
-          
-          {/* Branch Pattern Config */}
-          <BranchPatternConfig
-            project={project}
-            onUpdate={(updatedProject) => setProject(updatedProject)}
-          />
-          
-          {/* Comment Commands Config */}
-          {currentWorkspace && (
-            <CommentCommandsConfig
+                </div>
+                
+                <Button 
+                  onClick={handleSaveAnalysisSettings}
+                  disabled={savingAnalysisSettings}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {savingAnalysisSettings ? "Saving..." : "Save Analysis Settings"}
+                </Button>
+              </CardContent>
+            </Card>
+            
+            <BranchPatternConfig
               project={project}
               onUpdate={(updatedProject) => setProject(updatedProject)}
             />
-          )}
-        </TabsContent>
+            
+            {currentWorkspace && (
+              <CommentCommandsConfig
+                project={project}
+                onUpdate={(updatedProject) => setProject(updatedProject)}
+              />
+            )}
+          </div>
+        );
 
-        <TabsContent value="ai" className="space-y-4">
+      case "ai":
+        return (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -931,7 +923,7 @@ export default function ProjectConfiguration() {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <h2 className="font-bold mb-2">
-                              {connection.name}
+                            {connection.name}
                           </h2>
                           <div className="flex items-center space-x-2 mb-2">
                             <h3 className="font-medium">
@@ -969,20 +961,19 @@ export default function ProjectConfiguration() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        );
 
-        {/* RAG Indexing Tab */}
-        <TabsContent value="rag" className="space-y-4">
-          {currentWorkspace && project && (
-            <RagConfiguration
-              workspaceSlug={currentWorkspace.slug}
-              project={project}
-              onProjectUpdate={(updatedProject) => setProject(updatedProject)}
-            />
-          )}
-        </TabsContent>
+      case "rag":
+        return currentWorkspace && project ? (
+          <RagConfiguration
+            workspaceSlug={currentWorkspace.slug}
+            project={project}
+            onProjectUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        ) : null;
 
-        <TabsContent value="tasks" className="space-y-4">
+      case "tasks":
+        return (
           <Card>
             <CardHeader>
               <CardTitle>Task Management Configuration</CardTitle>
@@ -996,25 +987,74 @@ export default function ProjectConfiguration() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        );
 
-        {canGenerateTokens() && namespace && (
-          <TabsContent value="tokens" className="space-y-4">
-            <ProjectTokenManagement projectId={namespace} />
-          </TabsContent>
-        )}
+      case "tokens":
+        return canGenerateTokens() && namespace ? (
+          <ProjectTokenManagement projectId={namespace} />
+        ) : null;
 
-        {/* Danger Zone Tab */}
-        <TabsContent value="danger" className="space-y-4">
-          {currentWorkspace && project && (
-            <DangerZone
-              project={project}
-              workspaceSlug={currentWorkspace.slug}
-              onProjectUpdate={(updatedProject) => setProject(updatedProject)}
-            />
-          )}
-        </TabsContent>
-      </Tabs>
+      case "danger":
+        return currentWorkspace && project ? (
+          <DangerZone
+            project={project}
+            workspaceSlug={currentWorkspace.slug}
+            onProjectUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        ) : null;
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="container p-6">
+      <Button variant="ghost" onClick={() => navigate(routes.projectDetail(namespace!))} size="sm" className="mb-6">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to Project
+      </Button>
+
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+        <p className="text-muted-foreground">Configure project settings and integrations</p>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left Side Navigation */}
+        <nav className="lg:w-64 shrink-0">
+          <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
+                    isActive
+                      ? item.danger
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-primary/10 text-primary"
+                      : item.danger
+                        ? "text-destructive/70 hover:bg-destructive/5 hover:text-destructive"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* Main Content */}
+        <main className="flex-1 min-w-0">
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 }

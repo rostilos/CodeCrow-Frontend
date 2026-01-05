@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Settings, GitBranch, Zap, Trash2, Info, Search, FolderKanban, ArrowRight, Download } from "lucide-react";
+import { Plus, Settings, GitBranch, Zap, Trash2, Info, Search, FolderKanban, ArrowRight, Download, Calendar, AlertTriangle, CheckCircle, Clock, Activity, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { projectService } from "@/api_service/project/projectService.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
@@ -302,104 +303,133 @@ export default function ProjectSettings() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {projects
                   .filter((project) =>
                     project.name.toLowerCase().includes(projectSearchQuery.toLowerCase())
                   )
-                  .map((project) => (
-                    <Card
-                      key={project.id}
-                      className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/20"
-                      onClick={() => navigate(routes.projectDetail(project.namespace || project.id))}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3">
-                              <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                                {project.name}
-                              </CardTitle>
-                              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                  .map((project) => {
+                    const stats = projectStats[project.id];
+                    const hasIssues = stats && stats.totalIssues > 0;
+                    const isConfigured = project.vcsConnectionId && project.aiConnectionId;
+
+                    return (
+                      <Card
+                        key={project.id}
+                        className="group cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/30 flex flex-col"
+                        onClick={() => navigate(routes.projectDetail(project.namespace || project.id))}
+                      >
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <CardTitle className="text-base font-semibold group-hover:text-primary transition-colors truncate">
+                                  {project.name}
+                                </CardTitle>
+                                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" />
+                              </div>
+                              {project.description && (
+                                <CardDescription className="mt-1 text-xs line-clamp-1">
+                                  {project.description}
+                                </CardDescription>
+                              )}
                             </div>
-                            <CardDescription className="mt-1.5 text-sm line-clamp-1">
-                              {project.description || "No description provided"}
-                            </CardDescription>
+                            <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              {canManageWorkspace() && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => handleProjectSettings(project.namespace || String(project.id))}
+                                >
+                                  <Settings className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(routes.projectDetail(project.namespace || project.id))}
-                              className="hidden sm:flex"
-                            >
-                              View Details
-                            </Button>
-                            {canManageWorkspace() && (
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => handleProjectSettings(project.namespace || String(project.id))}
-                              >
-                                <Settings className="h-4 w-4" />
-                              </Button>
+                        </CardHeader>
+                        <CardContent className="pt-0 pb-3 flex-1 flex flex-col">
+                          {/* Repository Info */}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                            <GitBranch className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{getRepositoryInfo(project.projectVcsWorkspace, project.projectRepoSlug)}</span>
+                            {project.defaultBranch && (
+                              <>
+                                <span className="text-border">•</span>
+                                <span className="truncate">{project.defaultBranch}</span>
+                              </>
                             )}
                           </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0 pb-4">
-                        <div className="space-y-3">
-                          {/* Project Stats */}
-                          {projectStats[project.id] ? (
-                            <ProjectStats stats={projectStats[project.id]} compact={true} />
-                          ) : (
-                            <div className="h-6 bg-muted/50 rounded w-32 animate-pulse"></div>
-                          )}
 
-                          {/* Empty state for new projects with no analysis yet */}
-                          {!project.defaultBranchStats && (
-                            <Alert className="bg-muted/30 border-muted py-3">
-                              <Info className="h-4 w-4" />
-                              <AlertTitle className="text-sm font-medium">No analysis yet</AlertTitle>
-                              <AlertDescription className="flex items-center justify-between mt-1">
-                                <span className="text-xs text-muted-foreground">Results will appear after first analysis.</span>
-                                {canManageWorkspace() && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(routes.projectSetup(project.namespace || project.id));
-                                    }}
-                                  >
-                                    Setup
-                                  </Button>
-                                )}
-                              </AlertDescription>
-                            </Alert>
-                          )}
+                          {/* Status Badges */}
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            {project.vcsConnectionId ? (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-green-500/10 text-green-600 border-green-200 dark:border-green-800">
+                                <CheckCircle className="h-2.5 w-2.5 mr-1" />
+                                VCS
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-muted text-muted-foreground">
+                                <Clock className="h-2.5 w-2.5 mr-1" />
+                                VCS
+                              </Badge>
+                            )}
+                            {project.aiConnectionId ? (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800">
+                                <Zap className="h-2.5 w-2.5 mr-1" />
+                                AI
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-muted text-muted-foreground">
+                                <Clock className="h-2.5 w-2.5 mr-1" />
+                                AI
+                              </Badge>
+                            )}
+                            {project.isActive !== false && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800">
+                                <Activity className="h-2.5 w-2.5 mr-1" />
+                                Active
+                              </Badge>
+                            )}
+                          </div>
 
-                          {/* Quick Info */}
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground border-t border-border/50 pt-3">
-                            <div className="flex items-center gap-1.5">
-                              <GitBranch className="h-3.5 w-3.5" />
-                              <span className="truncate">{getRepositoryInfo(project.projectVcsWorkspace, project.projectRepoSlug)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <GitBranch className="h-3.5 w-3.5" />
-                              <span className="truncate">{project.defaultBranch ?? "Default branch not configured"}</span>
-                            </div>
-                            {project.aiConnectionId && (
-                              <div className="flex items-center gap-1.5">
-                                <Zap className="h-3.5 w-3.5 text-primary" />
-                                <span>AI Enabled</span>
+                          {/* Analysis Stats or Empty State */}
+                          <div className="mt-auto">
+                            {stats ? (
+                              <div className="grid grid-cols-4 gap-2 p-2 rounded-lg bg-muted/40">
+                                <div className="text-center">
+                                  <div className="text-sm font-semibold">{stats.totalIssues}</div>
+                                  <div className="text-[10px] text-muted-foreground">Total</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-sm font-semibold text-red-500">{stats.highIssues}</div>
+                                  <div className="text-[10px] text-muted-foreground">High</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-sm font-semibold text-yellow-500">{stats.mediumIssues}</div>
+                                  <div className="text-[10px] text-muted-foreground">Medium</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-sm font-semibold text-blue-500">{stats.lowIssues}</div>
+                                  <div className="text-[10px] text-muted-foreground">Low</div>
+                                </div>
+                              </div>
+                            ) : !isConfigured ? (
+                              <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                                <span className="text-xs">Setup required</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 text-muted-foreground">
+                                <Info className="h-3.5 w-3.5 shrink-0" />
+                                <span className="text-xs">Awaiting first analysis</span>
                               </div>
                             )}
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
               </div>
             )}
           </TabsContent>
