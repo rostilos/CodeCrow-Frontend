@@ -305,7 +305,21 @@ export default function ProjectDashboard() {
     
     try {
       const isResolved = newStatus === 'resolved';
-      await analysisService.updateIssueStatus(currentWorkspace.slug, selectedProject.namespace, issueId, isResolved);
+      // Find the issue to get its commit hash for context
+      const issueToUpdate = analysisIssues.find(i => i.id === issueId);
+      const commitHash = issueToUpdate?.commitHash || selectedPR?.commitHash || undefined;
+      const prNumber = selectedPR?.prNumber || undefined;
+      
+      await analysisService.updateIssueStatus(
+        currentWorkspace.slug, 
+        selectedProject.namespace, 
+        issueId, 
+        isResolved,
+        undefined, // comment
+        isResolved ? prNumber : undefined,
+        isResolved ? commitHash : undefined
+      );
+      
       setAnalysisIssues(prev => prev.map(issue => 
         issue.id === issueId ? { ...issue, status: newStatus } : issue
       ));

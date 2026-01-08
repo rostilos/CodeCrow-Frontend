@@ -181,7 +181,20 @@ export default function BranchIssues() {
     
     try {
       const isResolved = newStatus === 'resolved';
-      await analysisService.updateIssueStatus(currentWorkspace.slug, namespace, issueId, isResolved);
+      // Find the issue to get its commit hash for context
+      const issueToUpdate = issues.find(i => i.id === issueId);
+      const commitHash = issueToUpdate?.commitHash || undefined;
+      
+      await analysisService.updateIssueStatus(
+        currentWorkspace.slug, 
+        namespace, 
+        issueId, 
+        isResolved,
+        undefined, // comment
+        undefined, // no PR context in branch view
+        isResolved ? commitHash : undefined
+      );
+      
       setIssues(prev => prev.map(issue => 
         issue.id === issueId ? { ...issue, status: newStatus } : issue
       ));

@@ -94,9 +94,10 @@ interface JobsListProps {
   projectNamespace: string;
   compact?: boolean;
   maxItems?: number;
+  refreshKey?: number; // Increment to trigger refresh from parent
 }
 
-export default function JobsList({ projectNamespace, compact = false, maxItems }: JobsListProps) {
+export default function JobsList({ projectNamespace, compact = false, maxItems, refreshKey }: JobsListProps) {
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const routes = useWorkspaceRoutes();
@@ -141,6 +142,13 @@ export default function JobsList({ projectNamespace, compact = false, maxItems }
   useEffect(() => {
     fetchJobs();
   }, [fetchJobs]);
+
+  // Trigger refresh when parent updates refreshKey
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      fetchJobs();
+    }
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refresh for running jobs
   useEffect(() => {

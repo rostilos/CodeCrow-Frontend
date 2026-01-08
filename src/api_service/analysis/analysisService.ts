@@ -3,6 +3,8 @@ import { ApiService } from '@/api_service/api';
 export interface IssueStatusUpdateRequest {
   isResolved: boolean;
   comment?: string;
+  resolvedByPr?: number;
+  resolvedCommitHash?: string;
 }
 
 export interface BulkStatusUpdateResponse {
@@ -172,6 +174,11 @@ export interface AnalysisIssue {
   prNumber?: number | null;
   commitHash?: string | null;
   detectedAt?: string | null;
+  // Resolution info - populated when issue is resolved
+  resolvedDescription?: string | null;
+  resolvedByPr?: number | null;
+  resolvedCommitHash?: string | null;
+  resolvedAnalysisId?: number | null;
 }
 
 export interface AnalysisTrendData {
@@ -195,11 +202,18 @@ class AnalysisService extends ApiService {
     namespace: string, 
     issueId: string | number, 
     isResolved: boolean,
-    comment?: string
+    comment?: string,
+    resolvedByPr?: number,
+    resolvedCommitHash?: string
   ): Promise<any> {
+    const body: IssueStatusUpdateRequest = { isResolved };
+    if (comment) body.comment = comment;
+    if (resolvedByPr) body.resolvedByPr = resolvedByPr;
+    if (resolvedCommitHash) body.resolvedCommitHash = resolvedCommitHash;
+    
     return this.request<any>(`/${workspaceSlug}/projects/${namespace}/analysis/issues/${issueId}/status`, {
       method: 'PUT',
-      body: JSON.stringify({ isResolved, comment }),
+      body: JSON.stringify(body),
     }, true);
   }
 
