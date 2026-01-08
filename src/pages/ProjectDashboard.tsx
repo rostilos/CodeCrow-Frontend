@@ -134,6 +134,7 @@ export default function ProjectDashboard() {
   const [prTab, setPrTab] = useState<'preview' | 'issues' | 'activity'>('preview');
   const [branchTab, setBranchTab] = useState<'preview' | 'issues' | 'activity'>('preview');
   const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
+  const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
 
 
 
@@ -445,6 +446,54 @@ export default function ProjectDashboard() {
     }
   };
 
+  // Comprehensive refresh handler that reloads all data
+  const handleRefreshAll = async () => {
+    if (!namespace || !currentWorkspace) return;
+
+    setAnalysisLoading(true);
+    try {
+      // Run independent loads in parallel for better performance
+      const refreshPromises: Promise<any>[] = [
+        loadProjectAnalysis(),
+        loadBranches(),
+        loadDetailedStats(),
+      ];
+      
+      // If a branch is currently selected, also refresh branch-specific data
+      if (selectionType === 'branch' && selectedBranch) {
+        refreshPromises.push(loadBranchData(selectedBranch));
+        // Also refresh branch issues if on issues tab
+        if (branchTab === 'issues') {
+          refreshPromises.push(loadBranchIssues(selectedBranch, 1, false));
+        }
+      }
+      
+      // If a PR is currently selected, refresh its issues
+      if (selectionType === 'pr' && selectedPR) {
+        refreshPromises.push(loadAnalysisIssuesForPR(selectedPR, selectedVersion));
+      }
+
+      await Promise.all(refreshPromises);
+
+      // Trigger JobsList refresh
+      setJobsRefreshKey(prev => prev + 1);
+
+      toast({
+        title: "Refreshed",
+        description: "All data has been updated",
+      });
+    } catch (error: any) {
+      console.error('Failed to refresh data:', error);
+      toast({
+        title: "Refresh failed",
+        description: error.message || "Could not refresh data",
+        variant: "destructive",
+      });
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
   const handlePRChange = async (pr: PullRequestSummary) => {
     setSelectedPR(pr);
     setSelectOpen(false);
@@ -600,7 +649,22 @@ export default function ProjectDashboard() {
     
     try {
       const isResolved = newStatus === 'resolved';
-      await analysisService.updateIssueStatus(currentWorkspace.slug, namespace, issueId, isResolved);
+      // Find the issue to get its commit hash for context
+      const issueToUpdate = analysisIssues.find(i => i.id === issueId);
+      const commitHash = issueToUpdate?.commitHash || selectedPR?.commitHash || undefined;
+      // Use selected PR number if available
+      const prNumber = selectedPR?.prNumber || undefined;
+      
+      await analysisService.updateIssueStatus(
+        currentWorkspace.slug, 
+        namespace, 
+        issueId, 
+        isResolved,
+        undefined, // comment
+        isResolved ? prNumber : undefined,
+        isResolved ? commitHash : undefined
+      );
+      
       setAnalysisIssues(prev => prev.map(issue => 
         issue.id === issueId ? { ...issue, status: newStatus } : issue
       ));
@@ -998,7 +1062,7 @@ export default function ProjectDashboard() {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => loadProjectAnalysis()}
+                onClick={handleRefreshAll}
                 disabled={analysisLoading}
                 size="sm"
               >
@@ -1253,7 +1317,7 @@ export default function ProjectDashboard() {
                   <CardDescription>Background jobs and analysis history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} />
+                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} />
                 </CardContent>
               </Card>
             ) : null}
@@ -1652,7 +1716,7 @@ export default function ProjectDashboard() {
                   <CardDescription>Background jobs and analysis history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} />
+                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} />
                 </CardContent>
               </Card>
             )}
@@ -1688,7 +1752,7 @@ export default function ProjectDashboard() {
                   <CardDescription>Background jobs and analysis history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} />
+                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} />
                 </CardContent>
               </Card>
             )}

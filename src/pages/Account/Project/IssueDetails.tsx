@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { analysisService } from "@/api_service/analysis/analysisService";
+import { projectService, type ProjectDTO } from "@/api_service/project/projectService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, CheckCircle, FileText, Clock, GitBranch, GitPullRequest, ChevronRight, ChevronLeft, Copy
+  ArrowLeft, CheckCircle, FileText, Clock, GitBranch, GitPullRequest, ChevronRight, ChevronLeft, Copy, ExternalLink
 } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -23,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { buildVcsPrUrl } from "@/components/IssueListWithFilters";
 
 
 export default function IssueDetails() {
@@ -38,6 +40,7 @@ export default function IssueDetails() {
 
 
   const [issue, setIssue] = useState<AnalysisIssue | null>(null);
+  const [project, setProject] = useState<ProjectDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [scopeIssues, setScopeIssues] = useState<AnalysisIssue[]>(
     // Initialize from route state if available
@@ -55,13 +58,29 @@ export default function IssueDetails() {
   const filterStatus = searchParams.get('status');
   const filterCategory = searchParams.get('category');
 
+  // Helper to build PR URL using project VCS info
+  const buildPrUrl = (prNumber: number | null | undefined): string | null => {
+    if (!prNumber || !project) return null;
+    return buildVcsPrUrl(
+      project.vcsProvider,
+      project.projectVcsWorkspace,
+      project.projectVcsRepoSlug || project.projectRepoSlug,
+      prNumber
+    );
+  };
+
   const loadIssue = async () => {
     if (!currentWorkspace || !namespace || !issueId) return;
 
     try {
       setLoading(true);
-      const issueData = await analysisService.getIssueById(currentWorkspace.slug, namespace, issueId);
+      // Load issue and project info in parallel
+      const [issueData, projectData] = await Promise.all([
+        analysisService.getIssueById(currentWorkspace.slug, namespace, issueId),
+        projectService.getProjectByNamespace(currentWorkspace.slug, namespace)
+      ]);
       setIssue(issueData);
+      setProject(projectData);
     } catch (error: any) {
       // If 404, the issue doesn't exist in this workspace/project - navigate away
       if (error.response?.status === 404 || error.status === 404) {
@@ -176,8 +195,33 @@ export default function IssueDetails() {
 
     try {
       const isResolved = newStatus === 'resolved';
-      await analysisService.updateIssueStatus(currentWorkspace.slug, namespace, issueId, isResolved);
-      setIssue(prev => prev ? { ...prev, status: newStatus } : null);
+      
+      // Capture PR context if we're viewing from a PR scope
+      const prNumber = scopePrNumber ? parseInt(scopePrNumber) : undefined;
+      // Use the issue's commit hash as context for the resolution
+      const commitHash = issue?.commitHash || undefined;
+      
+      await analysisService.updateIssueStatus(
+        currentWorkspace.slug, 
+        namespace, 
+        issueId, 
+        isResolved,
+        undefined, // comment
+        isResolved ? prNumber : undefined,
+        isResolved ? commitHash : undefined
+      );
+      
+      // Update local state with resolution info
+      const now = new Date().toISOString();
+      setIssue(prev => prev ? { 
+        ...prev, 
+        status: newStatus,
+        resolvedAt: isResolved ? now : null,
+        resolvedBy: isResolved ? 'manual' : null,
+        resolvedByPr: isResolved ? prNumber : null,
+        resolvedCommitHash: isResolved ? commitHash : null,
+      } : null);
+      
       // Update in scope list too
       setScopeIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: newStatus } : i));
       toast({
@@ -550,7 +594,7 @@ export default function IssueDetails() {
 
         {/* Issue Header - Compact Metadata Bar */}
         <div className="flex justify-between gap-x-4">
-          <div className="bg-card border rounded-lg p-4 mb-6">
+          <div className="bg-card border rounded-lg p-4 mb-6 w-full">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2 flex-1 min-w-0">
               <h1 className="text-lg font-bold leading-tight">{issue.title}</h1>
@@ -640,6 +684,124 @@ export default function IssueDetails() {
               )}
           </div>
             </div>
+        </div>
+
+        <div className="md:flex justify-between gap-2">
+          {/* Resolution Info - shown when issue is resolved */}
+          {issue.status === 'resolved' && (issue.resolvedAt || issue.resolvedBy || issue.resolvedDescription || issue.resolvedCommitHash) && (
+            <Card className="mb-6 border-green-500/30 bg-green-500/5 basis-1/2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <CheckCircle className="h-4 w-4" />
+                  Resolution Information
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Details about how and when this issue was resolved
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  {issue.resolvedAt && (
+                    <div>
+                      <span className="text-muted-foreground">Resolved on:</span>
+                      <span className="ml-2 font-medium">{new Date(issue.resolvedAt).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {issue.resolvedBy && (
+                    <div>
+                      <span className="text-muted-foreground">Resolved by:</span>
+                      <span className="ml-2 font-medium">{issue.resolvedBy}</span>
+                    </div>
+                  )}
+                  {issue.resolvedByPr && (
+                    <div>
+                      <span className="text-muted-foreground">Resolved in PR:</span>
+                      {buildPrUrl(issue.resolvedByPr) ? (
+                        <a 
+                          href={buildPrUrl(issue.resolvedByPr)!} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="ml-2 font-medium text-green-600 dark:text-green-400 hover:underline inline-flex items-center gap-1"
+                        >
+                          #{issue.resolvedByPr}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span className="ml-2 font-medium">#{issue.resolvedByPr}</span>
+                      )}
+                    </div>
+                  )}
+                  {issue.resolvedCommitHash && (
+                    <div>
+                      <span className="text-muted-foreground">Resolved in commit:</span>
+                      <span className="ml-2 font-mono font-medium">{issue.resolvedCommitHash.substring(0, 8)}</span>
+                    </div>
+                  )}
+                </div>
+                {issue.resolvedDescription && (
+                  <div className="pt-2 border-t">
+                    <span className="text-muted-foreground text-sm">Resolution explanation:</span>
+                    <p className="mt-1 text-sm text-foreground leading-relaxed">{issue.resolvedDescription}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Original Issue Detection Info */}
+          {(issue.analysisId || issue.prNumber || issue.commitHash) && (
+            <Card className="mb-6 border-blue-500/30 bg-blue-500/5 basis-1/2 grow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                  <GitPullRequest className="h-4 w-4" />
+                  Original Detection
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Where this issue was first identified
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  {issue.analysisId && (
+                    <div>
+                      <span className="text-muted-foreground">Analysis ID:</span>
+                      <span className="ml-2 font-medium">#{issue.analysisId}</span>
+                    </div>
+                  )}
+                  {issue.prNumber && (
+                    <div>
+                      <span className="text-muted-foreground">Detected in PR:</span>
+                      {buildPrUrl(issue.prNumber) ? (
+                        <a 
+                          href={buildPrUrl(issue.prNumber)!} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="ml-2 font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                        >
+                          #{issue.prNumber}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span className="ml-2 font-medium">#{issue.prNumber}</span>
+                      )}
+                    </div>
+                  )}
+                  {issue.commitHash && (
+                    <div>
+                      <span className="text-muted-foreground">Detected in commit:</span>
+                      <span className="ml-2 font-mono font-medium">{issue.commitHash.substring(0, 8)}</span>
+                    </div>
+                  )}
+                  {issue.detectedAt && (
+                    <div>
+                      <span className="text-muted-foreground">Detected on:</span>
+                      <span className="ml-2 font-medium">{new Date(issue.detectedAt).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Issue Content */}

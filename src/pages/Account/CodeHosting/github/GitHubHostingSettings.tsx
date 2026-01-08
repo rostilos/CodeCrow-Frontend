@@ -271,10 +271,6 @@ export default function GitHubHostingSettings() {
                                         <CheckCircle className="h-4 w-4 text-green-500" />
                                         Works with GitHub Enterprise
                                     </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
-                                        Manual webhook configuration required
-                                    </li>
                                 </ul>
                                 <Button
                                     onClick={createManualConnection}
