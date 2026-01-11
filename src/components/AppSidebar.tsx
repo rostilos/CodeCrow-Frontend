@@ -13,6 +13,7 @@ import {
   Brain,
   Users,
   BookOpen,
+  Shield,
 } from "lucide-react";
 import { authUtils } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -52,10 +53,11 @@ export function AppSidebar() {
   const workspaceItem = { title: "Workspace", url: routes.workspaceSettings(), icon: Users };
   const aiConnectionItem = { title: "AI Connections", url: routes.aiSettings(), icon: Brain };
   const vcsConnectionItem = { title: "Code Hosting", url: routes.hostingSettings(), icon: GitBranch };
+  const qualityGatesItem = { title: "Quality Gates", url: routes.qualityGates(), icon: Shield };
   const userSettingsItem = { title: "User Settings", url: routes.userSettings(), icon: User };
   
   const navigationItems = canManageWorkspace() 
-    ? [...mainNavItems, aiConnectionItem, vcsConnectionItem, workspaceItem]
+    ? [...mainNavItems, aiConnectionItem, vcsConnectionItem, qualityGatesItem, workspaceItem]
     : mainNavItems;
 
   const handleLogout = () => {

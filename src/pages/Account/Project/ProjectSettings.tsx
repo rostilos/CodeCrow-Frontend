@@ -310,7 +310,7 @@ export default function ProjectDashboard() {
       const commitHash = issueToUpdate?.commitHash || selectedPR?.commitHash || undefined;
       const prNumber = selectedPR?.prNumber || undefined;
       
-      await analysisService.updateIssueStatus(
+      const response = await analysisService.updateIssueStatus(
         currentWorkspace.slug, 
         selectedProject.namespace, 
         issueId, 
@@ -319,6 +319,10 @@ export default function ProjectDashboard() {
         isResolved ? prNumber : undefined,
         isResolved ? commitHash : undefined
       );
+      
+      if (!response.success) {
+        throw new Error(response.errorMessage || 'Failed to update issue status');
+      }
       
       setAnalysisIssues(prev => prev.map(issue => 
         issue.id === issueId ? { ...issue, status: newStatus } : issue

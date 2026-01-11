@@ -7,6 +7,21 @@ export interface IssueStatusUpdateRequest {
   resolvedCommitHash?: string;
 }
 
+export interface IssueStatusUpdateResponse {
+  success: boolean;
+  issueId: number;
+  newStatus: string | null;
+  analysisId: number | null;
+  analysisResult: 'PASSED' | 'FAILED' | 'SKIPPED' | null;
+  totalIssues: number;
+  highSeverityCount: number;
+  mediumSeverityCount: number;
+  lowSeverityCount: number;
+  infoSeverityCount: number;
+  resolvedCount: number;
+  errorMessage?: string | null;
+}
+
 export interface BulkStatusUpdateResponse {
   successCount: number;
   failureCount: number;
@@ -47,6 +62,14 @@ export interface PullRequestDTO {
   status?: string;
   createdAt?: string;
   updatedAt?: string;
+  title?: string;
+  description?: string;
+  analysisResult?: 'PASSED' | 'FAILED' | 'SKIPPED' | null;
+  highSeverityCount?: number;
+  mediumSeverityCount?: number;
+  lowSeverityCount?: number;
+  infoSeverityCount?: number;
+  totalIssues?: number;
 }
 
 export interface AnalysisHistory {
@@ -79,6 +102,7 @@ export interface ProjectSummaryResponse {
   highIssues: number;
   mediumIssues: number;
   lowIssues: number;
+  infoIssues?: number;
   lastAnalysisDate?: string;
   trend?: 'up' | 'down' | 'stable';
 }
@@ -88,6 +112,7 @@ export interface DetailedStatsResponse {
   highIssues: number;
   mediumIssues: number;
   lowIssues: number;
+  infoIssues?: number;
   lastAnalysisDate?: string;
   trend?: 'up' | 'down' | 'stable';
   // Individual fields for convenience (mapped from issuesByType)
@@ -126,6 +151,7 @@ export interface AnalysisIssueSummary {
   highCount: number;
   mediumCount: number;
   lowCount: number;
+  infoCount?: number;
   securityCount: number;
   qualityCount: number;
   performanceCount: number;
@@ -150,7 +176,7 @@ export interface AnalysisIssuesResponse {
 export interface AnalysisIssue {
   id: string;
   type: string | null;
-  severity: 'high' | 'medium' | 'low';
+  severity: 'high' | 'medium' | 'low' | 'info';
   title: string;
   description: string;
   suggestedFixDescription?: string;
@@ -205,13 +231,13 @@ class AnalysisService extends ApiService {
     comment?: string,
     resolvedByPr?: number,
     resolvedCommitHash?: string
-  ): Promise<any> {
+  ): Promise<IssueStatusUpdateResponse> {
     const body: IssueStatusUpdateRequest = { isResolved };
     if (comment) body.comment = comment;
     if (resolvedByPr) body.resolvedByPr = resolvedByPr;
     if (resolvedCommitHash) body.resolvedCommitHash = resolvedCommitHash;
     
-    return this.request<any>(`/${workspaceSlug}/projects/${namespace}/analysis/issues/${issueId}/status`, {
+    return this.request<IssueStatusUpdateResponse>(`/${workspaceSlug}/projects/${namespace}/analysis/issues/${issueId}/status`, {
       method: 'PUT',
       body: JSON.stringify(body),
     }, true);

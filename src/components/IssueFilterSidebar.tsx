@@ -123,6 +123,12 @@ export default function IssueFilterSidebar({ filters, onFiltersChange, issueCoun
                   Low
                 </Label>
               </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="INFO" id="severity-info" />
+                <Label htmlFor="severity-info" className="font-normal cursor-pointer">
+                  Info
+                </Label>
+              </div>
             </RadioGroup>
           </div>
 

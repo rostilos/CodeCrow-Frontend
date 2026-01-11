@@ -201,7 +201,7 @@ export default function IssueDetails() {
       // Use the issue's commit hash as context for the resolution
       const commitHash = issue?.commitHash || undefined;
       
-      await analysisService.updateIssueStatus(
+      const response = await analysisService.updateIssueStatus(
         currentWorkspace.slug, 
         namespace, 
         issueId, 
@@ -210,6 +210,10 @@ export default function IssueDetails() {
         isResolved ? prNumber : undefined,
         isResolved ? commitHash : undefined
       );
+      
+      if (!response.success) {
+        throw new Error(response.errorMessage || 'Failed to update issue status');
+      }
       
       // Update local state with resolution info
       const now = new Date().toISOString();

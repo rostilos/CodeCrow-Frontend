@@ -185,7 +185,7 @@ export default function BranchIssues() {
       const issueToUpdate = issues.find(i => i.id === issueId);
       const commitHash = issueToUpdate?.commitHash || undefined;
       
-      await analysisService.updateIssueStatus(
+      const response = await analysisService.updateIssueStatus(
         currentWorkspace.slug, 
         namespace, 
         issueId, 
@@ -194,6 +194,10 @@ export default function BranchIssues() {
         undefined, // no PR context in branch view
         isResolved ? commitHash : undefined
       );
+      
+      if (!response.success) {
+        throw new Error(response.errorMessage || 'Failed to update issue status');
+      }
       
       setIssues(prev => prev.map(issue => 
         issue.id === issueId ? { ...issue, status: newStatus } : issue
