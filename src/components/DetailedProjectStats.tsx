@@ -181,7 +181,7 @@ export default function DetailedProjectStats({
     return (
         <div className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {onViewAllIssues && (
                     <Card
                         className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"

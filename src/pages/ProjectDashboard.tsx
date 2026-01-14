@@ -1522,7 +1522,7 @@ export default function ProjectDashboard() {
                     <div className="space-y-6">
                       {/* Issue counts summary - matching DetailedProjectStats style */}
                       {/* Use analysisIssues for preview counts (unfiltered), exclude resolved from severity counts */}
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         <Card
                           className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
                           onClick={() => setPrTab('issues')}
