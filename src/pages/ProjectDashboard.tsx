@@ -26,13 +26,14 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { projectService, ProjectDTO, VcsProvider } from '@/api_service/project/projectService';
 import { useToast } from '@/hooks/use-toast';
 import DetailedProjectStats, { DetailedProjectStatsData } from '@/components/DetailedProjectStats';
-import { analysisService } from '@/api_service/analysis/analysisService';
+import { analysisService, PullRequestsByBranchResponse } from '@/api_service/analysis/analysisService';
 import { usePermissions } from "@/hooks/usePermissions";
 import BranchPRHierarchy from '@/components/BranchPRHierarchy';
 import IssuesByFileDisplay from '@/components/IssuesByFileDisplay';
 import IssueFilterPanel, { IssueFilters } from '@/components/IssueFilterPanel';
 import JobsList from '@/components/JobsList';
 import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
+import { AnalysisResultBadge, AnalysisResultType } from '@/components/AnalysisResultBadge';
 import type { 
   AnalysisIssue, 
   PullRequestSummary,
@@ -101,7 +102,7 @@ export default function ProjectDashboard() {
   const [pullRequests, setPullRequests] = useState<PullRequestSummary[]>([]);
   const [analysisIssues, setAnalysisIssues] = useState<AnalysisIssue[]>([]);
   const [issueSummary, setIssueSummary] = useState<AnalysisIssueSummary | null>(null);
-  const [selectedPR, setSelectedPR] = useState<PullRequestSummary | null>(null);
+  const [selectedPR, setSelectedPR] = useState<PullRequestSummary | PullRequestDTO | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [maxVersion, setMaxVersion] = useState<number>(1);
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
@@ -124,6 +125,7 @@ export default function ProjectDashboard() {
   const [branchIssuesPageSize] = useState(50);
   const { canManageWorkspace } = usePermissions();
   const [branches, setBranches] = useState<string[]>([]);
+  const [prsByBranch, setPrsByBranch] = useState<PullRequestsByBranchResponse>({});
   const [defaultBranchName, setDefaultBranchName] = useState<string | null>(null);
   const [selectOpen, setSelectOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -262,6 +264,7 @@ export default function ProjectDashboard() {
       const data = await analysisService.getPullRequestsByBranch(currentWorkspace.slug, namespace);
       const branchList = Object.keys(data);
       setBranches(branchList);
+      setPrsByBranch(data);
       
       // Auto-select default branch or first branch if no selection
       const urlPrId = searchParams.get('prId');
@@ -354,7 +357,7 @@ export default function ProjectDashboard() {
     }
   };
 
-  const loadAnalysisIssuesForPR = async (pr: PullRequestSummary, version?: number) => {
+  const loadAnalysisIssuesForPR = async (pr: PullRequestSummary | PullRequestDTO, version?: number) => {
     if (!currentWorkspace || !namespace) return;
 
     // Clear selections when loading new PR
@@ -437,7 +440,7 @@ export default function ProjectDashboard() {
     }
   };
 
-  const loadPRAnalysis = async (pr: PullRequestSummary) => {
+  const loadPRAnalysis = async (pr: PullRequestSummary | PullRequestDTO) => {
     setAnalysisLoading(true);
     try {
       await loadAnalysisIssuesForPR(pr);
@@ -494,7 +497,7 @@ export default function ProjectDashboard() {
     }
   };
 
-  const handlePRChange = async (pr: PullRequestSummary) => {
+  const handlePRChange = async (pr: PullRequestSummary | PullRequestDTO) => {
     setSelectedPR(pr);
     setSelectOpen(false);
     setSelectionType('pr');
@@ -655,7 +658,7 @@ export default function ProjectDashboard() {
       // Use selected PR number if available
       const prNumber = selectedPR?.prNumber || undefined;
       
-      await analysisService.updateIssueStatus(
+      const response = await analysisService.updateIssueStatus(
         currentWorkspace.slug, 
         namespace, 
         issueId, 
@@ -665,9 +668,52 @@ export default function ProjectDashboard() {
         isResolved ? commitHash : undefined
       );
       
+      // Update the issue in local state
       setAnalysisIssues(prev => prev.map(issue => 
         issue.id === issueId ? { ...issue, status: newStatus } : issue
       ));
+      
+      // Update PR status in prsByBranch if analysisResult changed
+      if (response.success && response.analysisId && response.analysisResult !== undefined) {
+        setPrsByBranch(prev => {
+          const updated = { ...prev };
+          for (const branchName of Object.keys(updated)) {
+            updated[branchName] = updated[branchName].map(pr => {
+              // Match by PR number or analysis ID relationship
+              if (selectedPR && pr.prNumber === selectedPR.prNumber) {
+                return {
+                  ...pr,
+                  analysisResult: response.analysisResult,
+                  totalIssues: response.totalIssues,
+                  highSeverityCount: response.highSeverityCount,
+                  mediumSeverityCount: response.mediumSeverityCount,
+                  lowSeverityCount: response.lowSeverityCount,
+                  infoSeverityCount: response.infoSeverityCount,
+                };
+              }
+              return pr;
+            });
+          }
+          return updated;
+        });
+        
+        // Update selectedPR if it's a PullRequestDTO with analysisResult
+        if (selectedPR && 'analysisResult' in selectedPR) {
+          setSelectedPR(prev => {
+            if (!prev || !('analysisResult' in prev)) return prev;
+            return {
+              ...prev,
+              analysisResult: response.analysisResult,
+              totalIssues: response.totalIssues,
+              highSeverityCount: response.highSeverityCount,
+              mediumSeverityCount: response.mediumSeverityCount,
+              lowSeverityCount: response.lowSeverityCount,
+              infoSeverityCount: response.infoSeverityCount,
+            };
+          });
+        }
+      }
+      
       toast({
         title: "Success",
         description: "Issue status updated successfully",
@@ -840,7 +886,10 @@ export default function ProjectDashboard() {
     return branch.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const filteredPullRequests = pullRequests.filter((pr) => {
+  // Get all PRs from prsByBranch (which has analysisResult) instead of pullRequests
+  const allPRsFromBranches: PullRequestDTO[] = Object.values(prsByBranch).flat();
+
+  const filteredPullRequests = allPRsFromBranches.filter((pr) => {
     if (!searchQuery) return true;
     
     const searchLower = searchQuery.toLowerCase();
@@ -856,6 +905,26 @@ export default function ProjectDashboard() {
       commitHash.includes(searchLower)
     );
   });
+
+  // Helper function to get the aggregated status for a branch based on its PRs
+  const getBranchStatus = (branchName: string): AnalysisResultType => {
+    const branchPRs = prsByBranch[branchName] || [];
+    if (branchPRs.length === 0) return null;
+    
+    const prsWithStatus = branchPRs.filter(pr => pr.analysisResult);
+    if (prsWithStatus.length === 0) return null;
+    
+    // If any PR failed, the branch is considered failed
+    if (prsWithStatus.some(pr => pr.analysisResult === 'FAILED')) {
+      return 'FAILED';
+    }
+    // If all PRs with status have passed, branch is passed
+    if (prsWithStatus.every(pr => pr.analysisResult === 'PASSED')) {
+      return 'PASSED';
+    }
+    // Mixed states or all skipped
+    return 'SKIPPED';
+  };
 
   // Filtered issues based on current selection
   // For branch issues: server returns pre-filtered results for status/severity/category/filePath/dates
@@ -951,13 +1020,27 @@ export default function ProjectDashboard() {
                       <span className="truncate flex items-center gap-2">
                         <GitBranch className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{selectedBranch}</span>
+                        {getBranchStatus(selectedBranch) && (
+                          <AnalysisResultBadge 
+                            result={getBranchStatus(selectedBranch)} 
+                            size="sm" 
+                            showLabel={false}
+                          />
+                        )}
                         {defaultBranchName === selectedBranch && (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Default</Badge>
                         )}
                       </span>
                     ) : selectionType === 'pr' && selectedPR ? (
-                      <span className="truncate">
-                        PR #{selectedPR.prNumber} - {selectedPR.sourceBranchName ? `${selectedPR.sourceBranchName} → ${selectedPR.targetBranchName}` : selectedPR.targetBranchName}
+                      <span className="truncate flex items-center gap-2">
+                        <span className="truncate">PR #{selectedPR.prNumber} - {selectedPR.sourceBranchName ? `${selectedPR.sourceBranchName} → ${selectedPR.targetBranchName}` : selectedPR.targetBranchName}</span>
+                        {'analysisResult' in selectedPR && selectedPR.analysisResult && (
+                          <AnalysisResultBadge 
+                            result={selectedPR.analysisResult as AnalysisResultType} 
+                            size="sm" 
+                            showLabel={false}
+                          />
+                        )}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">Select branch or PR</span>
@@ -977,26 +1060,37 @@ export default function ProjectDashboard() {
 
                       {filteredBranches.length > 0 && (
                         <CommandGroup heading="Branches">
-                          {filteredBranches.map((branch) => (
-                            <CommandItem
-                              key={branch}
-                              value={branch}
-                              onSelect={() => handleBranchChange(branch)}
-                              className="text-sm"
-                            >
-                              <GitBranch className="mr-2 h-4 w-4 shrink-0" />
-                              <span className="truncate flex-1">{branch}</span>
-                              {defaultBranchName === branch && (
-                                <Badge variant="secondary" className="ml-2 text-[10px]">Default</Badge>
-                              )}
-                              <Check
-                                className={cn(
-                                  "ml-2 h-4 w-4 shrink-0",
-                                  selectionType === 'branch' && selectedBranch === branch ? "opacity-100" : "opacity-0"
+                          {filteredBranches.map((branch) => {
+                            const branchStatus = getBranchStatus(branch);
+                            return (
+                              <CommandItem
+                                key={branch}
+                                value={branch}
+                                onSelect={() => handleBranchChange(branch)}
+                                className="text-sm"
+                              >
+                                <GitBranch className="mr-2 h-4 w-4 shrink-0" />
+                                <span className="truncate flex-1">{branch}</span>
+                                {branchStatus && (
+                                  <AnalysisResultBadge 
+                                    result={branchStatus} 
+                                    size="sm" 
+                                    showLabel={false} 
+                                    className="ml-2"
+                                  />
                                 )}
-                              />
-                            </CommandItem>
-                          ))}
+                                {defaultBranchName === branch && (
+                                  <Badge variant="secondary" className="ml-2 text-[10px]">Default</Badge>
+                                )}
+                                <Check
+                                  className={cn(
+                                    "ml-2 h-4 w-4 shrink-0",
+                                    selectionType === 'branch' && selectedBranch === branch ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            );
+                          })}
                         </CommandGroup>
                       )}
 
@@ -1026,6 +1120,14 @@ export default function ProjectDashboard() {
                                 <span className="truncate flex-1">
                                   PR #{pr.prNumber} - {pr.sourceBranchName ? `${pr.sourceBranchName} → ${pr.targetBranchName}` : pr.targetBranchName}
                                 </span>
+                                {pr.analysisResult && (
+                                  <AnalysisResultBadge 
+                                    result={pr.analysisResult as AnalysisResultType} 
+                                    size="sm" 
+                                    showLabel={false} 
+                                    className="ml-2"
+                                  />
+                                )}
                                 {prUrl && (
                                   <a 
                                     href={prUrl} 
@@ -1332,6 +1434,12 @@ export default function ProjectDashboard() {
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
                         PR #{selectedPR.prNumber}
+                        {'analysisResult' in selectedPR && selectedPR.analysisResult && (
+                          <AnalysisResultBadge 
+                            result={selectedPR.analysisResult as AnalysisResultType} 
+                            size="md" 
+                          />
+                        )}
                         {(() => {
                           // For the latest version or single version, link to PR
                           // For older versions, link to the specific commit
@@ -1414,7 +1522,7 @@ export default function ProjectDashboard() {
                     <div className="space-y-6">
                       {/* Issue counts summary - matching DetailedProjectStats style */}
                       {/* Use analysisIssues for preview counts (unfiltered), exclude resolved from severity counts */}
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         <Card
                           className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
                           onClick={() => setPrTab('issues')}

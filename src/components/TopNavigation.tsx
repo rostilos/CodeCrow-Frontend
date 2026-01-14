@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Code, Brain, GitBranch, BookOpen, Settings, LogOut, User, Users, Menu, X } from "lucide-react";
+import { Code, Brain, GitBranch, BookOpen, Settings, LogOut, User, Users, Menu, X, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -114,6 +114,14 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                       VCS Connections
                     </NavLink>
                     <NavLink
+                      to={routes.qualityGates()}
+                      className={mobileNavLinkClass}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Shield className="h-4 w-4" />
+                      Quality Gates
+                    </NavLink>
+                    <NavLink
                       to={routes.workspaceSettings()}
                       className={mobileNavLinkClass}
                       onClick={() => setMobileMenuOpen(false)}
@@ -175,6 +183,9 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 </NavLink>
                 <NavLink to={routes.hostingSettings()} className={navLinkClass}>
                   VCS Connections
+                </NavLink>
+                <NavLink to={routes.qualityGates()} className={navLinkClass}>
+                  Quality Gates
                 </NavLink>
               </>
             )}

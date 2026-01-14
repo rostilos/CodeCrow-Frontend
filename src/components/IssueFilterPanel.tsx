@@ -86,6 +86,7 @@ export default function IssueFilterPanel({ filters, onFiltersChange, issueCount,
                 { value: 'HIGH', label: 'High' },
                 { value: 'MEDIUM', label: 'Medium' },
                 { value: 'LOW', label: 'Low' },
+                { value: 'INFO', label: 'Info' },
               ].map((option) => (
                 <div key={option.value} className="flex items-center space-x-2">
                   <RadioGroupItem value={option.value} id={`severity-${option.value}`} />

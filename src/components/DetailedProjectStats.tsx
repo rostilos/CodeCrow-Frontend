@@ -32,6 +32,7 @@ export interface DetailedProjectStatsData {
     highIssues: number;
     mediumIssues: number;
     lowIssues: number;
+    infoIssues: number;
     lastAnalysisDate?: string;
     trend?: 'up' | 'down' | 'stable';
     securityIssues: number;
@@ -67,7 +68,7 @@ interface DetailedProjectStatsProps {
     workspaceSlug: string;
     projectNamespace: string;
     branchName?: string;
-    onSeverityClick?: (severity: 'HIGH' | 'MEDIUM' | 'LOW') => void;
+    onSeverityClick?: (severity: 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO') => void;
     onViewAllIssues?: () => void;
     onViewResolvedIssues?: () => void;
     onFileClick?: (filename: string) => void;
@@ -137,6 +138,8 @@ export default function DetailedProjectStats({
                 return 'hsl(var(--warning))';
             case 'low':
                 return 'hsl(var(--muted-foreground))';
+            case 'info':
+                return 'hsl(var(--primary) / 0.6)';
             default:
                 return 'hsl(var(--muted-foreground))';
         }
@@ -152,6 +155,8 @@ export default function DetailedProjectStats({
                 return <AlertCircle className={className} style={{color: getSeverityColor('medium')}}/>;
             case 'low':
                 return <Info className={className} style={{color: getSeverityColor('low')}}/>;
+            case 'info':
+                return <Info className={className} style={{color: getSeverityColor('info')}}/>;
             default:
                 return null;
         }
@@ -176,7 +181,7 @@ export default function DetailedProjectStats({
     return (
         <div className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {onViewAllIssues && (
                     <Card
                         className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
@@ -250,6 +255,26 @@ export default function DetailedProjectStats({
                             </div>
                             <div className="p-2 rounded-lg bg-muted">
                                 {getSeverityIcon('low', 'h-5 w-5')}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card
+                    className={cn(
+                        "border-l-4 border-l-blue-400/50",
+                        onSeverityClick && "cursor-pointer hover:shadow-md transition-all duration-200"
+                    )}
+                    onClick={() => onSeverityClick?.('INFO')}
+                >
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Info</p>
+                                <p className="text-2xl font-bold mt-1">{stats.infoIssues}</p>
+                            </div>
+                            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                {getSeverityIcon('info', 'h-5 w-5')}
                             </div>
                         </div>
                     </CardContent>

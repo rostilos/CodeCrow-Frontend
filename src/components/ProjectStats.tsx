@@ -25,6 +25,8 @@ export default function ProjectStats({ stats, compact = false }: ProjectStatsPro
         return 'hsl(var(--warning))';
       case 'low':
         return 'hsl(var(--muted-foreground))';
+      case 'info':
+        return 'hsl(var(--primary) / 0.6)';
       default:
         return 'hsl(var(--muted-foreground))';
     }
@@ -38,6 +40,8 @@ export default function ProjectStats({ stats, compact = false }: ProjectStatsPro
         return <AlertCircle className={className} style={{ color: getSeverityColor('medium') }} />;
       case 'low':
         return <Info className={className} style={{ color: getSeverityColor('low') }} />;
+      case 'info':
+        return <Info className={className} style={{ color: getSeverityColor('info') }} />;
       default:
         return null;
     }

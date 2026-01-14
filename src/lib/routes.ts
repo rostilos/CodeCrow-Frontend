@@ -93,6 +93,7 @@ export const ROUTES = {
   AI_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/ai`,
   WORKSPACE_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/workspace`,
   TASK_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/tasks`,
+  QUALITY_GATES: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/quality-gates`,
   BILLING_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/billing`,
   
   // Integration routes
@@ -138,6 +139,7 @@ export function createWorkspaceRoutes(workspaceSlug: string) {
     aiSettings: () => ROUTES.AI_SETTINGS(workspaceSlug),
     workspaceSettings: () => ROUTES.WORKSPACE_SETTINGS(workspaceSlug),
     taskSettings: () => ROUTES.TASK_SETTINGS(workspaceSlug),
+    qualityGates: () => ROUTES.QUALITY_GATES(workspaceSlug),
     billingSettings: () => ROUTES.BILLING_SETTINGS(workspaceSlug),
     bitbucketConnectHandshake: () => ROUTES.BITBUCKET_CONNECT_HANDSHAKE(workspaceSlug),
   };

@@ -59,6 +59,7 @@ export interface ProjectDTO {
   active?: boolean;
   createdAt?: string;
   defaultBranchId?: number;
+  qualityGateId?: number | null;
   defaultBranchStats?: {
     branchName: string;
     totalIssues: number;
@@ -85,8 +86,10 @@ export interface BranchDTO {
   highSeverityCount: number;
   mediumSeverityCount: number;
   lowSeverityCount: number;
+  infoSeverityCount?: number;
   resolvedCount: number;
   updatedAt: string;
+  analysisResult?: 'PASSED' | 'FAILED' | 'SKIPPED' | null;
 }
 
 export interface SetDefaultBranchRequest {
@@ -372,6 +375,14 @@ class ProjectService extends ApiService {
     return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/analysis-settings`, {
       method: 'PUT',
       body: JSON.stringify(request),
+    }, true);
+  }
+
+  // Quality Gate methods
+  async updateProjectQualityGate(workspaceSlug: string, namespace: string, qualityGateId: number | null): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/quality-gate`, {
+      method: 'PUT',
+      body: JSON.stringify({ qualityGateId }),
     }, true);
   }
 

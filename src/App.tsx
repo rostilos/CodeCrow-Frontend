@@ -91,6 +91,7 @@ const IntegrationSuccess = lazy(() => import("./pages/Account/Integrations/Integ
 const BitbucketConnectHandshake = lazy(() => import("./pages/Account/Integrations/BitbucketConnectHandshake.tsx"));
 const JobsPage = lazy(() => import("./pages/Jobs/JobsPage.tsx"));
 const JobDetailPage = lazy(() => import("./pages/Jobs/JobDetailPage.tsx"));
+const QualityGatesPage = lazy(() => import("./pages/QualityGates/QualityGatesPage.tsx"));
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -201,6 +202,7 @@ const App = () => (
                           <Route path="ai" element={<AISettings />} />
                           <Route path="workspace" element={<WorkspaceManagementPage />} />
                           <Route path="tasks" element={<TaskSettings />} />
+                          <Route path="quality-gates" element={<QualityGatesPage />} />
                           <Route path="billing" element={<BillingSettings />} />
                           <Route path="hosting/:provider/success" element={<IntegrationSuccess />} />
                           <Route path="integrations/bitbucket/connect" element={<BitbucketConnectHandshake />} />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound, Shield } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -22,6 +22,7 @@ import BranchPatternConfig from "@/components/BranchPatternConfig";
 import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
 import CommentCommandsConfig from "@/components/CommentCommandsConfig";
+import { qualityGateService, QualityGate } from "@/api_service/qualitygate/qualityGateService";
 import { cn } from "@/lib/utils";
 
 interface ProjectCodeHostingConfig {
@@ -64,6 +65,11 @@ export default function ProjectConfiguration() {
   const [settingUpWebhooks, setSettingUpWebhooks] = useState(false);
   const [loadingWebhookInfo, setLoadingWebhookInfo] = useState(false);
 
+  // Quality Gate state
+  const [qualityGates, setQualityGates] = useState<QualityGate[]>([]);
+  const [selectedQualityGateId, setSelectedQualityGateId] = useState<number | null>(null);
+  const [savingQualityGate, setSavingQualityGate] = useState(false);
+
   // Redirect if user doesn't have permission
   useEffect(() => {
     if (!permissionsLoading && !canManageWorkspace()) {
@@ -80,10 +86,11 @@ export default function ProjectConfiguration() {
     if (!namespace || !currentWorkspace) return;
     setLoading(true);
     try {
-      const [proj, connections, aiConns] = await Promise.all([
+      const [proj, connections, aiConns, gates] = await Promise.all([
         projectService.getProjectByNamespace(currentWorkspace.slug, namespace).catch(() => null),
         bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []),
-        aiConnectionService.listWorkspaceConnections(currentWorkspace.slug).catch(() => [])
+        aiConnectionService.listWorkspaceConnections(currentWorkspace.slug).catch(() => []),
+        qualityGateService.getQualityGates(currentWorkspace.slug).catch(() => [])
       ]);
 
       setProject(proj);
@@ -99,10 +106,16 @@ export default function ProjectConfiguration() {
       }));
       setCodeHostingConfigs(mapped);
       setAiConnections(aiConns || []);
+      setQualityGates(gates || []);
       
       // Set current AI connection if project has one bound
       if (proj?.aiConnectionId) {
         setSelectedAiConnectionId(proj.aiConnectionId);
+      }
+      
+      // Set current quality gate if project has one bound
+      if (proj?.qualityGateId) {
+        setSelectedQualityGateId(proj.qualityGateId);
       }
       
       // Set analysis settings from project
@@ -217,6 +230,38 @@ export default function ProjectConfiguration() {
       });
     } finally {
       setSavingAnalysisSettings(false);
+    }
+  };
+
+  const handleSaveQualityGate = async () => {
+    if (!namespace || !currentWorkspace) return;
+    
+    setSavingQualityGate(true);
+    try {
+      await projectService.updateProjectQualityGate(currentWorkspace.slug, namespace, selectedQualityGateId);
+      
+      // Update local project state
+      if (project) {
+        setProject({
+          ...project,
+          qualityGateId: selectedQualityGateId
+        });
+      }
+      
+      toast({
+        title: "Success",
+        description: selectedQualityGateId 
+          ? "Quality gate assigned successfully"
+          : "Quality gate removed from project"
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to update quality gate",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingQualityGate(false);
     }
   };
 
@@ -406,6 +451,7 @@ export default function ProjectConfiguration() {
     { id: "codehosting", label: "Code Hosting", icon: FolderGit2 },
     { id: "branches", label: "Branches", icon: GitBranch },
     { id: "analysis-scope", label: "Analysis Scope", icon: Target },
+    { id: "quality-gate", label: "Quality Gate", icon: Shield },
     { id: "ai", label: "AI Connections", icon: Cpu },
     { id: "rag", label: "RAG Indexing", icon: Database },
     { id: "tasks", label: "Task Management", icon: ListTodo },
@@ -864,6 +910,154 @@ export default function ProjectConfiguration() {
               />
             )}
           </div>
+        );
+
+      case "quality-gate":
+        return (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Shield className="mr-2 h-5 w-5" />
+                  <div>
+                    <CardTitle>Quality Gate</CardTitle>
+                    <CardDescription>
+                      Configure pass/fail criteria for code analysis
+                    </CardDescription>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {project?.qualityGateId && (
+                <div className="p-4 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="font-medium text-green-800 dark:text-green-300">
+                      Quality gate assigned to this project
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              {qualityGates.length === 0 ? (
+                <div className="text-center py-8">
+                  <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">No quality gates available</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create quality gates in your workspace settings first, then assign them to projects.
+                  </p>
+                  <Button onClick={() => navigate(routes.qualityGates())}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Manage Quality Gates
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-base font-medium">Select Quality Gate</Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Choose a quality gate to define pass/fail criteria for this project's analysis.
+                    </p>
+                    <Select 
+                      value={selectedQualityGateId?.toString() || 'none'} 
+                      onValueChange={(value) => setSelectedQualityGateId(value === 'none' ? null : parseInt(value))}
+                    >
+                      <SelectTrigger className="w-full h-11">
+                        <SelectValue placeholder="Select a quality gate...">
+                          {selectedQualityGateId ? (
+                            <div className="flex items-center gap-2">
+                              <Shield className="h-4 w-4 text-primary" />
+                              <span>{qualityGates.find(g => g.id === selectedQualityGateId)?.name || 'Unknown'}</span>
+                              {qualityGates.find(g => g.id === selectedQualityGateId)?.isDefault && (
+                                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">None (no quality gate)</span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          <div className="flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">None (no quality gate)</span>
+                          </div>
+                        </SelectItem>
+                        {qualityGates.map((gate) => (
+                          <SelectItem key={gate.id} value={gate.id.toString()}>
+                            <div className="flex items-center gap-2">
+                              <Shield className="h-4 w-4 text-primary" />
+                              <span>{gate.name}</span>
+                              {gate.isDefault && (
+                                <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-2">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {selectedQualityGateId && (
+                    <div className="p-4 border rounded-lg bg-muted/50">
+                      {(() => {
+                        const gate = qualityGates.find(g => g.id === selectedQualityGateId);
+                        if (!gate) return null;
+                        return (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium">{gate.name}</h4>
+                              <span className={`text-xs px-2 py-1 rounded ${gate.active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>
+                                {gate.active ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                            {gate.description && (
+                              <p className="text-sm text-muted-foreground">{gate.description}</p>
+                            )}
+                            <div className="mt-3">
+                              <p className="text-sm font-medium mb-2">Conditions ({gate.conditions.length}):</p>
+                              <ul className="text-sm text-muted-foreground space-y-1">
+                                {gate.conditions.filter(c => c.enabled).slice(0, 3).map((c, i) => (
+                                  <li key={i} className="flex items-center gap-1">
+                                    <span className="text-xs">•</span>
+                                    {c.severity} issues {c.comparator === 'GREATER_THAN' ? '>' : c.comparator} {c.thresholdValue} → FAIL
+                                  </li>
+                                ))}
+                                {gate.conditions.filter(c => c.enabled).length > 3 && (
+                                  <li className="text-xs text-muted-foreground">
+                                    ... and {gate.conditions.filter(c => c.enabled).length - 3} more
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleSaveQualityGate}
+                      disabled={savingQualityGate || selectedQualityGateId === project?.qualityGateId}
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      {savingQualityGate ? "Saving..." : "Save Quality Gate"}
+                    </Button>
+                    <Button variant="outline" onClick={() => navigate(routes.qualityGates())}>
+                      Manage Quality Gates
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         );
 
       case "ai":
