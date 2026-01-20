@@ -128,11 +128,31 @@ const commandItems = [
 // Developer Documentation items
 const developerDocsItems = [
   { title: "Architecture", url: "/docs/dev/architecture", icon: Layers },
+  { title: "Self-Hosting", url: "/docs/dev/self-hosting", icon: Server },
   { title: "Configuration", url: "/docs/dev/configuration", icon: Settings },
-  { title: "SMTP Setup", url: "/docs/dev/smtp", icon: Mail },
-  { title: "API Reference", url: "/docs/dev/api", icon: Terminal },
-  { title: "Database Schema", url: "/docs/dev/database", icon: Database },
+  {
+    title: "Java Services",
+    icon: Code2,
+    isGroup: true,
+    items: [
+      { title: "Pipeline Agent", url: "/docs/dev/pipeline-agent", icon: Cpu },
+      { title: "Web Server", url: "/docs/dev/web-server", icon: Server },
+    ]
+  },
+  {
+    title: "Python Services",
+    icon: Brain,
+    isGroup: true,
+    items: [
+      { title: "MCP Client", url: "/docs/dev/mcp-client", icon: Brain },
+      { title: "RAG Pipeline", url: "/docs/dev/rag-pipeline", icon: Database },
+    ]
+  },
+  { title: "Jobs System", url: "/docs/dev/jobs", icon: Workflow },
   { title: "Modules", url: "/docs/dev/modules", icon: Code2 },
+  { title: "Database Schema", url: "/docs/dev/database", icon: Database },
+  { title: "API Reference", url: "/docs/dev/api", icon: Terminal },
+  { title: "SMTP Setup", url: "/docs/dev/smtp", icon: Mail },
   { title: "Deployment", url: "/docs/dev/deployment", icon: Server },
   { title: "Development Guide", url: "/docs/dev/development", icon: Wrench },
   { title: "Troubleshooting", url: "/docs/dev/troubleshooting", icon: FileCode },
