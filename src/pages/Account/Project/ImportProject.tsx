@@ -44,6 +44,7 @@ import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from 
 import { GitLabRepositoryTokenForm } from "@/components/gitlab/GitLabRepositoryTokenForm";
 import { RepositoryTokenForm, RepositoryTokenData } from "@/components/common/RepositoryTokenForm";
 import { GitLabRepositoryTokenRequest } from "@/api_service/codeHosting/gitlab/gitlabService.interface";
+import { BranchSelector } from "@/components/BranchSelector";
 import { 
   VcsConnection, 
   VcsProvider, 
@@ -510,21 +511,26 @@ export default function ImportProject() {
     }
   };
   
-  const loadBranches = async () => {
-    if (!selectedRepo || !currentWorkspace || !connectionId || !provider) return;
+  const loadBranches = async (search?: string): Promise<string[]> => {
+    if (!selectedRepo || !currentWorkspace || !connectionId || !provider) return [];
     
-    setIsLoadingBranches(true);
+    // Only show loading state for initial load
+    if (!search) {
+      setIsLoadingBranches(true);
+    }
     
     // Use main branch from repo metadata as default
     const mainBranch = selectedRepo.defaultBranch || 'main';
     
     try {
-      // Fetch branches from the API
+      // Fetch branches from the API with optional search
       const fetchedBranches = await integrationService.listBranches(
         currentWorkspace.slug,
         provider,
         parseInt(connectionId),
-        selectedRepo.id
+        selectedRepo.id,
+        search,
+        search ? 100 : 50 // Limit to 50 for initial load, 100 for search
       );
       
       // Ensure main branch and common branches are included, with main first
@@ -533,23 +539,34 @@ export default function ImportProject() {
         ...fetchedBranches.filter(b => b !== mainBranch)
       ];
       
-      setBranches(allBranches);
+      // Only update state for initial load
+      if (!search) {
+        setBranches(allBranches);
+        setSelectedMainBranch(mainBranch);
+        
+        // Auto-add main branch to patterns (it will always be required)
+        if (!prTargetPatterns.includes(mainBranch)) {
+          setPrTargetPatterns([mainBranch, ...prTargetPatterns.filter(p => p !== mainBranch)]);
+        }
+        if (!branchPushPatterns.includes(mainBranch)) {
+          setBranchPushPatterns([mainBranch, ...branchPushPatterns.filter(p => p !== mainBranch)]);
+        }
+      }
+      
+      return allBranches;
     } catch (error: any) {
       console.warn('Failed to fetch branches from API, using defaults:', error);
       // Fallback to default branches if API fails
-      setBranches([mainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i));
+      const defaultBranches = [mainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i);
+      if (!search) {
+        setBranches(defaultBranches);
+        setSelectedMainBranch(mainBranch);
+      }
+      return defaultBranches;
     } finally {
-      setIsLoadingBranches(false);
-    }
-    
-    setSelectedMainBranch(mainBranch);
-    
-    // Auto-add main branch to patterns (it will always be required)
-    if (!prTargetPatterns.includes(mainBranch)) {
-      setPrTargetPatterns([mainBranch, ...prTargetPatterns.filter(p => p !== mainBranch)]);
-    }
-    if (!branchPushPatterns.includes(mainBranch)) {
-      setBranchPushPatterns([mainBranch, ...branchPushPatterns.filter(p => p !== mainBranch)]);
+      if (!search) {
+        setIsLoadingBranches(false);
+      }
     }
   };
   
@@ -1381,62 +1398,21 @@ export default function ImportProject() {
                   <GitBranch className="h-4 w-4" />
                   Main Branch
                 </Label>
-                <Select
+                <BranchSelector
                   value={selectedMainBranch}
                   onValueChange={(value) => {
-                    if (value === '__custom__') {
-                      // Show custom input mode - handled by separate state
-                      return;
-                    }
                     setSelectedMainBranch(value);
                     if (value.trim()) {
                       setPrTargetPatterns([value, ...prTargetPatterns.filter(p => p !== value && p !== selectedMainBranch)]);
                       setBranchPushPatterns([value, ...branchPushPatterns.filter(p => p !== value && p !== selectedMainBranch)]);
                     }
                   }}
+                  onSearch={loadBranches}
+                  defaultBranches={branches.slice(0, 10)}
+                  placeholder={isLoadingBranches ? "Loading branches..." : "Select main branch"}
                   disabled={isLoadingBranches}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={isLoadingBranches ? "Loading branches..." : "Select main branch"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map((branch) => (
-                      <SelectItem key={branch} value={branch}>
-                        {branch}
-                      </SelectItem>
-                    ))}
-                    {branches.length > 0 && <SelectSeparator />}
-                    <SelectItem value="__custom__">
-                      <span className="text-muted-foreground">Enter custom branch name...</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {selectedMainBranch === '__custom__' && (
-                  <Input
-                    placeholder="Enter custom branch name"
-                    className="mt-2"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const value = (e.target as HTMLInputElement).value.trim();
-                        if (value) {
-                          setSelectedMainBranch(value);
-                          setBranches(prev => prev.includes(value) ? prev : [...prev, value]);
-                          setPrTargetPatterns([value, ...prTargetPatterns.filter(p => p !== value)]);
-                          setBranchPushPatterns([value, ...branchPushPatterns.filter(p => p !== value)]);
-                        }
-                      }
-                    }}
-                    onBlur={(e) => {
-                      const value = e.target.value.trim();
-                      if (value) {
-                        setSelectedMainBranch(value);
-                        setBranches(prev => prev.includes(value) ? prev : [...prev, value]);
-                        setPrTargetPatterns([value, ...prTargetPatterns.filter(p => p !== value)]);
-                        setBranchPushPatterns([value, ...branchPushPatterns.filter(p => p !== value)]);
-                      }
-                    }}
-                  />
-                )}
+                  allowCustom={true}
+                />
                 {isLoadingBranches ? (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -1444,10 +1420,7 @@ export default function ImportProject() {
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {branches.length > 0 
-                      ? `${branches.length} branch${branches.length > 1 ? 'es' : ''} available`
-                      : 'No branches found - enter a custom branch name'
-                    }
+                    Type to search through branches
                   </p>
                 )}
                 <Alert className="mt-2">
