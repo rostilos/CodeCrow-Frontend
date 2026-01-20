@@ -11,6 +11,10 @@ export interface CreateProjectRequest {
   repositorySlug?: string;
   repositoryUUID?: string;
   importMode?: boolean;
+  // Main branch - primary branch used for RAG indexing and as base for all analysis
+  mainBranch?: string;
+  /** @deprecated Use mainBranch instead */
+  defaultBranch?: string;
 }
 
 export interface CreateProjectTokenRequest {
@@ -29,6 +33,10 @@ export interface UpdateProjectRequest {
   name?: string;
   namespace?: string;
   description?: string;
+  // Main branch - primary branch used for RAG indexing and as base for all analysis
+  mainBranch?: string;
+  /** @deprecated Use mainBranch instead */
+  defaultBranch?: string;
 }
 
 export interface BindRepositoryRequest {
@@ -60,6 +68,8 @@ export interface ProjectDTO {
   createdAt?: string;
   defaultBranchId?: number;
   qualityGateId?: number | null;
+  // Main branch - primary branch used for RAG and analysis baseline
+  mainBranch?: string;
   defaultBranchStats?: {
     branchName: string;
     totalIssues: number;
@@ -112,12 +122,34 @@ export interface RagConfigDTO {
   enabled: boolean;
   branch: string | null;
   excludePatterns: string[] | null;
+  // Delta (hierarchical) RAG settings
+  deltaEnabled: boolean | null;
+  deltaRetentionDays: number | null;
 }
 
 export interface UpdateRagConfigRequest {
   enabled: boolean;
   branch?: string | null;
   excludePatterns?: string[] | null;
+  // Delta (hierarchical) RAG settings
+  deltaEnabled?: boolean | null;
+  deltaRetentionDays?: number | null;
+}
+
+// Delta Index types
+export interface RagDeltaIndexDTO {
+  id: number;
+  branchName: string;
+  baseBranch: string;
+  baseCommitHash: string | null;
+  deltaCommitHash: string | null;
+  collectionName: string | null;
+  chunkCount: number;
+  fileCount: number;
+  status: 'CREATING' | 'READY' | 'STALE' | 'ARCHIVED' | 'FAILED';
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Analysis settings types

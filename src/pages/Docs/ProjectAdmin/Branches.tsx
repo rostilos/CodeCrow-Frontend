@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GitBranch, CheckCircle2, AlertCircle } from "lucide-react";
+import { GitBranch, CheckCircle2, AlertCircle, AlertTriangle, Database, Layers } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function BranchesSettings() {
     return (
@@ -7,13 +8,69 @@ export default function BranchesSettings() {
             <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">Branches</h1>
                 <p className="text-muted-foreground">
-                    Define which branches are monitored and analyzed.
+                    Configure the main branch and branch monitoring patterns for your project.
                 </p>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Branch Monitoring</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                        <GitBranch className="h-5 w-5" />
+                        Main Branch
+                    </CardTitle>
+                    <CardDescription>The primary branch used for RAG indexing and as baseline for analysis.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        The <strong>Main Branch</strong> serves as the foundation for your project's code analysis:
+                    </p>
+
+                    <div className="space-y-3">
+                        <div className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
+                            <Database className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                            <div>
+                                <div className="font-medium">RAG Code Indexing</div>
+                                <p className="text-sm text-muted-foreground">
+                                    The main branch is indexed for RAG (Retrieval-Augmented Generation), enabling AI-powered contextual code analysis.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
+                            <Layers className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                            <div>
+                                <div className="font-medium">Delta Indexes for Release Branches</div>
+                                <p className="text-sm text-muted-foreground">
+                                    Release branches create delta indexes based on the main branch, tracking only the differences for efficient analysis.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
+                            <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                            <div>
+                                <div className="font-medium">Always Included in Analysis</div>
+                                <p className="text-sm text-muted-foreground">
+                                    The main branch is automatically included in PR target patterns and branch push patterns, and cannot be removed.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                            <strong>Warning:</strong> Changing the main branch after RAG indexing requires retraining. 
+                            All delta indexes will need to be rebuilt against the new main branch. 
+                            2FA verification is required when changing the main branch for projects with existing analysis.
+                        </AlertDescription>
+                    </Alert>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Branch Monitoring Patterns</CardTitle>
                     <CardDescription>Configure glob patterns for automatic analysis.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -53,12 +110,13 @@ export default function BranchesSettings() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Default Branch</CardTitle>
+                    <CardTitle>Default Branch for Statistics</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground">
                     <p>
-                        The default branch is used as the base for comparing PRs and is the primary target for RAG indexing.
-                        Ensure this matches your main development branch.
+                        The <strong>Default Branch</strong> (separate from Main Branch) determines which analyzed branch 
+                        is shown in project statistics and dashboards. This should typically be set to your main development 
+                        branch after the first analysis is complete.
                     </p>
                 </CardContent>
             </Card>

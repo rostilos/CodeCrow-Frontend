@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Database, Play, Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw, Square, Plus, X, Info } from "lucide-react";
+import { Database, Play, Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw, Square, Plus, X, Info, GitBranch, Layers } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   projectService,
   ProjectDTO,
@@ -41,6 +46,11 @@ export default function RagConfiguration({
   const [branch, setBranch] = useState(project.ragConfig?.branch ?? "");
   const [excludePatterns, setExcludePatterns] = useState<string[]>(project.ragConfig?.excludePatterns ?? []);
   const [newPattern, setNewPattern] = useState("");
+  
+  // Delta (hierarchical) RAG state
+  const [deltaEnabled, setDeltaEnabled] = useState(project.ragConfig?.deltaEnabled ?? false);
+  const [deltaRetentionDays, setDeltaRetentionDays] = useState(project.ragConfig?.deltaRetentionDays ?? 30);
+  const [isDeltaOpen, setIsDeltaOpen] = useState(false);
 
   useEffect(() => {
     loadRagStatus();
@@ -73,6 +83,9 @@ export default function RagConfiguration({
     setEnabled(project.ragConfig?.enabled ?? false);
     setBranch(project.ragConfig?.branch ?? "");
     setExcludePatterns(project.ragConfig?.excludePatterns ?? []);
+    // Delta settings
+    setDeltaEnabled(project.ragConfig?.deltaEnabled ?? false);
+    setDeltaRetentionDays(project.ragConfig?.deltaRetentionDays ?? 30);
   }, [project.ragConfig]);
 
   // Helper to check if reindex is allowed (24h cooldown after successful index)
@@ -136,6 +149,9 @@ export default function RagConfiguration({
         enabled,
         branch: branch.trim() || null,
         excludePatterns: excludePatterns.length > 0 ? excludePatterns : null,
+        // Delta settings
+        deltaEnabled: deltaEnabled || null,
+        deltaRetentionDays: deltaRetentionDays || null,
       };
       
       const updatedProject = await projectService.updateRagConfig(
@@ -324,8 +340,9 @@ export default function RagConfiguration({
   };
 
   const hasChanges = enabled !== (project.ragConfig?.enabled ?? false) ||
-    branch !== (project.ragConfig?.branch ?? "") ||
-    !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []);
+    !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []) ||
+    deltaEnabled !== (project.ragConfig?.deltaEnabled ?? false) ||
+    deltaRetentionDays !== (project.ragConfig?.deltaRetentionDays ?? 30);
 
   return (
     <Card>
@@ -377,18 +394,22 @@ export default function RagConfiguration({
           />
         </div>
 
-        {/* Branch Configuration */}
+        {/* Branch Configuration - Read-only, managed via Branches tab */}
         <div className="space-y-2">
-          <Label htmlFor="rag-branch">Index Branch</Label>
-          <Input
-            id="rag-branch"
-            placeholder="main (leave empty for default)"
-            value={branch}
-            onChange={(e) => setBranch(e.target.value)}
-            disabled={updating || !enabled}
-          />
+          <Label>Index Branch</Label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 px-3 py-2 bg-muted rounded-md border text-sm">
+              <code>{project.mainBranch || project.ragConfig?.branch || 'main'}</code>
+            </div>
+            <a 
+              href="?tab=branches"
+              className="text-sm text-primary hover:underline whitespace-nowrap"
+            >
+              Change in Branches →
+            </a>
+          </div>
           <p className="text-sm text-muted-foreground">
-            Branch to index. Leave empty to use the project's default branch.
+            RAG indexing uses the project's main branch. To change this, go to the <strong>Branches</strong> tab.
           </p>
         </div>
 
@@ -448,6 +469,75 @@ export default function RagConfiguration({
             </p>
           )}
         </div>
+
+        {/* Delta (Hierarchical) RAG Configuration */}
+        <Collapsible open={isDeltaOpen} onOpenChange={setIsDeltaOpen}>
+          <div className="rounded-lg border p-4 bg-muted/20">
+            <CollapsibleTrigger className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                <span className="font-medium">Delta Indexes (Advanced)</span>
+                <Badge variant="outline" className="text-xs">Beta</Badge>
+              </div>
+              <GitBranch className={`h-4 w-4 transition-transform ${isDeltaOpen ? 'rotate-90' : ''}`} />
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent className="pt-4 space-y-4">
+              <Alert className="bg-amber-500/10 border-amber-500/30">
+                <Info className="h-4 w-4 text-amber-500" />
+                <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
+                  <strong>Delta Indexes</strong> create lightweight indexes for branches containing only the differences from the main branch.
+                  This improves code review accuracy by providing branch-specific context instead of full codebase context.
+                </AlertDescription>
+              </Alert>
+
+              {/* Enable Delta Indexing */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="delta-enabled">Enable Delta Indexes</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Create separate indexes for branches matching your Branch Push Patterns
+                  </p>
+                </div>
+                <Switch
+                  id="delta-enabled"
+                  checked={deltaEnabled}
+                  onCheckedChange={setDeltaEnabled}
+                  disabled={updating || !enabled}
+                />
+              </div>
+
+              {/* Delta Branch Info */}
+              {deltaEnabled && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Delta indexes will be created for branches matching your <strong>Branch Push Patterns</strong> configured in the Branches tab.
+                    This ensures delta indexes are aligned with your branch analysis settings.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Delta Retention Days */}
+              <div className="space-y-2">
+                <Label htmlFor="delta-retention">Delta Index Retention (days)</Label>
+                <Input
+                  id="delta-retention"
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={deltaRetentionDays}
+                  onChange={(e) => setDeltaRetentionDays(parseInt(e.target.value) || 30)}
+                  disabled={updating || !enabled || !deltaEnabled}
+                  className="w-24"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Automatically clean up delta indexes older than this many days.
+                </p>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
 
         {/* Status Information */}
         {ragStatus?.indexStatus && (

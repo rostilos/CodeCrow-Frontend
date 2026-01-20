@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { GitBranch, Plus, X, RefreshCw, Info, Loader2 } from "lucide-react";
+import { GitBranch, Plus, X, RefreshCw, Info, Loader2, Lock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { projectService, type ProjectDTO } from "@/api_service/project/projectService";
 import { useWorkspace } from "@/context/WorkspaceContext";
@@ -112,6 +113,16 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
   };
 
   const handleRemovePrPattern = async (pattern: string) => {
+    // Prevent removing the main branch
+    const mainBranch = project.mainBranch || project.ragConfig?.branch || 'main';
+    if (pattern === mainBranch) {
+      toast({
+        title: "Cannot remove main branch",
+        description: "The main branch is required and cannot be removed from analysis patterns.",
+        variant: "destructive",
+      });
+      return;
+    }
     const newPatterns = prPatterns.filter(p => p !== pattern);
     setPrPatterns(newPatterns);
     await saveConfig(newPatterns, branchPatterns, 'pr');
@@ -128,6 +139,16 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
   };
 
   const handleRemoveBranchPattern = async (pattern: string) => {
+    // Prevent removing the main branch
+    const mainBranch = project.mainBranch || project.ragConfig?.branch || 'main';
+    if (pattern === mainBranch) {
+      toast({
+        title: "Cannot remove main branch",
+        description: "The main branch is required and cannot be removed from analysis patterns.",
+        variant: "destructive",
+      });
+      return;
+    }
     const newPatterns = branchPatterns.filter(p => p !== pattern);
     setBranchPatterns(newPatterns);
     await saveConfig(prPatterns, newPatterns, 'branch');
@@ -211,24 +232,41 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
                       </div>
                   ) : (
                       <div className="flex flex-wrap gap-2">
-                          {prPatterns.map((pattern) => (
-                              <Badge
-                                  key={pattern}
-                                  variant="secondary"
-                                  className="pl-3 pr-1 py-1.5 flex items-center gap-1"
-                              >
-                                  <code className="text-xs">{pattern}</code>
-                                  <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-5 w-5 p-0 hover:bg-destructive/20"
-                                      onClick={() => handleRemovePrPattern(pattern)}
-                                      disabled={savingPr}
-                                  >
-                                      <X className="h-3 w-3" />
-                                  </Button>
-                              </Badge>
-                          ))}
+                          {prPatterns.map((pattern) => {
+                              const mainBranch = project.mainBranch || project.ragConfig?.branch || 'main';
+                              const isMainBranch = pattern === mainBranch;
+                              return (
+                                  <TooltipProvider key={pattern}>
+                                      <Tooltip>
+                                          <TooltipTrigger asChild>
+                                              <Badge
+                                                  variant={isMainBranch ? "default" : "secondary"}
+                                                  className={`pl-3 ${isMainBranch ? 'pr-3' : 'pr-1'} py-1.5 flex items-center gap-1`}
+                                              >
+                                                  {isMainBranch && <Lock className="h-3 w-3 mr-1" />}
+                                                  <code className="text-xs">{pattern}</code>
+                                                  {!isMainBranch && (
+                                                      <Button
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          className="h-5 w-5 p-0 hover:bg-destructive/20"
+                                                          onClick={() => handleRemovePrPattern(pattern)}
+                                                          disabled={savingPr}
+                                                      >
+                                                          <X className="h-3 w-3" />
+                                                      </Button>
+                                                  )}
+                                              </Badge>
+                                          </TooltipTrigger>
+                                          {isMainBranch && (
+                                              <TooltipContent>
+                                                  <p>Main branch - cannot be removed</p>
+                                              </TooltipContent>
+                                          )}
+                                      </Tooltip>
+                                  </TooltipProvider>
+                              );
+                          })}
                       </div>
                   )}
               </CardContent>
@@ -244,7 +282,7 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
                               {savingBranch && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                           </CardTitle>
                           <CardDescription>
-                              Only analyze pushes to branches matching these patterns (e.g., main, develop)
+                              Analyze pushes to branches matching these patterns. Also used for RAG delta indexes when enabled.
                           </CardDescription>
                       </div>
                   </div>
@@ -279,24 +317,41 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
                       </div>
                   ) : (
                       <div className="flex flex-wrap gap-2">
-                          {branchPatterns.map((pattern) => (
-                              <Badge
-                                  key={pattern}
-                                  variant="secondary"
-                                  className="pl-3 pr-1 py-1.5 flex items-center gap-1"
-                              >
-                                  <code className="text-xs">{pattern}</code>
-                                  <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-5 w-5 p-0 hover:bg-destructive/20"
-                                      onClick={() => handleRemoveBranchPattern(pattern)}
-                                      disabled={savingBranch}
-                                  >
-                                      <X className="h-3 w-3" />
-                                  </Button>
-                              </Badge>
-                          ))}
+                          {branchPatterns.map((pattern) => {
+                              const mainBranch = project.mainBranch || project.ragConfig?.branch || 'main';
+                              const isMainBranch = pattern === mainBranch;
+                              return (
+                                  <TooltipProvider key={pattern}>
+                                      <Tooltip>
+                                          <TooltipTrigger asChild>
+                                              <Badge
+                                                  variant={isMainBranch ? "default" : "secondary"}
+                                                  className={`pl-3 ${isMainBranch ? 'pr-3' : 'pr-1'} py-1.5 flex items-center gap-1`}
+                                              >
+                                                  {isMainBranch && <Lock className="h-3 w-3 mr-1" />}
+                                                  <code className="text-xs">{pattern}</code>
+                                                  {!isMainBranch && (
+                                                      <Button
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          className="h-5 w-5 p-0 hover:bg-destructive/20"
+                                                          onClick={() => handleRemoveBranchPattern(pattern)}
+                                                          disabled={savingBranch}
+                                                      >
+                                                          <X className="h-3 w-3" />
+                                                      </Button>
+                                                  )}
+                                              </Badge>
+                                          </TooltipTrigger>
+                                          {isMainBranch && (
+                                              <TooltipContent>
+                                                  <p>Main branch - cannot be removed</p>
+                                              </TooltipContent>
+                                          )}
+                                      </Tooltip>
+                                  </TooltipProvider>
+                              );
+                          })}
                       </div>
                   )}
               </CardContent>

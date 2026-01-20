@@ -34,6 +34,7 @@ import IssueFilterPanel, { IssueFilters } from '@/components/IssueFilterPanel';
 import JobsList from '@/components/JobsList';
 import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
 import { AnalysisResultBadge, AnalysisResultType } from '@/components/AnalysisResultBadge';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import type { 
   AnalysisIssue, 
   PullRequestSummary,
@@ -1635,7 +1636,7 @@ export default function ProjectDashboard() {
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysisSummary}</p>
+                            <MarkdownRenderer content={analysisSummary} />
                           </CardContent>
                         </Card>
                       )}

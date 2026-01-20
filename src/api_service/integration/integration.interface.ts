@@ -75,6 +75,9 @@ export interface RepoOnboardRequest {
   projectNamespace?: string;
   projectDescription?: string;
   aiConnectionId?: number;
+  // Main branch - primary branch for RAG and analysis baseline
+  mainBranch?: string;
+  /** @deprecated Use mainBranch instead */
   defaultBranch?: string;
   prAnalysisEnabled?: boolean;
   branchAnalysisEnabled?: boolean;
