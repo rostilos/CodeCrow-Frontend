@@ -142,6 +142,21 @@ class IntegrationService extends ApiService {
     }
     return this.request<VcsRepositoryList>(url, { method: 'GET' });
   }
+
+  /**
+   * List branches in a repository.
+   */
+  async listBranches(
+    workspaceSlug: string,
+    provider: VcsProvider,
+    connectionId: number,
+    externalRepoId: string
+  ): Promise<string[]> {
+    return this.request<string[]>(
+      `/${workspaceSlug}/integrations/${provider}/repos/${encodeURIComponent(externalRepoId)}/branches?vcsConnectionId=${connectionId}`,
+      { method: 'GET' }
+    );
+  }
   
   /**
    * Get a specific repository from a VCS connection.

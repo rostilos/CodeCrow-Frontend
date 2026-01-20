@@ -19,6 +19,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import ProjectTokenManagement from "@/components/ProjectTokenManagement";
 import DefaultBranchSelector from "@/components/DefaultBranchSelector";
 import BranchPatternConfig from "@/components/BranchPatternConfig";
+import MainBranchSelector from "@/components/MainBranchSelector";
 import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
 import CommentCommandsConfig from "@/components/CommentCommandsConfig";
@@ -828,10 +829,16 @@ export default function ProjectConfiguration() {
 
       case "branches":
         return (
-          <DefaultBranchSelector 
-            project={project} 
-            onUpdate={(updatedProject) => setProject(updatedProject)}
-          />
+          <div className="space-y-4">
+            <MainBranchSelector
+              project={project}
+              onUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+            <DefaultBranchSelector 
+              project={project} 
+              onUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+          </div>
         );
 
       case "analysis-scope":

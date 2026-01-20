@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -153,7 +153,7 @@ export default function ImportProject() {
   const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
   const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
   const [branches, setBranches] = useState<string[]>([]);
-  const [selectedDefaultBranch, setSelectedDefaultBranch] = useState<string>('');
+  const [selectedMainBranch, setSelectedMainBranch] = useState<string>('');
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   
   // Branch pattern state
@@ -511,12 +511,46 @@ export default function ImportProject() {
   };
   
   const loadBranches = async () => {
-    if (!selectedRepo) return;
+    if (!selectedRepo || !currentWorkspace || !connectionId || !provider) return;
     
-    // Use default branch from repo metadata
-    const defaultBranch = selectedRepo.defaultBranch || 'main';
-    setBranches([defaultBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i));
-    setSelectedDefaultBranch(defaultBranch);
+    setIsLoadingBranches(true);
+    
+    // Use main branch from repo metadata as default
+    const mainBranch = selectedRepo.defaultBranch || 'main';
+    
+    try {
+      // Fetch branches from the API
+      const fetchedBranches = await integrationService.listBranches(
+        currentWorkspace.slug,
+        provider,
+        parseInt(connectionId),
+        selectedRepo.id
+      );
+      
+      // Ensure main branch and common branches are included, with main first
+      const allBranches = [
+        mainBranch,
+        ...fetchedBranches.filter(b => b !== mainBranch)
+      ];
+      
+      setBranches(allBranches);
+    } catch (error: any) {
+      console.warn('Failed to fetch branches from API, using defaults:', error);
+      // Fallback to default branches if API fails
+      setBranches([mainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i));
+    } finally {
+      setIsLoadingBranches(false);
+    }
+    
+    setSelectedMainBranch(mainBranch);
+    
+    // Auto-add main branch to patterns (it will always be required)
+    if (!prTargetPatterns.includes(mainBranch)) {
+      setPrTargetPatterns([mainBranch, ...prTargetPatterns.filter(p => p !== mainBranch)]);
+    }
+    if (!branchPushPatterns.includes(mainBranch)) {
+      setBranchPushPatterns([mainBranch, ...branchPushPatterns.filter(p => p !== mainBranch)]);
+    }
   };
   
   const handleNextStep = () => {
@@ -589,7 +623,8 @@ export default function ImportProject() {
           projectNamespace: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
           projectDescription: projectDescription || undefined,
           aiConnectionId: selectedAiConnectionId || undefined,
-          defaultBranch: selectedDefaultBranch || undefined,
+          mainBranch: selectedMainBranch || undefined,
+          defaultBranch: selectedMainBranch || undefined, // For backward compatibility
           prAnalysisEnabled: prAnalysisEnabled,
           branchAnalysisEnabled: branchAnalysisEnabled,
           setupWebhooks: shouldSetupWebhooks,
@@ -1340,15 +1375,29 @@ export default function ImportProject() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Default Branch */}
+              {/* Main Branch */}
               <div className="space-y-2">
-                <Label htmlFor="default-branch">Default Branch</Label>
+                <Label htmlFor="main-branch" className="text-base font-semibold flex items-center gap-2">
+                  <GitBranch className="h-4 w-4" />
+                  Main Branch
+                </Label>
                 <Select
-                  value={selectedDefaultBranch}
-                  onValueChange={setSelectedDefaultBranch}
+                  value={selectedMainBranch}
+                  onValueChange={(value) => {
+                    if (value === '__custom__') {
+                      // Show custom input mode - handled by separate state
+                      return;
+                    }
+                    setSelectedMainBranch(value);
+                    if (value.trim()) {
+                      setPrTargetPatterns([value, ...prTargetPatterns.filter(p => p !== value && p !== selectedMainBranch)]);
+                      setBranchPushPatterns([value, ...branchPushPatterns.filter(p => p !== value && p !== selectedMainBranch)]);
+                    }
+                  }}
+                  disabled={isLoadingBranches}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select default branch" />
+                    <SelectValue placeholder={isLoadingBranches ? "Loading branches..." : "Select main branch"} />
                   </SelectTrigger>
                   <SelectContent>
                     {branches.map((branch) => (
@@ -1356,11 +1405,59 @@ export default function ImportProject() {
                         {branch}
                       </SelectItem>
                     ))}
+                    {branches.length > 0 && <SelectSeparator />}
+                    <SelectItem value="__custom__">
+                      <span className="text-muted-foreground">Enter custom branch name...</span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-sm text-muted-foreground">
-                  This branch will be used as the baseline for analysis
-                </p>
+                {selectedMainBranch === '__custom__' && (
+                  <Input
+                    placeholder="Enter custom branch name"
+                    className="mt-2"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const value = (e.target as HTMLInputElement).value.trim();
+                        if (value) {
+                          setSelectedMainBranch(value);
+                          setBranches(prev => prev.includes(value) ? prev : [...prev, value]);
+                          setPrTargetPatterns([value, ...prTargetPatterns.filter(p => p !== value)]);
+                          setBranchPushPatterns([value, ...branchPushPatterns.filter(p => p !== value)]);
+                        }
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      if (value) {
+                        setSelectedMainBranch(value);
+                        setBranches(prev => prev.includes(value) ? prev : [...prev, value]);
+                        setPrTargetPatterns([value, ...prTargetPatterns.filter(p => p !== value)]);
+                        setBranchPushPatterns([value, ...branchPushPatterns.filter(p => p !== value)]);
+                      }
+                    }}
+                  />
+                )}
+                {isLoadingBranches ? (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading branches from repository...
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {branches.length > 0 
+                      ? `${branches.length} branch${branches.length > 1 ? 'es' : ''} available`
+                      : 'No branches found - enter a custom branch name'
+                    }
+                  </p>
+                )}
+                <Alert className="mt-2">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Important:</strong> The main branch is used as the baseline for RAG code indexing, 
+                    delta indexes for release branches, and is always included in analysis patterns. 
+                    It cannot be removed from branch filters.
+                  </AlertDescription>
+                </Alert>
               </div>
               
               {/* Analysis Scope */}
@@ -1456,19 +1553,30 @@ export default function ImportProject() {
                     </div>
                     {prTargetPatterns.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {prTargetPatterns.map((pattern) => (
-                          <Badge key={pattern} variant="secondary" className="pl-3 pr-1 py-1.5">
-                            <code className="text-xs">{pattern}</code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
-                              onClick={() => setPrTargetPatterns(prTargetPatterns.filter(p => p !== pattern))}
+                        {prTargetPatterns.map((pattern) => {
+                          const isMainBranch = pattern === selectedMainBranch;
+                          return (
+                            <Badge 
+                              key={pattern} 
+                              variant={isMainBranch ? "default" : "secondary"} 
+                              className={`pl-3 ${isMainBranch ? 'pr-3' : 'pr-1'} py-1.5`}
                             >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </Badge>
-                        ))}
+                              <code className="text-xs">{pattern}</code>
+                              {isMainBranch ? (
+                                <span className="ml-2 text-xs opacity-75">(required)</span>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
+                                  onClick={() => setPrTargetPatterns(prTargetPatterns.filter(p => p !== pattern))}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">
@@ -1523,19 +1631,30 @@ export default function ImportProject() {
                     </div>
                     {branchPushPatterns.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {branchPushPatterns.map((pattern) => (
-                          <Badge key={pattern} variant="secondary" className="pl-3 pr-1 py-1.5">
-                            <code className="text-xs">{pattern}</code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
-                              onClick={() => setBranchPushPatterns(branchPushPatterns.filter(p => p !== pattern))}
+                        {branchPushPatterns.map((pattern) => {
+                          const isMainBranch = pattern === selectedMainBranch;
+                          return (
+                            <Badge 
+                              key={pattern} 
+                              variant={isMainBranch ? "default" : "secondary"} 
+                              className={`pl-3 ${isMainBranch ? 'pr-3' : 'pr-1'} py-1.5`}
                             >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </Badge>
-                        ))}
+                              <code className="text-xs">{pattern}</code>
+                              {isMainBranch ? (
+                                <span className="ml-2 text-xs opacity-75">(required)</span>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
+                                  onClick={() => setBranchPushPatterns(branchPushPatterns.filter(p => p !== pattern))}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">
@@ -1552,7 +1671,7 @@ export default function ImportProject() {
                 <div className="text-sm space-y-1">
                   <div><span className="text-muted-foreground">Repository:</span> {selectedRepo?.fullName}</div>
                   <div><span className="text-muted-foreground">Project Name:</span> {projectName}</div>
-                  <div><span className="text-muted-foreground">Default Branch:</span> {selectedDefaultBranch}</div>
+                  <div><span className="text-muted-foreground">Main Branch:</span> {selectedMainBranch}</div>
                   <div><span className="text-muted-foreground">PR Analysis:</span> {prAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
                   <div><span className="text-muted-foreground">Branch Analysis:</span> {branchAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
                   {prTargetPatterns.length > 0 && (
@@ -1702,7 +1821,7 @@ export default function ImportProject() {
                 <div className="text-sm space-y-1">
                   <div><span className="text-muted-foreground">Repository:</span> {selectedRepo?.fullName}</div>
                   <div><span className="text-muted-foreground">Project Name:</span> {projectName}</div>
-                  <div><span className="text-muted-foreground">Default Branch:</span> {selectedDefaultBranch}</div>
+                  <div><span className="text-muted-foreground">Main Branch:</span> {selectedMainBranch}</div>
                   <div><span className="text-muted-foreground">PR Analysis:</span> {prAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
                   <div><span className="text-muted-foreground">Branch Analysis:</span> {branchAnalysisEnabled ? 'Enabled' : 'Disabled'}</div>
                   <div><span className="text-muted-foreground">Installation:</span> {installationMethod === 'WEBHOOK' ? 'Automatic Webhook' : 'Bitbucket Pipelines'}</div>
