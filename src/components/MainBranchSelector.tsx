@@ -47,7 +47,7 @@ interface MainBranchSelectorProps {
  * Component to view and edit the project's main branch.
  * Main branch is used as:
  * - Base for RAG code indexing
- * - Base for delta indexes (release branches)
+ * - Primary source for PR context retrieval
  * - Always included in analysis patterns (cannot be removed)
  */
 export default function MainBranchSelector({ project, onUpdate }: MainBranchSelectorProps) {
@@ -286,7 +286,7 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              The main branch is used as the baseline for RAG code indexing, delta indexes for release branches, 
+              The main branch is used as the baseline for RAG code indexing, multi-branch context retrieval for PRs, 
               and is always included in PR target and branch push analysis patterns.
             </AlertDescription>
           </Alert>
@@ -296,7 +296,7 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 <strong>Warning:</strong> Changing the main branch after analysis has been performed will require 
-                RAG retraining. All delta indexes will need to be rebuilt against the new main branch.
+                RAG retraining. All indexed branch data will need to be reprocessed against the new main branch.
               </AlertDescription>
             </Alert>
           )}
@@ -366,8 +366,8 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
                 You are about to change the main branch from <strong>{currentMainBranch}</strong> to <strong>{mainBranch}</strong>.
               </p>
               <p className="text-destructive">
-                This action will require RAG retraining. All delta indexes for release branches will need to be 
-                rebuilt against the new main branch.
+                This action will require RAG retraining. All indexed branch data will need to be 
+                reprocessed against the new main branch.
               </p>
               <p>
                 Are you sure you want to proceed?

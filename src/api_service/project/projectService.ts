@@ -122,31 +122,28 @@ export interface RagConfigDTO {
   enabled: boolean;
   branch: string | null;
   excludePatterns: string[] | null;
-  // Delta (hierarchical) RAG settings
-  deltaEnabled: boolean | null;
-  deltaRetentionDays: number | null;
+  // Multi-branch RAG settings
+  multiBranchEnabled: boolean | null;
+  branchRetentionDays: number | null;
 }
 
 export interface UpdateRagConfigRequest {
   enabled: boolean;
   branch?: string | null;
   excludePatterns?: string[] | null;
-  // Delta (hierarchical) RAG settings
-  deltaEnabled?: boolean | null;
-  deltaRetentionDays?: number | null;
+  // Multi-branch RAG settings
+  multiBranchEnabled?: boolean | null;
+  branchRetentionDays?: number | null;
 }
 
-// Delta Index types
-export interface RagDeltaIndexDTO {
+// Branch Index types
+export interface RagBranchIndexDTO {
   id: number;
   branchName: string;
-  baseBranch: string;
-  baseCommitHash: string | null;
-  deltaCommitHash: string | null;
-  collectionName: string | null;
+  commitHash: string | null;
   chunkCount: number;
   fileCount: number;
-  status: 'CREATING' | 'READY' | 'STALE' | 'ARCHIVED' | 'FAILED';
+  status: 'CREATING' | 'READY' | 'STALE' | 'FAILED';
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
