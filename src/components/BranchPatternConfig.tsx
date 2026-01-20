@@ -282,7 +282,7 @@ export default function BranchPatternConfig({ project, onUpdate }: BranchPattern
                               {savingBranch && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                           </CardTitle>
                           <CardDescription>
-                              Analyze pushes to branches matching these patterns. Also used for RAG delta indexes when enabled.
+                              Analyze pushes to branches matching these patterns. Also used for multi-branch RAG indexing when enabled.
                           </CardDescription>
                       </div>
                   </div>

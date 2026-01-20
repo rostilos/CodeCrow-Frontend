@@ -39,9 +39,9 @@ export default function BranchesSettings() {
                         <div className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
                             <Layers className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                             <div>
-                                <div className="font-medium">Delta Indexes for Release Branches</div>
+                                <div className="font-medium">Multi-Branch Context for PRs</div>
                                 <p className="text-sm text-muted-foreground">
-                                    Release branches create delta indexes based on the main branch, tracking only the differences for efficient analysis.
+                                    PR reviews retrieve context from both the main branch and target branch, with target branch changes taking priority for accurate analysis.
                                 </p>
                             </div>
                         </div>
@@ -61,7 +61,7 @@ export default function BranchesSettings() {
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription>
                             <strong>Warning:</strong> Changing the main branch after RAG indexing requires retraining. 
-                            All delta indexes will need to be rebuilt against the new main branch. 
+                            All indexed branch data will need to be reprocessed against the new main branch. 
                             2FA verification is required when changing the main branch for projects with existing analysis.
                         </AlertDescription>
                     </Alert>

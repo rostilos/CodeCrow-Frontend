@@ -47,10 +47,10 @@ export default function RagConfiguration({
   const [excludePatterns, setExcludePatterns] = useState<string[]>(project.ragConfig?.excludePatterns ?? []);
   const [newPattern, setNewPattern] = useState("");
   
-  // Delta (hierarchical) RAG state
-  const [deltaEnabled, setDeltaEnabled] = useState(project.ragConfig?.deltaEnabled ?? false);
-  const [deltaRetentionDays, setDeltaRetentionDays] = useState(project.ragConfig?.deltaRetentionDays ?? 30);
-  const [isDeltaOpen, setIsDeltaOpen] = useState(false);
+  // Multi-branch RAG state
+  const [multiBranchEnabled, setMultiBranchEnabled] = useState(project.ragConfig?.multiBranchEnabled ?? false);
+  const [branchRetentionDays, setBranchRetentionDays] = useState(project.ragConfig?.branchRetentionDays ?? 30);
+  const [isMultiBranchOpen, setIsMultiBranchOpen] = useState(false);
 
   useEffect(() => {
     loadRagStatus();
@@ -83,9 +83,9 @@ export default function RagConfiguration({
     setEnabled(project.ragConfig?.enabled ?? false);
     setBranch(project.ragConfig?.branch ?? "");
     setExcludePatterns(project.ragConfig?.excludePatterns ?? []);
-    // Delta settings
-    setDeltaEnabled(project.ragConfig?.deltaEnabled ?? false);
-    setDeltaRetentionDays(project.ragConfig?.deltaRetentionDays ?? 30);
+    // Multi-branch settings
+    setMultiBranchEnabled(project.ragConfig?.multiBranchEnabled ?? false);
+    setBranchRetentionDays(project.ragConfig?.branchRetentionDays ?? 30);
   }, [project.ragConfig]);
 
   // Helper to check if reindex is allowed (24h cooldown after successful index)
@@ -149,9 +149,9 @@ export default function RagConfiguration({
         enabled,
         branch: branch.trim() || null,
         excludePatterns: excludePatterns.length > 0 ? excludePatterns : null,
-        // Delta settings
-        deltaEnabled: deltaEnabled || null,
-        deltaRetentionDays: deltaRetentionDays || null,
+        // Multi-branch settings
+        multiBranchEnabled: multiBranchEnabled || null,
+        branchRetentionDays: branchRetentionDays || null,
       };
       
       const updatedProject = await projectService.updateRagConfig(
@@ -341,8 +341,8 @@ export default function RagConfiguration({
 
   const hasChanges = enabled !== (project.ragConfig?.enabled ?? false) ||
     !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []) ||
-    deltaEnabled !== (project.ragConfig?.deltaEnabled ?? false) ||
-    deltaRetentionDays !== (project.ragConfig?.deltaRetentionDays ?? 30);
+    multiBranchEnabled !== (project.ragConfig?.multiBranchEnabled ?? false) ||
+    branchRetentionDays !== (project.ragConfig?.branchRetentionDays ?? 30);
 
   return (
     <Card>
@@ -470,69 +470,70 @@ export default function RagConfiguration({
           )}
         </div>
 
-        {/* Delta (Hierarchical) RAG Configuration */}
-        <Collapsible open={isDeltaOpen} onOpenChange={setIsDeltaOpen}>
+        {/* Multi-Branch RAG Configuration */}
+        <Collapsible open={isMultiBranchOpen} onOpenChange={setIsMultiBranchOpen}>
           <div className="rounded-lg border p-4 bg-muted/20">
             <CollapsibleTrigger className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <Layers className="h-4 w-4 text-primary" />
-                <span className="font-medium">Delta Indexes (Advanced)</span>
+                <span className="font-medium">Multi-Branch Indexing (Advanced)</span>
                 <Badge variant="outline" className="text-xs">Beta</Badge>
               </div>
-              <GitBranch className={`h-4 w-4 transition-transform ${isDeltaOpen ? 'rotate-90' : ''}`} />
+              <GitBranch className={`h-4 w-4 transition-transform ${isMultiBranchOpen ? 'rotate-90' : ''}`} />
             </CollapsibleTrigger>
             
             <CollapsibleContent className="pt-4 space-y-4">
               <Alert className="bg-amber-500/10 border-amber-500/30">
                 <Info className="h-4 w-4 text-amber-500" />
                 <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
-                  <strong>Delta Indexes</strong> create lightweight indexes for branches containing only the differences from the main branch.
-                  This improves code review accuracy by providing branch-specific context instead of full codebase context.
+                  <strong>Multi-Branch Indexing</strong> tracks code changes across branches in a unified index.
+                  During PR review, context is retrieved from both the main branch and target branch, with branch-specific changes taking priority.
+                  This preserves cross-file relationships while providing accurate branch-specific context.
                 </AlertDescription>
               </Alert>
 
-              {/* Enable Delta Indexing */}
+              {/* Enable Multi-Branch Indexing */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="delta-enabled">Enable Delta Indexes</Label>
+                  <Label htmlFor="multi-branch-enabled">Enable Multi-Branch Indexing</Label>
                   <p className="text-sm text-muted-foreground">
-                    Create separate indexes for branches matching your Branch Push Patterns
+                    Index branches matching your Branch Push Patterns for enhanced PR analysis
                   </p>
                 </div>
                 <Switch
-                  id="delta-enabled"
-                  checked={deltaEnabled}
-                  onCheckedChange={setDeltaEnabled}
+                  id="multi-branch-enabled"
+                  checked={multiBranchEnabled}
+                  onCheckedChange={setMultiBranchEnabled}
                   disabled={updating || !enabled}
                 />
               </div>
 
-              {/* Delta Branch Info */}
-              {deltaEnabled && (
+              {/* Multi-Branch Info */}
+              {multiBranchEnabled && (
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Delta indexes will be created for branches matching your <strong>Branch Push Patterns</strong> configured in the Branches tab.
-                    This ensures delta indexes are aligned with your branch analysis settings.
+                    Branches matching your <strong>Branch Push Patterns</strong> will be indexed automatically.
+                    PR reviews will search both the target branch and main branch, with target branch changes taking priority.
                   </AlertDescription>
                 </Alert>
               )}
 
-              {/* Delta Retention Days */}
+              {/* Branch Retention Days */}
               <div className="space-y-2">
-                <Label htmlFor="delta-retention">Delta Index Retention (days)</Label>
+                <Label htmlFor="branch-retention">Branch Index Retention (days)</Label>
                 <Input
-                  id="delta-retention"
+                  id="branch-retention"
                   type="number"
                   min="1"
                   max="365"
-                  value={deltaRetentionDays}
-                  onChange={(e) => setDeltaRetentionDays(parseInt(e.target.value) || 30)}
-                  disabled={updating || !enabled || !deltaEnabled}
+                  value={branchRetentionDays}
+                  onChange={(e) => setBranchRetentionDays(parseInt(e.target.value) || 30)}
+                  disabled={updating || !enabled || !multiBranchEnabled}
                   className="w-24"
                 />
                 <p className="text-sm text-muted-foreground">
-                  Automatically clean up delta indexes older than this many days.
+                  Automatically clean up branch index data older than this many days.
                 </p>
               </div>
             </CollapsibleContent>
