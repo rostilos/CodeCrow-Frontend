@@ -145,15 +145,27 @@ class IntegrationService extends ApiService {
 
   /**
    * List branches in a repository.
+   * @param search Optional search query to filter branch names
+   * @param limit Optional maximum number of results (default: 100)
    */
   async listBranches(
     workspaceSlug: string,
     provider: VcsProvider,
     connectionId: number,
-    externalRepoId: string
+    externalRepoId: string,
+    search?: string,
+    limit?: number
   ): Promise<string[]> {
+    const params = new URLSearchParams();
+    params.set('vcsConnectionId', String(connectionId));
+    if (search) {
+      params.set('search', search);
+    }
+    if (limit !== undefined) {
+      params.set('limit', String(limit));
+    }
     return this.request<string[]>(
-      `/${workspaceSlug}/integrations/${provider}/repos/${encodeURIComponent(externalRepoId)}/branches?vcsConnectionId=${connectionId}`,
+      `/${workspaceSlug}/integrations/${provider}/repos/${encodeURIComponent(externalRepoId)}/branches?${params.toString()}`,
       { method: 'GET' }
     );
   }

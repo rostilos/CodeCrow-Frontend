@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { GitBranch, Save, Info, AlertTriangle, ShieldCheck, Loader2, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +19,7 @@ import { integrationService } from "@/api_service/integration/integrationService
 import { type VcsProvider as IntegrationVcsProvider } from "@/api_service/integration/integration.interface";
 import { twoFactorService } from "@/api_service/auth/twoFactorService";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { BranchSelector } from "@/components/BranchSelector";
 
 /**
  * Normalize VCS provider from project format (BITBUCKET_CLOUD) to integration format (bitbucket-cloud)
@@ -61,8 +61,6 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
   // Branch loading state
   const [branches, setBranches] = useState<string[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
-  const [showCustomInput, setShowCustomInput] = useState(false);
-  const [customBranch, setCustomBranch] = useState("");
   
   // 2FA state
   const [has2FA, setHas2FA] = useState(false);
@@ -95,27 +93,35 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
     }
   };
   
-  const loadBranches = async () => {
+  const loadBranches = useCallback(async (search?: string): Promise<string[]> => {
     if (!currentWorkspace || !project.vcsConnectionId || !project.vcsProvider) {
       // Fallback to common branches if no VCS connection
-      setBranches([currentMainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i));
-      return;
+      const defaultBranches = [currentMainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i);
+      if (!search) setBranches(defaultBranches);
+      return defaultBranches;
     }
     
-    setLoadingBranches(true);
+    // Only set loading for initial load
+    if (!search) {
+      setLoadingBranches(true);
+    }
+    
     try {
       // Get the repository ID - could be in projectVcsRepoSlug or projectRepoSlug
       const repoId = project.projectVcsRepoSlug || project.projectRepoSlug;
       if (!repoId) {
-        setBranches([currentMainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i));
-        return;
+        const defaultBranches = [currentMainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i);
+        if (!search) setBranches(defaultBranches);
+        return defaultBranches;
       }
       
       const fetchedBranches = await integrationService.listBranches(
         currentWorkspace.slug,
         normalizeProvider(project.vcsProvider),
         project.vcsConnectionId,
-        repoId
+        repoId,
+        search,
+        search ? 100 : 50 // Limit to 50 for initial, 100 for search
       );
       
       // Ensure current branch is at the top
@@ -123,15 +129,23 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
         currentMainBranch,
         ...fetchedBranches.filter(b => b !== currentMainBranch)
       ];
-      setBranches(allBranches);
+      
+      if (!search) {
+        setBranches(allBranches);
+      }
+      return allBranches;
     } catch (error: any) {
       console.warn('Failed to fetch branches from API:', error);
       // Fallback to common branches
-      setBranches([currentMainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i));
+      const defaultBranches = [currentMainBranch, 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i);
+      if (!search) setBranches(defaultBranches);
+      return defaultBranches;
     } finally {
-      setLoadingBranches(false);
+      if (!search) {
+        setLoadingBranches(false);
+      }
     }
-  };
+  }, [currentWorkspace, project.vcsConnectionId, project.vcsProvider, project.projectVcsRepoSlug, project.projectRepoSlug, currentMainBranch]);
   
   const hasChanges = mainBranch !== currentMainBranch;
   
@@ -290,71 +304,19 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="main-branch">Branch Name</Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={loadBranches}
-                disabled={loadingBranches || saving}
-              >
-                <RefreshCw className={`h-4 w-4 ${loadingBranches ? 'animate-spin' : ''}`} />
-              </Button>
             </div>
             <div className="flex gap-2">
-              {showCustomInput ? (
-                <Input
-                  id="main-branch"
-                  value={customBranch}
-                  onChange={(e) => setCustomBranch(e.target.value)}
-                  placeholder="Enter custom branch name"
-                  disabled={saving}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && customBranch.trim()) {
-                      setMainBranch(customBranch.trim());
-                      setShowCustomInput(false);
-                      setCustomBranch("");
-                    } else if (e.key === 'Escape') {
-                      setShowCustomInput(false);
-                      setCustomBranch("");
-                    }
-                  }}
-                  onBlur={() => {
-                    if (customBranch.trim()) {
-                      setMainBranch(customBranch.trim());
-                    }
-                    setShowCustomInput(false);
-                    setCustomBranch("");
-                  }}
-                  autoFocus
-                />
-              ) : (
-                <Select
+              <div className="flex-1">
+                <BranchSelector
                   value={mainBranch}
-                  onValueChange={(value) => {
-                    if (value === '__custom__') {
-                      setShowCustomInput(true);
-                    } else {
-                      setMainBranch(value);
-                    }
-                  }}
+                  onValueChange={setMainBranch}
+                  onSearch={loadBranches}
+                  defaultBranches={branches.slice(0, 10)}
+                  placeholder={loadingBranches ? "Loading branches..." : "Select main branch"}
                   disabled={saving || loadingBranches}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder={loadingBranches ? "Loading branches..." : "Select main branch"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map((branch) => (
-                      <SelectItem key={branch} value={branch}>
-                        {branch}
-                        {branch === currentMainBranch && " (current)"}
-                      </SelectItem>
-                    ))}
-                    {branches.length > 0 && <SelectSeparator />}
-                    <SelectItem value="__custom__">
-                      <span className="text-muted-foreground">Enter custom branch name...</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
+                  allowCustom={true}
+                />
+              </div>
               <Button 
                 onClick={handleSaveClick}
                 disabled={saving || !hasChanges || !mainBranch.trim()}
@@ -380,10 +342,7 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                {branches.length > 0 
-                  ? `${branches.length} branch${branches.length > 1 ? 'es' : ''} available from repository`
-                  : 'No branches loaded - enter a custom branch name'
-                }
+                Type to search through branches
               </p>
             )}
           </div>
