@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, CheckCircle, FileText, Clock, GitBranch, GitPullRequest, ChevronRight, ChevronLeft, Copy, ExternalLink
+  ArrowLeft, CheckCircle, FileText, Clock, GitBranch, GitPullRequest, ChevronRight, ChevronLeft, Copy, ExternalLink, User
 } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -674,6 +674,15 @@ export default function IssueDetails() {
             <Clock className="h-3 w-3" />
                   {new Date(issue.createdAt).toLocaleDateString()}
           </span>
+              {issue.vcsAuthorUsername && (
+                  <>
+                    <Separator orientation="vertical" className="h-4" />
+                    <span className="text-xs flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
+                      <User className="h-3 w-3 text-muted-foreground" />
+                      <span className="font-medium text-foreground/80">{issue.vcsAuthorUsername}</span>
+                    </span>
+                  </>
+              )}
               <Separator orientation="vertical" className="h-4" />
               {issue.prNumber && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">

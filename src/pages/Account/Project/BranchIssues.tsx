@@ -30,6 +30,7 @@ export default function BranchIssues() {
     status: 'open',
     category: 'ALL',
     filePath: '',
+    author: '',
     dateFrom: undefined,
     dateTo: undefined,
   });
@@ -41,6 +42,7 @@ export default function BranchIssues() {
       status: 'open', // Default to showing only open issues
       category: 'ALL',
       filePath: '',
+      author: '',
       dateFrom: undefined,
       dateTo: undefined,
     };
@@ -63,6 +65,11 @@ export default function BranchIssues() {
     const filePathParam = searchParams.get('filePath');
     if (filePathParam) {
       newFilters.filePath = filePathParam;
+    }
+    
+    const authorParam = searchParams.get('author');
+    if (authorParam) {
+      newFilters.author = authorParam;
     }
     
     const dateFromParam = searchParams.get('dateFrom');
@@ -107,6 +114,7 @@ export default function BranchIssues() {
           severity: activeFilters.severity,
           category: activeFilters.category,
           filePath: activeFilters.filePath,
+          author: activeFilters.author,
         }
       );
       
@@ -165,6 +173,9 @@ export default function BranchIssues() {
     }
     if (newFilters.filePath) {
       newParams.set('filePath', newFilters.filePath);
+    }
+    if (newFilters.author) {
+      newParams.set('author', newFilters.author);
     }
     if (newFilters.dateFrom) {
       newParams.set('dateFrom', newFilters.dateFrom.toISOString());

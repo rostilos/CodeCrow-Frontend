@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Calendar as CalendarIcon, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ export interface IssueFilters {
   status: string;
   category: string;
   filePath: string;
+  author: string;
   dateFrom?: Date;
   dateTo?: Date;
 }
@@ -29,16 +30,40 @@ interface IssueFilterPanelProps {
 }
 
 export default function IssueFilterPanel({ filters, onFiltersChange, issueCount, className }: IssueFilterPanelProps) {
+  // Local state for debounced text inputs
+  const [localFilePath, setLocalFilePath] = useState(filters.filePath);
+  const [localAuthor, setLocalAuthor] = useState(filters.author);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local state when external filters change (e.g., reset)
+  useEffect(() => {
+    setLocalFilePath(filters.filePath);
+    setLocalAuthor(filters.author);
+  }, [filters.filePath, filters.author]);
+
   const handleFilterChange = (key: keyof IssueFilters, value: any) => {
     onFiltersChange({ ...filters, [key]: value });
   };
 
+  // Debounced handler for text inputs
+  const handleDebouncedFilterChange = useCallback((key: keyof IssueFilters, value: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      onFiltersChange({ ...filters, [key]: value });
+    }, 250);
+  }, [filters, onFiltersChange]);
+
   const handleClearFilters = () => {
+    setLocalFilePath('');
+    setLocalAuthor('');
     onFiltersChange({
       severity: 'ALL',
       status: 'open',
       category: 'ALL',
       filePath: '',
+      author: '',
       dateFrom: undefined,
       dateTo: undefined,
     });
@@ -49,6 +74,7 @@ export default function IssueFilterPanel({ filters, onFiltersChange, issueCount,
     filters.status !== 'open' || 
     filters.category !== 'ALL' ||
     filters.filePath !== '' ||
+    filters.author !== '' ||
     filters.dateFrom !== undefined ||
     filters.dateTo !== undefined;
 
@@ -160,8 +186,27 @@ export default function IssueFilterPanel({ filters, onFiltersChange, issueCount,
             <Label className="text-sm font-medium">File Path</Label>
             <Input
               placeholder="Filter by file path..."
-              value={filters.filePath}
-              onChange={(e) => handleFilterChange('filePath', e.target.value)}
+              value={localFilePath}
+              onChange={(e) => {
+                setLocalFilePath(e.target.value);
+                handleDebouncedFilterChange('filePath', e.target.value);
+              }}
+              className="h-9"
+            />
+          </div>
+
+          <Separator />
+
+          {/* Author Filter */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Author</Label>
+            <Input
+              placeholder="Filter by author..."
+              value={localAuthor}
+              onChange={(e) => {
+                setLocalAuthor(e.target.value);
+                handleDebouncedFilterChange('author', e.target.value);
+              }}
               className="h-9"
             />
           </div>
