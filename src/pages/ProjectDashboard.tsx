@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckCircle2, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -412,6 +412,7 @@ export default function ProjectDashboard() {
           filePath: activeFilters.filePath,
           dateFrom: activeFilters.dateFrom,
           dateTo: activeFilters.dateTo,
+          author: activeFilters.author,
         }
       );
       if (append) {
@@ -584,7 +585,7 @@ export default function ProjectDashboard() {
     loadBranchIssues(branchName);
   };
 
-  const handleFiltersChange = (newFilters: IssueFilters) => {
+  const handleFiltersChange = useCallback((newFilters: IssueFilters) => {
     setFilters(newFilters);
     
     // Update URL params
@@ -615,6 +616,12 @@ export default function ProjectDashboard() {
       newParams.delete('filePath');
     }
     
+    if (newFilters.author) {
+      newParams.set('author', newFilters.author);
+    } else {
+      newParams.delete('author');
+    }
+    
     if (newFilters.dateFrom) {
       newParams.set('dateFrom', newFilters.dateFrom.toISOString());
     } else {
@@ -634,7 +641,7 @@ export default function ProjectDashboard() {
       setBranchIssuesPage(1);
       loadBranchIssues(selectedBranch, 1, false, newFilters);
     }
-  };
+  }, [searchParams, selectionType, selectedBranch, branchTab, setSearchParams]);
 
   const handlePRSelect = (pr: PullRequestDTO) => {
     const prSummary: PullRequestSummary = {
@@ -874,6 +881,15 @@ export default function ProjectDashboard() {
     // File path filter
     if (filters.filePath && issue.file) {
       if (!issue.file.toLowerCase().includes(filters.filePath.toLowerCase())) {
+        return false;
+      }
+    }
+    
+    // Author filter
+    if (filters.author) {
+      const authorLower = filters.author.toLowerCase();
+      const issueAuthor = issue.vcsAuthorUsername?.toLowerCase() || '';
+      if (!issueAuthor.includes(authorLower)) {
         return false;
       }
     }

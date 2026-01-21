@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle, BarChart3, XCircle, FileCode, ChevronRight, Clock, Code } from "lucide-react";
+import { AlertCircle, CheckCircle, BarChart3, XCircle, FileCode, ChevronRight, Clock, Code, User } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { getCategoryInfo } from "@/config/issueCategories";
 import { cn } from "@/lib/utils";
@@ -228,10 +228,16 @@ export default function IssuesByFileDisplay({
                         )}
 
                         {/* Meta info - bottom right */}
-                        <div className="flex items-center leading-none gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center leading-none gap-3 text-xs text-muted-foreground flex-wrap">
+                          {issue.vcsAuthorUsername && (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
+                              <User className="h-3 w-3 text-muted-foreground" />
+                              <span className="font-medium text-foreground/80">{issue.vcsAuthorUsername}</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-1">
-                              <span className="font-mono"> {issue.file}</span>
-                              <span className="font-mono">:{issue.line}</span>
+                              <Code className="h-3 w-3" />
+                              <span className="font-mono text-muted-foreground/80">{issue.file}:{issue.line}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />

@@ -205,6 +205,9 @@ export interface AnalysisIssue {
   resolvedByPr?: number | null;
   resolvedCommitHash?: string | null;
   resolvedAnalysisId?: number | null;
+  // VCS author info - who created the PR that introduced this issue
+  vcsAuthorId?: string | null;
+  vcsAuthorUsername?: string | null;
 }
 
 export interface AnalysisTrendData {
@@ -421,6 +424,7 @@ class AnalysisService extends ApiService {
       filePath?: string;
       dateFrom?: Date;
       dateTo?: Date;
+      author?: string;
     }
   ): Promise<{ issues: AnalysisIssue[]; total: number; page: number; pageSize: number }> {
     const params = new URLSearchParams({ 
@@ -446,9 +450,15 @@ class AnalysisService extends ApiService {
     if (filters?.dateTo) {
       params.append('dateTo', filters.dateTo.toISOString());
     }
+    if (filters?.author && filters.author !== 'ALL') {
+      params.append('author', filters.author);
+    }
+    
+    // Branch name goes as query param to avoid Cloudflare blocking encoded slashes in path
+    params.append('branchName', branchName);
     
     const response = await this.request<AnalysisIssue[] | { issues: AnalysisIssue[]; total: number; page: number; pageSize: number }>(
-      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/${encodeURIComponent(branchName)}/issues?${params.toString()}`, 
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues?${params.toString()}`, 
       {}, 
       true
     );

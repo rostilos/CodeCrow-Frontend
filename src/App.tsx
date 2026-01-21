@@ -61,6 +61,12 @@ const DevDeployment = lazy(() => import("./pages/Docs/Developer/Deployment"));
 const DevDevelopmentGuide = lazy(() => import("./pages/Docs/Developer/DevelopmentGuide"));
 const DevTroubleshooting = lazy(() => import("./pages/Docs/Developer/Troubleshooting"));
 const DevSMTPSetup = lazy(() => import("./pages/Docs/Developer/SMTPSetup"));
+const DevSelfHosting = lazy(() => import("./pages/Docs/Developer/SelfHosting"));
+const DevPipelineAgent = lazy(() => import("./pages/Docs/Developer/PipelineAgent"));
+const DevWebServer = lazy(() => import("./pages/Docs/Developer/WebServer"));
+const DevMCPClient = lazy(() => import("./pages/Docs/Developer/MCPClient"));
+const DevRAGPipeline = lazy(() => import("./pages/Docs/Developer/RAGPipeline"));
+const DevJobs = lazy(() => import("./pages/Docs/Developer/Jobs"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const DashboardLayout = lazy(() => import("./components/DashboardLayout"));
 const ProjectSetupInstructions = lazy(() => import("./pages/Account/Project/ProjectSetupInstructions.tsx"));
@@ -157,7 +163,13 @@ const App = () => (
                 <Route path="commands/ask" element={<CommandAsk />} />
                 {/* Developer Documentation */}
                 <Route path="dev/architecture" element={<DevArchitecture />} />
+                <Route path="dev/self-hosting" element={<DevSelfHosting />} />
                 <Route path="dev/configuration" element={<DevConfiguration />} />
+                <Route path="dev/pipeline-agent" element={<DevPipelineAgent />} />
+                <Route path="dev/web-server" element={<DevWebServer />} />
+                <Route path="dev/mcp-client" element={<DevMCPClient />} />
+                <Route path="dev/rag-pipeline" element={<DevRAGPipeline />} />
+                <Route path="dev/jobs" element={<DevJobs />} />
                 <Route path="dev/smtp" element={<DevSMTPSetup />} />
                 <Route path="dev/api" element={<DevAPIReference />} />
                 <Route path="dev/database" element={<DevDatabaseSchema />} />
