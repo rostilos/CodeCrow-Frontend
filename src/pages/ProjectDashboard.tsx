@@ -949,6 +949,11 @@ export default function ProjectDashboard() {
     ? branchIssues
     : filteredIssues;
 
+  // Total issue count: for branch issues use server total, for PR issues use filtered length
+  const currentIssuesTotalCount = selectionType === 'branch'
+    ? branchIssuesTotalCount
+    : filteredIssues.length;
+
   const getIssueIcon = (type: string) => {
     switch (type) {
       case 'security': return <AlertCircle className="h-4 w-4 text-red-500" />;
@@ -1174,7 +1179,7 @@ export default function ProjectDashboard() {
               </Popover>
               {selectionType === 'pr' && (
                 <span className="text-sm text-muted-foreground">
-                  {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''}
+                  {currentIssuesTotalCount} issue{currentIssuesTotalCount !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -1317,7 +1322,7 @@ export default function ProjectDashboard() {
                   <IssueFilterPanel
                     filters={filters}
                     onFiltersChange={handleFiltersChange}
-                    issueCount={currentFilteredIssues.length}
+                    issueCount={currentIssuesTotalCount}
                   />
                 </div>
 
@@ -1329,7 +1334,7 @@ export default function ProjectDashboard() {
                         <div>
                           <CardTitle className="text-lg">Branch Issues</CardTitle>
                           <CardDescription className="mt-1">
-                            {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''} found
+                            {currentIssuesTotalCount} issue{currentIssuesTotalCount !== 1 ? 's' : ''} found
                           </CardDescription>
                         </div>
                         <Button
@@ -1740,7 +1745,7 @@ export default function ProjectDashboard() {
                   <IssueFilterPanel
                     filters={filters}
                     onFiltersChange={handleFiltersChange}
-                    issueCount={currentFilteredIssues.length}
+                    issueCount={currentIssuesTotalCount}
                   />
                 </div>
 
@@ -1752,7 +1757,7 @@ export default function ProjectDashboard() {
                         <div>
                           <CardTitle className="text-lg">Analysis Issues</CardTitle>
                           <CardDescription className="mt-1">
-                            {currentFilteredIssues.length} issue{currentFilteredIssues.length !== 1 ? 's' : ''} found
+                            {currentIssuesTotalCount} issue{currentIssuesTotalCount !== 1 ? 's' : ''} found
                           </CardDescription>
                         </div>
                       </div>

@@ -20,8 +20,8 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['"Figtree"', ...fontFamily.sans],
-				heading: ['"Manrope"', ...fontFamily.sans],
+				sans: ['"DM Sans"', ...fontFamily.sans],
+				heading: ['"Space Grotesk"', ...fontFamily.sans],
 			},
 			colors: {
 				border: 'hsl(var(--border))',

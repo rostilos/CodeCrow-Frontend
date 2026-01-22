@@ -263,9 +263,36 @@ export interface RagStatusResponse {
   canStartIndexing: boolean;
 }
 
+export interface ProjectListResponse {
+  projects: ProjectDTO[];
+  page: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 class ProjectService extends ApiService {
   async listProjects(workspaceSlug: string): Promise<ProjectDTO[]> {
     return this.request<ProjectDTO[]>(`/${workspaceSlug}/project/project_list`, {}, true);
+  }
+
+  async listProjectsPaginated(
+    workspaceSlug: string, 
+    params: { search?: string; page?: number; size?: number }
+  ): Promise<ProjectListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params.search) {
+      searchParams.append('search', params.search);
+    }
+    if (params.page !== undefined) {
+      searchParams.append('page', String(params.page));
+    }
+    if (params.size !== undefined) {
+      searchParams.append('size', String(params.size));
+    }
+    const query = searchParams.toString();
+    const url = query ? `/${workspaceSlug}/project/projects?${query}` : `/${workspaceSlug}/project/projects`;
+    return this.request<ProjectListResponse>(url, {}, true);
   }
 
   async createProject(workspaceSlug: string, data: CreateProjectRequest): Promise<ProjectDTO> {

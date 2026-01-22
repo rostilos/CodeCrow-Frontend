@@ -29,9 +29,13 @@ export function usePermissions() {
     fetchUserRole();
   }, [currentWorkspace]);
 
-  const hasPermission = (requiredRoles: Array<'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER'>): boolean => {
+  const hasPermission = (requiredRoles: Array<'OWNER' | 'ADMIN' | 'MEMBER' | 'REVIEWER'>): boolean => {
     if (!userRole) return false;
     return requiredRoles.includes(userRole.role);
+  };
+
+  const isWorkspaceOwner = (): boolean => {
+    return userRole?.role === 'OWNER';
   };
 
   const canManageWorkspace = (): boolean => {
@@ -46,6 +50,7 @@ export function usePermissions() {
     userRole: userRole?.role || null,
     loading,
     hasPermission,
+    isWorkspaceOwner,
     canManageWorkspace,
     canGenerateTokens,
   };

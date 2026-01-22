@@ -57,12 +57,16 @@ CommandInput.displayName = CommandPrimitive.Input.displayName
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+    className={cn("max-h-[300px] overflow-hidden", className)}
     {...props}
-  />
+  >
+    <div className="overflow-y-auto overflow-x-hidden max-h-[inherit] overscroll-contain [&_[cmdk-list-sizer]]:!overflow-visible">
+      {children}
+    </div>
+  </CommandPrimitive.List>
 ))
 
 CommandList.displayName = CommandPrimitive.List.displayName
