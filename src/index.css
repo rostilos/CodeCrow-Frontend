@@ -187,6 +187,17 @@
     scroll-behavior: smooth;
   }
 
+  /* Fix cmdk list scrolling - override library's inline styles */
+  [cmdk-list] {
+    overflow: auto !important;
+    max-height: 300px !important;
+    overscroll-behavior: contain;
+  }
+  
+  [cmdk-list-sizer] {
+    overflow: visible !important;
+  }
+
   /* Better focus states - only for interactive elements that need it */
   button:focus-visible,
   a:focus-visible,

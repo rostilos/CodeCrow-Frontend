@@ -347,20 +347,33 @@ export default function ProjectSettings() {
                     return (
                       <Card
                         key={project.id}
-                        className="group cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/30 flex flex-col"
+                        className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/40 flex flex-col bg-gradient-to-br from-card to-card/80 overflow-hidden relative"
                         onClick={() => navigate(routes.projectDetail(project.namespace || project.id))}
                       >
-                        <CardHeader className="pb-2">
-                          <div className="flex items-start justify-between gap-2">
+                        {/* Top accent bar */}
+                        <div className={`h-1 w-full ${
+                          stats && stats.highIssues > 0 
+                            ? 'bg-gradient-to-r from-red-500 to-orange-500' 
+                            : stats && stats.totalIssues > 0 
+                              ? 'bg-gradient-to-r from-yellow-500 to-green-500'
+                              : isConfigured 
+                                ? 'bg-gradient-to-r from-primary/60 to-primary'
+                                : 'bg-gradient-to-r from-muted to-muted-foreground/20'
+                        }`} />
+                        
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                  <FolderKanban className="h-4 w-4 text-primary" />
+                                </div>
                                 <CardTitle className="text-base font-semibold group-hover:text-primary transition-colors truncate">
                                   {project.name}
                                 </CardTitle>
-                                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all shrink-0" />
                               </div>
                               {project.description && (
-                                <CardDescription className="mt-1 text-xs line-clamp-1">
+                                <CardDescription className="text-xs line-clamp-2 ml-10">
                                   {project.description}
                                 </CardDescription>
                               )}
@@ -370,90 +383,96 @@ export default function ProjectSettings() {
                                 <Button
                                   variant="ghost"
                                   size="icon-sm"
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-all hover:bg-primary/10"
                                   onClick={() => handleProjectSettings(project.namespace || String(project.id))}
                                 >
                                   <Settings className="h-3.5 w-3.5" />
                                 </Button>
                               )}
+                              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all mt-1.5" />
                             </div>
                           </div>
                         </CardHeader>
-                        <CardContent className="pt-0 pb-3 flex-1 flex flex-col">
+                        
+                        <CardContent className="pt-0 pb-4 flex-1 flex flex-col gap-3">
                           {/* Repository Info */}
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                            <GitBranch className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{getRepositoryInfo(project.projectVcsWorkspace, project.projectVcsRepoSlug)}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground px-2 py-1.5 rounded-md bg-muted/50">
+                            <GitBranch className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+                            <span className="truncate font-medium">{getRepositoryInfo(project.projectVcsWorkspace, project.projectVcsRepoSlug)}</span>
                             {project.defaultBranch && (
                               <>
-                                <span className="text-border">•</span>
-                                <span className="truncate">{project.defaultBranch}</span>
+                                <span className="text-border">→</span>
+                                <span className="truncate text-foreground/70">{project.defaultBranch}</span>
                               </>
                             )}
                           </div>
 
                           {/* Status Badges */}
-                          <div className="flex flex-wrap gap-1.5 mb-3">
+                          <div className="flex flex-wrap gap-1.5">
                             {project.vcsConnectionId ? (
-                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-green-500/10 text-green-600 border-green-200 dark:border-green-800">
+                              <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 font-medium">
                                 <CheckCircle className="h-2.5 w-2.5 mr-1" />
-                                VCS
+                                VCS Connected
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-muted text-muted-foreground">
+                              <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 bg-muted/80 text-muted-foreground border-muted-foreground/20">
                                 <Clock className="h-2.5 w-2.5 mr-1" />
-                                VCS
+                                VCS Pending
                               </Badge>
                             )}
                             {project.aiConnectionId ? (
-                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800">
+                              <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 bg-violet-500/10 text-violet-600 border-violet-500/30 dark:text-violet-400 font-medium">
                                 <Zap className="h-2.5 w-2.5 mr-1" />
-                                AI
+                                AI Enabled
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-muted text-muted-foreground">
+                              <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 bg-muted/80 text-muted-foreground border-muted-foreground/20">
                                 <Clock className="h-2.5 w-2.5 mr-1" />
-                                AI
-                              </Badge>
-                            )}
-                            {project.isActive !== false && (
-                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800">
-                                <Activity className="h-2.5 w-2.5 mr-1" />
-                                Active
+                                AI Pending
                               </Badge>
                             )}
                           </div>
 
                           {/* Analysis Stats or Empty State */}
-                          <div className="mt-auto h-full">
+                          <div className="mt-auto">
                             {stats ? (
-                              <div className="grid grid-cols-4 gap-2 p-2 rounded-lg bg-muted/40 h-full">
-                                <div className="text-center text-sm">
-                                  <div className="font-semibold">{stats.totalIssues}</div>
-                                  <div className="text-sm text-muted-foreground">Total</div>
+                              <div className="grid grid-cols-4 gap-1 p-2.5 rounded-lg bg-muted/30 border border-border/50">
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-foreground">{stats.totalIssues}</div>
+                                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</div>
                                 </div>
-                                <div className="text-center text-sm">
-                                  <div className="font-semibold text-red-500">{stats.highIssues}</div>
-                                  <div className="text-muted-foreground">High</div>
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-red-500">{stats.highIssues}</div>
+                                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">High</div>
                                 </div>
-                                <div className="text-center text-sm">
-                                  <div className="font-semibold text-yellow-500">{stats.mediumIssues}</div>
-                                  <div className="text-muted-foreground">Medium</div>
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-amber-500">{stats.mediumIssues}</div>
+                                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Med</div>
                                 </div>
-                                <div className="text-center text-sm">
-                                  <div className="font-semibold text-blue-500">{stats.lowIssues}</div>
-                                  <div className="text-muted-foreground">Low</div>
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-sky-500">{stats.lowIssues}</div>
+                                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Low</div>
                                 </div>
                               </div>
                             ) : !isConfigured ? (
-                              <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 h-full">
-                                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                                <span className="text-xs">Setup required</span>
+                              <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <div>
+                                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Setup Required</span>
+                                  <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70">Configure VCS and AI connections</p>
+                                </div>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 text-muted-foreground h-full">
-                                <Info className="h-3.5 w-3.5 shrink-0" />
-                                <span className="text-xs">Awaiting first analysis</span>
+                              <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/30 border border-border/50">
+                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                  <Activity className="h-4 w-4 text-primary/70" />
+                                </div>
+                                <div>
+                                  <span className="text-xs font-medium text-foreground/80">Ready for Analysis</span>
+                                  <p className="text-[10px] text-muted-foreground">Waiting for first code review</p>
+                                </div>
                               </div>
                             )}
                           </div>
