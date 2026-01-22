@@ -17,6 +17,7 @@ export interface VcsConnection {
   externalWorkspaceId: string | null;
   externalWorkspaceSlug: string | null;
   repoCount: number;
+  tokenExpiresAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
