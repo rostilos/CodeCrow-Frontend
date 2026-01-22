@@ -127,6 +127,17 @@ class IntegrationService extends ApiService {
   }
   
   /**
+   * Get the reconnect URL for an existing VCS connection.
+   * Used to re-authorize connections with expired or invalid tokens.
+   */
+  async getReconnectUrl(workspaceSlug: string, provider: VcsProvider, connectionId: number): Promise<InstallUrlResponse> {
+    return this.request<InstallUrlResponse>(
+      `/${workspaceSlug}/integrations/${provider}/connections/${connectionId}/reconnect-url`,
+      { method: 'GET' }
+    );
+  }
+  
+  /**
    * List repositories from a VCS connection.
    */
   async listRepositories(

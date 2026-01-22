@@ -14,6 +14,7 @@ import {
     GitBranch, 
     Github,
     Info,
+    Link2,
     Loader2, 
     Plus, 
     RefreshCw,
@@ -70,6 +71,7 @@ export default function HostingSettings() {
     const [isFetchingData, setIsFetchingData] = useState(true);
     const [isInstallingApp, setIsInstallingApp] = useState(false);
     const [syncingConnectionId, setSyncingConnectionId] = useState<number | null>(null);
+    const [reconnectingConnectionId, setReconnectingConnectionId] = useState<number | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [connectionToDelete, setConnectionToDelete] = useState<{id: number, type: 'app' | 'manual'} | null>(null);
     const {toast} = useToast();
@@ -261,6 +263,22 @@ export default function HostingSettings() {
             });
         } finally {
             setSyncingConnectionId(null);
+        }
+    };
+
+    const handleReconnect = async (connectionId: number) => {
+        if (!currentWorkspace) return;
+        try {
+            setReconnectingConnectionId(connectionId);
+            const response = await integrationService.getReconnectUrl(currentWorkspace.slug, 'bitbucket-cloud', connectionId);
+            window.location.href = response.installUrl;
+        } catch (error: any) {
+            toast({
+                title: "Reconnect failed",
+                description: error.message || "Could not start reconnection flow",
+                variant: "destructive",
+            });
+            setReconnectingConnectionId(null);
         }
     };
 
@@ -685,7 +703,23 @@ export default function HostingSettings() {
                                                     <span className="text-muted-foreground">Connected: </span>
                                                     <span className="font-medium">{new Date(connection.createdAt).toLocaleDateString()}</span>
                                                 </div>
+                                                {connection.tokenExpiresAt && (
+                                                    <div className="text-sm">
+                                                        <span className="text-muted-foreground">Token expires: </span>
+                                                        <span className={`font-medium ${new Date(connection.tokenExpiresAt) < new Date() ? 'text-destructive' : ''}`}>
+                                                            {new Date(connection.tokenExpiresAt).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
+
+                                            {/* Show reconnect warning for expired/error connections */}
+                                            {(connection.status === 'ERROR' || (connection.tokenExpiresAt && new Date(connection.tokenExpiresAt) < new Date())) && (
+                                                <div className="flex items-center gap-2 p-2 rounded bg-destructive/10 text-destructive text-sm">
+                                                    <AlertCircle className="h-4 w-4" />
+                                                    <span>Connection needs re-authorization</span>
+                                                </div>
+                                            )}
 
                                             <div className="flex space-x-2">
                                                 <Button
@@ -700,8 +734,22 @@ export default function HostingSettings() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    onClick={() => handleReconnect(connection.id)}
+                                                    disabled={reconnectingConnectionId === connection.id}
+                                                    title="Re-authorize connection"
+                                                >
+                                                    {reconnectingConnectionId === connection.id ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin"/>
+                                                    ) : (
+                                                        <Link2 className="h-4 w-4"/>
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
                                                     onClick={() => handleSyncAppConnection(connection.id)}
                                                     disabled={syncingConnectionId === connection.id}
+                                                    title="Refresh connection status"
                                                 >
                                                     {syncingConnectionId === connection.id ? (
                                                         <Loader2 className="h-4 w-4 animate-spin"/>
@@ -717,6 +765,7 @@ export default function HostingSettings() {
                                                         setConnectionToDelete({id: connection.id, type: 'app'});
                                                         setDeleteDialogOpen(true);
                                                     }}
+                                                    title="Delete connection"
                                                 >
                                                     <Trash2 className="h-4 w-4"/>
                                                 </Button>
