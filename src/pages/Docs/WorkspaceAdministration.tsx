@@ -1,6 +1,115 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Shield, Users, Mail, CheckCircle2 } from "lucide-react";
+import { UserPlus, Shield, Users, Mail, CheckCircle2, Crown, Eye, User, Check, X } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+interface RoleInfo {
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+  permissions: {
+    viewProjects: boolean;
+    viewAnalysis: boolean;
+    changeIssueStatus: boolean;
+    createProjects: boolean;
+    manageProjects: boolean;
+    manageMembers: boolean;
+    manageWorkspace: boolean;
+    transferOwnership: boolean;
+    deleteWorkspace: boolean;
+  };
+}
+
+const roles: RoleInfo[] = [
+  {
+    name: 'OWNER',
+    description: 'Full control over the workspace. Can transfer ownership and delete the workspace.',
+    icon: <Crown className="h-4 w-4" />,
+    color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+    permissions: {
+      viewProjects: true,
+      viewAnalysis: true,
+      changeIssueStatus: true,
+      createProjects: true,
+      manageProjects: true,
+      manageMembers: true,
+      manageWorkspace: true,
+      transferOwnership: true,
+      deleteWorkspace: true,
+    },
+  },
+  {
+    name: 'ADMIN',
+    description: 'Can manage workspace settings and members. Cannot transfer ownership or delete workspace.',
+    icon: <Shield className="h-4 w-4" />,
+    color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+    permissions: {
+      viewProjects: true,
+      viewAnalysis: true,
+      changeIssueStatus: true,
+      createProjects: true,
+      manageProjects: true,
+      manageMembers: true,
+      manageWorkspace: true,
+      transferOwnership: false,
+      deleteWorkspace: false,
+    },
+  },
+  {
+    name: 'REVIEWER',
+    description: 'Can review code and manage issue statuses. Ideal for code reviewers and QA.',
+    icon: <Eye className="h-4 w-4" />,
+    color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+    permissions: {
+      viewProjects: true,
+      viewAnalysis: true,
+      changeIssueStatus: true,
+      createProjects: false,
+      manageProjects: false,
+      manageMembers: false,
+      manageWorkspace: false,
+      transferOwnership: false,
+      deleteWorkspace: false,
+    },
+  },
+  {
+    name: 'MEMBER',
+    description: 'Basic access to view projects and analysis results. Read-only access.',
+    icon: <User className="h-4 w-4" />,
+    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+    permissions: {
+      viewProjects: true,
+      viewAnalysis: true,
+      changeIssueStatus: false,
+      createProjects: false,
+      manageProjects: false,
+      manageMembers: false,
+      manageWorkspace: false,
+      transferOwnership: false,
+      deleteWorkspace: false,
+    },
+  },
+];
+
+const permissionLabels: Record<string, string> = {
+  viewProjects: 'View Projects',
+  viewAnalysis: 'View Analysis Results',
+  changeIssueStatus: 'Change Issue Status (Resolved/Open)',
+  createProjects: 'Create Projects',
+  manageProjects: 'Manage Projects',
+  manageMembers: 'Manage Members',
+  manageWorkspace: 'Workspace Settings',
+  transferOwnership: 'Transfer Ownership',
+  deleteWorkspace: 'Delete Workspace',
+};
 
 export default function WorkspaceAdministration() {
     return (
@@ -48,40 +157,100 @@ export default function WorkspaceAdministration() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Permissions & Roles</CardTitle>
-                        <CardDescription>Control access to projects and settings</CardDescription>
+                        <CardTitle>Workspace Roles</CardTitle>
+                        <CardDescription>Understanding role hierarchy and permissions</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <p className="text-muted-foreground">
+                            CodeCrow uses a granular permission system with four distinct roles.
+                            The hierarchy from highest to lowest is: <strong>Owner → Admin → Reviewer → Member</strong>
+                        </p>
+                        
+                        {/* Role Cards */}
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {roles.map((role) => (
+                                <div key={role.name} className="p-4 border rounded-lg bg-muted/30">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        {role.icon}
+                                        <Badge className={role.color}>{role.name}</Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{role.description}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Permissions Matrix */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Permissions Matrix</CardTitle>
+                        <CardDescription>Detailed comparison of permissions across roles</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[250px]">Permission</TableHead>
+                                        {roles.map((role) => (
+                                            <TableHead key={role.name} className="text-center">
+                                                <Badge className={role.color}>{role.name}</Badge>
+                                            </TableHead>
+                                        ))}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {Object.entries(permissionLabels).map(([key, label]) => (
+                                        <TableRow key={key}>
+                                            <TableCell className="font-medium">{label}</TableCell>
+                                            {roles.map((role) => (
+                                                <TableCell key={`${role.name}-${key}`} className="text-center">
+                                                    {role.permissions[key as keyof typeof role.permissions] ? (
+                                                        <Check className="h-5 w-5 text-green-600 mx-auto" />
+                                                    ) : (
+                                                        <X className="h-5 w-5 text-red-400 mx-auto" />
+                                                    )}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Key Role Differences</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <p className="text-muted-foreground">
-                            CodeCrow uses a granular permission system to ensure security and proper access control.
-                        </p>
-                        <div className="grid gap-4">
-                            <div className="p-4 border rounded-lg bg-muted/30">
+                        <div className="space-y-4">
+                            <div className="p-4 border rounded-lg">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Shield className="h-4 w-4 text-primary" />
-                                    <span className="font-bold">Workspace Owner</span>
+                                    <Eye className="h-4 w-4 text-green-600" />
+                                    <span className="font-semibold">Reviewer vs Member</span>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Full control over the workspace, including billing, member management, and workspace deletion.
+                                    The key difference between <Badge className="bg-green-100 text-green-800">REVIEWER</Badge> and 
+                                    <Badge className="bg-blue-100 text-blue-800 ml-1">MEMBER</Badge> is that Reviewers can 
+                                    <strong> change issue statuses</strong> (mark as resolved/open). This makes the Reviewer role 
+                                    ideal for code reviewers, QA engineers, and team leads who need to manage analysis findings.
                                 </p>
                             </div>
-                            <div className="p-4 border rounded-lg bg-muted/30">
+                            <div className="p-4 border rounded-lg">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Shield className="h-4 w-4 text-primary" />
-                                    <span className="font-bold">Workspace Admin</span>
+                                    <Crown className="h-4 w-4 text-purple-600" />
+                                    <span className="font-semibold">Owner Exclusive Actions</span>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Can manage projects, VCS connections, and AI connections. Can invite new members.
+                                    Only the workspace <Badge className="bg-purple-100 text-purple-800">OWNER</Badge> can:
                                 </p>
-                            </div>
-                            <div className="p-4 border rounded-lg bg-muted/30">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Shield className="h-4 w-4 text-primary" />
-                                    <span className="font-bold">Member</span>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                    Can view projects and participate in code reviews. Limited access to settings.
-                                </p>
+                                <ul className="list-disc list-inside mt-2 text-sm text-muted-foreground">
+                                    <li>Transfer ownership to another member</li>
+                                    <li>Permanently delete the workspace</li>
+                                </ul>
                             </div>
                         </div>
                     </CardContent>
@@ -104,11 +273,6 @@ export default function WorkspaceAdministration() {
                         </ul>
                     </CardContent>
                 </Card>
-
-                {/* Placeholder for Screenshot */}
-                <div className="border-2 border-dashed border-muted rounded-xl p-12 text-center text-muted-foreground">
-                    [ Screenshot Placeholder: Workspace Member Management ]
-                </div>
             </div>
         </div>
     );

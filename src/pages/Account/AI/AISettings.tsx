@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Settings, Brain, Trash2, Edit, CheckCircle, XCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { ModelSelector } from "@/components/ModelSelector";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -235,6 +236,7 @@ export default function AISettings() {
                 <Label htmlFor="name">Connection Name</Label>
                 <Input
                   id="name"
+                  autoComplete="off"
                   value={newConnection.name || ''}
                   onChange={(e) => setNewConnection({ ...newConnection, name: e.target.value })}
                   placeholder="e.g., Production GPT-4, Development Claude"
@@ -264,22 +266,19 @@ export default function AISettings() {
               </div>
               <div>
                 <Label htmlFor="model">AI Model</Label>
-                <Input
-                  id="model"
+                <ModelSelector
                   value={newConnection.aiModel}
-                  onChange={(e) => setNewConnection({ ...newConnection, aiModel: e.target.value })}
-                  placeholder={
-                    newConnection.providerKey === 'OPENAI' ? 'e.g., gpt-4o-mini, gpt-4o' :
-                    newConnection.providerKey === 'ANTHROPIC' ? 'e.g., claude-sonnet-4-20250514' :
-                    newConnection.providerKey === 'GOOGLE' ? 'e.g., gemini-2.5-flash' :
-                    'e.g., anthropic/claude-sonnet-4, openai/gpt-4o'
-                  }
+                  onValueChange={(value) => setNewConnection({ ...newConnection, aiModel: value })}
+                  provider={newConnection.providerKey}
+                  placeholder="Select a model..."
+                  allowCustom={true}
                 />
               </div>
               <div>
                 <Label htmlFor="apiKey">API Key</Label>
                 <PasswordInput
                   id="apiKey"
+                  autoComplete="off"
                   value={newConnection.apiKey}
                   onChange={(e) => setNewConnection({ ...newConnection, apiKey: e.target.value })}
                   placeholder="Enter your API key"
@@ -289,6 +288,7 @@ export default function AISettings() {
                 <Label htmlFor="tokenLimitation">Token Limitation</Label>
                 <Input
                   id="tokenLimitation"
+                  autoComplete="off"
                   type="text"
                   value={newConnection.tokenLimitation}
                   onChange={(e) => setNewConnection({ ...newConnection, tokenLimitation: e.target.value })}
@@ -333,6 +333,7 @@ export default function AISettings() {
                   <Label htmlFor="edit-name">Connection Name</Label>
                   <Input
                     id="edit-name"
+                    autoComplete="off"
                     value={editingConnection.name || ''}
                     onChange={(e) => setEditingConnection({ ...editingConnection, name: e.target.value })}
                     placeholder="e.g., Production GPT-4, Development Claude"
@@ -359,22 +360,19 @@ export default function AISettings() {
                 </div>
                 <div>
                   <Label htmlFor="edit-model">AI Model</Label>
-                  <Input
-                    id="edit-model"
+                  <ModelSelector
                     value={editingConnection.aiModel}
-                    onChange={(e) => setEditingConnection({ ...editingConnection, aiModel: e.target.value })}
-                    placeholder={
-                      editingConnection.providerKey === 'OPENAI' ? 'e.g., gpt-4o-mini, gpt-4o' :
-                      editingConnection.providerKey === 'ANTHROPIC' ? 'e.g., claude-sonnet-4-20250514' :
-                      editingConnection.providerKey === 'GOOGLE' ? 'e.g., gemini-2.5-flash' :
-                      'e.g., anthropic/claude-sonnet-4, openai/gpt-4o'
-                    }
+                    onValueChange={(value) => setEditingConnection({ ...editingConnection, aiModel: value })}
+                    provider={editingConnection.providerKey}
+                    placeholder="Select a model..."
+                    allowCustom={true}
                   />
                 </div>
                 <div>
                   <Label htmlFor="edit-apiKey">API Key (leave empty to keep current)</Label>
                   <PasswordInput
                     id="edit-apiKey"
+                    autoComplete="off"
                     value={editingConnection.apiKey || ''}
                     onChange={(e) => setEditingConnection({ ...editingConnection, apiKey: e.target.value })}
                     placeholder="Enter new API key or leave empty"
@@ -384,6 +382,7 @@ export default function AISettings() {
                   <Label htmlFor="edit-tokenLimitation">Token Limitation</Label>
                   <Input
                     id="edit-tokenLimitation"
+                    autoComplete="off"
                     type="text"
                     value={String(editingConnection.tokenLimitation || '200000')}
                     onChange={(e) => setEditingConnection({ ...editingConnection, tokenLimitation: e.target.value })}

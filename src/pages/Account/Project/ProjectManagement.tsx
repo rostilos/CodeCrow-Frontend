@@ -23,7 +23,7 @@ interface Project {
   vcsConnectionId?: number;
   aiConnectionId?: number;
   projectVcsWorkspace?: string;
-  projectRepoSlug?: string;
+  projectVcsRepoSlug?: string;
   isActive?: boolean;
   createdAt: string;
   defaultBranch: string | null;
@@ -66,27 +66,45 @@ export default function ProjectSettings() {
     aiConnectionId: ""
   });
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(true);
   const { canManageWorkspace } = usePermissions();
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(projectSearchQuery);
+      setCurrentPage(0); // Reset to first page on search
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [projectSearchQuery]);
+
   const loadData = async () => {
     if (!currentWorkspace) return;
     setLoading(true);
     try {
-      let projList, bbConnections;
-      if (canManageWorkspace) {
-        projList = await projectService.listProjects(currentWorkspace.slug)
-      } else {
-        [projList, bbConnections] = await Promise.all([
-          projectService.listProjects(currentWorkspace.slug),
-          bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => [])
-        ]);
+      let bbConnections;
+      // Load paginated projects with server-side search
+      const projectsResponse = await projectService.listProjectsPaginated(
+        currentWorkspace.slug,
+        { search: debouncedSearch, page: currentPage, size: pageSize }
+      );
+
+      if (!canManageWorkspace) {
+        bbConnections = await bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []);
       }
 
+      const projList = projectsResponse.projects || [];
+      setTotalElements(projectsResponse.totalElements);
+      setTotalPages(projectsResponse.totalPages);
 
-      const mappedProjects: Project[] = (projList || []).map((p: any) => ({
+      const mappedProjects: Project[] = projList.map((p: any) => ({
         id: String(p.id),
         name: p.name,
         description: p.description || "",
@@ -94,7 +112,7 @@ export default function ProjectSettings() {
         vcsConnectionId: p.vcsConnectionId,
         aiConnectionId: p.aiConnectionId,
         projectVcsWorkspace: p.projectVcsWorkspace,
-        projectRepoSlug: p.projectRepoSlug,
+        projectVcsRepoSlug: p.projectVcsRepoSlug,
         isActive: p.isActive,
         createdAt: p.createdAt ? String(p.createdAt) : "",
         defaultBranchStats: p.defaultBranchStats,
@@ -111,7 +129,6 @@ export default function ProjectSettings() {
       }));
 
       setCodeHostingConfigs(mappedConnections);
-      // Task management not implemented yet
       setTaskManagementConfigs([]);
 
       // Map default branch stats to project stats format
@@ -140,7 +157,7 @@ export default function ProjectSettings() {
 
   useEffect(() => {
     loadData();
-  }, [currentWorkspace]);
+  }, [currentWorkspace, debouncedSearch, currentPage, pageSize]);
 
   const handleCreateProject = async () => {
     if (!newProject.name) {
@@ -269,22 +286,40 @@ export default function ProjectSettings() {
           </TabsList>
 
           <TabsContent value="list" className="space-y-6">
-            {/* Search Bar */}
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search projects..."
-                value={projectSearchQuery}
-                onChange={(e) => setProjectSearchQuery(e.target.value)}
-                className="pl-9 h-10"
-              />
+            {/* Search Bar and Page Size */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="relative max-w-md flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search projects..."
+                  value={projectSearchQuery}
+                  onChange={(e) => setProjectSearchQuery(e.target.value)}
+                  className="pl-9 h-10"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(0);
+                  }}
+                  className="h-10 px-3 py-2 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-sm text-muted-foreground">
+                  of {totalElements} projects
+                </span>
+              </div>
             </div>
 
             {/* Projects Grid */}
-            {projects.filter((project) =>
-              project.name.toLowerCase().includes(projectSearchQuery.toLowerCase())
-            ).length === 0 ? (
+            {projects.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="py-12 text-center">
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted mb-4">
@@ -304,11 +339,7 @@ export default function ProjectSettings() {
               </Card>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {projects
-                  .filter((project) =>
-                    project.name.toLowerCase().includes(projectSearchQuery.toLowerCase())
-                  )
-                  .map((project) => {
+                {projects.map((project) => {
                     const stats = projectStats[project.id];
                     const hasIssues = stats && stats.totalIssues > 0;
                     const isConfigured = project.vcsConnectionId && project.aiConnectionId;
@@ -352,7 +383,7 @@ export default function ProjectSettings() {
                           {/* Repository Info */}
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                             <GitBranch className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{getRepositoryInfo(project.projectVcsWorkspace, project.projectRepoSlug)}</span>
+                            <span className="truncate">{getRepositoryInfo(project.projectVcsWorkspace, project.projectVcsRepoSlug)}</span>
                             {project.defaultBranch && (
                               <>
                                 <span className="text-border">•</span>
@@ -364,29 +395,29 @@ export default function ProjectSettings() {
                           {/* Status Badges */}
                           <div className="flex flex-wrap gap-1.5 mb-3">
                             {project.vcsConnectionId ? (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-green-500/10 text-green-600 border-green-200 dark:border-green-800">
+                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-green-500/10 text-green-600 border-green-200 dark:border-green-800">
                                 <CheckCircle className="h-2.5 w-2.5 mr-1" />
                                 VCS
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-muted text-muted-foreground">
+                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-muted text-muted-foreground">
                                 <Clock className="h-2.5 w-2.5 mr-1" />
                                 VCS
                               </Badge>
                             )}
                             {project.aiConnectionId ? (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800">
+                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800">
                                 <Zap className="h-2.5 w-2.5 mr-1" />
                                 AI
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-muted text-muted-foreground">
+                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-muted text-muted-foreground">
                                 <Clock className="h-2.5 w-2.5 mr-1" />
                                 AI
                               </Badge>
                             )}
                             {project.isActive !== false && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800">
+                              <Badge variant="outline" className="text-sm px-1.5 py-0 h-5 bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800">
                                 <Activity className="h-2.5 w-2.5 mr-1" />
                                 Active
                               </Badge>
@@ -394,33 +425,33 @@ export default function ProjectSettings() {
                           </div>
 
                           {/* Analysis Stats or Empty State */}
-                          <div className="mt-auto">
+                          <div className="mt-auto h-full">
                             {stats ? (
-                              <div className="grid grid-cols-4 gap-2 p-2 rounded-lg bg-muted/40">
-                                <div className="text-center">
-                                  <div className="text-sm font-semibold">{stats.totalIssues}</div>
-                                  <div className="text-[10px] text-muted-foreground">Total</div>
+                              <div className="grid grid-cols-4 gap-2 p-2 rounded-lg bg-muted/40 h-full">
+                                <div className="text-center text-sm">
+                                  <div className="font-semibold">{stats.totalIssues}</div>
+                                  <div className="text-sm text-muted-foreground">Total</div>
                                 </div>
-                                <div className="text-center">
-                                  <div className="text-sm font-semibold text-red-500">{stats.highIssues}</div>
-                                  <div className="text-[10px] text-muted-foreground">High</div>
+                                <div className="text-center text-sm">
+                                  <div className="font-semibold text-red-500">{stats.highIssues}</div>
+                                  <div className="text-muted-foreground">High</div>
                                 </div>
-                                <div className="text-center">
-                                  <div className="text-sm font-semibold text-yellow-500">{stats.mediumIssues}</div>
-                                  <div className="text-[10px] text-muted-foreground">Medium</div>
+                                <div className="text-center text-sm">
+                                  <div className="font-semibold text-yellow-500">{stats.mediumIssues}</div>
+                                  <div className="text-muted-foreground">Medium</div>
                                 </div>
-                                <div className="text-center">
-                                  <div className="text-sm font-semibold text-blue-500">{stats.lowIssues}</div>
-                                  <div className="text-[10px] text-muted-foreground">Low</div>
+                                <div className="text-center text-sm">
+                                  <div className="font-semibold text-blue-500">{stats.lowIssues}</div>
+                                  <div className="text-muted-foreground">Low</div>
                                 </div>
                               </div>
                             ) : !isConfigured ? (
-                              <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                              <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 h-full">
                                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                                 <span className="text-xs">Setup required</span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 text-muted-foreground">
+                              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 text-muted-foreground h-full">
                                 <Info className="h-3.5 w-3.5 shrink-0" />
                                 <span className="text-xs">Awaiting first analysis</span>
                               </div>
@@ -430,6 +461,52 @@ export default function ProjectSettings() {
                       </Card>
                     );
                   })}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Showing {currentPage * pageSize + 1} - {Math.min((currentPage + 1) * pageSize, totalElements)} of {totalElements}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(0)}
+                    disabled={currentPage === 0}
+                  >
+                    First
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm px-2">
+                    Page {currentPage + 1} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                  >
+                    Next
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages - 1)}
+                    disabled={currentPage >= totalPages - 1}
+                  >
+                    Last
+                  </Button>
+                </div>
               </div>
             )}
           </TabsContent>
@@ -444,7 +521,7 @@ export default function ProjectSettings() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{projects.length}</div>
+                  <div className="text-3xl font-bold">{totalElements}</div>
                 </CardContent>
               </Card>
 

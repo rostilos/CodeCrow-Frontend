@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, UserPlus, Mail, Shield, Trash2, Copy, CheckCircle, UserCog } from 'lucide-react';
+import { Users, UserPlus, Shield, UserCog } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { workspaceService, WorkspaceMemberDTO, InviteRequest, ChangeRoleRequest, RemoveMemberRequest } from '@/api_service/workspace/workspaceService';
+import { workspaceService, WorkspaceMemberDTO, InviteRequest } from '@/api_service/workspace/workspaceService';
 import { authService } from '@/api_service/auth/authService';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Badge } from '@/components/ui/badge';
@@ -129,7 +129,7 @@ export default function WorkspaceManagement() {
     try {
       await workspaceService.changeRole(currentWorkspace.slug, {
         username: selectedMember.username,
-        newRole: newRole as 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER'
+        newRole: newRole as 'ADMIN' | 'MEMBER' | 'REVIEWER'
       });
       toast({
         title: "Success",
@@ -147,27 +147,6 @@ export default function WorkspaceManagement() {
     }
   };
 
-  const handleRemoveMember = async (member: WorkspaceMemberDTO) => {
-    if (!currentWorkspace) return;
-
-    try {
-      await workspaceService.removeMember(currentWorkspace.slug, {
-        username: member.username
-      });
-      toast({
-        title: "Success",
-        description: `${member.username} has been removed from the workspace`
-      });
-      await loadMembers();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to remove member",
-        variant: "destructive"
-      });
-    }
-  };
-
   const openChangeRoleDialog = (member: WorkspaceMemberDTO) => {
     setSelectedMember(member);
     setNewRole(member.role);
@@ -179,7 +158,7 @@ export default function WorkspaceManagement() {
       case 'owner': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       case 'admin': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       case 'member': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'viewer': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'reviewer': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
   };
@@ -258,7 +237,7 @@ export default function WorkspaceManagement() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="VIEWER">Viewer</SelectItem>
+                          <SelectItem value="REVIEWER">Reviewer</SelectItem>
                           <SelectItem value="MEMBER">Member</SelectItem>
                           <SelectItem value="ADMIN">Admin</SelectItem>
                         </SelectContent>
@@ -315,7 +294,7 @@ export default function WorkspaceManagement() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="VIEWER">Viewer</SelectItem>
+                          <SelectItem value="REVIEWER">Reviewer</SelectItem>
                           <SelectItem value="MEMBER">Member</SelectItem>
                           <SelectItem value="ADMIN">Admin</SelectItem>
                         </SelectContent>
@@ -368,20 +347,16 @@ export default function WorkspaceManagement() {
                     <Badge className={getRoleColor(member.role)}>
                       {member.role}
                     </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openChangeRoleDialog(member)}
-                    >
-                      <UserCog className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveMember(member)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    {member.role !== 'OWNER' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openChangeRoleDialog(member)}
+                        title="Change role"
+                      >
+                        <UserCog className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
@@ -410,10 +385,9 @@ export default function WorkspaceManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="VIEWER">Viewer</SelectItem>
+                  <SelectItem value="REVIEWER">Reviewer</SelectItem>
                   <SelectItem value="MEMBER">Member</SelectItem>
                   <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="OWNER">Owner</SelectItem>
                 </SelectContent>
               </Select>
             </div>
