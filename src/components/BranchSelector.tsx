@@ -191,7 +191,7 @@ export function BranchSelector({
             />
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           </div>
-          <CommandList className="max-h-[300px]">
+          <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
             {showCustomInput ? (
               <div className="p-2 space-y-2">
                 <p className="text-xs text-muted-foreground px-2">

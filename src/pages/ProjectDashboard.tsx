@@ -904,7 +904,10 @@ export default function ProjectDashboard() {
   });
 
   // Get all PRs from prsByBranch (which has analysisResult) instead of pullRequests
-  const allPRsFromBranches: PullRequestDTO[] = Object.values(prsByBranch).flat();
+  // Sort by PR number descending (latest first)
+  const allPRsFromBranches: PullRequestDTO[] = Object.values(prsByBranch)
+    .flat()
+    .sort((a, b) => b.prNumber - a.prNumber);
 
   const filteredPullRequests = allPRsFromBranches.filter((pr) => {
     if (!searchQuery) return true;

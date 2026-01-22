@@ -9,7 +9,11 @@ import {
     GitBranch,
     Activity,
     BarChart3,
-    CheckCircle2
+    CheckCircle2,
+    FileCode,
+    Percent,
+    Clock,
+    Target
 } from 'lucide-react';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
@@ -17,7 +21,7 @@ import {Badge} from '@/components/ui/badge';
 import {Progress} from '@/components/ui/progress';
 import {ProjectStatsData} from './ProjectStats';
 import {ChartContainer, ChartTooltip, ChartTooltipContent} from '@/components/ui/chart';
-import {LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer} from 'recharts';
+import {LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Tooltip, Legend} from 'recharts';
 import {analysisService, AnalysisTrendData, BranchIssuesTrendPoint} from '@/api_service/analysis/analysisService';
 import {format} from 'date-fns';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
@@ -42,6 +46,7 @@ export interface DetailedProjectStatsData {
     resolvedIssuesCount: number;
     openIssuesCount: number;
     ignoredIssuesCount: number;
+    qualityScore?: string;
     averageResolutionTime?: number;
     issuesTrendData?: Array<{
         date: string;
@@ -425,20 +430,114 @@ export default function DetailedProjectStats({
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="history">History</TabsTrigger>
                     <TabsTrigger value="files">Top Files</TabsTrigger>
-                    <TabsTrigger value="branches">Branches</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="mt-4 space-y-4">
+                    {/* Key Metrics Row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Resolution Rate */}
+                        <Card className="border-l-4 border-l-green-500">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resolution Rate</p>
+                                        <p className="text-2xl font-bold mt-1">
+                                            {stats.totalIssues + (stats.resolvedIssuesCount || 0) > 0 
+                                                ? `${Math.round(((stats.resolvedIssuesCount || 0) / (stats.totalIssues + (stats.resolvedIssuesCount || 0))) * 100)}%`
+                                                : '0%'}
+                                        </p>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                                        <Percent className="h-5 w-5 text-green-600"/>
+                                    </div>
+                                </div>
+                                <Progress 
+                                    value={stats.totalIssues + (stats.resolvedIssuesCount || 0) > 0 
+                                        ? ((stats.resolvedIssuesCount || 0) / (stats.totalIssues + (stats.resolvedIssuesCount || 0))) * 100 
+                                        : 0} 
+                                    className="h-1.5 mt-3"
+                                />
+                            </CardContent>
+                        </Card>
+
+                        {/* High Severity Rate */}
+                        <Card className="border-l-4 border-l-destructive">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">High Severity %</p>
+                                        <p className="text-2xl font-bold mt-1">
+                                            {stats.totalIssues > 0 
+                                                ? `${Math.round((stats.highIssues / stats.totalIssues) * 100)}%`
+                                                : '0%'}
+                                        </p>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-destructive/10">
+                                        <AlertTriangle className="h-5 w-5 text-destructive"/>
+                                    </div>
+                                </div>
+                                <Progress 
+                                    value={stats.totalIssues > 0 ? (stats.highIssues / stats.totalIssues) * 100 : 0} 
+                                    className="h-1.5 mt-3 [&>div]:bg-destructive"
+                                />
+                            </CardContent>
+                        </Card>
+
+                        {/* Code Quality Score */}
+                        <Card className="border-l-4 border-l-primary">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Quality Score</p>
+                                        <p className="text-2xl font-bold mt-1">
+                                            {stats.qualityScore || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-primary/10">
+                                        <Target className="h-5 w-5 text-primary"/>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Last Scan */}
+                        <Card className="border-l-4 border-l-muted-foreground/30">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last Scan</p>
+                                        <p className="text-lg font-bold mt-1">
+                                            {stats.lastAnalysisDate 
+                                                ? format(new Date(stats.lastAnalysisDate), 'MMM dd')
+                                                : 'Never'}
+                                        </p>
+                                        {stats.lastAnalysisDate && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {format(new Date(stats.lastAnalysisDate), 'HH:mm')}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-muted">
+                                        <Clock className="h-5 w-5 text-muted-foreground"/>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Trend Chart */}
                     <Card>
                         <CardHeader className="pb-4">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
                                     <CardTitle className="text-base flex items-center gap-2">
                                         <BarChart3 className="h-4 w-4"/>
-                                        Recent Analysis Trend
+                                        Analysis Trend (PRs to {branchName || 'all branches'})
                                     </CardTitle>
                                     <CardDescription className="text-xs mt-1">
-                                        {chartType === 'resolved' ? 'Issue resolution rates over time ( By PR )' : 'Total issues breakdown by severity ( By PR )'}
+                                        {chartType === 'resolved' 
+                                            ? 'Issue resolution rates from PR analyses'
+                                            : 'Issues found in PR analyses over time'}
                                     </CardDescription>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -743,63 +842,81 @@ export default function DetailedProjectStats({
                 <TabsContent value="files" className="mt-4">
                     <Card>
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-base">Files with Most Issues</CardTitle>
-                            <CardDescription className="text-xs">Files that need the most attention</CardDescription>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <FileCode className="h-4 w-4" />
+                                        Files with Most Issues
+                                    </CardTitle>
+                                    <CardDescription className="text-xs">Top 10 files that need the most attention</CardDescription>
+                                </div>
+                                {stats.topFiles && stats.topFiles.length > 0 && (
+                                    <Badge variant="secondary">
+                                        {stats.topFiles.length} file{stats.topFiles.length !== 1 ? 's' : ''}
+                                    </Badge>
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2">
                                 {stats.topFiles && stats.topFiles.length > 0 ? (
-                                    stats.topFiles.map((fileData, index) => (
-                                        <div 
-                                            key={index}
-                                            className={cn(
-                                                "flex items-center justify-between p-3 rounded-lg border",
-                                                onFileClick && "cursor-pointer hover:bg-muted/30 hover:border-primary/30 transition-all"
-                                            )}
-                                            onClick={() => onFileClick?.(fileData.file)}
-                                        >
-                                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className="p-1.5 rounded-md bg-muted shrink-0">
-                                                    {getSeverityIcon(fileData.severity, 'h-3.5 w-3.5')}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-mono text-sm truncate">{fileData.file}</p>
-                                                    <p className="text-xs text-muted-foreground">{fileData.issues} issues</p>
-                                                </div>
-                                            </div>
-                                            <Badge
-                                                variant={fileData.severity === 'critical' || fileData.severity === 'high' ? 'destructive' : 'secondary'}
-                                                className="shrink-0 ml-2"
+                                    stats.topFiles.map((fileData, index) => {
+                                        // Calculate width for issues bar (relative to max issues in list)
+                                        const maxIssues = Math.max(...stats.topFiles!.map(f => f.issues));
+                                        const barWidth = maxIssues > 0 ? (fileData.issues / maxIssues) * 100 : 0;
+                                        
+                                        return (
+                                            <div 
+                                                key={index}
+                                                className={cn(
+                                                    "relative flex items-center justify-between p-3 rounded-lg border overflow-hidden group",
+                                                    onFileClick && "cursor-pointer hover:border-primary/30 transition-all"
+                                                )}
+                                                onClick={() => onFileClick?.(fileData.file)}
                                             >
-                                                {fileData.severity}
-                                            </Badge>
-                                        </div>
-                                    ))
+                                                {/* Background bar showing relative issue count */}
+                                                <div 
+                                                    className={cn(
+                                                        "absolute inset-y-0 left-0 transition-all opacity-10",
+                                                        fileData.severity === 'critical' || fileData.severity === 'high' 
+                                                            ? 'bg-destructive' 
+                                                            : fileData.severity === 'medium' 
+                                                                ? 'bg-warning' 
+                                                                : 'bg-muted-foreground'
+                                                    )}
+                                                    style={{ width: `${barWidth}%` }}
+                                                />
+                                                
+                                                <div className="flex items-center gap-3 flex-1 min-w-0 relative z-10">
+                                                    <div className="flex items-center justify-center w-6 h-6 rounded-md bg-muted text-xs font-medium shrink-0">
+                                                        {index + 1}
+                                                    </div>
+                                                    <div className="p-1.5 rounded-md bg-muted/80 shrink-0">
+                                                        {getSeverityIcon(fileData.severity, 'h-3.5 w-3.5')}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-mono text-sm truncate group-hover:text-primary transition-colors">{fileData.file}</p>
+                                                        <p className="text-xs text-muted-foreground">{fileData.issues} issue{fileData.issues !== 1 ? 's' : ''}</p>
+                                                    </div>
+                                                </div>
+                                                <Badge
+                                                    variant={fileData.severity === 'critical' || fileData.severity === 'high' ? 'destructive' : 'secondary'}
+                                                    className="shrink-0 ml-2 relative z-10"
+                                                >
+                                                    {fileData.severity}
+                                                </Badge>
+                                            </div>
+                                        );
+                                    })
                                 ) : (
                                     <div className="text-center py-8 text-muted-foreground">
                                         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-muted mb-3">
-                                            <Activity className="h-6 w-6"/>
+                                            <FileCode className="h-6 w-6"/>
                                         </div>
                                         <p className="text-sm">No file data available</p>
+                                        <p className="text-xs mt-1">Files with issues will appear here after analysis</p>
                                     </div>
                                 )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="branches" className="mt-4">
-                    <Card>
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-base">Branch Analysis</CardTitle>
-                            <CardDescription className="text-xs">Analysis results by branch</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-center py-8 text-muted-foreground">
-                                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-muted mb-3">
-                                    <GitBranch className="h-6 w-6"/>
-                                </div>
-                                <p className="text-sm">Branch statistics not available yet</p>
                             </div>
                         </CardContent>
                     </Card>

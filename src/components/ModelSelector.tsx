@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Check, ChevronsUpDown, Brain, Loader2, Search, Plus, Keyboard, Info } from "lucide-react";
+import { Check, ChevronsUpDown, Brain, Loader2, Search, Keyboard, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
@@ -177,14 +169,6 @@ export function ModelSelector({
     }
   };
 
-  // Handle scroll to load more
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLDivElement;
-    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
-      loadMore();
-    }
-  }, [page, totalPages, isLoading, searchQuery]);
-
   // Get display name for selected value
   const selectedModel = models.find(m => m.modelId === value);
   const displayValue = selectedModel?.displayName || selectedModel?.modelId || value;
@@ -231,152 +215,152 @@ export function ModelSelector({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command shouldFilter={false}>
-          <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-            <input
-              className="flex h-10 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Search models..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoComplete="off"
-            />
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-          </div>
-          <CommandList 
-            className="max-h-[300px] overflow-y-auto" 
-            onScroll={handleScroll}
-            ref={listRef as any}
-          >
-            {showCustomInput ? (
-              <div className="p-2 space-y-2">
-                <p className="text-xs text-muted-foreground px-2">
-                  Enter a custom model name:
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    value={customModel}
-                    onChange={(e) => setCustomModel(e.target.value)}
-                    placeholder={getPlaceholderForProvider(provider)}
-                    className="h-8"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleCustomSubmit();
-                      } else if (e.key === "Escape") {
-                        setShowCustomInput(false);
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    className="h-8"
-                    onClick={handleCustomSubmit}
-                    disabled={!customModel.trim()}
-                  >
-                    Add
-                  </Button>
-                </div>
+        <div className="flex items-center border-b px-3">
+          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <input
+            className="flex h-10 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Search models..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoComplete="off"
+          />
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+        </div>
+        <div 
+          className="max-h-[300px] overflow-y-scroll overscroll-contain" 
+          style={{ overflowY: 'scroll' }}
+          onWheel={(e) => {
+            e.stopPropagation();
+            const target = e.currentTarget;
+            target.scrollTop += e.deltaY;
+          }}
+          ref={listRef}
+        >
+          {showCustomInput ? (
+            <div className="p-2 space-y-2">
+              <p className="text-xs text-muted-foreground px-2">
+                Enter a custom model name:
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                  placeholder={getPlaceholderForProvider(provider)}
+                  className="h-8"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCustomSubmit();
+                    } else if (e.key === "Escape") {
+                      setShowCustomInput(false);
+                    }
+                  }}
+                />
                 <Button
-                  variant="ghost"
                   size="sm"
-                  className="w-full h-8"
-                  onClick={() => setShowCustomInput(false)}
+                  className="h-8"
+                  onClick={handleCustomSubmit}
+                  disabled={!customModel.trim()}
                 >
-                  Back to list
+                  Add
                 </Button>
               </div>
-            ) : (
-              <>
-                {allowCustom && (
-                  <CommandGroup>
-                    <CommandItem
-                      onSelect={() => setShowCustomInput(true)}
-                      className="cursor-pointer"
-                    >
-                      <Keyboard className="mr-2 h-4 w-4" />
-                      Enter model name manually...
-                    </CommandItem>
-                  </CommandGroup>
-                )}
-                
-                {allowCustom && models.length > 0 && <CommandSeparator />}
-
-                {!isLoading && models.length === 0 && (
-                  <CommandEmpty>
-                    <div className="py-6 text-center text-sm">
-                      <p>No models found.</p>
-                      {searchQuery && (
-                        <p className="text-muted-foreground mt-1">
-                          Try a different search term
-                        </p>
-                      )}
-                    </div>
-                  </CommandEmpty>
-                )}
-                
-                {models.length > 0 && (
-                  <CommandGroup>
-                    {models.map((model) => (
-                      <CommandItem
-                        key={model.id}
-                        value={model.modelId}
-                        onSelect={() => handleSelect(model)}
-                        className="cursor-pointer"
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4 shrink-0",
-                            value === model.modelId ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <div className="flex flex-col flex-1 min-w-0">
-                          <span className="truncate font-medium">{model.displayName || model.modelId}</span>
-                          <span className="text-xs text-muted-foreground truncate">{model.modelId}</span>
-                        </div>
-                        <div className="flex items-center gap-2 ml-2 shrink-0">
-                          {formatPrice(model.inputPricePerMillion, model.outputPricePerMillion) && (
-                            <Badge variant="secondary" className="text-xs font-mono">
-                              {formatPrice(model.inputPricePerMillion, model.outputPricePerMillion)}
-                            </Badge>
-                          )}
-                          {model.contextWindow && (
-                            <Badge variant="secondary" className="text-xs">
-                              {formatContextWindow(model.contextWindow)}
-                            </Badge>
-                          )}
-                          {model.supportsTools && (
-                            <Badge variant="outline" className="text-xs">
-                              Tools
-                            </Badge>
-                          )}
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-
-                {models.length > 0 && (
-                  <div className="py-2 px-3 text-xs text-muted-foreground text-center border-t">
-                    Showing {models.length} of {totalElements} models
-                    {page < totalPages - 1 && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 ml-2"
-                        onClick={loadMore}
-                        disabled={isLoading}
-                      >
-                        Load more
-                      </Button>
-                    )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full h-8"
+                onClick={() => setShowCustomInput(false)}
+              >
+                Back to list
+              </Button>
+            </div>
+          ) : (
+            <>
+              {allowCustom && (
+                <div className="p-1">
+                  <div
+                    onClick={() => setShowCustomInput(true)}
+                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-primary/10 hover:text-foreground"
+                  >
+                    <Keyboard className="mr-2 h-4 w-4" />
+                    Enter model name manually...
                   </div>
-                )}
-              </>
-            )}
-          </CommandList>
-        </Command>
+                </div>
+              )}
+              
+              {allowCustom && models.length > 0 && <div className="h-px bg-border" />}
+
+              {!isLoading && models.length === 0 && (
+                <div className="py-6 text-center text-sm">
+                  <p>No models found.</p>
+                  {searchQuery && (
+                    <p className="text-muted-foreground mt-1">
+                      Try a different search term
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {models.length > 0 && (
+                <div className="p-1">
+                  {models.map((model) => (
+                    <div
+                      key={model.id}
+                      onClick={() => handleSelect(model)}
+                      className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-primary/10 hover:text-foreground"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4 shrink-0",
+                          value === model.modelId ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="truncate font-medium">{model.displayName || model.modelId}</span>
+                        <span className="text-xs text-muted-foreground truncate">{model.modelId}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2 shrink-0">
+                        {formatPrice(model.inputPricePerMillion, model.outputPricePerMillion) && (
+                          <Badge variant="secondary" className="text-xs font-mono">
+                            {formatPrice(model.inputPricePerMillion, model.outputPricePerMillion)}
+                          </Badge>
+                        )}
+                        {model.contextWindow && (
+                          <Badge variant="secondary" className="text-xs">
+                            {formatContextWindow(model.contextWindow)}
+                          </Badge>
+                        )}
+                        {model.supportsTools && (
+                          <Badge variant="outline" className="text-xs">
+                            Tools
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {models.length > 0 && (
+                <div className="py-2 px-3 text-xs text-muted-foreground text-center border-t">
+                  Showing {models.length} of {totalElements} models
+                  {page < totalPages - 1 && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 ml-2"
+                      onClick={loadMore}
+                      disabled={isLoading}
+                    >
+                      Load more
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
