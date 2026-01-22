@@ -6,7 +6,8 @@ import {
   QualityGateCondition,
   QualityGateMetric,
   QualityGateComparator,
-  IssueSeverity 
+  IssueSeverity,
+  IssueCategory
 } from '@/api_service/qualitygate/qualityGateService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ interface QualityGateEditorProps {
 
 const METRICS: { value: QualityGateMetric; label: string; description: string }[] = [
   { value: 'ISSUES_BY_SEVERITY', label: 'Issues by Severity', description: 'Count issues filtered by severity level' },
+  { value: 'ISSUES_BY_CATEGORY', label: 'Issues by Category', description: 'Count issues filtered by category type' },
   { value: 'NEW_ISSUES', label: 'New Issues', description: 'Total number of new issues found' },
 ];
 
@@ -49,6 +51,19 @@ const SEVERITIES: { value: IssueSeverity; label: string; color: string; icon: ty
   { value: 'MEDIUM', label: 'Medium', color: 'text-warning', icon: AlertCircle },
   { value: 'LOW', label: 'Low', color: 'text-muted-foreground', icon: Info },
   { value: 'INFO', label: 'Info', color: 'text-primary/60', icon: Info },
+];
+
+const CATEGORIES: { value: IssueCategory; label: string }[] = [
+  { value: 'SECURITY', label: 'Security' },
+  { value: 'PERFORMANCE', label: 'Performance' },
+  { value: 'CODE_QUALITY', label: 'Code Quality' },
+  { value: 'BUG_RISK', label: 'Bug Risk' },
+  { value: 'STYLE', label: 'Style' },
+  { value: 'DOCUMENTATION', label: 'Documentation' },
+  { value: 'BEST_PRACTICES', label: 'Best Practices' },
+  { value: 'ERROR_HANDLING', label: 'Error Handling' },
+  { value: 'TESTING', label: 'Testing' },
+  { value: 'ARCHITECTURE', label: 'Architecture' },
 ];
 
 const COMPARATORS: { value: QualityGateComparator; label: string; symbol: string }[] = [
@@ -159,7 +174,8 @@ export default function QualityGateEditor({ qualityGate, onClose }: QualityGateE
         active,
         conditions: conditions.map(c => ({
           metric: c.metric,
-          severity: c.severity,
+          severity: c.metric === 'ISSUES_BY_SEVERITY' ? c.severity : undefined,
+          category: c.metric === 'ISSUES_BY_CATEGORY' ? c.category : undefined,
           comparator: c.comparator,
           thresholdValue: c.thresholdValue,
           enabled: c.enabled,
@@ -201,8 +217,14 @@ export default function QualityGateEditor({ qualityGate, onClose }: QualityGateE
 
   const getConditionPreview = (condition: EditableCondition) => {
     const comparator = COMPARATORS.find(c => c.value === condition.comparator);
-    const severityLabel = condition.severity ? `${condition.severity} issues` : 'issues';
-    return `${severityLabel} ${comparator?.symbol || '>'} ${condition.thresholdValue} → FAIL`;
+    let filterLabel = 'issues';
+    if (condition.metric === 'ISSUES_BY_SEVERITY' && condition.severity) {
+      filterLabel = `${condition.severity} issues`;
+    } else if (condition.metric === 'ISSUES_BY_CATEGORY' && condition.category) {
+      const cat = CATEGORIES.find(c => c.value === condition.category);
+      filterLabel = `${cat?.label || condition.category} issues`;
+    }
+    return `${filterLabel} ${comparator?.symbol || '>'} ${condition.thresholdValue} → FAIL`;
   };
 
   return (
@@ -381,6 +403,29 @@ export default function QualityGateEditor({ qualityGate, onClose }: QualityGateE
                                   <s.icon className={cn('h-4 w-4', s.color)} />
                                   {s.label}
                                 </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {condition.metric === 'ISSUES_BY_CATEGORY' && (
+                      <div className="space-y-2">
+                        <Label>Category</Label>
+                        <Select
+                          value={condition.category || ''}
+                          onValueChange={(value: IssueCategory) => 
+                            updateCondition(condition.tempId, { category: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CATEGORIES.map(c => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
