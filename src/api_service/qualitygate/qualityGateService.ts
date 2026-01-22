@@ -1,6 +1,7 @@
 import { ApiService } from '../api';
 
 export type IssueSeverity = 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
+export type IssueCategory = 'SECURITY' | 'PERFORMANCE' | 'CODE_QUALITY' | 'BUG_RISK' | 'STYLE' | 'DOCUMENTATION' | 'BEST_PRACTICES' | 'ERROR_HANDLING' | 'TESTING' | 'ARCHITECTURE';
 export type QualityGateMetric = 'ISSUES_BY_SEVERITY' | 'NEW_ISSUES' | 'ISSUES_BY_CATEGORY';
 export type QualityGateComparator = 'GREATER_THAN' | 'GREATER_THAN_OR_EQUAL' | 'LESS_THAN' | 'LESS_THAN_OR_EQUAL' | 'EQUAL' | 'NOT_EQUAL';
 export type AnalysisResult = 'PASSED' | 'FAILED' | 'SKIPPED';
@@ -9,6 +10,7 @@ export interface QualityGateCondition {
   id?: number;
   metric: QualityGateMetric;
   severity?: IssueSeverity;
+  category?: IssueCategory;
   comparator: QualityGateComparator;
   thresholdValue: number;
   enabled: boolean;
@@ -28,6 +30,7 @@ export interface QualityGate {
 export interface QualityGateConditionResult {
   metric: QualityGateMetric;
   severity?: IssueSeverity;
+  category?: IssueCategory;
   comparator: string;
   threshold: number;
   actualValue: number;
