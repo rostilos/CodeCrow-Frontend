@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Database, Play, Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw, Square, Plus, X, Info, GitBranch, Layers } from "lucide-react";
+import { Database, Play, Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw, Square, Plus, X, Info, GitBranch, Layers, ChevronDown, ChevronUp, Terminal, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,14 @@ import {
   RagIndexingResult
 } from "@/api_service/project/projectService";
 
+interface LogEntry {
+  id: number;
+  timestamp: Date;
+  stage: string;
+  message: string;
+  type: 'info' | 'progress' | 'complete' | 'error';
+}
+
 interface RagConfigurationProps {
   workspaceSlug: string;
   project: ProjectDTO;
@@ -39,7 +47,15 @@ export default function RagConfiguration({
   const [updating, setUpdating] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [indexingProgress, setIndexingProgress] = useState<string | null>(null);
+  const [indexingError, setIndexingError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Log window state
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isLogWindowOpen, setIsLogWindowOpen] = useState(false);
+  const [sseConnected, setSseConnected] = useState(false);
+  const logIdCounter = useRef(0);
+  const logScrollRef = useRef<HTMLDivElement>(null);
   
   // Local form state
   const [enabled, setEnabled] = useState(project.ragConfig?.enabled ?? false);
@@ -51,6 +67,29 @@ export default function RagConfiguration({
   const [multiBranchEnabled, setMultiBranchEnabled] = useState(project.ragConfig?.multiBranchEnabled ?? false);
   const [branchRetentionDays, setBranchRetentionDays] = useState(project.ragConfig?.branchRetentionDays ?? 30);
   const [isMultiBranchOpen, setIsMultiBranchOpen] = useState(false);
+  
+  // Helper to add a log entry
+  const addLog = (stage: string, message: string, type: LogEntry['type'] = 'info') => {
+    const entry: LogEntry = {
+      id: ++logIdCounter.current,
+      timestamp: new Date(),
+      stage,
+      message,
+      type
+    };
+    setLogs(prev => [...prev, entry]);
+    // Auto-open log window when indexing starts
+    if (!isLogWindowOpen && type !== 'error') {
+      setIsLogWindowOpen(true);
+    }
+  };
+  
+  // Auto-scroll to bottom when new logs are added
+  useEffect(() => {
+    if (logScrollRef.current) {
+      logScrollRef.current.scrollTop = logScrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   useEffect(() => {
     loadRagStatus();
@@ -61,8 +100,12 @@ export default function RagConfiguration({
   useEffect(() => {
     if (ragStatus?.indexStatus?.status === 'INDEXING') {
       // Show that indexing is in progress (possibly from another session or before page reload)
-      if (!indexing) {
+      if (!indexing && !sseConnected) {
         setIndexingProgress("Indexing in progress...");
+        // Add a log entry if there are no logs (page was reloaded)
+        if (logs.length === 0) {
+          addLog('system', 'Detected indexing in progress. Live logs unavailable - page was reloaded during indexing.', 'info');
+        }
       }
       
       const pollInterval = setInterval(() => {
@@ -74,9 +117,16 @@ export default function RagConfiguration({
       // If backend says not indexing but we have local progress shown, clear it
       if (indexingProgress === "Indexing in progress..." && !indexing) {
         setIndexingProgress(null);
+        // If we were waiting for indexing to finish, add completion log
+        if (logs.length > 0 && !sseConnected) {
+          const lastLog = logs[logs.length - 1];
+          if (lastLog.message.includes('page was reloaded')) {
+            addLog('system', 'Indexing completed.', 'complete');
+          }
+        }
       }
     }
-  }, [ragStatus?.indexStatus?.status, indexing]);
+  }, [ragStatus?.indexStatus?.status, indexing, sseConnected]);
 
   useEffect(() => {
     // Update local state when project changes
@@ -208,6 +258,9 @@ export default function RagConfiguration({
       abortControllerRef.current = null;
       setIndexing(false);
       setIndexingProgress(null);
+      setIndexingError(null);
+      setSseConnected(false);
+      addLog('system', 'Indexing cancelled by user', 'info');
       toast({
         title: "Indexing Cancelled",
         description: "RAG indexing operation was cancelled",
@@ -215,19 +268,28 @@ export default function RagConfiguration({
       return;
     }
 
+    // Clear previous logs and start fresh
+    setLogs([]);
     setIndexing(true);
     setIndexingProgress("Starting indexing...");
+    setIndexingError(null);
+    setSseConnected(true);
+    setIsLogWindowOpen(true);
+    addLog('system', 'Connecting to indexing service...', 'info');
 
     const handleProgress = (event: RagIndexingProgressEvent) => {
       setIndexingProgress(event.message || `${event.stage}: Processing...`);
+      addLog(event.stage || 'progress', event.message || 'Processing...', 'progress');
     };
 
     const handleComplete = (result: RagIndexingResult) => {
       setIndexing(false);
       setIndexingProgress(null);
       abortControllerRef.current = null;
+      setSseConnected(false);
 
       if (result.status === 'completed') {
+        addLog('complete', result.message || `Successfully indexed ${result.filesIndexed || 0} files`, 'complete');
         toast({
           title: "Indexing Complete",
           description: result.message || `Successfully indexed ${result.filesIndexed || 0} files`,
@@ -235,14 +297,18 @@ export default function RagConfiguration({
         // Refresh status
         loadRagStatus();
       } else if (result.status === 'skipped') {
+        addLog('skipped', result.message || 'Indexing skipped', 'info');
         toast({
           title: "Indexing Skipped",
           description: result.message,
         });
       } else if (result.status === 'locked') {
+        const lockedMessage = result.message || "Another indexing operation is already in progress";
+        setIndexingError(lockedMessage);
+        addLog('locked', lockedMessage, 'error');
         toast({
-          title: "Indexing In Progress",
-          description: result.message || "Another indexing operation is already in progress",
+          title: "Indexing Locked",
+          description: lockedMessage,
           variant: "destructive",
         });
       }
@@ -252,10 +318,15 @@ export default function RagConfiguration({
       setIndexing(false);
       setIndexingProgress(null);
       abortControllerRef.current = null;
+      setSseConnected(false);
 
       if (error === 'Indexing cancelled') {
+        setIndexingError(null);
         return; // Don't show toast for user-cancelled operations
       }
+
+      setIndexingError(error);
+      addLog('error', error, 'error');
 
       // Check for rate limiting message
       const isRateLimited = error.toLowerCase().includes('wait') && error.toLowerCase().includes('seconds');
@@ -610,6 +681,116 @@ export default function RagConfiguration({
               <span className="text-blue-700 dark:text-blue-300">{indexingProgress}</span>
             </div>
           </div>
+        )}
+
+        {/* Indexing Error/Locked State */}
+        {indexingError && !indexingProgress && (
+          <div className="rounded-lg border p-3 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+            <div className="flex items-start gap-2 text-sm">
+              <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="text-amber-700 dark:text-amber-300">{indexingError}</span>
+                <p className="text-amber-600 dark:text-amber-400 text-xs mt-1">
+                  Try again later or check if another indexing process is running.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Indexing Log Window */}
+        {(logs.length > 0 || (ragStatus?.indexStatus?.status === 'INDEXING' && !sseConnected)) && (
+          <Collapsible open={isLogWindowOpen} onOpenChange={setIsLogWindowOpen}>
+            <div className="rounded-lg border bg-muted/20">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/40 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Terminal className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-sm">Indexing Logs</span>
+                  <Badge variant="outline" className="text-xs">
+                    {logs.length} entries
+                  </Badge>
+                  {sseConnected ? (
+                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <Wifi className="h-3 w-3" />
+                      <span className="text-xs">Connected</span>
+                    </div>
+                  ) : ragStatus?.indexStatus?.status === 'INDEXING' ? (
+                    <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                      <WifiOff className="h-3 w-3" />
+                      <span className="text-xs">Disconnected</span>
+                    </div>
+                  ) : null}
+                </div>
+                {isLogWindowOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                {/* Warning when disconnected but indexing in progress */}
+                {!sseConnected && ragStatus?.indexStatus?.status === 'INDEXING' && (
+                  <Alert className="mx-3 mb-2 bg-amber-500/10 border-amber-500/30">
+                    <WifiOff className="h-4 w-4 text-amber-500" />
+                    <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
+                      <strong>Connection lost.</strong> Indexing is still running in the background. 
+                      New logs cannot be displayed until you trigger a new indexing operation. 
+                      The status will update automatically when indexing completes.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                <div 
+                  ref={logScrollRef}
+                  className="max-h-64 overflow-y-auto p-3 pt-0 font-mono text-xs"
+                >
+                  {logs.length === 0 ? (
+                    <div className="text-muted-foreground text-center py-4">
+                      No logs yet. Trigger indexing to see progress.
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {logs.map((log) => (
+                        <div 
+                          key={log.id} 
+                          className={`flex gap-2 ${
+                            log.type === 'error' ? 'text-red-600 dark:text-red-400' :
+                            log.type === 'complete' ? 'text-green-600 dark:text-green-400' :
+                            log.type === 'progress' ? 'text-blue-600 dark:text-blue-400' :
+                            'text-muted-foreground'
+                          }`}
+                        >
+                          <span className="text-muted-foreground/70 shrink-0">
+                            [{log.timestamp.toLocaleTimeString()}]
+                          </span>
+                          <span className="text-primary/80 shrink-0 uppercase">
+                            [{log.stage}]
+                          </span>
+                          <span className="break-all">{log.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Clear logs button */}
+                {logs.length > 0 && !indexing && (
+                  <div className="px-3 pb-3 pt-1 border-t">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setLogs([])}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Clear Logs
+                    </Button>
+                  </div>
+                )}
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
         )}
 
         {/* Actions */}
