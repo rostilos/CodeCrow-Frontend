@@ -548,8 +548,9 @@ class ProjectService extends ApiService {
         buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
+          // Handle both 'data: ' (with space) and 'data:' (without space) formats
+          if (line.startsWith('data:')) {
+            const data = line.startsWith('data: ') ? line.slice(6).trim() : line.slice(5).trim();
             
             if (data === '__EOF__') {
               // Stream complete
