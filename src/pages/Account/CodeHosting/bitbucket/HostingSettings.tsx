@@ -706,15 +706,15 @@ export default function HostingSettings() {
                                                 {connection.tokenExpiresAt && (
                                                     <div className="text-sm">
                                                         <span className="text-muted-foreground">Token expires: </span>
-                                                        <span className={`font-medium ${new Date(connection.tokenExpiresAt) < new Date() ? 'text-destructive' : ''}`}>
+                                                        <span className="font-medium">
                                                             {new Date(connection.tokenExpiresAt).toLocaleString()}
                                                         </span>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            {/* Show reconnect warning for expired/error connections */}
-                                            {(connection.status === 'ERROR' || (connection.tokenExpiresAt && new Date(connection.tokenExpiresAt) < new Date())) && (
+                                            {/* Show reconnect warning only when connection has error status (refresh failed) */}
+                                            {connection.status === 'ERROR' && (
                                                 <div className="flex items-center gap-2 p-2 rounded bg-destructive/10 text-destructive text-sm">
                                                     <AlertCircle className="h-4 w-4" />
                                                     <span>Connection needs re-authorization</span>
