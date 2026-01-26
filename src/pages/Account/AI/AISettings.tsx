@@ -26,13 +26,12 @@ export default function AISettings() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editingConnection, setEditingConnection] = useState<(Omit<AIConnectionDTO, 'tokenLimitation'> & { apiKey?: string; tokenLimitation?: string }) | null>(null);
+  const [editingConnection, setEditingConnection] = useState<(AIConnectionDTO & { apiKey?: string }) | null>(null);
   const [newConnection, setNewConnection] = useState<CreateAIConnectionRequest>({
     name: '',
     providerKey: 'OPENROUTER',
     aiModel: '',
-    apiKey: '',
-    tokenLimitation: '200000'
+    apiKey: ''
   });
 
   const loadConnections = async () => {
@@ -76,7 +75,7 @@ export default function AISettings() {
         description: "AI connection created successfully",
       });
       setShowCreateDialog(false);
-      setNewConnection({ name: '', providerKey: 'OPENROUTER', aiModel: '', apiKey: '', tokenLimitation: '200000' });
+      setNewConnection({ name: '', providerKey: 'OPENROUTER', aiModel: '', apiKey: '' });
       await loadConnections();
     } catch (error: any) {
       toast({
@@ -107,7 +106,7 @@ export default function AISettings() {
   };
 
   const handleEditConnection = (connection: AIConnectionDTO) => {
-    setEditingConnection({ ...connection, apiKey: '', tokenLimitation: String(connection.tokenLimitation) });
+    setEditingConnection({ ...connection, apiKey: '' });
     setShowEditDialog(true);
   };
 
@@ -127,8 +126,7 @@ export default function AISettings() {
         name: editingConnection.name || undefined,
         providerKey: editingConnection.providerKey,
         aiModel: editingConnection.aiModel,
-        apiKey: editingConnection.apiKey || undefined,
-        tokenLimitation: editingConnection.tokenLimitation || '200000'
+        apiKey: editingConnection.apiKey || undefined
       });
       toast({
         title: "Success",
@@ -284,21 +282,6 @@ export default function AISettings() {
                   placeholder="Enter your API key"
                 />
               </div>
-              <div>
-                <Label htmlFor="tokenLimitation">Token Limitation</Label>
-                <Input
-                  id="tokenLimitation"
-                  autoComplete="off"
-                  type="text"
-                  value={newConnection.tokenLimitation}
-                  onChange={(e) => setNewConnection({ ...newConnection, tokenLimitation: e.target.value })}
-                  placeholder="200000"
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  For large pull requests, it can be unnecessary to check PRs with very high token counts, as this leads to high costs. 
-                  This limit applies only to the fileDiff retrieval stage from your VCS platform. Recommended: 200,000 tokens.
-                </p>
-              </div>
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
@@ -377,21 +360,6 @@ export default function AISettings() {
                     onChange={(e) => setEditingConnection({ ...editingConnection, apiKey: e.target.value })}
                     placeholder="Enter new API key or leave empty"
                   />
-                </div>
-                <div>
-                  <Label htmlFor="edit-tokenLimitation">Token Limitation</Label>
-                  <Input
-                    id="edit-tokenLimitation"
-                    autoComplete="off"
-                    type="text"
-                    value={String(editingConnection.tokenLimitation || '200000')}
-                    onChange={(e) => setEditingConnection({ ...editingConnection, tokenLimitation: e.target.value })}
-                    placeholder="200000"
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    For large pull requests, it can be unnecessary to check PRs with very high token counts, as this leads to high costs. 
-                    This limit applies only to the fileDiff retrieval stage from your VCS platform. Recommended: 200,000 tokens.
-                  </p>
                 </div>
                 <div className="flex space-x-2">
                   <Button
