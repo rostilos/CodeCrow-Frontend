@@ -84,6 +84,7 @@ export interface ProjectDTO {
   installationMethod?: InstallationMethod | null;
   commentCommandsConfig?: CommentCommandsConfigDTO | null;
   webhooksConfigured?: boolean | null;
+  maxAnalysisTokenLimit?: number | null;
   // other fields from ProjectDTO are allowed
   [key: string]: any;
 }
@@ -156,6 +157,7 @@ export interface UpdateAnalysisSettingsRequest {
   prAnalysisEnabled?: boolean;
   branchAnalysisEnabled?: boolean;
   installationMethod?: InstallationMethod | null;
+  maxAnalysisTokenLimit?: number | null;
 }
 
 // Authorization modes for comment commands

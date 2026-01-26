@@ -8,7 +8,6 @@ export interface CreateAIConnectionRequest {
   providerKey: AIProviderKey;
   aiModel: string;
   apiKey: string;
-  tokenLimitation: string;
 }
 
 export interface UpdateAiConnectionRequest {
@@ -16,7 +15,6 @@ export interface UpdateAiConnectionRequest {
   providerKey?: AIProviderKey;
   aiModel?: string;
   apiKey?: string;
-  tokenLimitation?: string;
 }
 
 export interface AIConnectionDTO {
@@ -26,7 +24,6 @@ export interface AIConnectionDTO {
   aiModel: string;
   createdAt: string;
   updatedAt: string;
-  tokenLimitation: number;
 }
 
 export interface BindAiConnectionRequest {

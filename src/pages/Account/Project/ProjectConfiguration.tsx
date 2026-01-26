@@ -59,6 +59,7 @@ export default function ProjectConfiguration() {
   // Analysis settings state
   const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
   const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
+  const [maxAnalysisTokenLimit, setMaxAnalysisTokenLimit] = useState<number>(200000);
   const [savingAnalysisSettings, setSavingAnalysisSettings] = useState(false);
 
   // Webhook management state
@@ -123,6 +124,7 @@ export default function ProjectConfiguration() {
       if (proj) {
         setPrAnalysisEnabled(proj.prAnalysisEnabled ?? true);
         setBranchAnalysisEnabled(proj.ragConfig?.enabled ? true : (proj.branchAnalysisEnabled ?? true));
+        setMaxAnalysisTokenLimit(proj.maxAnalysisTokenLimit ?? 200000);
       }
 
     } catch (err: any) {
@@ -207,7 +209,8 @@ export default function ProjectConfiguration() {
       await projectService.updateAnalysisSettings(currentWorkspace.slug, namespace, {
         prAnalysisEnabled,
         branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
-        installationMethod: project?.installationMethod || null
+        installationMethod: project?.installationMethod || null,
+        maxAnalysisTokenLimit
       });
       
       // Update local project state
@@ -215,7 +218,8 @@ export default function ProjectConfiguration() {
         setProject({
           ...project,
           prAnalysisEnabled,
-          branchAnalysisEnabled: effectiveBranchAnalysisEnabled
+          branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
+          maxAnalysisTokenLimit
         });
       }
       
@@ -892,6 +896,30 @@ export default function ProjectConfiguration() {
                       onCheckedChange={setBranchAnalysisEnabled}
                       disabled={project?.ragConfig?.enabled}
                     />
+                  </div>
+                </div>
+                
+                <div className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Cpu className="h-5 w-5 text-primary" />
+                    <div>
+                      <div className="font-medium">Maximum Analysis Token Limit</div>
+                      <div className="text-sm text-muted-foreground">
+                        Maximum number of tokens allowed for PR analysis. Analysis will be skipped if the diff exceeds this limit.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="number"
+                      min={10000}
+                      max={2000000}
+                      step={10000}
+                      value={maxAnalysisTokenLimit}
+                      onChange={(e) => setMaxAnalysisTokenLimit(parseInt(e.target.value) || 200000)}
+                      className="w-48"
+                    />
+                    <span className="text-sm text-muted-foreground">tokens (default: 200,000)</span>
                   </div>
                 </div>
                 

@@ -65,8 +65,7 @@ export default function IntegrationSuccess() {
   const [newAiConnection, setNewAiConnection] = useState<CreateAIConnectionRequest>({
     providerKey: 'OPENROUTER',
     aiModel: '',
-    apiKey: '',
-    tokenLimitation: '150000'
+    apiKey: ''
   });
   
   useEffect(() => {
@@ -205,8 +204,7 @@ export default function IntegrationSuccess() {
       setNewAiConnection({
         providerKey: 'OPENROUTER',
         aiModel: '',
-        apiKey: '',
-        tokenLimitation: '150000'
+        apiKey: ''
       });
       toast({
         title: "AI Connection Created",
@@ -576,16 +574,6 @@ export default function IntegrationSuccess() {
                             value={newAiConnection.apiKey}
                             onChange={(e) => setNewAiConnection(prev => ({ ...prev, apiKey: e.target.value }))}
                             placeholder="Enter your API key"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="ai-token-limit">Token Limitation</Label>
-                          <Input
-                            id="ai-token-limit"
-                            value={newAiConnection.tokenLimitation}
-                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, tokenLimitation: e.target.value }))}
-                            placeholder="150000"
                           />
                         </div>
                         
