@@ -42,9 +42,10 @@ const JobStatusBadge = ({ status }: { status: JobStatus }) => {
     FAILED: { variant: 'destructive', icon: <XCircle className="h-3 w-3" /> },
     CANCELLED: { variant: 'secondary', icon: <AlertTriangle className="h-3 w-3" /> },
     WAITING: { variant: 'secondary', icon: <Clock className="h-3 w-3" /> },
+    SKIPPED: { variant: 'outline', icon: <Ban className="h-3 w-3" />, className: 'border-yellow-500 text-yellow-600' },
   };
 
-  const { variant, icon, className } = variants[status];
+  const { variant, icon, className } = variants[status] || { variant: 'secondary', icon: <Clock className="h-3 w-3" /> };
 
   return (
     <Badge variant={variant} className={cn("flex items-center gap-1", className)}>
