@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
     ArrowRight, BookOpen, LayoutDashboard, Github, Key, Eye,
     ChevronDown, Play, Zap, GitBranch, Cpu, DollarSign, Check,
-    ChevronRight, Settings, Workflow, Database, RefreshCw, TrendingUp, CheckCircle
+    ChevronRight, Settings, Workflow, Database, RefreshCw, TrendingUp, CheckCircle,
+    Rss, Search, Layers, Target, Brain, Code2,
+    Shield, Sparkles, MessageSquare, Rocket
 } from "lucide-react";
 import {
     Accordion,
@@ -19,8 +21,7 @@ import { useState, useEffect, useRef } from "react";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProcessFlowchart } from "./ProcessFlowchart";
-import { SnowEffect } from "./SnowEffect";
-import { BulbGarland } from "./BulbGarland";
+import { GitFlowAnimation } from "./GitFlowAnimation";
 
 import demoAnalysisDashboard from "@/assets/demo-analysis-dashboard.png";
 import demoDetailedInfo from "@/assets/demo-detailed-info.png";
@@ -446,21 +447,11 @@ const HeroSection = ({
 }) => {
     return (
         <section className="relative overflow-hidden">
-            <SnowEffect count={40} fallDistance="800px" />
+            <GitFlowAnimation />
             {/* Background */}
             <div className="absolute inset-0 overflow-hidden">
-                <div
-                    className="absolute inset-0 opacity-[0.03]"
-                    style={{
-                        backgroundImage: `
-              linear-gradient(to right, currentColor 1px, transparent 1px),
-              linear-gradient(to bottom, currentColor 1px, transparent 1px)
-            `,
-                        backgroundSize: '60px 60px'
-                    }}
-                />
-                <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-[120px]" />
-                <div className="absolute bottom-1/3 -right-32 w-80 h-80 bg-accent/8 rounded-full blur-[100px]" />
+                <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/5 rounded-full blur-[150px]" />
+                <div className="absolute bottom-1/3 -right-32 w-80 h-80 bg-accent/5 rounded-full blur-[120px]" />
             </div>
 
             {/* Main content */}
@@ -574,7 +565,7 @@ const WorksWhereYouCodeSection = () => {
             name: "Bitbucket Cloud",
             icon: "bitbucket",
             status: "Available",
-            description: "Full OAuth2 integration with automatic pipeline configuration. Works with Bitbucket Pipelines out of the box.",
+            description: "Full OAuth2 integration with automatic pipeline configuration. Works with Bitbucket Pipelines.",
             available: true
         },
         {
@@ -588,20 +579,19 @@ const WorksWhereYouCodeSection = () => {
             name: "GitLab",
             icon: "gitlab",
             status: "Available",
-            description: "Full OAuth2 integration with GitLab CI/CD. Automatic MR comments, webhooks, and pipeline triggers.",
+            description: "Full OAuth2 integration with GitLab CI/CD. Automatic MR comments and webhooks.",
             available: true
         },
     ];
 
     return (
-        <section className="py-12 lg:py-32 relative overflow-hidden">
-            {/* Primary gradient background */}
+        <section className="py-16 lg:py-24 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-primary/10 to-transparent" />
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/10 rounded-full blur-[120px]" />
 
             <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-5xl mx-auto">
-                    <div className="text-center mb-16">
+                    <div className="text-center mb-12">
                         <Badge className="mb-6 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20">
                             <Workflow className="h-3.5 w-3.5 mr-1.5" />
                             Seamless Integrations
@@ -609,40 +599,26 @@ const WorksWhereYouCodeSection = () => {
                         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
                             Works Where <span className="text-primary">You Code</span>
                         </h2>
-                        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-                            Seamless integration with your existing CI/CD workflow. No context switching, no extra tools — just better code reviews.
+                        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                            Seamless integration with your existing CI/CD workflow. No context switching — just better code reviews.
                         </p>
                     </div>
 
-                    <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+                    <div className="grid md:grid-cols-3 gap-6">
                         {integrations.map((integration) => (
                             <div
                                 key={integration.name}
-                                className={`
-                  group relative p-6 lg:p-8 rounded-2xl border bg-card
-                  transition-all duration-300 hover:-translate-y-1 flex-col flex
-                  ${integration.available
-                                        ? 'border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:border-primary/50'
-                                        : 'border-border/50 hover:border-primary/30'
-                                    }
-                `}
+                                className="group relative p-6 rounded-2xl border bg-card transition-all duration-300 hover:-translate-y-1 flex-col flex border-primary/30 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:border-primary/50"
                             >
-                                {integration.available && (
-                                    <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
-                                )}
+                                <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
                                 <div className="flex items-center gap-4 mb-4">
-                                    <div className={`
-                    w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden
-                    ${integration.available ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}
-                  `}>
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary text-primary-foreground">
                                         {integration.icon === 'bitbucket' && (
                                             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
                                                 <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z" />
                                             </svg>
                                         )}
-                                        {integration.icon === 'github' && (
-                                            <Github className="h-6 w-6" />
-                                        )}
+                                        {integration.icon === 'github' && <Github className="h-6 w-6" />}
                                         {integration.icon === 'gitlab' && (
                                             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
                                                 <path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 00-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 00-.867 0L1.386 9.45.044 13.587a.924.924 0 00.331 1.023L12 23.054l11.625-8.443a.92.92 0 00.33-1.024" />
@@ -651,24 +627,16 @@ const WorksWhereYouCodeSection = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-lg">{integration.name}</h3>
-                                        <Badge
-                                            variant={integration.available ? "default" : "secondary"}
-                                            className={integration.available ? "bg-primary hover:bg-primary/90" : ""}
-                                        >
-                                            {integration.status}
-                                        </Badge>
+                                        <Badge variant="default" className="bg-primary hover:bg-primary/90">{integration.status}</Badge>
                                     </div>
                                 </div>
                                 <p className="text-muted-foreground leading-relaxed grow">{integration.description}</p>
-
-                                {integration.available && (
-                                    <div className="mt-4 pt-4 border-t border-primary/20">
-                                        <div className="flex items-center gap-2 text-sm text-primary font-medium">
-                                            <Check className="h-4 w-4" />
-                                            Ready to use
-                                        </div>
+                                <div className="mt-4 pt-4 border-t border-primary/20">
+                                    <div className="flex items-center gap-2 text-sm text-primary font-medium">
+                                        <Check className="h-4 w-4" />
+                                        Ready to use
                                     </div>
-                                )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -678,66 +646,279 @@ const WorksWhereYouCodeSection = () => {
     );
 };
 
-// AI Providers Section
-const AIProvidersSection = () => {
-    const providers = [
+// Why CodeCrow Section - Benefits focused
+const WhyCodeCrowSection = () => {
+    const benefits = [
         {
-            name: "OpenRouter",
-            icon: "openrouter",
-            description: "Access 100+ models through a single API. Pay-per-token pricing with automatic fallbacks.",
-            highlight: true
+            icon: Brain,
+            title: "Full Project Understanding",
+            description: "CodeCrow analyzes your entire codebase structure, not just the changed files. Get reviews that understand architecture, patterns, and dependencies.",
         },
         {
-            name: "Anthropic",
-            icon: "anthropic",
-            description: "Claude models optimized for code understanding and analysis.",
-            highlight: false
+            icon: Zap,
+            title: "Instant & Actionable",
+            description: "Receive detailed feedback in seconds, not hours. Every comment includes specific suggestions you can apply immediately.",
         },
         {
-            name: "OpenAI",
-            icon: "openai",
-            description: "GPT-4 and latest models for comprehensive code review.",
-            highlight: false
+            icon: DollarSign,
+            title: "80% Lower AI Costs",
+            description: "Smart context retrieval means you only pay for relevant code analysis. No wasted tokens on irrelevant files.",
         },
         {
-            name: "Google",
-            icon: "google",
-            description: "Gemini models with excellent context windows for large codebases.",
-            highlight: false
+            icon: Shield,
+            title: "Your Code, Your Keys",
+            description: "BYOK model — use your own API keys. Your code stays between you and your chosen AI provider.",
         },
+        {
+            icon: GitBranch,
+            title: "Native Git Integration",
+            description: "Works with your existing workflow. Bitbucket, GitHub, GitLab — just install the app and you're ready.",
+        },
+        {
+            icon: Sparkles,
+            title: "Open Source & Extensible",
+            description: "Fully open source under MIT. Self-host, customize, or contribute. No vendor lock-in, ever.",
+        }
     ];
 
     return (
-        <section className="py-12 lg:py-24 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent" />
+        <section className="py-16 lg:py-24 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
             
             <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-5xl mx-auto">
-                    <div className="text-center mb-12">
-                        <Badge className="mb-6 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20">
-                            <Cpu className="h-3.5 w-3.5 mr-1.5" />
-                            BYOK - Bring Your Own Key
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-16">
+                        <Badge className="mb-6 bg-primary/10 text-primary border-primary/30">
+                            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                            Why CodeCrow
                         </Badge>
                         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
-                            Choose Your <span className="text-primary">AI Provider</span>
+                            Code Reviews That <span className="text-primary">Actually Understand</span>
                         </h2>
-                        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-                            Use your own API keys with full control over costs and model selection. No vendor lock-in.
+                        <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                            Not just another diff checker. CodeCrow delivers context-aware reviews that catch what others miss.
                         </p>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {benefits.map((benefit, index) => (
+                            <div 
+                                key={index}
+                                className="group p-6 rounded-2xl border border-border/50 bg-card hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+                            >
+                                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                                    <benefit.icon className="h-6 w-6 text-primary" />
+                                </div>
+                                <h3 className="font-semibold text-lg mb-2">{benefit.title}</h3>
+                                <p className="text-muted-foreground leading-relaxed">{benefit.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+};
+
+// How It Works Section - Simple 3 steps
+const HowItWorksSection = () => {
+    const steps = [
+        {
+            step: "01",
+            title: "Connect Your Repository",
+            description: "Install the CodeCrow app on Bitbucket, GitHub, or GitLab. One-click setup, no configuration needed.",
+            icon: GitBranch,
+        },
+        {
+            step: "02",
+            title: "Add Your API Key",
+            description: "Bring your own key from OpenRouter, Anthropic, OpenAI, or Google. You control costs and model selection.",
+            icon: Key,
+        },
+        {
+            step: "03",
+            title: "Get Smart Reviews",
+            description: "Create a PR and receive intelligent, context-aware feedback within seconds. That's it.",
+            icon: MessageSquare,
+        }
+    ];
+
+    return (
+        <section className="py-16 lg:py-24 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+            
+            <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-5xl mx-auto">
+                    <div className="text-center mb-16">
+                        <Badge className="mb-6 bg-primary/10 text-primary border-primary/30">
+                            <Rocket className="h-3.5 w-3.5 mr-1.5" />
+                            Getting Started
+                        </Badge>
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
+                            Up and Running in <span className="text-primary">3 Minutes</span>
+                        </h2>
+                        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                            No complex setup. No infrastructure changes. Just connect and start reviewing.
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {steps.map((step, index) => (
+                            <div key={index} className="relative">
+                                {index < steps.length - 1 && (
+                                    <div className="hidden md:block absolute top-12 left-[60%] w-[80%] h-px bg-gradient-to-r from-primary/40 to-transparent" />
+                                )}
+                                <div className="text-center">
+                                    <div className="relative inline-flex mb-6">
+                                        <div className="h-24 w-24 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                                            <step.icon className="h-10 w-10 text-primary" />
+                                        </div>
+                                        <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                                            {step.step}
+                                        </div>
+                                    </div>
+                                    <h3 className="font-semibold text-xl mb-3">{step.title}</h3>
+                                    <p className="text-muted-foreground leading-relaxed">{step.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+};
+
+// Smart Context Section - High-level RAG benefits
+const SmartContextSection = () => {
+    return (
+        <section className="py-16 lg:py-24 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-1/4 w-[600px] h-[300px] bg-primary/10 rounded-full blur-[120px]" />
+            
+            <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-6xl mx-auto">
+                    <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+                        <div>
+                            <Badge className="mb-6 bg-primary/10 text-primary border-primary/30">
+                                <Brain className="h-3.5 w-3.5 mr-1.5" />
+                                Intelligent Analysis
+                            </Badge>
+                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
+                                Reviews That See the <span className="text-primary">Whole Picture</span>
+                            </h2>
+                            <p className="text-lg text-muted-foreground mb-8">
+                                Most AI tools review code line-by-line. CodeCrow understands how your code connects — 
+                                catching issues that only surface when you see the full context.
+                            </p>
+                            
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-4">
+                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                        <Target className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold mb-1">Finds Related Code Automatically</h4>
+                                        <p className="text-muted-foreground text-sm">Changed a function? We'll show you every place it's called.</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-start gap-4">
+                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                        <Layers className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold mb-1">Understands Your Architecture</h4>
+                                        <p className="text-muted-foreground text-sm">Knows your patterns, interfaces, and project structure.</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-start gap-4">
+                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                        <Code2 className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold mb-1">15+ Languages Supported</h4>
+                                        <p className="text-muted-foreground text-sm">Python, Java, TypeScript, Go, Rust, and more.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="relative">
+                            <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-primary/10 rounded-3xl blur-3xl" />
+                            <Card className="relative border-2 border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden">
+                                <CardContent className="p-8">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-3 pb-4 border-b border-border/50">
+                                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <MessageSquare className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <div>
+                                                <div className="font-semibold">Sample Review Comment</div>
+                                                <div className="text-xs text-muted-foreground">from CodeCrow analysis</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="space-y-4 text-sm">
+                                            <p className="text-muted-foreground">
+                                                <span className="text-primary font-semibold">🔍 Context Found:</span> This method is called by <code className="px-1.5 py-0.5 bg-muted rounded text-xs">OrderService.processPayment()</code> and <code className="px-1.5 py-0.5 bg-muted rounded text-xs">RefundController.initiateRefund()</code>
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                                <span className="text-primary font-semibold">⚠️ Issue:</span> The null check on line 42 doesn't match the non-nullable contract defined in <code className="px-1.5 py-0.5 bg-muted rounded text-xs">PaymentInterface</code>
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                                <span className="text-primary font-semibold">💡 Suggestion:</span> Consider using the existing <code className="px-1.5 py-0.5 bg-muted rounded text-xs">validatePayment()</code> helper from your <code className="px-1.5 py-0.5 bg-muted rounded text-xs">utils/validators</code> module
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="pt-4 border-t border-border/50 flex items-center gap-2 text-xs text-muted-foreground">
+                                            <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                                            <span>Context-aware review with actionable suggestions</span>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+};
+
+// AI Providers Section (simplified)
+const AIProvidersSection = () => {
+    const providers = [
+        { name: "OpenRouter", icon: "openrouter", description: "100+ models, pay-per-token", highlight: true },
+        { name: "Anthropic", icon: "anthropic", description: "Claude for code understanding", highlight: false },
+        { name: "OpenAI", icon: "openai", description: "GPT-4 and latest models", highlight: false },
+        { name: "Google", icon: "google", description: "Gemini with large context", highlight: false },
+    ];
+
+    return (
+        <section className="py-16 lg:py-24 relative overflow-hidden">
+            <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-5xl mx-auto">
+                    <div className="text-center mb-12">
+                        <Badge className="mb-6 bg-primary/10 text-primary border-primary/30">
+                            <Key className="h-3.5 w-3.5 mr-1.5" />
+                            BYOK - Bring Your Own Key
+                        </Badge>
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
+                            Your Keys, <span className="text-primary">Your Control</span>
+                        </h2>
+                        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                            No vendor lock-in. Use your own API keys — full control over costs and model selection.
+                        </p>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {providers.map((provider) => (
                             <div
                                 key={provider.name}
-                                className={`
-                                    group relative p-5 rounded-xl border bg-card
-                                    transition-all duration-300 hover:-translate-y-1
-                                    ${provider.highlight 
-                                        ? 'border-primary/40 shadow-lg shadow-primary/10' 
-                                        : 'border-border/50 hover:border-primary/30'
-                                    }
-                                `}
+                                className={`group relative p-5 rounded-xl border bg-card transition-all duration-300 hover:-translate-y-1
+                                    ${provider.highlight ? 'border-primary/40 shadow-lg shadow-primary/10' : 'border-border/50 hover:border-primary/30'}`}
                             >
                                 {provider.highlight && (
                                     <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs">
@@ -745,10 +926,8 @@ const AIProvidersSection = () => {
                                     </Badge>
                                 )}
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className={`
-                                        w-10 h-10 rounded-lg flex items-center justify-center
-                                        ${provider.highlight ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}
-                                    `}>
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center
+                                        ${provider.highlight ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
                                         {provider.icon === 'openrouter' && (
                                             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
                                                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
@@ -756,35 +935,116 @@ const AIProvidersSection = () => {
                                         )}
                                         {provider.icon === 'anthropic' && (
                                             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                                                <path d="M17.604 3.332L12 20.668l-5.604-17.336h3.168L12 12.611l2.436-9.279h3.168zM6.396 3.332L12 20.668 6.396 3.332z"/>
+                                                <path d="M17.604 3.332L12 20.668l-5.604-17.336h3.168L12 12.611l2.436-9.279h3.168z"/>
                                             </svg>
                                         )}
                                         {provider.icon === 'openai' && (
                                             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                                                <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/>
+                                                <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073z"/>
                                             </svg>
                                         )}
                                         {provider.icon === 'google' && (
                                             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
                                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                                                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                                             </svg>
                                         )}
                                     </div>
                                     <h3 className="font-bold">{provider.name}</h3>
                                 </div>
-                                <p className="text-sm text-muted-foreground leading-relaxed">{provider.description}</p>
+                                <p className="text-sm text-muted-foreground">{provider.description}</p>
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
+        </section>
+    );
+};
 
-                    <div className="mt-8 text-center">
-                        <p className="text-sm text-muted-foreground">
-                            <Key className="h-4 w-4 inline mr-1.5" />
-                            Your API keys are stored securely and never shared. You maintain full control over your AI usage and costs.
+// Cost Efficiency Section
+const CostEfficiencySection = () => {
+    return (
+        <section className="py-16 lg:py-24 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-primary/5 to-background" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
+
+            <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-16">
+                        <Badge variant="secondary" className="mb-4 px-4 py-1.5 bg-primary/10 text-primary border-primary/20">
+                            <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
+                            Cost Efficiency
+                        </Badge>
+                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
+                            Better Reviews, <span className="text-primary">Lower Costs</span>
+                        </h2>
+                        <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                            Smart context retrieval means you only pay for what matters. No wasted tokens on irrelevant files.
                         </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-8 mb-12">
+                        <Card className="text-center border-primary/20 bg-card">
+                            <CardContent className="pt-8 pb-6">
+                                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                    <DollarSign className="h-8 w-8 text-primary" />
+                                </div>
+                                <div className="text-4xl font-bold text-primary mb-2">80%</div>
+                                <div className="text-lg font-semibold mb-1">Lower API Costs</div>
+                                <p className="text-sm text-muted-foreground">Compared to full-file processing</p>
+                            </CardContent>
+                        </Card>
+                        
+                        <Card className="text-center border-primary/20 bg-card">
+                            <CardContent className="pt-8 pb-6">
+                                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                    <Zap className="h-8 w-8 text-primary" />
+                                </div>
+                                <div className="text-4xl font-bold text-primary mb-2">5x</div>
+                                <div className="text-lg font-semibold mb-1">Faster Reviews</div>
+                                <p className="text-sm text-muted-foreground">Intelligent caching & incremental updates</p>
+                            </CardContent>
+                        </Card>
+                        
+                        <Card className="text-center border-primary/20 bg-card">
+                            <CardContent className="pt-8 pb-6">
+                                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                    <Target className="h-8 w-8 text-primary" />
+                                </div>
+                                <div className="text-4xl font-bold text-primary mb-2">100%</div>
+                                <div className="text-lg font-semibold mb-1">Full Context</div>
+                                <p className="text-sm text-muted-foreground">Complete project understanding</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="max-w-2xl mx-auto">
+                        <Card className="border-primary/20 bg-card/50">
+                            <CardContent className="p-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm text-muted-foreground">Traditional AI Reviews</span>
+                                            <span className="text-sm font-semibold text-red-500">Process all files</span>
+                                        </div>
+                                        <div className="h-3 bg-red-500/20 rounded-full overflow-hidden">
+                                            <div className="h-full w-full bg-gradient-to-r from-red-500 to-red-600 rounded-full" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm text-muted-foreground">CodeCrow Smart Context</span>
+                                            <span className="text-sm font-semibold text-green-500">Only relevant code</span>
+                                        </div>
+                                        <div className="h-3 bg-muted rounded-full overflow-hidden">
+                                            <div className="h-full w-1/5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>
@@ -796,41 +1056,42 @@ const AIProvidersSection = () => {
 const FAQSection = () => {
     const faqs = [
         {
-            question: "What is CodeCrow?",
-            answer: "CodeCrow is an AI-powered code review platform that integrates with your repositories to automatically analyze code changes, identify issues, and provide actionable feedback on pull requests."
+            question: "How is CodeCrow different from other AI code review tools?",
+            answer: "Most AI review tools analyze code line-by-line without understanding your project structure. CodeCrow indexes your entire codebase and retrieves only the relevant context for each review — understanding dependencies, patterns, and architecture. This means more accurate, actionable feedback."
+        },
+        {
+            question: "What languages and platforms are supported?",
+            answer: "CodeCrow supports 15+ programming languages including Python, Java, TypeScript, Go, Rust, C++, PHP, Ruby, Kotlin, and Swift. We integrate with Bitbucket (available now), GitHub (available now), and GitLab (coming soon)."
+        },
+        {
+            question: "How much does it cost?",
+            answer: "CodeCrow is free and open source. You only pay for the AI API usage through your own API keys. Our smart context retrieval typically reduces API costs by 80% compared to full-file processing approaches."
         },
         {
             question: "Do I need my own API key?",
-            answer: "Yes, CodeCrow uses a BYOK (Bring Your Own Key) model. You provide your own API key from supported providers like OpenRouter, Anthropic, OpenAI, or Google, giving you full control over costs and model selection."
+            answer: "Yes, CodeCrow uses BYOK (Bring Your Own Key). You provide API keys from OpenRouter, Anthropic, OpenAI, or Google. This gives you full control over costs, model selection, and data privacy — no vendor lock-in."
         },
         {
-            question: "Which version control systems are supported?",
-            answer: "CodeCrow supports Bitbucket Cloud, GitHub, and GitLab. All three platforms have full OAuth integration with automatic webhook setup and PR/MR analysis."
-        },
-        {
-            question: "How does the RAG pipeline work?",
-            answer: "Our RAG (Retrieval-Augmented Generation) pipeline indexes your codebase and only reprocesses changed files. This provides full project context while reducing API costs by up to 80%."
+            question: "Is my code secure?",
+            answer: "Your code goes directly to your chosen AI provider using your own API keys. CodeCrow doesn't store your source code — we only maintain a semantic index for context retrieval. You can also self-host the entire system."
         },
         {
             question: "Is CodeCrow open source?",
-            answer: "Yes! CodeCrow is fully open source under the MIT license. You can self-host it, contribute to development, or customize it for your needs."
+            answer: "Yes! CodeCrow is fully open source under the MIT license. You can self-host it, contribute to development, or customize it for your needs. No hidden proprietary components."
         }
     ];
 
     return (
-        <section className="py-12 relative">
+        <section className="py-16 lg:py-24 relative">
             <div className="container px-4 sm:px-6 lg:px-8">
                 <div className="max-w-3xl mx-auto">
                     <div className="text-center mb-12">
-                        <Badge className="mb-6 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20">
+                        <Badge className="mb-6 bg-primary/10 text-primary border-primary/30">
                             FAQ
                         </Badge>
                         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4">
-                            Frequently Asked <span className="text-primary">Questions</span>
+                            Common <span className="text-primary">Questions</span>
                         </h2>
-                        <p className="text-lg text-muted-foreground">
-                            Everything you need to know about CodeCrow
-                        </p>
                     </div>
 
                     <Accordion type="single" collapsible className="w-full space-y-3">
@@ -855,180 +1116,40 @@ const FAQSection = () => {
     );
 };
 
-// Setup Once Section
-const SetupOnceSection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
-    const steps = [
-        { step: "1", title: "Connect Repository", description: "Link your Bitbucket account with secure OAuth2 authentication", icon: GitBranch },
-        { step: "2", title: "Add AI Key", description: "Configure your OpenRouter API credentials in the dashboard", icon: Key },
-        { step: "3", title: "Configure Pipeline", description: "Add CodeCrow to your CI/CD workflow with one command", icon: Workflow },
-    ];
-
-    return (
-        <section className="py-12 relative overflow-hidden">
-            <div className="text-center mb-20">
-                <Badge variant="secondary" className="mb-4 px-4 py-1.5">
-                    <Zap className="h-3.5 w-3.5 mr-1.5" />
-                    Simple & Powerful
-                </Badge>
-                <h2 className="text-4xl sm:text-5xl font-bold mb-6">
-                    Setup Once, Review Forever
-                </h2>
-                <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                    Six steps from PR to production. Our intelligent pipeline handles the complexity —
-                    you focus on shipping quality code.
-                </p>
-            </div>
-            <ProcessFlowchart />
-        </section>
-    );
-};
-
-// Intelligent Context Section
-const IntelligentContextSection = () => {
-    const benefits = [
-        { icon: Cpu, title: "Smart Caching", description: "Only changed files are reprocessed, dramatically reducing API costs per review" },
-        { icon: DollarSign, title: "Up to 80% Savings", description: "Significant reduction in LLM API usage compared to full-file analysis" },
-        { icon: Check, title: "Full Context", description: "Maintains complete project understanding without re-indexing unchanged code" },
-    ];
-
-    return (
-        <section className="py-12 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-primary/5 to-background" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
-
-            <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
-                <div className="grid lg:grid-cols-2 gap-16 items-center max-w-7xl mx-auto">
-                    <div className="space-y-8">
-                        <div>
-                            <Badge variant="secondary" className="mb-4 px-4 py-1.5 bg-primary/10 text-primary border-primary/20">
-                                <Database className="h-3.5 w-3.5 mr-1.5" />
-                                Smart RAG Pipeline
-                            </Badge>
-                            <h2 className="text-4xl sm:text-5xl font-bold mb-6">
-                                Intelligent Context, <br />
-                                <span className="text-primary">
-                                    Minimal Cost
-                                </span>
-                            </h2>
-                            <p className="text-xl text-muted-foreground leading-relaxed">
-                                Our Retrieval-Augmented Generation pipeline understands your entire codebase while processing only what's changed — dramatically reducing API costs and analysis time.
-                            </p>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="flex items-start gap-4">
-                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
-                                    <RefreshCw className="h-6 w-6 text-primary" />
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold text-lg mb-1">Incremental Reindexing</h4>
-                                    <p className="text-muted-foreground">Only changed files are reprocessed. On typical PRs, this means 80-95% of your codebase is cached and ready.</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-start gap-4">
-                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
-                                    <Database className="h-6 w-6 text-primary" />
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold text-lg mb-1">Full Context Awareness</h4>
-                                    <p className="text-muted-foreground">The AI understands your project structure, dependencies, and coding patterns — even files not in the current PR.</p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-start gap-4">
-                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
-                                    <TrendingUp className="h-6 w-6 text-primary" />
-                                </div>
-                                <div>
-                                    <h4 className="font-semibold text-lg mb-1">Historical Intelligence</h4>
-                                    <p className="text-muted-foreground">Track analysis history and code quality trends. See improvements over time and identify recurring patterns.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="relative">
-                        <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-primary/10 rounded-3xl blur-3xl" />
-                        <Card className="relative border-2 border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden">
-                            <CardContent className="p-8">
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between pb-4 border-b border-border/50">
-                                        <span className="text-sm font-medium text-muted-foreground">Analysis Comparison</span>
-                                        <Badge variant="outline" className="text-xs">Per PR Review</Badge>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-sm text-muted-foreground">Without RAG Pipeline</span>
-                                                <span className="text-sm font-semibold text-red-500">~100% files processed</span>
-                                            </div>
-                                            <div className="h-3 bg-red-500/20 rounded-full overflow-hidden">
-                                                <div className="h-full w-full bg-gradient-to-r from-red-500 to-red-600 rounded-full" />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-sm text-muted-foreground">With Smart RAG</span>
-                                                <span className="text-sm font-semibold text-green-500">~15-25% files processed</span>
-                                            </div>
-                                            <div className="h-3 bg-muted rounded-full overflow-hidden">
-                                                <div className="h-full w-1/5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
-                                        <div className="text-center p-4 rounded-xl bg-primary/5 border border-primary/10">
-                                            <div className="text-3xl font-bold text-primary">80%</div>
-                                            <div className="text-xs text-muted-foreground mt-1">Cost Reduction</div>
-                                        </div>
-                                        <div className="text-center p-4 rounded-xl bg-primary/5 border border-primary/10">
-                                            <div className="text-3xl font-bold text-primary">5x</div>
-                                            <div className="text-xs text-muted-foreground mt-1">Faster Analysis</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
-                                        <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                                        <span>Same quality, fraction of the cost</span>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-};
-
 // CTA Section
 const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
     return (
-        <section className="py-12 relative overflow-hidden">
-            {/* Primary gradient background */}
+        <section className="py-16 lg:py-24 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-t from-primary/10 via-primary/5 to-transparent" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[150px]" />
 
             <div className="container relative z-10 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-3xl mx-auto text-center">
-                    <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
-                        Ready to improve your <span className="text-primary">code reviews</span>?
+                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
+                        Ready for <span className="text-primary">Intelligent</span> Code Reviews?
                     </h2>
-                    <p className="text-xl text-muted-foreground mb-10">
-                        Join the alpha and start getting AI-powered insights on your codebase today.
+                    <p className="text-lg text-muted-foreground mb-10">
+                        Join the alpha and experience AI-powered reviews with full project understanding.
                     </p>
-                    <Button
-                        size="lg"
-                        onClick={handleGetStarted}
-                        className="h-14 px-10 text-lg shadow-xl shadow-primary/30 hover:shadow-primary/50 transition-all duration-300 hover:-translate-y-1"
-                    >
-                        Get Started Free
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Button
+                            size="lg"
+                            onClick={handleGetStarted}
+                            className="h-14 px-10 text-lg shadow-xl shadow-primary/30 hover:shadow-primary/50 transition-all duration-300 hover:-translate-y-1"
+                        >
+                            Get Started Free
+                            <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={() => window.open('https://github.com/rostilos/CodeCrow', '_blank')}
+                            className="h-14 px-8 text-lg"
+                        >
+                            <Github className="mr-2 h-5 w-5" />
+                            View on GitHub
+                        </Button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1037,11 +1158,34 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
 
 // Footer
 const Footer = () => {
+    const navigate = useNavigate();
+    
     return (
         <footer className="border-t border-border/40 py-12">
             <div className="container px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                     <CodeCrowLogo size="sm" />
+                    <div className="flex items-center gap-6">
+                        <Button variant="link" size="sm" onClick={() => navigate('/docs')} className="text-muted-foreground hover:text-foreground">
+                            Documentation
+                        </Button>
+                        <Button 
+                            variant="link" 
+                            size="sm" 
+                            onClick={() => window.open(import.meta.env.VITE_BLOG_URL || '/blog', '_blank')} 
+                            className="text-muted-foreground hover:text-foreground"
+                        >
+                            Blog
+                        </Button>
+                        <a 
+                            href="https://github.com/rostilos/CodeCrow" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <Github className="h-5 w-5" />
+                        </a>
+                    </div>
                     <p className="text-sm text-muted-foreground">
                         © {new Date().getFullYear()} CodeCrow. Open source under MIT License.
                     </p>
@@ -1096,6 +1240,10 @@ export default function WelcomePage() {
     const handleGetStarted = () => navigate("/register");
     const handleDashboard = () => navigate("/workspace");
     const handleDocs = () => navigate("/docs");
+    const handleBlog = () => {
+        const blogUrl = import.meta.env.VITE_BLOG_URL || '/blog';
+        window.open(blogUrl, '_blank');
+    };
 
     const scrollToCards = () => {
         cardsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1114,15 +1262,17 @@ export default function WelcomePage() {
         ${isHeaderVisible ? 'translate-y-0' : '-translate-y-full'}
         ${lastScrollY > 50 ? 'bg-background/95 backdrop-blur-md border-b border-border/40 shadow-sm' : ''}
       `}>
-                <SnowEffect fallDistance="65px" />
-                <BulbGarland />
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                     <nav className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-3">
-                            <CodeCrowLogo size="md" festive={true} />
+                            <CodeCrowLogo size="md" />
                         </div>
                         <div className="flex items-center gap-3">
                             <ThemeToggle />
+                            <Button variant="ghost" size="sm" onClick={handleBlog} className="hidden sm:flex">
+                                <Rss className="mr-2 h-4 w-4" />
+                                Blog
+                            </Button>
                             {isAuthenticated ? (
                                 <Button onClick={handleDashboard}>
                                     <LayoutDashboard className="mr-2 h-4 w-4" />
@@ -1148,17 +1298,23 @@ export default function WelcomePage() {
                 onHoverChange={setIsInteractionPaused}
             />
 
-            {/* Works Where You Code */}
+            {/* Why CodeCrow - Benefits */}
+            <WhyCodeCrowSection />
+
+            {/* How It Works - 3 steps */}
+            <HowItWorksSection />
+
+            {/* Smart Context - What makes us different */}
+            <SmartContextSection />
+
+            {/* Works Where You Code - Integrations */}
             <WorksWhereYouCodeSection />
 
-            {/* AI Providers */}
+            {/* AI Providers - BYOK */}
             <AIProvidersSection />
 
-            {/* Setup Once */}
-            <SetupOnceSection handleGetStarted={handleGetStarted} />
-
-            {/* Intelligent Context */}
-            <IntelligentContextSection />
+            {/* Cost Efficiency */}
+            <CostEfficiencySection />
 
             {/* FAQ */}
             <FAQSection />
