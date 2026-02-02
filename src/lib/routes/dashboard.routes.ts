@@ -61,8 +61,15 @@ export const DASHBOARD_ROUTES = {
   // Job routes
   PROJECT_JOBS: (workspaceSlug: string, namespace: string) => 
     `/dashboard/${workspaceSlug}/projects/${namespace}/jobs`,
-  PROJECT_JOB_DETAIL: (workspaceSlug: string, namespace: string, jobId: string | number) => 
-    `/dashboard/${workspaceSlug}/projects/${namespace}/jobs/${jobId}`,
+  PROJECT_JOB_DETAIL: (workspaceSlug: string, namespace: string, jobId: string | number, params?: Record<string, string>) => {
+    const base = `/dashboard/${workspaceSlug}/projects/${namespace}/jobs/${jobId}`;
+    if (params) {
+      const searchParams = new URLSearchParams(params);
+      const queryString = searchParams.toString();
+      return queryString ? `${base}?${queryString}` : base;
+    }
+    return base;
+  },
   
   // Settings routes
   USER_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/user`,
@@ -110,8 +117,8 @@ export function createWorkspaceRoutes(workspaceSlug: string) {
     issueDetail: (namespace: string, issueId: string, params?: Record<string, string>) => 
       DASHBOARD_ROUTES.ISSUE_DETAIL(workspaceSlug, namespace, issueId, params),
     projectJobs: (namespace: string) => DASHBOARD_ROUTES.PROJECT_JOBS(workspaceSlug, namespace),
-    projectJobDetail: (namespace: string, jobId: string | number) => 
-      DASHBOARD_ROUTES.PROJECT_JOB_DETAIL(workspaceSlug, namespace, jobId),
+    projectJobDetail: (namespace: string, jobId: string | number, params?: Record<string, string>) => 
+      DASHBOARD_ROUTES.PROJECT_JOB_DETAIL(workspaceSlug, namespace, jobId, params),
     userSettings: () => DASHBOARD_ROUTES.USER_SETTINGS(workspaceSlug),
     hostingSettings: () => DASHBOARD_ROUTES.HOSTING_SETTINGS(workspaceSlug),
     hostingAddConnection: () => DASHBOARD_ROUTES.HOSTING_ADD_CONNECTION(workspaceSlug),

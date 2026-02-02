@@ -410,6 +410,11 @@ export default function BranchIssues() {
                     selectionEnabled={true}
                     selectedIssues={selectedIssues}
                     onSelectionChange={handleSelectionChange}
+                    filters={{
+                      severity: filters.severity,
+                      status: filters.status,
+                      category: filters.category,
+                    }}
                   />
                   {/* Load More Button */}
                   {issues.length < totalIssues && (

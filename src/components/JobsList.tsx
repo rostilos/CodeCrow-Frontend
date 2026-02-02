@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   jobApi, 
   Job, 
@@ -95,9 +95,10 @@ interface JobsListProps {
   compact?: boolean;
   maxItems?: number;
   refreshKey?: number; // Increment to trigger refresh from parent
+  activeTab?: 'preview' | 'issues' | 'activity'; // Current tab to preserve on back navigation
 }
 
-export default function JobsList({ projectNamespace, compact = false, maxItems, refreshKey }: JobsListProps) {
+export default function JobsList({ projectNamespace, compact = false, maxItems, refreshKey, activeTab }: JobsListProps) {
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const routes = useWorkspaceRoutes();
@@ -159,8 +160,19 @@ export default function JobsList({ projectNamespace, compact = false, maxItems, 
     return () => clearInterval(interval);
   }, [jobs, fetchJobs]);
 
-  const handleJobClick = (jobId: string) => {
-    navigate(routes.projectJobDetail(projectNamespace, jobId));
+  const getJobUrl = (jobId: string) => {
+    // Include returnTab so we can restore the correct tab when navigating back
+    const params = activeTab ? { returnTab: activeTab } : {};
+    return routes.projectJobDetail(projectNamespace, jobId, params);
+  };
+
+  const handleJobClick = (e: React.MouseEvent, jobId: string) => {
+    // Allow ctrl+click and middle-click to open in new tab (browser default)
+    if (e.ctrlKey || e.metaKey || e.button === 1) {
+      return;
+    }
+    e.preventDefault();
+    navigate(getJobUrl(jobId));
   };
 
   if (loading && jobs.length === 0) {
@@ -256,16 +268,26 @@ export default function JobsList({ projectNamespace, compact = false, maxItems, 
                 <TableRow 
                   key={job.id} 
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleJobClick(job.id)}
+                  onClick={(e) => handleJobClick(e, job.id)}
+                  onAuxClick={(e) => {
+                    // Handle middle-click
+                    if (e.button === 1) {
+                      window.open(getJobUrl(job.id), '_blank');
+                    }
+                  }}
                 >
                   <TableCell>
-                    <div>
+                    <Link 
+                      to={getJobUrl(job.id)} 
+                      onClick={(e) => e.preventDefault()}
+                      className="block"
+                    >
                       <p className="font-medium text-sm">{job.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {job.branchName && `${job.branchName}`}
                         {job.prNumber && ` • PR #${job.prNumber}`}
                       </p>
-                    </div>
+                    </Link>
                   </TableCell>
                   <TableCell>
                     <JobTypeBadge type={job.jobType} />

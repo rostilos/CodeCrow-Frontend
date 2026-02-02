@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { analysisService } from "@/api_service/analysis/analysisService";
 import { projectService, type ProjectDTO } from "@/api_service/project/projectService";
@@ -54,6 +54,7 @@ export default function IssueDetails() {
   const scopePrNumber = searchParams.get('prNumber');
   const scopePrVersion = searchParams.get('prVersion');
   const returnPath = searchParams.get('returnPath');
+  const returnTab = searchParams.get('returnTab');
   const filterSeverity = searchParams.get('severity');
   const filterStatus = searchParams.get('status');
   const filterCategory = searchParams.get('category');
@@ -129,7 +130,8 @@ export default function IssueDetails() {
         }
 
         // Use filter parameters from URL if available
-        const statusFilter = filterStatus || 'all';
+        // Default to 'open' to match BranchIssues page behavior (show only open issues by default)
+        const statusFilter = filterStatus || 'open';
         const response = await analysisService.getBranchIssues(
           currentWorkspace.slug,
           namespace,
@@ -148,6 +150,16 @@ export default function IssueDetails() {
       }
       if (filterCategory && filterCategory !== 'ALL') {
         issues = issues.filter(i => i.issueCategory?.toLowerCase() === filterCategory.toLowerCase());
+      }
+      // Apply status filter (client-side to ensure consistency for both PR and branch issues)
+      // Default to 'open' to match BranchIssues page behavior
+      const effectiveStatusFilter = filterStatus || 'open';
+      if (effectiveStatusFilter !== 'all') {
+        if (effectiveStatusFilter === 'open') {
+          issues = issues.filter(i => i.status !== 'resolved');
+        } else if (effectiveStatusFilter === 'resolved') {
+          issues = issues.filter(i => i.status === 'resolved');
+        }
       }
 
       setScopeIssues(issues);
@@ -171,10 +183,11 @@ export default function IssueDetails() {
     }
   }, [issue, scopeBranch, scopePrNumber, currentWorkspace, namespace]);
 
-  const navigateToIssue = (targetIssueId: string) => {
+  const getIssueUrl = (targetIssueId: string) => {
     const params = new URLSearchParams();
     if (scopeBranch) params.set('branch', scopeBranch);
     if (returnPath) params.set('returnPath', returnPath);
+    if (returnTab) params.set('returnTab', returnTab);
     // Preserve PR scope parameters
     if (scopePrNumber) params.set('prNumber', scopePrNumber);
     if (scopePrVersion) params.set('prVersion', scopePrVersion);
@@ -183,10 +196,21 @@ export default function IssueDetails() {
     if (filterStatus) params.set('status', filterStatus);
     if (filterCategory) params.set('category', filterCategory);
 
+    return routes.issueDetail(namespace!, targetIssueId, Object.fromEntries(params));
+  };
+
+  const navigateToIssue = (e: React.MouseEvent, targetIssueId: string) => {
+    // Allow ctrl+click and middle-click to open in new tab
+    if (e.ctrlKey || e.metaKey || e.button === 1) {
+      return;
+    }
+    e.preventDefault();
+    
     // Pass scopeIssues via route state to avoid reloading
-    navigate(routes.issueDetail(namespace!, targetIssueId, Object.fromEntries(params)), {
+    // Use replace: true to update URL without adding to history stack (avoids full re-render)
+    navigate(getIssueUrl(targetIssueId), {
       state: { scopeIssues },
-      replace: false
+      replace: true
     });
   };
 
@@ -460,12 +484,19 @@ export default function IssueDetails() {
         backUrl = routes.projectDetail(namespace!);
       }
     }
+    // Append returnTab to backUrl if we have it
+    if (returnTab && backUrl) {
+      const separator = backUrl.includes('?') ? '&' : '?';
+      backUrl = `${backUrl}${separator}returnTab=${returnTab}`;
+    }
 
     return (
       <div className="mx-auto p-6">
-        <Button variant="ghost" size="sm" onClick={() => navigate(backUrl)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Analysis
+        <Button variant="ghost" size="sm" asChild>
+          <Link to={backUrl}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Analysis
+          </Link>
         </Button>
         <div className="mt-6">
           <Card>
@@ -484,6 +515,7 @@ export default function IssueDetails() {
   const diffContent = issue.suggestedFixDiff;
 
   // Determine back URL - if we have branch scope, go back to branch issues
+  // Also append returnTab to ensure correct tab is restored
   let backUrl = returnPath;
   if (!backUrl) {
     if (scopeBranch) {
@@ -491,6 +523,11 @@ export default function IssueDetails() {
     } else {
       backUrl = routes.projectDetail(namespace!);
     }
+  }
+  // Append returnTab to backUrl if we have it
+  if (returnTab && backUrl) {
+    const separator = backUrl.includes('?') ? '&' : '?';
+    backUrl = `${backUrl}${separator}returnTab=${returnTab}`;
   }
 
   // Find current issue index in scope list
@@ -535,11 +572,17 @@ export default function IssueDetails() {
             ) : (
               <div className="p-2">
                 {scopeIssues.map((scopeIssue) => (
-                  <button
+                  <Link
                     key={scopeIssue.id}
-                    onClick={() => navigateToIssue(scopeIssue.id)}
+                    to={getIssueUrl(scopeIssue.id)}
+                    onClick={(e) => navigateToIssue(e, scopeIssue.id)}
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        window.open(getIssueUrl(scopeIssue.id), '_blank');
+                      }
+                    }}
                     className={cn(
-                      "w-full text-left p-2 rounded-md hover:bg-primary/10 transition-colors mb-1",
+                      "block w-full text-left p-2 rounded-md hover:bg-primary/10 transition-colors mb-1",
                       scopeIssue.id === issueId && "bg-primary/10"
                     )}
                   >
@@ -553,7 +596,7 @@ export default function IssueDetails() {
                         <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
                       )}
                     </div>
-                  </button>
+                  </Link>
                 ))}
               </div>
             )}
@@ -565,9 +608,11 @@ export default function IssueDetails() {
       <div className="flex-1 overflow-auto container pt-6">
         {/* Top Navigation Bar */}
         <div className="flex items-center justify-between mb-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate(backUrl)}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+          <Button variant="ghost" size="sm" asChild>
+            <Link to={backUrl}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Link>
           </Button>
 
           {/* Navigation between issues */}
@@ -576,22 +621,42 @@ export default function IssueDetails() {
               <span className="text-sm text-muted-foreground">
                 {currentIndex + 1} of {scopeIssues.length}
               </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!prevIssue}
-                onClick={() => prevIssue && navigateToIssue(prevIssue.id)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!nextIssue}
-                onClick={() => nextIssue && navigateToIssue(nextIssue.id)}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              {prevIssue ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                >
+                  <Link 
+                    to={getIssueUrl(prevIssue.id)}
+                    onClick={(e) => navigateToIssue(e, prevIssue.id)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" disabled>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+              {nextIssue ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                >
+                  <Link 
+                    to={getIssueUrl(nextIssue.id)}
+                    onClick={(e) => navigateToIssue(e, nextIssue.id)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" disabled>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           )}
         </div>

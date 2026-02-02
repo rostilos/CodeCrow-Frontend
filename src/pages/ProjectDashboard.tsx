@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckCircle2, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -187,6 +187,21 @@ export default function ProjectDashboard() {
     }
     
     setFilters(newFilters);
+    
+    // Check if returnTab is set (coming back from issue detail page)
+    const returnTab = searchParams.get('returnTab');
+    if (returnTab && ['preview', 'issues', 'activity'].includes(returnTab)) {
+      setBranchTab(returnTab as 'preview' | 'issues' | 'activity');
+      setPrTab(returnTab as 'preview' | 'issues' | 'activity');
+    } else {
+      // Auto-switch to issues tab if any filter is set (e.g., from VCS severity link)
+      const hasActiveFilter = severityParam || statusParam || categoryParam || fileParam;
+      if (hasActiveFilter) {
+        // Set the tab to 'issues' for both branch and PR views
+        setBranchTab('issues');
+        setPrTab('issues');
+      }
+    }
     
     // Restore branch selection from URL
     const urlBranch = searchParams.get('branch');
@@ -584,6 +599,33 @@ export default function ProjectDashboard() {
   const handleBranchSelect = (branchName: string) => {
     loadBranchIssues(branchName);
   };
+
+  // Helper to clear filters and URL params when switching to preview tab
+  const clearFiltersAndSwitchToPreview = useCallback((type: 'branch' | 'pr') => {
+    const defaultFilters: IssueFilters = {
+      severity: 'ALL',
+      status: 'open',
+      category: 'ALL',
+      filePath: '',
+      dateFrom: undefined,
+      dateTo: undefined,
+    };
+    setFilters(defaultFilters);
+    
+    // Remove filter params from URL but keep selection params
+    const newParams = new URLSearchParams();
+    if (type === 'branch' && selectedBranch) {
+      newParams.set('branch', selectedBranch);
+      setBranchTab('preview');
+    } else if (type === 'pr' && selectedPR) {
+      newParams.set('prId', String(selectedPR.id));
+      if (selectedVersion > 1) {
+        newParams.set('version', String(selectedVersion));
+      }
+      setPrTab('preview');
+    }
+    setSearchParams(newParams, { replace: true });
+  }, [selectedBranch, selectedPR, selectedVersion, setSearchParams]);
 
   const handleFiltersChange = useCallback((newFilters: IssueFilters) => {
     setFilters(newFilters);
@@ -1199,11 +1241,13 @@ export default function ProjectDashboard() {
               {canManageWorkspace() && (
                 <Button
                   variant="outline"
-                  onClick={handleGoToSettings}
                   size="sm"
+                  asChild
                 >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
+                  <Link to={routes.projectSettings(namespace!)}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Link>
                 </Button>
               )}
             </div>
@@ -1213,7 +1257,7 @@ export default function ProjectDashboard() {
           <div className="flex items-center justify-between mt-6 lg:mt-8 -mb-4">
             <div className="flex items-center gap-6">
               <button
-                onClick={() => selectionType === 'branch' ? setBranchTab('preview') : setPrTab('preview')}
+                onClick={() => clearFiltersAndSwitchToPreview(selectionType)}
                 className={`pb-3 text-base font-medium transition-colors relative ${
                   (selectionType === 'branch' ? branchTab : prTab) === 'preview' 
                     ? 'text-orange-500 !font-bold' 
@@ -1418,6 +1462,12 @@ export default function ProjectDashboard() {
                             selectionEnabled={true}
                             selectedIssues={selectedIssues}
                             onSelectionChange={handleSelectionChange}
+                            filters={{
+                              severity: filters.severity,
+                              status: filters.status,
+                              category: filters.category,
+                            }}
+                            activeTab={branchTab}
                           />
                           {/* Load More Button for Pagination */}
                           {branchIssues.length < branchIssuesTotalCount && (
@@ -1444,7 +1494,7 @@ export default function ProjectDashboard() {
                   <CardDescription>Background jobs and analysis history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} />
+                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} activeTab={branchTab} />
                 </CardContent>
               </Card>
             ) : null}
@@ -1834,6 +1884,12 @@ export default function ProjectDashboard() {
                           selectionEnabled={true}
                           selectedIssues={selectedIssues}
                           onSelectionChange={handleSelectionChange}
+                          filters={{
+                            severity: filters.severity,
+                            status: filters.status,
+                            category: filters.category,
+                          }}
+                          activeTab={prTab}
                         />
                       )}
                     </CardContent>
@@ -1849,7 +1905,7 @@ export default function ProjectDashboard() {
                   <CardDescription>Background jobs and analysis history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} />
+                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} activeTab={prTab} />
                 </CardContent>
               </Card>
             )}
@@ -1885,7 +1941,7 @@ export default function ProjectDashboard() {
                   <CardDescription>Background jobs and analysis history</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} />
+                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} activeTab={selectionType === 'branch' ? branchTab : prTab} />
                 </CardContent>
               </Card>
             )}

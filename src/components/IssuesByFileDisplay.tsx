@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,14 @@ interface IssuesByFileDisplayProps {
   selectedIssues?: Set<string>;
   onSelectionChange?: (issueId: string, selected: boolean) => void;
   selectionEnabled?: boolean;
+  // Current filters to pass to issue detail page for sidebar filtering
+  filters?: {
+    severity?: string;
+    status?: string;
+    category?: string;
+  };
+  // Current active tab to preserve when navigating back
+  activeTab?: 'preview' | 'issues' | 'activity';
 }
 
 export default function IssuesByFileDisplay({
@@ -32,7 +40,9 @@ export default function IssuesByFileDisplay({
   onUpdateIssueStatus,
   selectedIssues = new Set(),
   onSelectionChange,
-  selectionEnabled = true
+  selectionEnabled = true,
+  filters,
+  activeTab
 }: IssuesByFileDisplayProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -73,13 +83,29 @@ export default function IssuesByFileDisplay({
     );
   };
 
-  const handleCardClick = (issueId: string) => {
+  const getIssueUrl = (issueId: string) => {
     // Preserve current URL path and params when navigating to issue details
     const currentPath = window.location.pathname;
     const params = new URLSearchParams(searchParams);
 
     // Store the return path in the URL so we can come back to it
     params.set('returnPath', currentPath + (searchParams.toString() ? '?' + searchParams.toString() : ''));
+
+    // Store the active tab so we can return to it
+    if (activeTab) {
+      params.set('returnTab', activeTab);
+    }
+
+    // Add filter params from props (these may not be in URL if they're applied via state)
+    if (filters?.severity && filters.severity !== 'ALL') {
+      params.set('severity', filters.severity);
+    }
+    if (filters?.status && filters.status !== 'all') {
+      params.set('status', filters.status);
+    }
+    if (filters?.category && filters.category !== 'ALL') {
+      params.set('category', filters.category);
+    }
 
     // Pass the branch for sidebar scope
     if (branchName) {
@@ -94,7 +120,16 @@ export default function IssuesByFileDisplay({
       }
     }
 
-    navigate(routes.issueDetail(projectNamespace, issueId, Object.fromEntries(params)));
+    return routes.issueDetail(projectNamespace, issueId, Object.fromEntries(params));
+  };
+
+  const handleCardClick = (e: React.MouseEvent, issueId: string) => {
+    // Allow ctrl+click and middle-click to open in new tab (browser default)
+    if (e.ctrlKey || e.metaKey || e.button === 1) {
+      return;
+    }
+    e.preventDefault();
+    navigate(getIssueUrl(issueId));
   };
 
   if (issues.length === 0) {
@@ -129,18 +164,24 @@ export default function IssuesByFileDisplay({
           {/* Issues for this file */}
           <div className="space-y-3">
             {fileIssues.map((issue) => (
-              <Card
+              <Link
                 key={issue.id}
-                className={cn(
-                  "group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30",
-                  selectedIssues.has(issue.id) && "ring-2 ring-primary/50 border-primary/30"
-                )}
-                onClick={() => {
+                to={getIssueUrl(issue.id)}
+                onClick={(e) => {
                   if (selectedIssues.size === 0) {
-                    handleCardClick(issue.id);
+                    handleCardClick(e, issue.id);
+                  } else {
+                    e.preventDefault();
                   }
                 }}
+                className="block"
               >
+                <Card
+                  className={cn(
+                    "group cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30",
+                    selectedIssues.has(issue.id) && "ring-2 ring-primary/50 border-primary/30"
+                  )}
+                >
                 <CardContent className="p-5">
                   <div className="flex gap-4">
                     {/* Selection checkbox - always visible when enabled */}
@@ -236,8 +277,7 @@ export default function IssuesByFileDisplay({
                             </div>
                           )}
                           <div className="flex items-center gap-1">
-                              <Code className="h-3 w-3" />
-                              <span className="font-mono text-muted-foreground/80">{issue.file}:{issue.line}</span>
+                              <span className="text-muted-foreground/80">L:{issue.line}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
@@ -249,6 +289,7 @@ export default function IssuesByFileDisplay({
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             ))}
           </div>
         </div>

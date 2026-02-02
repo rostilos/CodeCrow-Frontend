@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
   jobApi, 
   Job, 
@@ -131,8 +131,12 @@ export default function JobDetailPage() {
   }>();
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const routes = useWorkspaceRoutes();
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Get returnTab from URL params for back navigation
+  const returnTab = searchParams.get('returnTab');
 
   const [job, setJob] = useState<Job | null>(null);
   const [logs, setLogs] = useState<JobLog[]>([]);
@@ -277,12 +281,37 @@ export default function JobDetailPage() {
     );
   }
 
+  // Build back URL with returnTab if available
+  const getBackUrl = () => {
+    if (returnTab) {
+      const params = new URLSearchParams();
+      params.set('returnTab', returnTab);
+      return `${routes.projectDetail(namespace!)}?${params.toString()}`;
+    }
+    return routes.projectDetail(namespace!);
+  };
+
+  const handleBack = (e: React.MouseEvent) => {
+    // Allow ctrl+click and middle-click to open in new tab
+    if (e.ctrlKey || e.metaKey || e.button === 1) {
+      return;
+    }
+    e.preventDefault();
+    if (returnTab) {
+      navigate(getBackUrl());
+    } else {
+      navigate(-1);
+    }
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
+        <Button variant="ghost" size="icon" asChild>
+          <Link to={getBackUrl()} onClick={handleBack}>
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
