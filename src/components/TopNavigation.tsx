@@ -24,7 +24,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { useState } from "react";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
-import { SnowEffect } from "./SnowEffect";
 
 interface TopNavigationProps {
   showSearch?: boolean;
@@ -68,7 +67,6 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
 
   return (
     <header className="sticky top-0 z-50 h-14 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <SnowEffect fallDistance="60px" />
       <div className="flex items-center justify-between px-4 lg:px-6 h-full relative z-10">
         {/* Left side - Logo, Mobile Menu and Navigation */}
         <div className="flex items-center gap-4 lg:gap-8">
@@ -166,10 +164,7 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
             onClick={() => navigate("/")}
             className="flex items-center hover:opacity-80 transition-opacity gap-2"
           >
-            <CodeCrowLogo size="sm" festive={true} />
-            <span className="hidden xl:block text-xs font-bold text-primary animate-pulse festive-glow">
-              Happy New Year! 🎄
-            </span>
+            <CodeCrowLogo size="sm" />
           </button>
 
           <nav className="hidden md:flex items-center gap-6">

@@ -1,161 +1,74 @@
 /**
  * Centralized route utilities for workspace-aware URL generation.
  * All dashboard routes should use these functions to ensure workspace is included in URLs.
+ * 
+ * NOTE: Routes are now organized in separate modules under @/lib/routes/
+ * This file re-exports everything for backward compatibility.
  */
 
-// Route path constants
+// Re-export from modular route files
+export { STATIC_ROUTES } from './routes/static.routes';
+export { DASHBOARD_ROUTES, createWorkspaceRoutes } from './routes/dashboard.routes';
+export { DOCS_ROUTES } from './routes/docs.routes';
+export { extractWorkspaceFromPath, isDashboardPath, isDocsPath } from './routes/utils';
+
+// Legacy ROUTES object for backward compatibility
+// Maps old route names to new modular structure
+import { STATIC_ROUTES } from './routes/static.routes';
+import { DASHBOARD_ROUTES } from './routes/dashboard.routes';
+
 export const ROUTES = {
   // Public routes (no workspace needed)
-  HOME: '/',
-  LOGIN: '/login',
-  REGISTER: '/register',
-  FORGOT_PASSWORD: '/forgot-password',
-  RESET_PASSWORD: '/reset-password',
+  HOME: STATIC_ROUTES.HOME,
+  LOGIN: STATIC_ROUTES.LOGIN,
+  REGISTER: STATIC_ROUTES.REGISTER,
+  FORGOT_PASSWORD: STATIC_ROUTES.FORGOT_PASSWORD,
+  RESET_PASSWORD: STATIC_ROUTES.RESET_PASSWORD,
   DOCS: '/docs',
-  WORKSPACE_SELECTION: '/workspace',
+  WORKSPACE_SELECTION: STATIC_ROUTES.WORKSPACE_SELECTION,
 
   // Dashboard base (requires workspace)
-  DASHBOARD: (workspaceSlug: string) => `/dashboard/${workspaceSlug}`,
+  DASHBOARD: DASHBOARD_ROUTES.DASHBOARD,
   
   // Project routes
-  PROJECTS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/projects`,
-  PROJECT_NEW: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/projects/import`, // Redirect to unified import flow
-  PROJECT_IMPORT: (workspaceSlug: string, params?: { connectionId?: string | number; provider?: string; connectionType?: string }) => {
-    const base = `/dashboard/${workspaceSlug}/projects/import`;
-    if (params) {
-      const searchParams = new URLSearchParams();
-      if (params.connectionId) searchParams.set('connectionId', String(params.connectionId));
-      if (params.provider) searchParams.set('provider', params.provider);
-      if (params.connectionType) searchParams.set('connectionType', params.connectionType);
-      const queryString = searchParams.toString();
-      return queryString ? `${base}?${queryString}` : base;
-    }
-    return base;
-  },
-  PROJECT_SELECT_REPO: (workspaceSlug: string, connectionId: string | number) => 
-    `/dashboard/${workspaceSlug}/projects/new/select-repo/${connectionId}`,
-  PROJECT_DETAIL: (workspaceSlug: string, namespace: string) => 
-    `/dashboard/${workspaceSlug}/projects/${namespace}`,
-  PROJECT_SETUP: (workspaceSlug: string, namespace: string) => 
-    `/dashboard/${workspaceSlug}/projects/${namespace}/setup`,
-  PROJECT_SETUP_SUCCESS: (workspaceSlug: string, namespace: string) => 
-    `/dashboard/${workspaceSlug}/projects/${namespace}/setup/success`,
-  PROJECT_SETTINGS: (workspaceSlug: string, namespace: string, tab?: string) => {
-    const base = `/dashboard/${workspaceSlug}/projects/${namespace}/settings`;
-    return tab ? `${base}?tab=${tab}` : base;
-  },
+  PROJECTS: DASHBOARD_ROUTES.PROJECTS,
+  PROJECT_NEW: DASHBOARD_ROUTES.PROJECT_NEW,
+  PROJECT_IMPORT: DASHBOARD_ROUTES.PROJECT_IMPORT,
+  PROJECT_SELECT_REPO: DASHBOARD_ROUTES.PROJECT_SELECT_REPO,
+  PROJECT_DETAIL: DASHBOARD_ROUTES.PROJECT_DETAIL,
+  PROJECT_SETUP: DASHBOARD_ROUTES.PROJECT_SETUP,
+  PROJECT_SETUP_SUCCESS: DASHBOARD_ROUTES.PROJECT_SETUP_SUCCESS,
+  PROJECT_SETTINGS: DASHBOARD_ROUTES.PROJECT_SETTINGS,
   
   // Branch/Issue routes
-  BRANCH_ISSUES: (workspaceSlug: string, namespace: string, branchName: string, params?: { severity?: string; status?: string; category?: string; filePath?: string }) => {
-    const base = `/dashboard/${workspaceSlug}/projects/${namespace}/branches/${encodeURIComponent(branchName)}/issues`;
-    if (params) {
-      const searchParams = new URLSearchParams();
-      if (params.severity) searchParams.set('severity', params.severity);
-      if (params.status) searchParams.set('status', params.status);
-      if (params.category) searchParams.set('category', params.category);
-      if (params.filePath) searchParams.set('filePath', params.filePath);
-      const queryString = searchParams.toString();
-      return queryString ? `${base}?${queryString}` : base;
-    }
-    return base;
-  },
-  ISSUE_DETAIL: (workspaceSlug: string, namespace: string, issueId: string, params?: Record<string, string>) => {
-    const base = `/dashboard/${workspaceSlug}/projects/${namespace}/issues/${issueId}`;
-    if (params) {
-      const searchParams = new URLSearchParams(params);
-      const queryString = searchParams.toString();
-      return queryString ? `${base}?${queryString}` : base;
-    }
-    return base;
-  },
+  BRANCH_ISSUES: DASHBOARD_ROUTES.BRANCH_ISSUES,
+  ISSUE_DETAIL: DASHBOARD_ROUTES.ISSUE_DETAIL,
   
   // Job routes
-  PROJECT_JOBS: (workspaceSlug: string, namespace: string) => 
-    `/dashboard/${workspaceSlug}/projects/${namespace}/jobs`,
-  PROJECT_JOB_DETAIL: (workspaceSlug: string, namespace: string, jobId: string | number) => 
-    `/dashboard/${workspaceSlug}/projects/${namespace}/jobs/${jobId}`,
+  PROJECT_JOBS: DASHBOARD_ROUTES.PROJECT_JOBS,
+  PROJECT_JOB_DETAIL: DASHBOARD_ROUTES.PROJECT_JOB_DETAIL,
   
   // Settings routes
-  USER_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/user`,
-  HOSTING_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/hosting`,
-  HOSTING_ADD_CONNECTION: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/hosting/add-connection`,
-  HOSTING_CONFIGURE: (workspaceSlug: string, connectionId: string | number) => 
-    `/dashboard/${workspaceSlug}/hosting/configure/${connectionId}`,
-  HOSTING_GITHUB_ADD: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/hosting/github/add-connection`,
-  HOSTING_GITHUB_CONFIGURE: (workspaceSlug: string, connectionId: string | number) => 
-    `/dashboard/${workspaceSlug}/hosting/github/configure/${connectionId}`,
-  HOSTING_GITHUB_CALLBACK: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/hosting/github/callback`,
-  HOSTING_GITLAB_ADD: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/hosting/gitlab/add-connection`,
-  HOSTING_GITLAB_CONFIGURE: (workspaceSlug: string, connectionId: string | number) => 
-    `/dashboard/${workspaceSlug}/hosting/gitlab/configure/${connectionId}`,
-  HOSTING_SUCCESS: (workspaceSlug: string, provider: string) => 
-    `/dashboard/${workspaceSlug}/hosting/${provider}/success`,
-  AI_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/ai`,
-  WORKSPACE_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/workspace`,
-  TASK_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/tasks`,
-  QUALITY_GATES: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/quality-gates`,
-  BILLING_SETTINGS: (workspaceSlug: string) => `/dashboard/${workspaceSlug}/billing`,
+  USER_SETTINGS: DASHBOARD_ROUTES.USER_SETTINGS,
+  HOSTING_SETTINGS: DASHBOARD_ROUTES.HOSTING_SETTINGS,
+  HOSTING_ADD_CONNECTION: DASHBOARD_ROUTES.HOSTING_ADD_CONNECTION,
+  HOSTING_CONFIGURE: DASHBOARD_ROUTES.HOSTING_CONFIGURE,
+  HOSTING_GITHUB_ADD: DASHBOARD_ROUTES.HOSTING_GITHUB_ADD,
+  HOSTING_GITHUB_CONFIGURE: DASHBOARD_ROUTES.HOSTING_GITHUB_CONFIGURE,
+  HOSTING_GITHUB_CALLBACK: DASHBOARD_ROUTES.HOSTING_GITHUB_CALLBACK,
+  HOSTING_GITLAB_ADD: DASHBOARD_ROUTES.HOSTING_GITLAB_ADD,
+  HOSTING_GITLAB_CONFIGURE: DASHBOARD_ROUTES.HOSTING_GITLAB_CONFIGURE,
+  HOSTING_SUCCESS: DASHBOARD_ROUTES.HOSTING_SUCCESS,
+  AI_SETTINGS: DASHBOARD_ROUTES.AI_SETTINGS,
+  WORKSPACE_SETTINGS: DASHBOARD_ROUTES.WORKSPACE_SETTINGS,
+  TASK_SETTINGS: DASHBOARD_ROUTES.TASK_SETTINGS,
+  QUALITY_GATES: DASHBOARD_ROUTES.QUALITY_GATES,
+  BILLING_SETTINGS: DASHBOARD_ROUTES.BILLING_SETTINGS,
   
   // Integration routes
-  BITBUCKET_CONNECT_HANDSHAKE: (workspaceSlug: string) => 
-    `/dashboard/${workspaceSlug}/integrations/bitbucket/connect`,
+  BITBUCKET_CONNECT_HANDSHAKE: DASHBOARD_ROUTES.BITBUCKET_CONNECT_HANDSHAKE,
 } as const;
 
-/**
- * Hook-friendly helper to create route functions bound to current workspace
- */
-export function createWorkspaceRoutes(workspaceSlug: string) {
-  return {
-    projects: () => ROUTES.PROJECTS(workspaceSlug),
-    projectNew: () => ROUTES.PROJECT_NEW(workspaceSlug),
-    projectImport: (params?: { connectionId?: string | number; provider?: string; connectionType?: string }) => 
-      ROUTES.PROJECT_IMPORT(workspaceSlug, params),
-    projectSelectRepo: (connectionId: string | number) => 
-      ROUTES.PROJECT_SELECT_REPO(workspaceSlug, connectionId),
-    projectDetail: (namespace: string) => ROUTES.PROJECT_DETAIL(workspaceSlug, namespace),
-    projectSetup: (namespace: string) => ROUTES.PROJECT_SETUP(workspaceSlug, namespace),
-    projectSetupSuccess: (namespace: string) => ROUTES.PROJECT_SETUP_SUCCESS(workspaceSlug, namespace),
-    projectSettings: (namespace: string, tab?: string) => ROUTES.PROJECT_SETTINGS(workspaceSlug, namespace, tab),
-    branchIssues: (namespace: string, branchName: string, params?: { severity?: string; status?: string; category?: string; filePath?: string }) => 
-      ROUTES.BRANCH_ISSUES(workspaceSlug, namespace, branchName, params),
-    issueDetail: (namespace: string, issueId: string, params?: Record<string, string>) => 
-      ROUTES.ISSUE_DETAIL(workspaceSlug, namespace, issueId, params),
-    projectJobs: (namespace: string) => ROUTES.PROJECT_JOBS(workspaceSlug, namespace),
-    projectJobDetail: (namespace: string, jobId: string | number) => 
-      ROUTES.PROJECT_JOB_DETAIL(workspaceSlug, namespace, jobId),
-    userSettings: () => ROUTES.USER_SETTINGS(workspaceSlug),
-    hostingSettings: () => ROUTES.HOSTING_SETTINGS(workspaceSlug),
-    hostingAddConnection: () => ROUTES.HOSTING_ADD_CONNECTION(workspaceSlug),
-    hostingConfigure: (connectionId: string | number) => 
-      ROUTES.HOSTING_CONFIGURE(workspaceSlug, connectionId),
-    hostingGitHubAdd: () => ROUTES.HOSTING_GITHUB_ADD(workspaceSlug),
-    hostingGitHubConfigure: (connectionId: string | number) => 
-      ROUTES.HOSTING_GITHUB_CONFIGURE(workspaceSlug, connectionId),
-    hostingGitHubCallback: () => ROUTES.HOSTING_GITHUB_CALLBACK(workspaceSlug),
-    hostingGitLabAdd: () => ROUTES.HOSTING_GITLAB_ADD(workspaceSlug),
-    hostingGitLabConfigure: (connectionId: string | number) => 
-      ROUTES.HOSTING_GITLAB_CONFIGURE(workspaceSlug, connectionId),
-    hostingSuccess: (provider: string) => ROUTES.HOSTING_SUCCESS(workspaceSlug, provider),
-    aiSettings: () => ROUTES.AI_SETTINGS(workspaceSlug),
-    workspaceSettings: () => ROUTES.WORKSPACE_SETTINGS(workspaceSlug),
-    taskSettings: () => ROUTES.TASK_SETTINGS(workspaceSlug),
-    qualityGates: () => ROUTES.QUALITY_GATES(workspaceSlug),
-    billingSettings: () => ROUTES.BILLING_SETTINGS(workspaceSlug),
-    bitbucketConnectHandshake: () => ROUTES.BITBUCKET_CONNECT_HANDSHAKE(workspaceSlug),
-  };
-}
+// Re-export extractWorkspaceFromPath and isDashboardPath for backward compatibility
+// (already exported above from utils, but keep inline versions for legacy code)
 
-/**
- * Extract workspace slug from current URL path
- */
-export function extractWorkspaceFromPath(pathname: string): string | null {
-  const match = pathname.match(/^\/dashboard\/([^/]+)/);
-  return match ? match[1] : null;
-}
-
-/**
- * Check if a path is a dashboard path that requires workspace
- */
-export function isDashboardPath(pathname: string): boolean {
-  return pathname.startsWith('/dashboard');
-}
