@@ -3,15 +3,19 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import WorkspaceMembers from "@/components/WorkspaceManagement";
 import WorkspaceConfiguration from "@/components/WorkspaceConfiguration";
 import WorkspaceDangerZone from "@/components/WorkspaceDangerZone";
+import BillingSettings from "../Billing/BillingSettings";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { useWorkspace } from "@/context/WorkspaceContext";
-import { Users, Settings, AlertTriangle } from "lucide-react";
+import { Users, Settings, AlertTriangle, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FEATURES } from "@/config/features";
 
 const navItems = [
   { id: "members", label: "Members", icon: Users },
+  // Billing tab only shown when feature is enabled
+  ...(FEATURES.BILLING ? [{ id: "billing", label: "Billing", icon: CreditCard }] : []),
   { id: "configuration", label: "Configuration", icon: Settings },
   { id: "danger", label: "Danger Zone", icon: AlertTriangle, danger: true },
 ];
@@ -19,11 +23,11 @@ const navItems = [
 export default function WorkspaceManagementPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { canManageWorkspace, loading } = usePermissions();
+  const { canManageWorkspace, loading, isWorkspaceOwner } = usePermissions();
   const { toast } = useToast();
   const routes = useWorkspaceRoutes();
   const { currentWorkspace } = useWorkspace();
-  
+
   const activeTab = searchParams.get("tab") || "members";
 
   const handleNavClick = (tabId: string) => {
@@ -51,6 +55,8 @@ export default function WorkspaceManagementPage() {
     switch (activeTab) {
       case "members":
         return <WorkspaceMembers />;
+      case "billing":
+        return <BillingSettings />;
       case "configuration":
         return <WorkspaceConfiguration />;
       case "danger":
@@ -71,7 +77,7 @@ export default function WorkspaceManagementPage() {
         {/* Left Side Navigation */}
         <nav className="lg:w-64 shrink-0">
           <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
-            {navItems.map((item) => {
+            {navItems.filter(item => item.id !== 'billing' || (FEATURES.BILLING && isWorkspaceOwner())).map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (

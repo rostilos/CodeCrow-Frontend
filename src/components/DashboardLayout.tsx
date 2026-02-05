@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { Code, User, Brain, GitBranch, Users, FileCode, Rocket, Settings as SettingsIcon } from "lucide-react";
+import { Code, User, Brain, GitBranch, Users, FileCode, Rocket, Settings as SettingsIcon, Shield, CreditCard } from "lucide-react";
 import { authUtils } from "@/lib/auth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TopNavigation } from "@/components/TopNavigation";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { FEATURES } from "@/config/features";
 import {
   CommandDialog,
   CommandEmpty,
@@ -44,6 +45,9 @@ export default function DashboardLayout() {
     ...(canManageWorkspace() ? [
       { title: "AI Connections", url: routes.aiSettings(), icon: Brain, group: "Navigation" },
       { title: "VCS Connections", url: routes.hostingSettings(), icon: GitBranch, group: "Navigation" },
+      { title: "Quality Gates", url: routes.qualityGates(), icon: Shield, group: "Navigation" },
+      // Only show billing in search if feature is enabled
+      ...(FEATURES.BILLING ? [{ title: "Billing", url: routes.billingSettings(), icon: CreditCard, group: "Navigation" }] : []),
       { title: "Workspace Settings", url: routes.workspaceSettings(), icon: Users, group: "Navigation" },
     ] : []),
     { title: "Getting Started", url: "/docs", icon: Rocket, group: "Documentation" },
@@ -63,7 +67,7 @@ export default function DashboardLayout() {
   return (
     <div className="min-h-screen flex flex-col w-full bg-background dashboard-theme">
       <TopNavigation showSearch onSearchClick={() => setSearchOpen(true)} />
-      
+
       {/* Main Content */}
       <main className="flex-1 overflow-auto container">
         <Outlet />

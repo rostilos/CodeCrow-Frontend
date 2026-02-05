@@ -25,7 +25,7 @@ import {
     Zap
 } from "lucide-react";
 import {useEffect, useState} from "react";
-import {useNavigate} from "react-router-dom";
+import {useNavigate, useSearchParams} from "react-router-dom";
 import {useToast} from "@/hooks/use-toast.ts";
 import {bitbucketCloudService} from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import {
@@ -49,6 +49,27 @@ import {
 import GitHubHostingSettings from "@/pages/Account/CodeHosting/github/GitHubHostingSettings.tsx";
 import GitLabHostingSettings from "@/pages/Account/CodeHosting/gitlab/GitLabHostingSettings.tsx";
 import bitbucketAppSetupImg from "@/assets/bitbucket-app-setup.png";
+import { cn } from "@/lib/utils";
+
+// Bitbucket icon component
+const BitbucketIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M.778 1.213a.768.768 0 00-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 00.77-.646l3.27-20.03a.768.768 0 00-.768-.891zM14.52 15.53H9.522L8.17 8.466h7.561z"/>
+    </svg>
+);
+
+// GitLab icon component
+const GitLabIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
+    </svg>
+);
+
+const navItems = [
+  { id: "bitbucket", label: "Bitbucket", icon: BitbucketIcon },
+  { id: "github", label: "GitHub", icon: Github },
+  { id: "gitlab", label: "GitLab", icon: GitLabIcon },
+];
 
 interface BitbucketConnection {
     id: string;
@@ -65,6 +86,7 @@ export default function HostingSettings() {
     const navigate = useNavigate();
     const routes = useWorkspaceRoutes();
     const { currentWorkspace } = useWorkspace();
+    const [searchParams] = useSearchParams();
     const [manualConnections, setManualConnections] = useState<BitbucketConnections>([]);
     const [appConnections, setAppConnections] = useState<VcsConnection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -373,31 +395,14 @@ export default function HostingSettings() {
 
     const hasNoConnections = manualConnections.length === 0 && appConnections.length === 0;
 
-    return (
-        <div className="container mx-auto p-6 space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                    <GitBranch className="h-6 w-6 text-primary"/>
-                    <h1 className="text-3xl font-bold">Code Hosting Settings</h1>
-                </div>
-            </div>
+    const activeTab = searchParams.get("tab") || "bitbucket";
 
-            <Tabs defaultValue="bitbucket" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="bitbucket">Bitbucket</TabsTrigger>
-                    <TabsTrigger value="github">GitHub</TabsTrigger>
-                    <TabsTrigger value="gitlab">GitLab</TabsTrigger>
-                </TabsList>
+    const handleNavClick = (tabId: string) => {
+        navigate(`?tab=${tabId}`);
+    };
 
-                <TabsContent value="github" className="space-y-6">
-                    <GitHubHostingSettings />
-                </TabsContent>
-
-                <TabsContent value="gitlab" className="space-y-6">
-                    <GitLabHostingSettings />
-                </TabsContent>
-
-                <TabsContent value="bitbucket" className="space-y-6">
+    const renderBitbucketContent = () => (
+        <div className="space-y-6">
                     {/* New Connection Options Card with 3 tabs */}
                     <Card className="border-2 border-dashed border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
                         <CardHeader>
@@ -865,8 +870,63 @@ export default function HostingSettings() {
                             </div>
                         )}
                     </div>
-                </TabsContent>
-            </Tabs>
+        </div>
+    );
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case "bitbucket":
+                return renderBitbucketContent();
+            case "github":
+                return <GitHubHostingSettings />;
+            case "gitlab":
+                return <GitLabHostingSettings />;
+            default:
+                return renderBitbucketContent();
+        }
+    };
+
+    return (
+        <div className="container p-6">
+            <div className="mb-6">
+                <div className="flex items-center space-x-2">
+                    <GitBranch className="h-6 w-6 text-primary"/>
+                    <h1 className="text-3xl font-bold tracking-tight">VCS Connections</h1>
+                </div>
+                <p className="text-muted-foreground">Manage your code hosting connections</p>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-6">
+                {/* Left Side Navigation */}
+                <nav className="lg:w-64 shrink-0">
+                    <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
+                        {navItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = activeTab === item.id;
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={() => handleNavClick(item.id)}
+                                    className={cn(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
+                                        isActive
+                                            ? "bg-primary/10 text-primary"
+                                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    )}
+                                >
+                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <span>{item.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </nav>
+
+                {/* Main Content */}
+                <main className="flex-1 min-w-0">
+                    {renderContent()}
+                </main>
+            </div>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

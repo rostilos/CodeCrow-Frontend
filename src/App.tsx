@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { WorkspaceProvider } from "./context/WorkspaceContext";
 import WorkspaceGuard from "./components/WorkspaceGuard";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { FEATURES } from "./config/features";
 const queryClient = new QueryClient();
 
 const Index = lazy(() => import("./pages/Index"));
@@ -216,7 +217,8 @@ const App = () => (
                           <Route path="workspace" element={<WorkspaceManagementPage />} />
                           <Route path="tasks" element={<TaskSettings />} />
                           <Route path="quality-gates" element={<QualityGatesPage />} />
-                          <Route path="billing" element={<BillingSettings />} />
+                          {/* Billing route only available when feature is enabled */}
+                          {FEATURES.BILLING && <Route path="billing" element={<BillingSettings />} />}
                           <Route path="hosting/:provider/success" element={<IntegrationSuccess />} />
                           <Route path="integrations/bitbucket/connect" element={<BitbucketConnectHandshake />} />
                         </Route>

@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { User, Shield, Globe, Settings, Palette } from "lucide-react";
 import ProfileInformation from "@/components/Account/UserSettings/ProfileInformation.tsx";
 import TwoFactorSettings from "@/components/Account/UserSettings/TwoFactorSettings.tsx";
@@ -17,7 +16,8 @@ import * as z from "zod";
 import { passwordService } from "@/api_service/user/passwordService";
 import { toast } from "sonner";
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -32,23 +32,22 @@ const passwordSchema = z.object({
 
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
-const TABS = {
-  PROFILE: "profile",
-  SECURITY: "security",
-  ACCOUNT: "account",
-} as const;
-
-type TabValue = typeof TABS[keyof typeof TABS];
+const navItems = [
+  { id: "profile", label: "Profile", icon: User },
+  { id: "security", label: "Security", icon: Shield },
+  { id: "account", label: "Account", icon: Globe },
+];
 
 export default function UserSettings() {
   const { theme, setTheme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   
-  const currentTab = (searchParams.get("tab") as TabValue) || TABS.PROFILE;
+  const activeTab = searchParams.get("tab") || "profile";
   
-  const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value });
+  const handleNavClick = (tabId: string) => {
+    navigate(`?tab=${tabId}`);
   };
   
   const {
@@ -77,31 +76,10 @@ export default function UserSettings() {
     }
   };
 
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center space-x-2">
-        <Settings className="h-6 w-6 text-primary" />
-        <h1 className="text-3xl font-bold">User Settings</h1>
-      </div>
-      
-      <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
-          <TabsTrigger value={TABS.PROFILE} className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Profile</span>
-          </TabsTrigger>
-          <TabsTrigger value={TABS.SECURITY} className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            <span className="hidden sm:inline">Security</span>
-          </TabsTrigger>
-          <TabsTrigger value={TABS.ACCOUNT} className="flex items-center gap-2">
-            <Globe className="h-4 w-4" />
-            <span className="hidden sm:inline">Account</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Profile Tab - includes Profile Info and Preferences */}
-        <TabsContent value={TABS.PROFILE} className="mt-6">
+  const renderContent = () => {
+    switch (activeTab) {
+      case "profile":
+        return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ProfileInformation />
             
@@ -163,10 +141,9 @@ export default function UserSettings() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        {/* Security Tab - includes Password and 2FA */}
-        <TabsContent value={TABS.SECURITY} className="mt-6">
+        );
+      case "security":
+        return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Password Card */}
             <Card>
@@ -227,10 +204,9 @@ export default function UserSettings() {
             {/* 2FA Card */}
             <TwoFactorSettings />
           </div>
-        </TabsContent>
-
-        {/* Account Status Tab */}
-        <TabsContent value={TABS.ACCOUNT} className="mt-6">
+        );
+      case "account":
+        return (
           <Card className="opacity-50 pointer-events-none max-w-2xl">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -277,8 +253,53 @@ export default function UserSettings() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="container p-6">
+      <div className="mb-6">
+        <div className="flex items-center space-x-2">
+          <Settings className="h-6 w-6 text-primary" />
+          <h1 className="text-3xl font-bold tracking-tight">User Settings</h1>
+        </div>
+        <p className="text-muted-foreground">Manage your profile, security, and account preferences</p>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left Side Navigation */}
+        <nav className="lg:w-64 shrink-0">
+          <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* Main Content */}
+        <main className="flex-1 min-w-0">
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 }
