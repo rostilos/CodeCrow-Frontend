@@ -15,7 +15,9 @@ import { FEATURES } from "@/config/features";
 const navItems = [
   { id: "members", label: "Members", icon: Users },
   // Billing tab only shown when feature is enabled
-  ...(FEATURES.BILLING ? [{ id: "billing", label: "Billing", icon: CreditCard }] : []),
+  ...(FEATURES.BILLING
+    ? [{ id: "billing", label: "Billing", icon: CreditCard }]
+    : []),
   { id: "configuration", label: "Configuration", icon: Settings },
   { id: "danger", label: "Danger Zone", icon: AlertTriangle, danger: true },
 ];
@@ -69,44 +71,52 @@ export default function WorkspaceManagementPage() {
   return (
     <div className="container p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">{currentWorkspace?.name || 'Workspace'} Settings</h1>
-        <p className="text-muted-foreground">Manage workspace members, configuration, and settings</p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {currentWorkspace?.name || "Workspace"} Settings
+        </h1>
+        <p className="text-muted-foreground">
+          Manage workspace members, configuration, and settings
+        </p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Side Navigation */}
         <nav className="lg:w-64 shrink-0">
           <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
-            {navItems.filter(item => item.id !== 'billing' || (FEATURES.BILLING && isWorkspaceOwner())).map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
-                    isActive
-                      ? item.danger
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-primary/10 text-primary"
-                      : item.danger
-                        ? "text-destructive/70 hover:bg-destructive/5 hover:text-destructive"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
+            {navItems
+              .filter(
+                (item) =>
+                  item.id !== "billing" ||
+                  (FEATURES.BILLING && isWorkspaceOwner()),
+              )
+              .map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
+                      isActive
+                        ? item.danger
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-primary/10 text-primary"
+                        : item.danger
+                          ? "text-destructive/70 hover:bg-destructive/5 hover:text-destructive"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
           </div>
         </nav>
 
         {/* Main Content */}
-        <main className="flex-1 min-w-0">
-          {renderContent()}
-        </main>
+        <main className="flex-1 min-w-0">{renderContent()}</main>
       </div>
     </div>
   );
