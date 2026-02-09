@@ -186,7 +186,7 @@ export default function IssuesByFileDisplay({
                   <div className="flex gap-4">
                     {/* Selection checkbox - always visible when enabled */}
                     {selectionEnabled && (
-                      <div className="shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
                         <Checkbox
                           checked={selectedIssues.has(issue.id)}
                           onCheckedChange={(checked) => onSelectionChange?.(issue.id, !!checked)}
