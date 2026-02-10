@@ -16,6 +16,7 @@ import { authUtils } from "@/lib/auth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TopNavigation } from "@/components/TopNavigation";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { CROSS_LINKS } from "@/lib/domains";
 import { FEATURES } from "@/config/features";
 import {
   CommandDialog,
@@ -104,51 +105,55 @@ export default function DashboardLayout() {
       : []),
     {
       title: "Getting Started",
-      url: "/docs",
+      url: CROSS_LINKS.docs,
       icon: Rocket,
       group: "Documentation",
     },
     {
       title: "Create Workspace",
-      url: "/docs/workspace",
+      url: `${CROSS_LINKS.docs}/workspace`,
       icon: Users,
       group: "Documentation",
     },
     {
       title: "Create VCS Connection",
-      url: "/docs/vcs-connection",
+      url: `${CROSS_LINKS.docs}/vcs-connection`,
       icon: GitBranch,
       group: "Documentation",
     },
     {
       title: "Create AI Connection",
-      url: "/docs/ai-connection",
+      url: `${CROSS_LINKS.docs}/ai-connection`,
       icon: Brain,
       group: "Documentation",
     },
     {
       title: "Create First Project",
-      url: "/docs/first-project",
+      url: `${CROSS_LINKS.docs}/first-project`,
       icon: Code,
       group: "Documentation",
     },
     {
       title: "Generate Project Token",
-      url: "/docs/project-token",
+      url: `${CROSS_LINKS.docs}/project-token`,
       icon: FileCode,
       group: "Documentation",
     },
     {
       title: "Setup Bitbucket Pipelines",
-      url: "/docs/bitbucket-pipelines",
+      url: `${CROSS_LINKS.docs}/bitbucket-pipelines`,
       icon: SettingsIcon,
       group: "Documentation",
     },
   ];
 
   const handleSearchSelect = (url: string) => {
-    navigate(url);
     setSearchOpen(false);
+    if (url.startsWith("http")) {
+      window.location.href = url;
+    } else {
+      navigate(url);
+    }
   };
 
   return (

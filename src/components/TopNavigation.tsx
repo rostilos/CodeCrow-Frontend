@@ -1,5 +1,18 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Code, Brain, GitBranch, BookOpen, Settings, LogOut, User, Users, Menu, X, Shield, CreditCard } from "lucide-react";
+import {
+  Code,
+  Brain,
+  GitBranch,
+  BookOpen,
+  Settings,
+  LogOut,
+  User,
+  Users,
+  Menu,
+  X,
+  Shield,
+  CreditCard,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,13 +37,17 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { useState } from "react";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { CROSS_LINKS } from "@/lib/domains";
 
 interface TopNavigationProps {
   showSearch?: boolean;
   onSearchClick?: () => void;
 }
 
-export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps) {
+export function TopNavigation({
+  showSearch,
+  onSearchClick,
+}: TopNavigationProps) {
   const navigate = useNavigate();
   const { canManageWorkspace } = usePermissions();
   const user = authUtils.getUser();
@@ -58,11 +75,15 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `text-sm transition-colors hover:text-foreground ${isActive ? "text-orange-500 font-bold" : "font-medium text-muted-foreground"
+    `text-sm transition-colors hover:text-foreground ${
+      isActive
+        ? "text-orange-500 font-bold"
+        : "font-medium text-muted-foreground"
     }`;
 
   const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+      isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
     }`;
 
   return (
@@ -130,14 +151,14 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                     </NavLink>
                   </>
                 )}
-                <NavLink
-                  to="/docs"
-                  className={mobileNavLinkClass}
+                <a
+                  href={CROSS_LINKS.docs}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <BookOpen className="h-4 w-4" />
                   Documentation
-                </NavLink>
+                </a>
                 <div className="border-t my-2" />
                 <NavLink
                   to={routes.userSettings()}
@@ -183,12 +204,14 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 <NavLink to={routes.qualityGates()} className={navLinkClass}>
                   Quality Gates
                 </NavLink>
-
               </>
             )}
-            <NavLink to="/docs" className={navLinkClass}>
+            <a
+              href={CROSS_LINKS.docs}
+              className="text-sm transition-colors hover:text-foreground font-medium text-muted-foreground"
+            >
               Documentation
-            </NavLink>
+            </a>
           </nav>
         </div>
 
@@ -207,7 +230,9 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate(routes.workspaceSettings())}>
+                <DropdownMenuItem
+                  onClick={() => navigate(routes.workspaceSettings())}
+                >
                   <Users className="mr-2 h-4 w-4" />
                   Workspace Settings
                 </DropdownMenuItem>
@@ -220,17 +245,25 @@ export function TopNavigation({ showSearch, onSearchClick }: TopNavigationProps)
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 gap-2 px-2">
                 <Avatar className="h-7 w-7">
-                  <AvatarImage src={user?.avatarUrl} alt={user?.username} referrerPolicy="no-referrer" />
+                  <AvatarImage
+                    src={user?.avatarUrl}
+                    alt={user?.username}
+                    referrerPolicy="no-referrer"
+                  />
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                     {getUserInitials(user?.username)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden lg:block text-sm font-medium">{getDisplayName(user?.username)}</span>
+                <span className="hidden lg:block text-sm font-medium">
+                  {getDisplayName(user?.username)}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">{getDisplayName(user?.username)}</p>
+                <p className="text-sm font-medium">
+                  {getDisplayName(user?.username)}
+                </p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <DropdownMenuSeparator />
