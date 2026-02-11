@@ -3,9 +3,8 @@
  * Routes are organized by category for better maintainability.
  */
 
-export * from './static.routes';
-export * from './dashboard.routes';
-export * from './docs.routes';
+export * from "./static.routes";
+export * from "./dashboard.routes";
 
 // Re-export utilities
-export { extractWorkspaceFromPath, isDashboardPath } from './utils';
+export { extractWorkspaceFromPath, isDashboardPath } from "./utils";

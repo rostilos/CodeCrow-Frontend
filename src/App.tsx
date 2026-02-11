@@ -3,121 +3,33 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { WorkspaceProvider } from "./context/WorkspaceContext";
 import WorkspaceGuard from "./components/WorkspaceGuard";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { FEATURES } from "./config/features";
+import { CROSS_LINKS } from "./lib/domains";
 const queryClient = new QueryClient();
+
+/**
+ * Redirect /docs/* routes to codecrow.app/docs/*
+ * Docs now live on the static site.
+ */
+function DocsRedirect() {
+  React.useEffect(() => {
+    const subpath = window.location.pathname.replace(/^\/docs\/?/, "");
+    window.location.href = `${CROSS_LINKS.docs}${subpath ? `/${subpath}` : ""}`;
+  }, []);
+  return null;
+}
 
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login/Login.tsx"));
 const Register = lazy(() => import("./pages/Login/Register.tsx"));
 const ForgotPassword = lazy(() => import("./pages/Login/ForgotPassword.tsx"));
 const ResetPassword = lazy(() => import("./pages/Login/ResetPassword.tsx"));
-const DocsLayout = lazy(() => import("./pages/Docs/DocsLayout"));
-const GettingStarted = lazy(() => import("./pages/Docs/GettingStarted"));
-const CreateWorkspace = lazy(() => import("./pages/Docs/CreateWorkspace"));
-const CreateVCSConnection = lazy(
-  () => import("./pages/Docs/CreateVCSConnection"),
-);
-const CreateAIConnection = lazy(
-  () => import("./pages/Docs/CreateAIConnection"),
-);
-const CreateFirstProject = lazy(
-  () => import("./pages/Docs/CreateFirstProject"),
-);
-const GenerateProjectToken = lazy(
-  () => import("./pages/Docs/GenerateProjectToken"),
-);
-const SetupPipelines = lazy(() => import("./pages/Docs/SetupPipelines"));
-const SetupRAG = lazy(() => import("./pages/Docs/SetupRAG"));
-const CreatePullRequest = lazy(() => import("./pages/Docs/CreatePullRequest"));
-const FAQ = lazy(() => import("./pages/Docs/FAQ"));
-const PlatformSupport = lazy(() => import("./pages/Docs/PlatformSupport"));
-const VCSBitbucket = lazy(() => import("./pages/Docs/VCS/Bitbucket"));
-const VCSGitHub = lazy(() => import("./pages/Docs/VCS/GitHub"));
-const VCSGitLab = lazy(() => import("./pages/Docs/VCS/GitLab"));
-const ProjectAdministration = lazy(
-  () => import("./pages/Docs/ProjectAdministration"),
-);
-const ProjectAdminGeneral = lazy(
-  () => import("./pages/Docs/ProjectAdmin/General"),
-);
-const ProjectAdminHosting = lazy(
-  () => import("./pages/Docs/ProjectAdmin/CodeHosting"),
-);
-const ProjectAdminBranches = lazy(
-  () => import("./pages/Docs/ProjectAdmin/Branches"),
-);
-const ProjectAdminScope = lazy(
-  () => import("./pages/Docs/ProjectAdmin/AnalysisScope"),
-);
-const ProjectAdminAI = lazy(
-  () => import("./pages/Docs/ProjectAdmin/AIConnections"),
-);
-const ProjectAdminRAG = lazy(
-  () => import("./pages/Docs/ProjectAdmin/RAGIndexing"),
-);
-const ProjectAdminTasks = lazy(
-  () => import("./pages/Docs/ProjectAdmin/TaskManagement"),
-);
-const ProjectAdminDanger = lazy(
-  () => import("./pages/Docs/ProjectAdmin/DangerZone"),
-);
-const ProjectAdminActivity = lazy(
-  () => import("./pages/Docs/ProjectAdmin/Activity"),
-);
-const WorkspaceAdministration = lazy(
-  () => import("./pages/Docs/WorkspaceAdministration"),
-);
-const RAGOverview = lazy(() => import("./pages/Docs/RAG/RAGOverview"));
-const RAGProjectSetup = lazy(() => import("./pages/Docs/RAG/RAGProjectSetup"));
-const RAGLimitations = lazy(() => import("./pages/Docs/RAG/RAGLimitations"));
 
-// Interactive Commands
-const CommandsOverview = lazy(
-  () => import("./pages/Docs/InteractiveCommands/Overview"),
-);
-const CommandAnalyze = lazy(
-  () => import("./pages/Docs/InteractiveCommands/Analyze"),
-);
-const CommandSummarize = lazy(
-  () => import("./pages/Docs/InteractiveCommands/Summarize"),
-);
-const CommandAsk = lazy(() => import("./pages/Docs/InteractiveCommands/Ask"));
-
-// Developer Documentation
-const DevArchitecture = lazy(
-  () => import("./pages/Docs/Developer/Architecture"),
-);
-const DevConfiguration = lazy(
-  () => import("./pages/Docs/Developer/Configuration"),
-);
-const DevAPIReference = lazy(
-  () => import("./pages/Docs/Developer/APIReference"),
-);
-const DevDatabaseSchema = lazy(
-  () => import("./pages/Docs/Developer/DatabaseSchema"),
-);
-const DevModules = lazy(() => import("./pages/Docs/Developer/Modules"));
-const DevDeployment = lazy(() => import("./pages/Docs/Developer/Deployment"));
-const DevDevelopmentGuide = lazy(
-  () => import("./pages/Docs/Developer/DevelopmentGuide"),
-);
-const DevTroubleshooting = lazy(
-  () => import("./pages/Docs/Developer/Troubleshooting"),
-);
-const DevSMTPSetup = lazy(() => import("./pages/Docs/Developer/SMTPSetup"));
-const DevSelfHosting = lazy(() => import("./pages/Docs/Developer/SelfHosting"));
-const DevPipelineAgent = lazy(
-  () => import("./pages/Docs/Developer/PipelineAgent"),
-);
-const DevWebServer = lazy(() => import("./pages/Docs/Developer/WebServer"));
-const DevMCPClient = lazy(() => import("./pages/Docs/Developer/MCPClient"));
-const DevRAGPipeline = lazy(() => import("./pages/Docs/Developer/RAGPipeline"));
-const DevJobs = lazy(() => import("./pages/Docs/Developer/Jobs"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const DashboardLayout = lazy(() => import("./components/DashboardLayout"));
 const ProjectSetupInstructions = lazy(
@@ -227,115 +139,9 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
-              <Route path="/docs" element={<DocsLayout />}>
-                <Route index element={<GettingStarted />} />
-                <Route path="capabilities" element={<PlatformSupport />} />
-                <Route path="workspace" element={<CreateWorkspace />} />
-                <Route
-                  path="vcs-connection"
-                  element={<CreateVCSConnection />}
-                />
-                <Route
-                  path="vcs-connection/bitbucket"
-                  element={<VCSBitbucket />}
-                />
-                <Route path="vcs-connection/github" element={<VCSGitHub />} />
-                <Route path="vcs-connection/gitlab" element={<VCSGitLab />} />
-                <Route path="ai-connection" element={<CreateAIConnection />} />
-                <Route path="first-project" element={<CreateFirstProject />} />
-                <Route path="setup-rag" element={<SetupRAG />} />
-                <Route
-                  path="project-token"
-                  element={<GenerateProjectToken />}
-                />
-                <Route path="pipeline-setup" element={<SetupPipelines />} />
-                <Route path="pull-request" element={<CreatePullRequest />} />
-                <Route path="faq" element={<FAQ />} />
-
-                <Route
-                  path="admin/project"
-                  element={<ProjectAdministration />}
-                />
-                <Route
-                  path="admin/project/general"
-                  element={<ProjectAdminGeneral />}
-                />
-                <Route
-                  path="admin/project/hosting"
-                  element={<ProjectAdminHosting />}
-                />
-                <Route
-                  path="admin/project/branches"
-                  element={<ProjectAdminBranches />}
-                />
-                <Route
-                  path="admin/project/scope"
-                  element={<ProjectAdminScope />}
-                />
-                <Route path="admin/project/ai" element={<ProjectAdminAI />} />
-                <Route path="admin/project/rag" element={<ProjectAdminRAG />} />
-                <Route
-                  path="admin/project/tasks"
-                  element={<ProjectAdminTasks />}
-                />
-                <Route
-                  path="admin/project/activity"
-                  element={<ProjectAdminActivity />}
-                />
-                <Route
-                  path="admin/project/danger"
-                  element={<ProjectAdminDanger />}
-                />
-                <Route
-                  path="admin/workspace"
-                  element={<WorkspaceAdministration />}
-                />
-
-                {/* RAG Guide Routes */}
-                <Route path="rag/overview" element={<RAGOverview />} />
-                <Route path="rag/setup" element={<RAGProjectSetup />} />
-                <Route path="rag/limitations" element={<RAGLimitations />} />
-
-                {/* Interactive Commands */}
-                <Route
-                  path="commands/overview"
-                  element={<CommandsOverview />}
-                />
-                <Route path="commands/analyze" element={<CommandAnalyze />} />
-                <Route
-                  path="commands/summarize"
-                  element={<CommandSummarize />}
-                />
-                <Route path="commands/ask" element={<CommandAsk />} />
-                {/* Developer Documentation */}
-                <Route path="dev/architecture" element={<DevArchitecture />} />
-                <Route path="dev/self-hosting" element={<DevSelfHosting />} />
-                <Route
-                  path="dev/configuration"
-                  element={<DevConfiguration />}
-                />
-                <Route
-                  path="dev/pipeline-agent"
-                  element={<DevPipelineAgent />}
-                />
-                <Route path="dev/web-server" element={<DevWebServer />} />
-                <Route path="dev/mcp-client" element={<DevMCPClient />} />
-                <Route path="dev/rag-pipeline" element={<DevRAGPipeline />} />
-                <Route path="dev/jobs" element={<DevJobs />} />
-                <Route path="dev/smtp" element={<DevSMTPSetup />} />
-                <Route path="dev/api" element={<DevAPIReference />} />
-                <Route path="dev/database" element={<DevDatabaseSchema />} />
-                <Route path="dev/modules" element={<DevModules />} />
-                <Route path="dev/deployment" element={<DevDeployment />} />
-                <Route
-                  path="dev/development"
-                  element={<DevDevelopmentGuide />}
-                />
-                <Route
-                  path="dev/troubleshooting"
-                  element={<DevTroubleshooting />}
-                />
-              </Route>
+              {/* Docs now live on codecrow.app — redirect */}
+              <Route path="/docs/*" element={<DocsRedirect />} />
+              <Route path="/docs" element={<DocsRedirect />} />
               <Route
                 path="/workspace"
                 element={

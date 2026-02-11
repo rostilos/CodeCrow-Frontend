@@ -1,12 +1,29 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Copy, CheckCircle, FileCode, AlertCircle, Webhook, Info } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ArrowLeft,
+  Copy,
+  CheckCircle,
+  FileCode,
+  AlertCircle,
+  Webhook,
+  Info,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { projectService, ProjectDTO } from "@/api_service/project/projectService";
+import {
+  projectService,
+  ProjectDTO,
+} from "@/api_service/project/projectService";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
@@ -28,32 +45,39 @@ export default function ProjectSetupInstructions() {
 
   const loadProject = async () => {
     if (!currentWorkspace || !namespace) return;
-    
+
     setLoading(true);
     try {
-      const proj = await projectService.getProjectByNamespace(currentWorkspace.slug, namespace);
+      const proj = await projectService.getProjectByNamespace(
+        currentWorkspace.slug,
+        namespace,
+      );
       setProject(proj);
     } catch (err: any) {
       toast({
         title: "Error",
         description: err?.message || "Failed to load project",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-  
+
   // Check if project uses webhook installation method or app-based connection
-  const isWebhookInstallation = project?.installationMethod === 'WEBHOOK';
-  const isAppBasedConnection = project?.vcsConnectionType === 'APP' || project?.vcsConnectionType === 'CONNECT_APP' || project?.vcsConnectionType === 'GITHUB_APP';
-  const isOAuthConnection = project?.vcsConnectionType === 'OAUTH_MANUAL';
+  const isWebhookInstallation = project?.installationMethod === "WEBHOOK";
+  const isAppBasedConnection =
+    project?.vcsConnectionType === "APP" ||
+    project?.vcsConnectionType === "CONNECT_APP" ||
+    project?.vcsConnectionType === "GITHUB_APP";
+  const isOAuthConnection = project?.vcsConnectionType === "OAUTH_MANUAL";
   // Both app connections and OAuth connections with webhooks count as auto-integration
-  const isAutoIntegration = isWebhookInstallation || isAppBasedConnection || isOAuthConnection;
-  
+  const isAutoIntegration =
+    isWebhookInstallation || isAppBasedConnection || isOAuthConnection;
+
   // Determine which provider is being used
-  const isGitHub = project?.vcsProvider === 'GITHUB';
-  const isBitbucket = project?.vcsProvider === 'BITBUCKET_CLOUD';
+  const isGitHub = project?.vcsProvider === "GITHUB";
+  const isBitbucket = project?.vcsProvider === "BITBUCKET_CLOUD";
 
   const copyToClipboard = async (text: string, label: string) => {
     try {
@@ -70,7 +94,7 @@ export default function ProjectSetupInstructions() {
       toast({
         title: "Error",
         description: "Failed to copy to clipboard",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -184,9 +208,9 @@ jobs:
             Project not found. Please check the project namespace.
           </AlertDescription>
         </Alert>
-        <Button 
-          variant="outline" 
-          className="mt-4" 
+        <Button
+          variant="outline"
+          className="mt-4"
           onClick={() => navigate(routes.projects())}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -200,8 +224,8 @@ jobs:
     <div className="container p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             className="mb-6"
             onClick={() => navigate(routes.projectSettings(namespace!))}
@@ -211,45 +235,51 @@ jobs:
           </Button>
           <div>
             <h1 className="text-3xl font-bold">
-              {isGitHub ? 'GitHub Actions Setup Instructions' : 'Pipeline Setup Instructions'}
+              {isGitHub
+                ? "GitHub Actions Setup Instructions"
+                : "Pipeline Setup Instructions"}
             </h1>
             <p className="text-muted-foreground">
-              {isGitHub 
-                ? `Configure GitHub Actions for ${project.name}` 
+              {isGitHub
+                ? `Configure GitHub Actions for ${project.name}`
                 : `Configure Bitbucket Pipelines for ${project.name}`}
             </p>
           </div>
         </div>
       </div>
-      
+
       {/* Show auto-integration message for app-based connections or webhook installations */}
       {isAutoIntegration && (
         <Alert className="border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-900/20">
           <Webhook className="h-4 w-4 text-green-600 dark:text-green-400" />
           <AlertTitle className="text-green-600 dark:text-green-400">
-            {isAppBasedConnection 
-              ? `${isGitHub ? 'GitHub App' : 'Bitbucket App'} Integration Active`
-              : 'Automatic Webhook Integration'}
+            {isAppBasedConnection
+              ? `${isGitHub ? "GitHub App" : "Bitbucket App"} Integration Active`
+              : "Automatic Webhook Integration"}
           </AlertTitle>
           <AlertDescription>
             <p className="mt-2">
-              {isAppBasedConnection 
-                ? `This project is connected via the CodeCrow ${isGitHub ? 'GitHub' : 'Bitbucket'} App. CodeCrow will automatically analyze your code when pull requests are created or updated.`
-                : 'This project is configured with automatic webhook integration. CodeCrow will automatically analyze your code when pull requests are created or updated.'}
+              {isAppBasedConnection
+                ? `This project is connected via the CodeCrow ${isGitHub ? "GitHub" : "Bitbucket"} App. CodeCrow will automatically analyze your code when pull requests are created or updated.`
+                : "This project is configured with automatic webhook integration. CodeCrow will automatically analyze your code when pull requests are created or updated."}
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              No additional {isGitHub ? 'GitHub Actions' : 'pipeline'} setup is required. The instructions below are optional and can be used for custom triggers or CI/CD integration.
+              No additional {isGitHub ? "GitHub Actions" : "pipeline"} setup is
+              required. The instructions below are optional and can be used for
+              custom triggers or CI/CD integration.
             </p>
           </AlertDescription>
         </Alert>
       )}
-      
+
       {/* Show note that pipeline setup is optional for auto-integration projects */}
       {isAutoIntegration && (
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            The instructions below are optional. You may want to configure {isGitHub ? 'GitHub Actions' : 'pipelines'} for additional custom analysis triggers or CI/CD integration.
+            The instructions below are optional. You may want to configure{" "}
+            {isGitHub ? "GitHub Actions" : "pipelines"} for additional custom
+            analysis triggers or CI/CD integration.
           </AlertDescription>
         </Alert>
       )}
@@ -258,7 +288,9 @@ jobs:
         <Alert>
           <CheckCircle className="h-4 w-4" />
           <AlertDescription>
-            Follow these steps to integrate CodeCrow with your {isGitHub ? 'GitHub Actions' : 'Bitbucket Pipelines'} for automated code analysis.
+            Follow these steps to integrate CodeCrow with your{" "}
+            {isGitHub ? "GitHub Actions" : "Bitbucket Pipelines"} for automated
+            code analysis.
           </AlertDescription>
         </Alert>
       )}
@@ -270,20 +302,30 @@ jobs:
             <FileCode className="mr-2 h-5 w-5" />
             Project Information
           </CardTitle>
-          <CardDescription>Essential details needed for {isGitHub ? 'workflow' : 'pipeline'} configuration</CardDescription>
+          <CardDescription>
+            Essential details needed for {isGitHub ? "workflow" : "pipeline"}{" "}
+            configuration
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Project ID</label>
+              <label className="text-sm font-medium text-muted-foreground">
+                Project ID
+              </label>
               <div className="flex items-center space-x-2 mt-1">
-                <Badge variant="outline" className="text-base px-3 py-1 font-mono">
+                <Badge
+                  variant="outline"
+                  className="text-base px-3 py-1 font-mono"
+                >
                   {project.id}
                 </Badge>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(String(project.id), "Project ID")}
+                  onClick={() =>
+                    copyToClipboard(String(project.id), "Project ID")
+                  }
                 >
                   {copiedStates["Project ID"] ? (
                     <CheckCircle className="h-4 w-4 text-green-500" />
@@ -294,9 +336,14 @@ jobs:
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Repository</label>
+              <label className="text-sm font-medium text-muted-foreground">
+                Repository
+              </label>
               <div className="flex items-center space-x-2 mt-1">
-                <Badge variant="outline" className="text-base px-3 py-1 font-mono">
+                <Badge
+                  variant="outline"
+                  className="text-base px-3 py-1 font-mono"
+                >
                   {project.projectRepoSlug || "Not configured"}
                 </Badge>
               </div>
@@ -308,26 +355,37 @@ jobs:
       {/* Step 1: Repository Variables/Secrets */}
       <Card>
         <CardHeader>
-          <CardTitle>Step 1: Configure {isGitHub ? 'Repository Secrets' : 'Repository Variables'}</CardTitle>
+          <CardTitle>
+            Step 1: Configure{" "}
+            {isGitHub ? "Repository Secrets" : "Repository Variables"}
+          </CardTitle>
           <CardDescription>
-            {isGitHub 
-              ? 'Add these secrets in your GitHub repository: Settings → Secrets and variables → Actions → New repository secret'
-              : 'Add these variables in your Bitbucket repository settings: Settings → Repository variables'}
+            {isGitHub
+              ? "Add these secrets in your GitHub repository: Settings → Secrets and variables → Actions → New repository secret"
+              : "Add these variables in your Bitbucket repository settings: Settings → Repository variables"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <div className="flex-1">
-                <div className="font-mono text-sm font-medium">CODECROW_PROJECT_ID</div>
-                <div className="text-xs text-muted-foreground mt-1">Your project's unique identifier</div>
+                <div className="font-mono text-sm font-medium">
+                  CODECROW_PROJECT_ID
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Your project's unique identifier
+                </div>
               </div>
               <div className="flex items-center space-x-2">
-                <code className="px-2 py-1 bg-background rounded text-sm">{project.id}</code>
+                <code className="px-2 py-1 bg-background rounded text-sm">
+                  {project.id}
+                </code>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(String(project.id), "CODECROW_PROJECT_ID")}
+                  onClick={() =>
+                    copyToClipboard(String(project.id), "CODECROW_PROJECT_ID")
+                  }
                 >
                   {copiedStates["CODECROW_PROJECT_ID"] ? (
                     <CheckCircle className="h-4 w-4 text-green-500" />
@@ -340,41 +398,55 @@ jobs:
 
             <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <div className="flex-1">
-                <div className="font-mono text-sm font-medium">CODECROW_PROJECT_TOKEN</div>
+                <div className="font-mono text-sm font-medium">
+                  CODECROW_PROJECT_TOKEN
+                </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Generate a project token from project settings (secured variable)
+                  Generate a project token from project settings (secured
+                  variable)
                 </div>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate(routes.projectSettings(namespace!, 'tokens'))}
+                onClick={() =>
+                  navigate(routes.projectSettings(namespace!, "tokens"))
+                }
               >
                 Generate Token
               </Button>
             </div>
 
             <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <div className="flex-1">
-                    <div className="font-mono text-sm font-medium">CODECROW_BASE_URL</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                        URL to codecrow webhook
-                    </div>
+              <div className="flex-1">
+                <div className="font-mono text-sm font-medium">
+                  CODECROW_BASE_URL
                 </div>
-                <div className="flex items-center space-x-2">
-                    <code className="px-2 py-1 bg-background rounded text-sm">{CODECROW_WEBHOOK_URL}</code>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(String(CODECROW_WEBHOOK_URL), "CODECROW_WEBHOOK_URL")}
-                    >
-                        {copiedStates["CODECROW_WEBHOOK_URL"] ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                            <Copy className="h-4 w-4" />
-                        )}
-                    </Button>
+                <div className="text-xs text-muted-foreground mt-1">
+                  URL to codecrow webhook
                 </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <code className="px-2 py-1 bg-background rounded text-sm">
+                  {CODECROW_WEBHOOK_URL}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    copyToClipboard(
+                      String(CODECROW_WEBHOOK_URL),
+                      "CODECROW_WEBHOOK_URL",
+                    )
+                  }
+                >
+                  {copiedStates["CODECROW_WEBHOOK_URL"] ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -383,11 +455,27 @@ jobs:
       {/* Step 2: Pipeline/Workflow YAML */}
       <Card>
         <CardHeader>
-          <CardTitle>Step 2: Configure {isGitHub ? 'GitHub Actions Workflow' : 'Pipeline YAML'}</CardTitle>
+          <CardTitle>
+            Step 2: Configure{" "}
+            {isGitHub ? "GitHub Actions Workflow" : "Pipeline YAML"}
+          </CardTitle>
           <CardDescription>
-            {isGitHub 
-              ? <>Create this file at <code className="text-sm bg-muted px-1 rounded">.github/workflows/codecrow.yml</code></>
-              : <>Add this configuration to your <code className="text-sm bg-muted px-1 rounded">bitbucket-pipelines.yml</code> file</>}
+            {isGitHub ? (
+              <>
+                Create this file at{" "}
+                <code className="text-sm bg-muted px-1 rounded">
+                  .github/workflows/codecrow.yml
+                </code>
+              </>
+            ) : (
+              <>
+                Add this configuration to your{" "}
+                <code className="text-sm bg-muted px-1 rounded">
+                  bitbucket-pipelines.yml
+                </code>{" "}
+                file
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -399,9 +487,16 @@ jobs:
               variant="outline"
               size="sm"
               className="absolute top-2 right-2"
-              onClick={() => copyToClipboard(isGitHub ? githubActionsYaml : pipelineYaml, isGitHub ? "GitHub Actions YAML" : "Pipeline YAML")}
+              onClick={() =>
+                copyToClipboard(
+                  isGitHub ? githubActionsYaml : pipelineYaml,
+                  isGitHub ? "GitHub Actions YAML" : "Pipeline YAML",
+                )
+              }
             >
-              {copiedStates[isGitHub ? "GitHub Actions YAML" : "Pipeline YAML"] ? (
+              {copiedStates[
+                isGitHub ? "GitHub Actions YAML" : "Pipeline YAML"
+              ] ? (
                 <CheckCircle className="h-4 w-4 text-green-500" />
               ) : (
                 <Copy className="h-4 w-4" />
@@ -415,14 +510,25 @@ jobs:
       <Card>
         <CardHeader>
           <CardTitle>Step 3: Test the Integration</CardTitle>
-          <CardDescription>Verify your setup is working correctly</CardDescription>
+          <CardDescription>
+            Verify your setup is working correctly
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ol className="space-y-3 list-decimal list-inside">
-            <li className="text-sm">Commit and push your changes to the repository</li>
+            <li className="text-sm">
+              Commit and push your changes to the repository
+            </li>
             <li className="text-sm">Create a test pull request</li>
-            <li className="text-sm">Monitor the {isGitHub ? 'Actions workflow execution' : 'pipeline execution in Bitbucket Pipelines'}</li>
-            <li className="text-sm">Check the analysis results in CodeCrow dashboard</li>
+            <li className="text-sm">
+              Monitor the{" "}
+              {isGitHub
+                ? "Actions workflow execution"
+                : "pipeline execution in Bitbucket Pipelines"}
+            </li>
+            <li className="text-sm">
+              Check the analysis results in CodeCrow dashboard
+            </li>
           </ol>
         </CardContent>
       </Card>
@@ -431,13 +537,11 @@ jobs:
       <div className="flex justify-end space-x-2">
         <Button
           variant="outline"
-          onClick={() => navigate(isGitHub ? "/docs/github-actions" : "/docs/bitbucket-pipelines")}
+          onClick={() => navigate("/docs/getting-started/pipeline-setup")}
         >
           View Full Documentation
         </Button>
-        <Button
-          onClick={() => navigate(routes.projectSettings(namespace!))}
-        >
+        <Button onClick={() => navigate(routes.projectSettings(namespace!))}>
           Go to Project Settings
         </Button>
       </div>
