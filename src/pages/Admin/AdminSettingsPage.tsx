@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { TopNavigation } from "@/components/TopNavigation";
 import {
   Globe,
   GitBranch,
@@ -15,7 +14,20 @@ import {
   Settings,
   Shield,
   Download,
+  LogOut,
+  ArrowLeft,
 } from "lucide-react";
+import { CodeCrowLogo } from "@/components/CodeCrowLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { authUtils } from "@/lib/auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -196,9 +208,94 @@ export default function AdminSettingsPage() {
 
   const groupMeta = getGroupMeta(activeGroup);
 
+  const user = authUtils.getUser();
+
+  const handleLogout = () => {
+    authUtils.logout();
+    navigate("/");
+    toast({
+      title: "Logged out successfully",
+      description: "You have been logged out of CodeCrow.",
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
-      <TopNavigation />
+      {/* Admin header — self-contained, no workspace context needed */}
+      <header className="sticky top-0 z-50 h-14 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center justify-between px-4 lg:px-6 h-full">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/workspace")}
+              className="flex items-center hover:opacity-80 transition-opacity gap-2"
+            >
+              <CodeCrowLogo size="sm" />
+            </button>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+              <Shield className="h-4 w-4" />
+              Site Administration
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex text-muted-foreground"
+              onClick={() => navigate("/workspace")}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1.5" />
+              Back to App
+            </Button>
+            <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-9 gap-2 px-2">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage
+                      src={user?.avatarUrl}
+                      alt={user?.username}
+                      referrerPolicy="no-referrer"
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                      {user?.username
+                        ? user.username.substring(0, 2).toUpperCase()
+                        : "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden lg:block text-sm font-medium">
+                    {user?.username
+                      ? user.username.charAt(0).toUpperCase() +
+                        user.username.slice(1)
+                      : "User"}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium">
+                    {user?.username
+                      ? user.username.charAt(0).toUpperCase() +
+                        user.username.slice(1)
+                      : "User"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.email}
+                  </p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </header>
+
       <div className="container p-6 max-w-6xl flex-1">
         {/* Header */}
         <div className="mb-6">

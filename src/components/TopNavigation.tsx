@@ -233,17 +233,16 @@ export function TopNavigation({
           <WorkspaceSwitcher />
           <ThemeToggle />
 
-          {/* Site Administration (visible only for site admins) */}
+          {/* Site Administration — visible text link for site admins */}
           {FEATURES.INSTANCE_ADMIN && isSiteAdmin && (
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9"
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex gap-1.5 text-xs border-orange-500/40 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10"
               onClick={() => navigate("/admin/settings")}
-              title="Site Administration"
             >
-              <Shield className="h-4 w-4" />
-              <span className="sr-only">Site Administration</span>
+              <Shield className="h-3.5 w-3.5" />
+              Admin
             </Button>
           )}
 
