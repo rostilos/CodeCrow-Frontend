@@ -199,123 +199,123 @@ export default function AdminSettingsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <TopNavigation />
-    <div className="container p-6 max-w-6xl flex-1">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Settings className="h-8 w-8" />
-          Site Administration
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Configure VCS credentials, AI providers, email, and other
-          instance-wide settings.
-        </p>
-      </div>
+      <div className="container p-6 max-w-6xl flex-1">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Settings className="h-8 w-8" />
+            Site Administration
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Configure VCS credentials, AI providers, email, and other
+            instance-wide settings.
+          </p>
+        </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left sidebar navigation */}
-        <nav className="lg:w-72 shrink-0">
-          <div className="lg:sticky lg:top-20 space-y-1 bg-card rounded-lg border p-2">
-            {SETTINGS_GROUPS.map((group) => {
-              const Icon = ICON_MAP[group.icon] || Settings;
-              const configured = status?.groups?.[group.key] ?? false;
-              const isActive = activeGroup === group.key;
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left sidebar navigation */}
+          <nav className="lg:w-72 shrink-0">
+            <div className="lg:sticky lg:top-20 space-y-1 bg-card rounded-lg border p-2">
+              {SETTINGS_GROUPS.map((group) => {
+                const Icon = ICON_MAP[group.icon] || Settings;
+                const configured = status?.groups?.[group.key] ?? false;
+                const isActive = activeGroup === group.key;
 
-              return (
-                <button
-                  key={group.key}
-                  onClick={() => handleTabChange(group.key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left ${
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-muted"
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1 truncate">{group.label}</span>
-                  {configured ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                return (
+                  <button
+                    key={group.key}
+                    onClick={() => handleTabChange(group.key)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left ${
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{group.label}</span>
+                    {configured ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* Main content */}
+          <main className="flex-1 min-w-0">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {groupMeta && (
+                    <>
+                      {(() => {
+                        const Icon = ICON_MAP[groupMeta.icon] || Settings;
+                        return <Icon className="h-5 w-5" />;
+                      })()}
+                      {groupMeta.label}
+                    </>
                   )}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        {/* Main content */}
-        <main className="flex-1 min-w-0">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {groupMeta && (
-                  <>
-                    {(() => {
-                      const Icon = ICON_MAP[groupMeta.icon] || Settings;
-                      return <Icon className="h-5 w-5" />;
-                    })()}
-                    {groupMeta.label}
-                  </>
-                )}
-              </CardTitle>
-              <CardDescription>{groupMeta?.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {groupLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {groupMeta?.fields.map((field) => (
-                    <div key={field.key}>
-                      <SettingsField
-                        field={field}
-                        value={values[field.key] ?? ""}
-                        onChange={(val) => handleFieldChange(field.key, val)}
-                      />
-                      {field.key === "private-key-path" &&
-                        activeGroup === "VCS_GITHUB" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-2"
-                            onClick={handleDownloadKey}
-                            disabled={
-                              downloading ||
-                              !values["private-key-path"] ||
-                              values["private-key-path"].includes("••••")
-                            }
-                          >
-                            {downloading ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : (
-                              <Download className="h-4 w-4 mr-2" />
-                            )}
-                            Download Key File
-                          </Button>
-                        )}
-                    </div>
-                  ))}
-
-                  <div className="flex justify-end pt-4 border-t">
-                    <Button onClick={handleSave} disabled={saving}>
-                      {saving ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      Save Settings
-                    </Button>
+                </CardTitle>
+                <CardDescription>{groupMeta?.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {groupLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </main>
+                ) : (
+                  <div className="space-y-6">
+                    {groupMeta?.fields.map((field) => (
+                      <div key={field.key}>
+                        <SettingsField
+                          field={field}
+                          value={values[field.key] ?? ""}
+                          onChange={(val) => handleFieldChange(field.key, val)}
+                        />
+                        {field.key === "private-key-path" &&
+                          activeGroup === "VCS_GITHUB" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={handleDownloadKey}
+                              disabled={
+                                downloading ||
+                                !values["private-key-path"] ||
+                                values["private-key-path"].includes("••••")
+                              }
+                            >
+                              {downloading ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-2" />
+                              )}
+                              Download Key File
+                            </Button>
+                          )}
+                      </div>
+                    ))}
+
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button onClick={handleSave} disabled={saving}>
+                        {saving ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Save Settings
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </main>
+        </div>
       </div>
-    </div>
     </div>
   );
 }
