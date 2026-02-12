@@ -7,8 +7,6 @@ import {
   Calendar,
   ArrowRight,
   BookOpen,
-  Settings,
-  LogOut,
   FolderGit2,
   GitBranch,
   AlertTriangle,
@@ -36,7 +34,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import {
@@ -48,8 +45,7 @@ import {
   ProjectDTO,
 } from "@/api_service/project/projectService";
 import { useToast } from "@/hooks/use-toast";
-import { CodeCrowLogo } from "@/components/CodeCrowLogo";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { TopNavigation } from "@/components/TopNavigation";
 import { ROUTES } from "@/lib/routes";
 import { CROSS_LINKS } from "@/lib/domains";
 import { authUtils } from "@/lib/auth";
@@ -149,11 +145,6 @@ export default function WorkspaceSelection() {
     navigate(
       `/dashboard/${project.workspaceSlug}/projects/${project.namespace}`,
     );
-  };
-
-  const handleLogout = () => {
-    authUtils.logout();
-    navigate("/login");
   };
 
   const validateSlug = (slug: string): boolean => {
@@ -312,34 +303,8 @@ export default function WorkspaceSelection() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
-          <button
-            onClick={() => navigate("/")}
-            className="hover:opacity-80 transition-opacity"
-          >
-            <CodeCrowLogo size="md" />
-          </button>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="sm" asChild>
-              <a
-                href={CROSS_LINKS.docs}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                Docs
-              </a>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Header — same TopNavigation as workspace dashboard, but in minimal mode */}
+      <TopNavigation minimal />
 
       {/* Main Content */}
       <div className="container px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -606,26 +571,6 @@ export default function WorkspaceSelection() {
               Quick Actions
             </h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {workspaces.length > 0 && (
-                <Card
-                  className="group hover:shadow-md hover:border-primary/30 transition-all cursor-pointer"
-                  onClick={() => handleSelectWorkspace(workspaces[0])}
-                >
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="p-2.5 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                      <Settings className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm group-hover:text-primary transition-colors">
-                        Workspace Settings
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Members, billing & configuration
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
               <Card
                 className="group hover:shadow-md hover:border-blue-500/30 transition-all cursor-pointer"
                 onClick={() => window.open(CROSS_LINKS.docs, "_blank")}
