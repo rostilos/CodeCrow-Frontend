@@ -5,27 +5,45 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { PasswordInput } from "@/components/ui/password-input.tsx";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form.tsx";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card.tsx";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form.tsx";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast.ts";
 import { Loader2, Shield, Zap, GitBranch } from "lucide-react";
-import {authService} from "@/api_service/auth/authService.ts";
+import { authService } from "@/api_service/auth/authService.ts";
 import { authUtils } from "@/lib/auth";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
-import { GoogleSignInButtonCustom, GoogleCredentialResponse } from "@/components/GoogleSignInButton";
+import {
+  GoogleSignInButtonCustom,
+  GoogleCredentialResponse,
+} from "@/components/GoogleSignInButton";
 import { ROUTES } from "@/lib/routes";
 
-const registerSchema = z.object({
-  username: z.string().min(2, "Userame must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  company: z.string().optional(),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const registerSchema = z
+  .object({
+    username: z.string().min(2, "Userame must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    company: z.string().optional(),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
@@ -38,7 +56,7 @@ export default function Register() {
   useEffect(() => {
     if (authUtils.isAuthenticated()) {
       // Check if there's a saved workspace
-      const savedWorkspaceSlug = localStorage.getItem('currentWorkspaceSlug');
+      const savedWorkspaceSlug = localStorage.getItem("currentWorkspaceSlug");
       if (savedWorkspaceSlug) {
         navigate(ROUTES.PROJECTS(savedWorkspaceSlug));
       } else {
@@ -67,12 +85,6 @@ export default function Register() {
         password: data.password,
         company: data.company,
       });
-      
-      // Store JWT token if provided on registration
-      if (result.accessToken) {
-        localStorage.setItem('codecrow_token', result.accessToken);
-        localStorage.setItem('codecrow_user', JSON.stringify(result.user || {}));
-      }
 
       toast({
         title: "Registration successful",
@@ -95,13 +107,9 @@ export default function Register() {
   const handleGoogleSuccess = async (response: GoogleCredentialResponse) => {
     setIsGoogleLoading(true);
     try {
-      const result = await authService.googleAuth({ credential: response.credential });
-
-      // Store JWT token
-      if (result.accessToken) {
-        localStorage.setItem('codecrow_token', result.accessToken);
-        localStorage.setItem('codecrow_user', JSON.stringify(result.user || {}));
-      }
+      const result = await authService.googleAuth({
+        credential: response.credential,
+      });
 
       toast({
         title: "Sign up successful",
@@ -138,23 +146,26 @@ export default function Register() {
             <CodeCrowLogo size="lg" />
           </Link>
         </div>
-        
+
         <div className="space-y-8">
           <div>
             <h1 className="text-4xl font-bold tracking-tight mb-4">
               Start Your Journey
             </h1>
             <p className="text-lg text-muted-foreground">
-              Join the alpha and start getting AI-powered insights on your codebase today.
+              Join the alpha and start getting AI-powered insights on your
+              codebase today.
             </p>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
                 <Shield className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-sm">Secure authentication & data protection</span>
+              <span className="text-sm">
+                Secure authentication & data protection
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -166,13 +177,14 @@ export default function Register() {
               <div className="p-2 rounded-lg bg-primary/10">
                 <GitBranch className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-sm">Connect your repositories instantly</span>
+              <span className="text-sm">
+                Connect your repositories instantly
+              </span>
             </div>
           </div>
         </div>
-        
-        <p className="text-sm text-muted-foreground">
-        </p>
+
+        <p className="text-sm text-muted-foreground"></p>
       </div>
 
       {/* Right Panel - Register Form */}
@@ -188,13 +200,14 @@ export default function Register() {
           <Card className="border-0 shadow-lg">
             <CardHeader className="text-center pb-2">
               <CardTitle className="text-2xl">Create your account</CardTitle>
-              <CardDescription>
-                Get started with CodeCrow today
-              </CardDescription>
+              <CardDescription>Get started with CodeCrow today</CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
+                >
                   <FormField
                     control={form.control}
                     name="username"
@@ -238,7 +251,12 @@ export default function Register() {
                     name="company"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Company <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                        <FormLabel>
+                          Company{" "}
+                          <span className="text-muted-foreground text-xs">
+                            (optional)
+                          </span>
+                        </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Your company name"
@@ -294,7 +312,9 @@ export default function Register() {
                     className="w-full h-11"
                     disabled={isLoading || isGoogleLoading}
                   >
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isLoading && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     Create Account
                   </Button>
                 </form>
@@ -323,14 +343,20 @@ export default function Register() {
               </GoogleSignInButtonCustom>
 
               <div className="mt-6 text-center text-sm">
-                <span className="text-muted-foreground">Already have an account? </span>
-                <Link to="/login" className="text-primary hover:underline font-medium">
+                <span className="text-muted-foreground">
+                  Already have an account?{" "}
+                </span>
+                <Link
+                  to="/login"
+                  className="text-primary hover:underline font-medium"
+                >
                   Sign in
                 </Link>
               </div>
-              
+
               <p className="mt-6 text-center text-xs text-muted-foreground">
-                By creating an account, you agree to our Terms of Service and Privacy Policy
+                By creating an account, you agree to our Terms of Service and
+                Privacy Policy
               </p>
             </CardContent>
           </Card>

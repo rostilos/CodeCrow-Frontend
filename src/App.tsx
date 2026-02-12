@@ -10,6 +10,7 @@ import WorkspaceGuard from "./components/WorkspaceGuard";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { FEATURES } from "./config/features";
 import { CROSS_LINKS } from "./lib/domains";
+import { SetupGuard } from "./components/SetupGuard";
 const queryClient = new QueryClient();
 
 /**
@@ -110,6 +111,12 @@ const QualityGatesPage = lazy(
   () => import("./pages/QualityGates/QualityGatesPage.tsx"),
 );
 
+// Admin pages (Site Administration — community/self-hosted only)
+const AdminSettingsPage = lazy(
+  () => import("./pages/Admin/AdminSettingsPage.tsx"),
+);
+const SetupWizard = lazy(() => import("./pages/Admin/SetupWizard.tsx"));
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="dark" storageKey="codecrow-ui-theme">
@@ -142,12 +149,37 @@ const App = () => (
               {/* Docs now live on codecrow.app — redirect */}
               <Route path="/docs/*" element={<DocsRedirect />} />
               <Route path="/docs" element={<DocsRedirect />} />
+
+              {/* Admin routes (Site Administration) — protected, non-workspace-scoped */}
+              {FEATURES.INSTANCE_ADMIN && (
+                <>
+                  <Route
+                    path="/admin/settings"
+                    element={
+                      <ProtectedRoute>
+                        <AdminSettingsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/setup"
+                    element={
+                      <ProtectedRoute>
+                        <SetupWizard />
+                      </ProtectedRoute>
+                    }
+                  />
+                </>
+              )}
+
               <Route
                 path="/workspace"
                 element={
                   <ProtectedRoute>
                     <WorkspaceProvider>
-                      <WorkspaceSelection />
+                      <SetupGuard>
+                        <WorkspaceSelection />
+                      </SetupGuard>
                     </WorkspaceProvider>
                   </ProtectedRoute>
                 }

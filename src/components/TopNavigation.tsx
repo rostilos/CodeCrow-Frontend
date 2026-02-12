@@ -38,6 +38,8 @@ import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { useState } from "react";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { CROSS_LINKS } from "@/lib/domains";
+import { FEATURES } from "@/config/features";
+import { useSiteAdmin } from "@/hooks/useSiteAdmin";
 
 interface TopNavigationProps {
   showSearch?: boolean;
@@ -50,6 +52,7 @@ export function TopNavigation({
 }: TopNavigationProps) {
   const navigate = useNavigate();
   const { canManageWorkspace } = usePermissions();
+  const { isSiteAdmin } = useSiteAdmin();
   const user = authUtils.getUser();
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -160,6 +163,16 @@ export function TopNavigation({
                   Documentation
                 </a>
                 <div className="border-t my-2" />
+                {FEATURES.INSTANCE_ADMIN && isSiteAdmin && (
+                  <NavLink
+                    to="/admin/settings"
+                    className={mobileNavLinkClass}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Site Administration
+                  </NavLink>
+                )}
                 <NavLink
                   to={routes.userSettings()}
                   className={mobileNavLinkClass}
@@ -267,6 +280,15 @@ export function TopNavigation({
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <DropdownMenuSeparator />
+              {FEATURES.INSTANCE_ADMIN && isSiteAdmin && (
+                <>
+                  <DropdownMenuItem onClick={() => navigate("/admin/settings")}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Site Administration
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={() => navigate(routes.userSettings())}>
                 <User className="mr-2 h-4 w-4" />
                 User Settings

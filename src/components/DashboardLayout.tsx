@@ -18,6 +18,7 @@ import { TopNavigation } from "@/components/TopNavigation";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { CROSS_LINKS } from "@/lib/domains";
 import { FEATURES } from "@/config/features";
+import { useSiteAdmin } from "@/hooks/useSiteAdmin";
 import {
   CommandDialog,
   CommandEmpty,
@@ -30,6 +31,7 @@ import {
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const { canManageWorkspace } = usePermissions();
+  const { isSiteAdmin } = useSiteAdmin();
   const [searchOpen, setSearchOpen] = useState(false);
   const routes = useWorkspaceRoutes();
 
@@ -99,6 +101,16 @@ export default function DashboardLayout() {
             title: "Workspace Settings",
             url: routes.workspaceSettings(),
             icon: Users,
+            group: "Navigation",
+          },
+        ]
+      : []),
+    ...(FEATURES.INSTANCE_ADMIN && isSiteAdmin
+      ? [
+          {
+            title: "Site Administration",
+            url: "/admin/settings",
+            icon: Shield,
             group: "Navigation",
           },
         ]
