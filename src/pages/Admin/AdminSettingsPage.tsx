@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { TopNavigation } from "@/components/TopNavigation";
 import {
   Globe,
   GitBranch,
@@ -13,6 +14,7 @@ import {
   XCircle,
   Settings,
   Shield,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +76,7 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [groupLoading, setGroupLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Permission guard
   useEffect(() => {
@@ -153,6 +156,33 @@ export default function AdminSettingsPage() {
     setValues((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleDownloadKey = async () => {
+    setDownloading(true);
+    try {
+      const blob = await adminSettingsService.downloadPrivateKey();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "github-app-private-key.pem";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Download started",
+        description: "Private key file downloaded successfully.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Download failed",
+        description: err.message || "Failed to download private key.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const getGroupMeta = (key: string): SettingsGroupMeta | undefined =>
     SETTINGS_GROUPS.find((g) => g.key === key);
 
@@ -167,7 +197,9 @@ export default function AdminSettingsPage() {
   const groupMeta = getGroupMeta(activeGroup);
 
   return (
-    <div className="container p-6 max-w-6xl">
+    <div className="min-h-screen flex flex-col">
+      <TopNavigation />
+    <div className="container p-6 max-w-6xl flex-1">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -237,12 +269,34 @@ export default function AdminSettingsPage() {
               ) : (
                 <div className="space-y-6">
                   {groupMeta?.fields.map((field) => (
-                    <SettingsField
-                      key={field.key}
-                      field={field}
-                      value={values[field.key] ?? ""}
-                      onChange={(val) => handleFieldChange(field.key, val)}
-                    />
+                    <div key={field.key}>
+                      <SettingsField
+                        field={field}
+                        value={values[field.key] ?? ""}
+                        onChange={(val) => handleFieldChange(field.key, val)}
+                      />
+                      {field.key === "private-key-path" &&
+                        activeGroup === "VCS_GITHUB" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={handleDownloadKey}
+                            disabled={
+                              downloading ||
+                              !values["private-key-path"] ||
+                              values["private-key-path"].includes("••••")
+                            }
+                          >
+                            {downloading ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Download className="h-4 w-4 mr-2" />
+                            )}
+                            Download Key File
+                          </Button>
+                        )}
+                    </div>
                   ))}
 
                   <div className="flex justify-end pt-4 border-t">
@@ -261,6 +315,7 @@ export default function AdminSettingsPage() {
           </Card>
         </main>
       </div>
+    </div>
     </div>
   );
 }

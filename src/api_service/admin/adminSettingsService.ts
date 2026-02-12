@@ -1,4 +1,5 @@
 import { ApiService } from "../api";
+import { getApiUrl } from "@/config/api";
 import type {
   ConfigurationStatus,
   SettingsMap,
@@ -51,6 +52,38 @@ class AdminSettingsService extends ApiService {
       },
       true,
     );
+  }
+
+  /**
+   * Download the GitHub App private key (.pem) file.
+   * Only available on self-hosted instances. Returns 403 on cloud.
+   */
+  async downloadPrivateKey(): Promise<Blob> {
+    const url = getApiUrl("/admin/settings/download-key");
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("codecrow_token")}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error("Private key download is not available in cloud mode.");
+      }
+      if (response.status === 404) {
+        throw new Error(
+          "No private key path is configured. Save the GitHub settings first.",
+        );
+      }
+      if (response.status === 400) {
+        throw new Error(
+          "Private key path validation failed. Check the configured path.",
+        );
+      }
+      throw new Error(`Download failed (HTTP ${response.status}).`);
+    }
+
+    return response.blob();
   }
 }
 
