@@ -278,9 +278,7 @@ export default function AdminSettingsPage() {
                         user.username.slice(1)
                       : "User"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {user?.email}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
