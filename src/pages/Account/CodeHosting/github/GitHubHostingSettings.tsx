@@ -164,6 +164,27 @@ export default function GitHubHostingSettings({
     if (!currentWorkspace) return;
     try {
       setReconnectingConnectionId(connectionId);
+
+      // Check if this is a GitHub App connection (APP type)
+      // GitHub App connections can refresh tokens server-side without redirect
+      const connection = appConnections.find((c) => c.id === connectionId);
+      if (connection && connection.connectionType === "APP") {
+        // Server-side token refresh for GitHub App connections
+        await integrationService.refreshConnectionToken(
+          currentWorkspace.slug,
+          "github",
+          connectionId,
+        );
+        toast({
+          title: "Connection refreshed",
+          description: "GitHub App token has been refreshed successfully.",
+        });
+        await fetchConnections();
+        setReconnectingConnectionId(null);
+        return;
+      }
+
+      // For OAuth connections, redirect to provider
       const response = await integrationService.getReconnectUrl(
         currentWorkspace.slug,
         "github",
