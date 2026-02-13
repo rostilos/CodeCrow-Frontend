@@ -11,23 +11,27 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
     description:
       "URLs used by the backend and email templates to generate links.",
     icon: "Globe",
+    instructions:
+      "Both URLs must be publicly accessible from the internet.\n" +
+      "VCS providers (GitHub, Bitbucket, GitLab) send webhook events to the Backend API URL,\n" +
+      "and OAuth redirects use the Frontend URL.",
     fields: [
       {
         key: "base-url",
         label: "Backend API URL",
         type: "text",
-        placeholder: "http://localhost:8081",
+        placeholder: "https://api.yourdomain.com",
         helpText:
-          "The URL where the Java web-server is accessible (used for webhooks, OAuth callbacks).",
+          "Must be a publicly accessible URL — VCS providers send webhook events to this address.",
         required: true,
       },
       {
         key: "frontend-url",
         label: "Frontend URL",
         type: "text",
-        placeholder: "http://localhost:8080",
+        placeholder: "https://app.yourdomain.com",
         helpText:
-          "The URL where the web frontend is accessible (used in emails, redirects).",
+          "Must be a publicly accessible URL — used in email links and OAuth redirects.",
         required: true,
       },
     ],
@@ -36,8 +40,15 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
     key: "VCS_BITBUCKET",
     label: "Bitbucket",
     description:
-      "OAuth credentials for Bitbucket Cloud integration (App password or Connect App).",
+      "OAuth credentials for Bitbucket Cloud integration.",
     icon: "GitBranch",
+    instructions:
+      "To integrate with Bitbucket Cloud, create an OAuth consumer:\n\n" +
+      "1. Go to Bitbucket → Workspace settings → OAuth consumers → Add consumer\n" +
+      "2. Set the Callback URL to: {backend-url}/api/auth/bitbucket/callback\n" +
+      "   (replace {backend-url} with your Backend API URL from Base URLs)\n" +
+      "3. Grant permissions: Repository (Read), Pull requests (Read & Write)\n" +
+      "4. Save and note the Key (Client ID) and Secret (Client Secret)",
     fields: [
       {
         key: "client-id",
@@ -60,6 +71,18 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
     label: "GitHub",
     description: "GitHub App credentials for repository access and webhooks.",
     icon: "Github",
+    instructions:
+      "To integrate with GitHub, create a GitHub App:\n\n" +
+      "1. Go to GitHub → Settings → Developer settings → GitHub Apps → New GitHub App\n" +
+      "2. Set Homepage URL to your Frontend URL\n" +
+      "3. Set Webhook URL to: {backend-url}/api/github/webhook\n" +
+      "   (replace {backend-url} with your Backend API URL from Base URLs)\n" +
+      "4. Under Permissions grant:\n" +
+      "   • Repository contents — Read\n" +
+      "   • Pull requests — Read & Write\n" +
+      "   • Webhooks — Read & Write\n" +
+      "5. Generate a private key (.pem), download it, and mount it into the web-server container\n" +
+      "6. Note the App ID (numeric, shown at the top of the app page)",
     fields: [
       {
         key: "app-id",
@@ -85,6 +108,13 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
     description:
       "OAuth application credentials for GitLab integration (cloud or self-hosted).",
     icon: "Gitlab",
+    instructions:
+      "To integrate with GitLab, create an OAuth application:\n\n" +
+      "1. Go to GitLab → User Settings → Applications (or Admin → Applications for self-hosted)\n" +
+      "2. Set the Redirect URI to: {backend-url}/api/auth/gitlab/callback\n" +
+      "   (replace {backend-url} with your Backend API URL from Base URLs)\n" +
+      "3. Grant scopes: api, read_user, read_repository\n" +
+      "4. Save and note the Application ID and Secret",
     fields: [
       {
         key: "client-id",
@@ -140,52 +170,6 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
         label: "Google AI API Key",
         type: "password",
         placeholder: "AIza...",
-      },
-    ],
-  },
-  {
-    key: "EMBEDDING",
-    label: "Embedding Provider",
-    description:
-      "Configuration for the vector embedding provider used by the RAG pipeline.",
-    icon: "Database",
-    fields: [
-      {
-        key: "provider",
-        label: "Provider",
-        type: "select",
-        required: true,
-        options: [
-          { value: "ollama", label: "Ollama (Local)" },
-          { value: "openrouter", label: "OpenRouter (Cloud)" },
-        ],
-      },
-      {
-        key: "ollama-base-url",
-        label: "Ollama Base URL",
-        type: "text",
-        placeholder: "http://ollama:11434",
-        helpText:
-          "URL of the Ollama server. Use Docker service name in production.",
-      },
-      {
-        key: "ollama-model",
-        label: "Ollama Embedding Model",
-        type: "text",
-        placeholder: "qwen3-embedding:0.6b",
-      },
-      {
-        key: "openrouter-api-key",
-        label: "OpenRouter API Key",
-        type: "password",
-        placeholder: "sk-or-v1-...",
-        helpText: "Required when provider is OpenRouter.",
-      },
-      {
-        key: "openrouter-model",
-        label: "OpenRouter Embedding Model",
-        type: "text",
-        placeholder: "qwen/qwen3-embedding-8b",
       },
     ],
   },
@@ -251,6 +235,15 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
     description:
       'Google OAuth client ID for "Sign in with Google" functionality.',
     icon: "Chrome",
+    instructions:
+      "To enable Google Sign-In:\n\n" +
+      "1. Go to Google Cloud Console → APIs & Services → Credentials\n" +
+      "2. Create an OAuth 2.0 Client ID (Web application type)\n" +
+      "3. Add your Frontend URL to Authorized JavaScript origins\n" +
+      "4. Add {frontend-url}/auth/google/callback to Authorized redirect URIs\n" +
+      "5. Copy the Client ID and enter it below\n\n" +
+      "Important: The same Client ID must also be set as VITE_GOOGLE_CLIENT_ID\n" +
+      "in the web-frontend .env file, and the frontend must be rebuilt.",
     fields: [
       {
         key: "client-id",

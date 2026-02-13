@@ -12,7 +12,6 @@ export type SiteSettingsGroup =
   | "VCS_GITHUB"
   | "VCS_GITLAB"
   | "LLM_SYNC"
-  | "EMBEDDING"
   | "SMTP"
   | "GOOGLE_OAUTH"
   | "BASE_URLS";
@@ -34,6 +33,7 @@ export interface SettingsGroupMeta {
   description: string;
   icon: string; // Lucide icon name
   fields: SettingsFieldMeta[];
+  instructions?: string; // Optional setup instructions shown as an info block
 }
 
 export interface SettingsFieldMeta {

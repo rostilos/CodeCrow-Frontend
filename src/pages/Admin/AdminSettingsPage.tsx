@@ -4,7 +4,6 @@ import {
   Globe,
   GitBranch,
   Brain,
-  Database,
   Mail,
   Chrome,
   Save,
@@ -16,6 +15,7 @@ import {
   Download,
   LogOut,
   ArrowLeft,
+  Info,
 } from "lucide-react";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -30,12 +30,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -67,7 +66,6 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Github: GitBranch,
   Gitlab: GitBranch,
   Brain,
-  Database,
   Mail,
   Chrome,
   Settings,
@@ -81,8 +79,8 @@ export default function AdminSettingsPage() {
   const { toast } = useToast();
 
   const [status, setStatus] = useState<ConfigurationStatus | null>(null);
-  const [activeGroup, setActiveGroup] = useState<SiteSettingsGroup>(
-    (searchParams.get("tab") as SiteSettingsGroup) || "BASE_URLS",
+  const [activeGroup, setActiveGroup] = useState<string>(
+    searchParams.get("tab") || "BASE_URLS",
   );
   const [values, setValues] = useState<SettingsMap>({});
   const [saving, setSaving] = useState(false);
@@ -120,9 +118,10 @@ export default function AdminSettingsPage() {
 
   // Fetch group settings when tab changes
   useEffect(() => {
+    if (!activeGroup) return;
     setGroupLoading(true);
     adminSettingsService
-      .getSettingsGroup(activeGroup)
+      .getSettingsGroup(activeGroup as SiteSettingsGroup)
       .then(setValues)
       .catch((err) => {
         console.error(`Failed to fetch settings for ${activeGroup}:`, err);
@@ -131,16 +130,17 @@ export default function AdminSettingsPage() {
       .finally(() => setGroupLoading(false));
   }, [activeGroup]);
 
-  const handleTabChange = (group: SiteSettingsGroup) => {
+  const handleTabChange = (group: string) => {
     setActiveGroup(group);
     setSearchParams({ tab: group });
   };
 
   const handleSave = async () => {
+    if (!activeGroup) return;
     setSaving(true);
     try {
       const updated = await adminSettingsService.updateSettingsGroup(
-        activeGroup,
+        activeGroup as SiteSettingsGroup,
         values,
       );
       setValues(updated);
@@ -205,8 +205,6 @@ export default function AdminSettingsPage() {
       </div>
     );
   }
-
-  const groupMeta = getGroupMeta(activeGroup);
 
   const user = authUtils.getUser();
 
@@ -294,7 +292,7 @@ export default function AdminSettingsPage() {
         </div>
       </header>
 
-      <div className="container p-6 max-w-6xl flex-1">
+      <div className="container p-6 max-w-4xl flex-1">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -307,109 +305,107 @@ export default function AdminSettingsPage() {
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left sidebar navigation */}
-          <nav className="lg:w-72 shrink-0">
-            <div className="lg:sticky lg:top-20 space-y-1 bg-card rounded-lg border p-2">
-              {SETTINGS_GROUPS.map((group) => {
-                const Icon = ICON_MAP[group.icon] || Settings;
-                const configured = status?.groups?.[group.key] ?? false;
-                const isActive = activeGroup === group.key;
+        <Accordion
+          type="single"
+          collapsible
+          value={activeGroup}
+          onValueChange={(val) => {
+            if (val) handleTabChange(val);
+            else setActiveGroup("");
+          }}
+          className="space-y-3"
+        >
+          {SETTINGS_GROUPS.map((group) => {
+            const Icon = ICON_MAP[group.icon] || Settings;
+            const configured = status?.groups?.[group.key] ?? false;
+            const isActive = activeGroup === group.key;
 
-                return (
-                  <button
-                    key={group.key}
-                    onClick={() => handleTabChange(group.key)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left ${
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="flex-1 truncate">{group.label}</span>
+            return (
+              <AccordionItem
+                key={group.key}
+                value={group.key}
+                className="border rounded-lg px-4"
+              >
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <div className="text-left min-w-0 flex-1">
+                      <span className="font-medium">{group.label}</span>
+                      <p className="text-xs text-muted-foreground font-normal truncate">
+                        {group.description}
+                      </p>
+                    </div>
                     {configured ? (
                       <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                     ) : (
                       <XCircle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                     )}
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
-
-          {/* Main content */}
-          <main className="flex-1 min-w-0">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {groupMeta && (
-                    <>
-                      {(() => {
-                        const Icon = ICON_MAP[groupMeta.icon] || Settings;
-                        return <Icon className="h-5 w-5" />;
-                      })()}
-                      {groupMeta.label}
-                    </>
-                  )}
-                </CardTitle>
-                <CardDescription>{groupMeta?.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {groupLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
-                ) : (
-                  <div className="space-y-6">
-                    {groupMeta?.fields.map((field) => (
-                      <div key={field.key}>
-                        <SettingsField
-                          field={field}
-                          value={values[field.key] ?? ""}
-                          onChange={(val) => handleFieldChange(field.key, val)}
-                        />
-                        {field.key === "private-key-path" &&
-                          activeGroup === "VCS_GITHUB" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-2"
-                              onClick={handleDownloadKey}
-                              disabled={
-                                downloading ||
-                                !values["private-key-path"] ||
-                                values["private-key-path"].includes("••••")
-                              }
-                            >
-                              {downloading ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              ) : (
-                                <Download className="h-4 w-4 mr-2" />
-                              )}
-                              Download Key File
-                            </Button>
-                          )}
-                      </div>
-                    ))}
-
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button onClick={handleSave} disabled={saving}>
-                        {saving ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        Save Settings
-                      </Button>
+                </AccordionTrigger>
+                <AccordionContent>
+                  {isActive && groupLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </main>
-        </div>
+                  ) : isActive ? (
+                    <div className="space-y-6 pt-2">
+                      {group.instructions && (
+                        <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-4">
+                          <div className="flex gap-3">
+                            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                            <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-line">
+                              {group.instructions}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {group.fields.map((field) => (
+                        <div key={field.key}>
+                          <SettingsField
+                            field={field}
+                            value={values[field.key] ?? ""}
+                            onChange={(val) => handleFieldChange(field.key, val)}
+                          />
+                          {field.key === "private-key-path" &&
+                            group.key === "VCS_GITHUB" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={handleDownloadKey}
+                                disabled={
+                                  downloading || !values["private-key-path"]
+                                }
+                              >
+                                {downloading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                  <Download className="h-4 w-4 mr-2" />
+                                )}
+                                Download Key File
+                              </Button>
+                            )}
+                        </div>
+                      ))}
+
+                      <div className="flex justify-end pt-4 border-t">
+                        <Button onClick={handleSave} disabled={saving}>
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Save Settings
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
       </div>
     </div>
   );
