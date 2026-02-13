@@ -50,56 +50,118 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
   {
     key: "VCS_BITBUCKET",
     label: "Bitbucket",
-    description: "OAuth credentials for Bitbucket Cloud integration.",
+    description:
+      "OAuth credentials for the 1-click Bitbucket Cloud integration. This is optional — see the integration modes below.",
     icon: "GitBranch",
     instructions:
-      "To integrate with Bitbucket Cloud, create an OAuth consumer:\n\n" +
+      '⚙️ OPTIONAL — Configuring an app here enables 1-click "Connect with Bitbucket" for all users.\n' +
+      "You can skip this entirely and use project-specific keys instead (see Mode C below).\n\n" +
+      "━━━ Integration Modes ━━━\n\n" +
+      "MODE A — OAuth App (1-Click) ✦ Recommended\n" +
+      "Best for: most deployments — users click one button and authorize.\n" +
+      "Requires: the Client ID & Secret configured below.\n" +
+      "How it works: each user authorizes CodeCrow via standard OAuth 2.0.\n" +
+      "Webhooks are created automatically.\n\n" +
+      "Setup steps:\n" +
       "1. Go to Bitbucket → Workspace settings → OAuth consumers → Add consumer\n" +
-      "2. Set the Callback URL to: {backend-url}/api/auth/bitbucket/callback\n" +
+      "2. Set the Callback URL to: {backend-url}/api/integrations/bitbucket-cloud/app/callback\n" +
       "   (replace {backend-url} with your Backend API URL from Base URLs)\n" +
-      "3. Grant permissions: Repository (Read), Pull requests (Read & Write)\n" +
-      "4. Save and note the Key (Client ID) and Secret (Client Secret)",
+      "3. Grant permissions:\n" +
+      "   • Account — Read\n" +
+      "   • Repositories — Read\n" +
+      "   • Pull requests — Read & Write\n" +
+      "   • Webhooks — Read & Write\n" +
+      "4. Save and copy the Key (Client ID) and Secret (Client Secret) into the fields below.\n\n" +
+      "MODE B — Connect App (Workspace-Level)\n" +
+      "Best for: teams that want workspace-wide installation not tied to any single user.\n" +
+      "Requires: separate Atlassian Connect descriptor hosted by CodeCrow (SaaS / advanced).\n" +
+      "How it works: a Bitbucket workspace admin installs the Connect App;\n" +
+      "CodeCrow receives a shared secret and generates tokens with JWT.\n" +
+      "Webhooks are created automatically.\n" +
+      "Note: this mode is configured via the Connect App descriptor,\n" +
+      "NOT through the fields below. Contact your administrator or see the docs.\n\n" +
+      "MODE C — Manual OAuth (Project-Specific) ✦ No Admin Config Needed\n" +
+      "Best for: users who want full control, or when no admin-level app is configured.\n" +
+      "Requires: the user creates their own OAuth Consumer in their Bitbucket workspace.\n" +
+      "How it works: during project setup the user provides their own\n" +
+      "Client ID + Secret directly in the project connection flow.\n" +
+      "Webhooks are created automatically.\n" +
+      "Admin settings: not required — leave the fields below empty.",
     fields: [
       {
         key: "client-id",
         label: "Client ID",
         type: "text",
         placeholder: "OAuth consumer key",
-        required: true,
+        helpText:
+          "Only needed for Mode A (1-click). Leave empty if you rely on project-specific keys.",
+        required: false,
       },
       {
         key: "client-secret",
         label: "Client Secret",
         type: "password",
         placeholder: "OAuth consumer secret",
-        required: true,
+        helpText:
+          "Only needed for Mode A (1-click). Leave empty if you rely on project-specific keys.",
+        required: false,
       },
     ],
   },
   {
     key: "VCS_GITHUB",
     label: "GitHub",
-    description: "GitHub App credentials for repository access and webhooks.",
+    description:
+      "GitHub App credentials for 1-click repository access. This is optional — see the integration modes below.",
     icon: "Github",
     instructions:
-      "To integrate with GitHub, create a GitHub App:\n\n" +
+      '⚙️ OPTIONAL — Configuring an app here enables 1-click "Connect with GitHub" for all users.\n' +
+      "You can skip this entirely and use project-specific keys instead (see Mode C below).\n\n" +
+      "━━━ Integration Modes ━━━\n\n" +
+      "MODE A — GitHub App ✦ Recommended\n" +
+      "Best for: most deployments — users install the app on their org/account,\n" +
+      "CodeCrow gets per-repository permissions with automatic webhooks.\n" +
+      "Requires: the App ID, Private Key, and Webhook Secret configured below.\n\n" +
+      "Setup steps:\n" +
       "1. Go to GitHub → Settings → Developer settings → GitHub Apps → New GitHub App\n" +
       "2. Set Homepage URL to your Frontend URL\n" +
       "3. Set Webhook URL to: {backend-url}/api/github/webhook\n" +
       "   (replace {backend-url} with your Backend API URL from Base URLs)\n" +
-      "4. Under Permissions grant:\n" +
-      "   • Repository contents — Read\n" +
-      "   • Pull requests — Read & Write\n" +
-      "   • Webhooks — Read & Write\n" +
-      "5. Generate a private key (.pem) and upload it using the button below\n" +
-      "6. Note the App ID (numeric, shown at the top of the app page)",
+      "4. Create a Webhook Secret and enter it in the field below\n" +
+      "5. Under Permissions grant:\n" +
+      "   • Repository: Contents — Read\n" +
+      "   • Repository: Pull requests — Read & Write\n" +
+      "   • Repository: Webhooks — Read & Write\n" +
+      "   • Repository: Metadata — Read (auto-selected)\n" +
+      "6. Subscribe to events: Pull request, Push\n" +
+      "7. Save the app, then note the App ID (numeric, shown at the top)\n" +
+      "8. Generate a private key (.pem) — download it and upload via the button below\n" +
+      "9. Make the app public if you want users outside your org to install it\n" +
+      "10. Configure in application.properties (not here):\n" +
+      "    • codecrow.github.app.webhook-secret — the webhook secret from step 4\n" +
+      "    • codecrow.github.app.slug — URL slug from https://github.com/apps/<slug>\n\n" +
+      "MODE B — OAuth App (Legacy)\n" +
+      "Best for: simpler setup when you don't need per-repository granularity.\n" +
+      "Requires: a GitHub OAuth App Client ID + Secret (configured in application.properties).\n" +
+      "How it works: users authorize with their GitHub account via standard OAuth.\n" +
+      "Webhooks are created automatically.\n" +
+      "Note: this mode uses GitHub OAuth Apps (not GitHub Apps).\n" +
+      "The backend falls back to this mode when the GitHub App slug is not configured.\n\n" +
+      "MODE C — Manual Webhook / Project-Specific ✦ No Admin Config Needed\n" +
+      "Best for: users who want full control, or when no admin-level app is configured.\n" +
+      "Requires: the user creates a Personal Access Token (PAT) in GitHub\n" +
+      "and configures the webhook URL manually in their repository settings.\n" +
+      "Webhook URL format: {webhook-base-url}/api/webhooks/github/{project-auth-token}\n" +
+      "Admin settings: not required — leave the fields below empty.",
     fields: [
       {
         key: "app-id",
         label: "App ID",
         type: "text",
         placeholder: "GitHub App ID (numeric)",
-        required: true,
+        helpText:
+          "Only needed for Mode A (GitHub App). Leave empty if you rely on project-specific keys.",
+        required: false,
       },
       {
         key: "private-key-path",
@@ -107,8 +169,8 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
         type: "text",
         placeholder: "/app/config/github-app-private-key.pem",
         helpText:
-          "Path to the PEM file on the server. Use the Upload button below to upload the key, or specify a path if manually mounted.",
-        required: true,
+          "Path to the PEM file on the server. Use the Upload button below to upload the key, or specify a path if manually mounted. Only needed for Mode A.",
+        required: false,
       },
     ],
   },
@@ -116,36 +178,65 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
     key: "VCS_GITLAB",
     label: "GitLab",
     description:
-      "OAuth application credentials for GitLab integration (cloud or self-hosted).",
+      "OAuth application credentials for GitLab integration. This is optional — see the integration modes below.",
     icon: "Gitlab",
     instructions:
-      "To integrate with GitLab, create an OAuth application:\n\n" +
-      "1. Go to GitLab → User Settings → Applications (or Admin → Applications for self-hosted)\n" +
+      '⚙️ OPTIONAL — Configuring an app here enables 1-click "Connect with GitLab" for all users.\n' +
+      "You can skip this entirely and use project-specific keys instead (see Modes B/C below).\n\n" +
+      "━━━ Integration Modes ━━━\n\n" +
+      "MODE A — OAuth Application (1-Click) ✦ Recommended\n" +
+      "Best for: most deployments — users click one button and authorize.\n" +
+      "Works with both GitLab.com and self-hosted instances.\n" +
+      "Requires: the Application ID & Secret configured below.\n\n" +
+      "Setup steps:\n" +
+      "1. Go to GitLab → User Settings → Applications\n" +
+      "   (for self-hosted: Admin Area → Applications)\n" +
       "2. Set the Redirect URI to: {backend-url}/api/auth/gitlab/callback\n" +
       "   (replace {backend-url} with your Backend API URL from Base URLs)\n" +
-      "3. Grant scopes: api, read_user, read_repository\n" +
-      "4. Save and note the Application ID and Secret",
+      "3. Grant scopes: api, read_user, read_repository, write_repository\n" +
+      '4. Uncheck "Confidential" if your instance requires it (usually leave checked)\n' +
+      "5. Save and copy the Application ID and Secret into the fields below\n\n" +
+      "MODE B — Personal Access Token (PAT) ✦ No Admin Config Needed\n" +
+      "Best for: individual users or small teams — no OAuth app setup required.\n" +
+      "Requires: the user creates a PAT in GitLab → User Settings → Access Tokens.\n" +
+      "Required scopes: api, read_user, read_repository, write_repository\n" +
+      "How it works: the user provides the token during the project connection flow.\n" +
+      "Limitation: webhooks must be configured manually per repository.\n" +
+      "Admin settings: not required — leave the fields below empty.\n\n" +
+      "MODE C — Repository Token (Project-Specific) ✦ No Admin Config Needed\n" +
+      "Best for: fine-grained access scoped to a single repository.\n" +
+      "Requires: the user creates a Project Access Token in GitLab →\n" +
+      "Repository → Settings → Access Tokens (Maintainer role needed).\n" +
+      "Required scopes: api, read_repository, write_repository\n" +
+      "How it works: the user provides the token during project setup.\n" +
+      "Webhooks are created automatically if the token has Maintainer permissions.\n" +
+      "Admin settings: not required — leave the fields below empty.",
     fields: [
       {
         key: "client-id",
         label: "Application ID",
         type: "text",
         placeholder: "GitLab application ID",
-        required: true,
+        helpText:
+          "Only needed for Mode A (OAuth Application). Leave empty if you rely on project-specific tokens.",
+        required: false,
       },
       {
         key: "client-secret",
         label: "Application Secret",
         type: "password",
         placeholder: "GitLab application secret",
-        required: true,
+        helpText:
+          "Only needed for Mode A (OAuth Application). Leave empty if you rely on project-specific tokens.",
+        required: false,
       },
       {
         key: "base-url",
         label: "GitLab Base URL",
         type: "text",
         placeholder: "https://gitlab.com",
-        helpText: "For self-hosted GitLab, enter your instance URL.",
+        helpText:
+          "For self-hosted GitLab, enter your instance URL. Leave empty or set to https://gitlab.com for GitLab.com.",
       },
     ],
   },
