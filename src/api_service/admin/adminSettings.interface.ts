@@ -9,6 +9,7 @@
 
 export type SiteSettingsGroup =
   | "VCS_BITBUCKET"
+  | "VCS_BITBUCKET_CONNECT"
   | "VCS_GITHUB"
   | "VCS_GITLAB"
   | "LLM_SYNC"
