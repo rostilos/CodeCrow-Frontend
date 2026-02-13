@@ -319,7 +319,9 @@ export default function GitHubHostingSettings({
                 <Button
                   onClick={handleConnectGitHub}
                   disabled={
-                    isConnecting || vcsAvailability?.githubOAuth === false
+                    isConnecting ||
+                    (vcsAvailability?.githubOAuth === false &&
+                      vcsAvailability?.githubApp === false)
                   }
                   className="w-full bg-purple-600 hover:bg-purple-700"
                 >
@@ -335,13 +337,14 @@ export default function GitHubHostingSettings({
                     </>
                   )}
                 </Button>
-                {vcsAvailability?.githubOAuth === false && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    GitHub OAuth is not configured on this instance. Ask your
-                    site administrator to set it up in Site Administration →
-                    GitHub.
-                  </p>
-                )}
+                {vcsAvailability?.githubOAuth === false &&
+                  vcsAvailability?.githubApp === false && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      GitHub is not configured on this instance. Ask your site
+                      administrator to set it up in Site Administration →
+                      GitHub.
+                    </p>
+                  )}
               </div>
             </TabsContent>
 
@@ -610,7 +613,11 @@ export default function GitHubHostingSettings({
             </p>
             <Button
               onClick={handleConnectGitHub}
-              disabled={isConnecting || vcsAvailability?.githubOAuth === false}
+              disabled={
+                isConnecting ||
+                (vcsAvailability?.githubOAuth === false &&
+                  vcsAvailability?.githubApp === false)
+              }
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               Connect with GitHub
