@@ -12,9 +12,11 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
       "URLs used by the backend and email templates to generate links.",
     icon: "Globe",
     instructions:
-      "Both URLs must be publicly accessible from the internet.\n" +
+      "The Backend API URL and Frontend URL must be publicly accessible from the internet.\n" +
       "VCS providers (GitHub, Bitbucket, GitLab) send webhook events to the Backend API URL,\n" +
-      "and OAuth redirects use the Frontend URL.",
+      "and OAuth redirects use the Frontend URL.\n" +
+      "The Webhook Base URL is optional — if your pipeline agent receives webhooks on a\n" +
+      "separate domain/port, set it here; otherwise it defaults to the Backend API URL.",
     fields: [
       {
         key: "base-url",
@@ -33,6 +35,15 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
         helpText:
           "Must be a publicly accessible URL — used in email links and OAuth redirects.",
         required: true,
+      },
+      {
+        key: "webhook-base-url",
+        label: "Webhook Base URL",
+        type: "text",
+        placeholder: "https://webhooks.yourdomain.com",
+        helpText:
+          "Public URL that VCS providers (GitHub, Bitbucket, GitLab) send webhook events to. If left empty, defaults to the Backend API URL.",
+        required: false,
       },
     ],
   },
