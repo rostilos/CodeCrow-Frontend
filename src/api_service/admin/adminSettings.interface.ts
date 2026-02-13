@@ -46,3 +46,23 @@ export interface SettingsFieldMeta {
   required?: boolean;
   options?: { value: string; label: string }[];
 }
+
+/**
+ * VCS provider availability flags returned by /api/public/site-config.
+ * Tells the frontend which "Connect" buttons to show vs info banners.
+ */
+export interface VcsProviderAvailability {
+  bitbucketOAuth: boolean;
+  bitbucketConnect: boolean;
+  githubOAuth: boolean;
+  githubApp: boolean;
+  gitlabOAuth: boolean;
+}
+
+/**
+ * Public site config returned by the unauthenticated /api/public/site-config endpoint.
+ */
+export interface PublicSiteConfig {
+  googleClientId?: string;
+  vcsProviders?: VcsProviderAvailability;
+}

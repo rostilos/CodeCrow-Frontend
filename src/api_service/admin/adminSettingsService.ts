@@ -2,6 +2,7 @@ import { ApiService } from "../api";
 import { getApiUrl } from "@/config/api";
 import type {
   ConfigurationStatus,
+  PublicSiteConfig,
   SettingsMap,
   SiteSettingsGroup,
 } from "./adminSettings.interface";
@@ -119,9 +120,9 @@ class AdminSettingsService extends ApiService {
 
   /**
    * Fetch public site configuration (available without authentication).
-   * Used to determine which features (e.g. Google OAuth) are enabled at runtime.
+   * Used to determine which features (e.g. Google OAuth, VCS providers) are enabled at runtime.
    */
-  async getPublicConfig(): Promise<{ googleClientId?: string }> {
+  async getPublicConfig(): Promise<PublicSiteConfig> {
     const url = getApiUrl("/public/site-config");
     const response = await fetch(url);
     if (!response.ok) {
