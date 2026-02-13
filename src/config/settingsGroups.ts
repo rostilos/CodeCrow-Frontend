@@ -39,8 +39,7 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
   {
     key: "VCS_BITBUCKET",
     label: "Bitbucket",
-    description:
-      "OAuth credentials for Bitbucket Cloud integration.",
+    description: "OAuth credentials for Bitbucket Cloud integration.",
     icon: "GitBranch",
     instructions:
       "To integrate with Bitbucket Cloud, create an OAuth consumer:\n\n" +

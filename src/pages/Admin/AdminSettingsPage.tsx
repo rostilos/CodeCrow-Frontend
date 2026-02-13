@@ -365,7 +365,9 @@ export default function AdminSettingsPage() {
                           <SettingsField
                             field={field}
                             value={values[field.key] ?? ""}
-                            onChange={(val) => handleFieldChange(field.key, val)}
+                            onChange={(val) =>
+                              handleFieldChange(field.key, val)
+                            }
                           />
                           {field.key === "private-key-path" &&
                             group.key === "VCS_GITHUB" && (
