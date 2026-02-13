@@ -31,6 +31,7 @@ import {
   GoogleSignInButtonCustom,
   GoogleCredentialResponse,
 } from "@/components/GoogleSignInButton";
+import { useGoogleClientId } from "@/hooks/useGoogleClientId";
 import { TwoFactorLoginDialog } from "@/components/Auth/TwoFactorLoginDialog";
 import { TwoFactorRequiredResponse } from "@/api_service/auth/twoFactorService.interface";
 import { ROUTES } from "@/lib/routes";
@@ -45,6 +46,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const googleClientId = useGoogleClientId();
   const [twoFactorDialogOpen, setTwoFactorDialogOpen] = useState(false);
   const [twoFactorData, setTwoFactorData] =
     useState<TwoFactorRequiredResponse | null>(null);
@@ -280,16 +282,18 @@ export default function Login() {
               </Form>
 
               {/* Divider */}
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+              {googleClientId && (
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
+              )}
 
               {/* Google Sign-In */}
               <GoogleSignInButtonCustom

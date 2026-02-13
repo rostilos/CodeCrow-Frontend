@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Globe,
@@ -13,10 +13,12 @@ import {
   Settings,
   Shield,
   Download,
+  Upload,
   LogOut,
   ArrowLeft,
   Info,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,12 +31,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -87,6 +83,8 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [groupLoading, setGroupLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Permission guard
   useEffect(() => {
@@ -195,6 +193,39 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleUploadKey = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith(".pem")) {
+      toast({
+        title: "Invalid file",
+        description: "Only .pem files are allowed.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setUploading(true);
+    try {
+      const result = await adminSettingsService.uploadPrivateKey(file);
+      handleFieldChange("private-key-path", result.path);
+      toast({
+        title: "Key uploaded",
+        description:
+          "Private key file uploaded successfully. Remember to save settings.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err.message || "Failed to upload private key.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      // Reset file input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const getGroupMeta = (key: string): SettingsGroupMeta | undefined =>
     SETTINGS_GROUPS.find((g) => g.key === key);
 
@@ -292,7 +323,7 @@ export default function AdminSettingsPage() {
         </div>
       </header>
 
-      <div className="container p-6 max-w-4xl flex-1">
+      <div className="container px-4 lg:px-6 py-6 flex-1 max-w-6xl">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -305,76 +336,104 @@ export default function AdminSettingsPage() {
           </p>
         </div>
 
-        <Accordion
-          type="single"
-          collapsible
-          value={activeGroup}
-          onValueChange={(val) => {
-            if (val) handleTabChange(val);
-            else setActiveGroup("");
-          }}
-          className="space-y-3"
-        >
-          {SETTINGS_GROUPS.map((group) => {
-            const Icon = ICON_MAP[group.icon] || Settings;
-            const configured = status?.groups?.[group.key] ?? false;
-            const isActive = activeGroup === group.key;
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Side Navigation */}
+          <nav className="lg:w-64 shrink-0">
+            <div className="lg:sticky lg:top-20 space-y-1 bg-card rounded-lg border p-2">
+              {SETTINGS_GROUPS.map((group) => {
+                const Icon = ICON_MAP[group.icon] || Settings;
+                const configured = status?.groups?.[group.key] ?? false;
+                const isActive = activeGroup === group.key;
 
-            return (
-              <AccordionItem
-                key={group.key}
-                value={group.key}
-                className="border rounded-lg px-4"
-              >
-                <AccordionTrigger className="hover:no-underline py-4">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <Icon className="h-5 w-5 shrink-0" />
-                    <div className="text-left min-w-0 flex-1">
-                      <span className="font-medium">{group.label}</span>
-                      <p className="text-xs text-muted-foreground font-normal truncate">
+                return (
+                  <button
+                    key={group.key}
+                    onClick={() => handleTabChange(group.key)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{group.label}</span>
+                    {configured ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* Main Content */}
+          <main className="flex-1 min-w-0">
+            {groupLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : activeGroup ? (
+              (() => {
+                const group = getGroupMeta(activeGroup);
+                if (!group) return null;
+                return (
+                  <div className="space-y-6">
+                    {/* Group header */}
+                    <div>
+                      <h2 className="text-xl font-semibold">{group.label}</h2>
+                      <p className="text-sm text-muted-foreground mt-1">
                         {group.description}
                       </p>
                     </div>
-                    {configured ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                    )}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  {isActive && groupLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : isActive ? (
-                    <div className="space-y-6 pt-2">
-                      {group.instructions && (
-                        <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-4">
-                          <div className="flex gap-3">
-                            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                            <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-line">
-                              {group.instructions}
-                            </p>
-                          </div>
-                        </div>
-                      )}
 
-                      {group.fields.map((field) => (
-                        <div key={field.key}>
-                          <SettingsField
-                            field={field}
-                            value={values[field.key] ?? ""}
-                            onChange={(val) =>
-                              handleFieldChange(field.key, val)
-                            }
-                          />
-                          {field.key === "private-key-path" &&
-                            group.key === "VCS_GITHUB" && (
+                    {group.instructions && (
+                      <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-4">
+                        <div className="flex gap-3">
+                          <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                          <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-line">
+                            {group.instructions}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {group.fields.map((field) => (
+                      <div key={field.key}>
+                        <SettingsField
+                          field={field}
+                          value={values[field.key] ?? ""}
+                          onChange={(val) => handleFieldChange(field.key, val)}
+                        />
+                        {field.key === "private-key-path" &&
+                          group.key === "VCS_GITHUB" && (
+                            <div className="flex items-center gap-2 mt-2">
+                              {/* Hidden file input */}
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pem"
+                                className="hidden"
+                                onChange={handleUploadKey}
+                              />
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="mt-2"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploading}
+                              >
+                                {uploading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                  <Upload className="h-4 w-4 mr-2" />
+                                )}
+                                Upload Key File
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={handleDownloadKey}
                                 disabled={
                                   downloading || !values["private-key-path"]
@@ -387,27 +446,27 @@ export default function AdminSettingsPage() {
                                 )}
                                 Download Key File
                               </Button>
-                            )}
-                        </div>
-                      ))}
-
-                      <div className="flex justify-end pt-4 border-t">
-                        <Button onClick={handleSave} disabled={saving}>
-                          {saving ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
+                            </div>
                           )}
-                          Save Settings
-                        </Button>
                       </div>
+                    ))}
+
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button onClick={handleSave} disabled={saving}>
+                        {saving ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Save Settings
+                      </Button>
                     </div>
-                  ) : null}
-                </AccordionContent>
-              </AccordionItem>
-            );
-          })}
-        </Accordion>
+                  </div>
+                );
+              })()
+            ) : null}
+          </main>
+        </div>
       </div>
     </div>
   );

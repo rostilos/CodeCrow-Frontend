@@ -85,6 +85,50 @@ class AdminSettingsService extends ApiService {
 
     return response.blob();
   }
+
+  /**
+   * Upload a GitHub App private key (.pem) file.
+   * The backend saves it to the configured key directory and returns the path.
+   */
+  async uploadPrivateKey(file: File): Promise<{ path: string }> {
+    const url = getApiUrl("/admin/settings/upload-key");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("codecrow_token")}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error("Private key upload is not available in cloud mode.");
+      }
+      if (response.status === 400) {
+        const text = await response.text().catch(() => "");
+        throw new Error(text || "Invalid file. Only .pem files are accepted.");
+      }
+      throw new Error(`Upload failed (HTTP ${response.status}).`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Fetch public site configuration (available without authentication).
+   * Used to determine which features (e.g. Google OAuth) are enabled at runtime.
+   */
+  async getPublicConfig(): Promise<{ googleClientId?: string }> {
+    const url = getApiUrl("/public/site-config");
+    const response = await fetch(url);
+    if (!response.ok) {
+      return {};
+    }
+    return response.json();
+  }
 }
 
 export const adminSettingsService = new AdminSettingsService();

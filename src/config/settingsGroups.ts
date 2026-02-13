@@ -80,7 +80,7 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
       "   • Repository contents — Read\n" +
       "   • Pull requests — Read & Write\n" +
       "   • Webhooks — Read & Write\n" +
-      "5. Generate a private key (.pem), download it, and mount it into the web-server container\n" +
+      "5. Generate a private key (.pem) and upload it using the button below\n" +
       "6. Note the App ID (numeric, shown at the top of the app page)",
     fields: [
       {
@@ -96,7 +96,7 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
         type: "text",
         placeholder: "/app/config/github-app-private-key.pem",
         helpText:
-          "Path to the PEM file on the server. The file must be mounted into the container.",
+          "Path to the PEM file on the server. Use the Upload button below to upload the key, or specify a path if manually mounted.",
         required: true,
       },
     ],
@@ -241,8 +241,8 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
       "3. Add your Frontend URL to Authorized JavaScript origins\n" +
       "4. Add {frontend-url}/auth/google/callback to Authorized redirect URIs\n" +
       "5. Copy the Client ID and enter it below\n\n" +
-      "Important: The same Client ID must also be set as VITE_GOOGLE_CLIENT_ID\n" +
-      "in the web-frontend .env file, and the frontend must be rebuilt.",
+      "The Google Sign-In button will appear on the login page automatically\n" +
+      "once the Client ID is saved here — no frontend rebuild required.",
     fields: [
       {
         key: "client-id",
