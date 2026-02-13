@@ -108,7 +108,7 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
       "3. Permissions: Contents (Read), Pull requests (Read & Write), Webhooks (Read & Write), Metadata (Read)\n" +
       "4. Subscribe to events: Pull request, Push\n" +
       "5. Generate a private key (.pem) and upload it below\n" +
-      "6. Set webhook-secret and app-slug in application.properties.",
+      "6. Fill in all fields: App ID, Webhook Secret, and App Slug.",
     fields: [
       {
         key: "app-id",
@@ -124,6 +124,24 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
         placeholder: "/app/config/github-app-private-key.pem",
         helpText:
           "Path to the .pem file on the server. Use the Upload button to upload, or specify a path if manually mounted.",
+        required: false,
+      },
+      {
+        key: "webhook-secret",
+        label: "Webhook Secret",
+        type: "password",
+        placeholder: "GitHub App webhook secret",
+        helpText:
+          "The webhook secret you set when creating the GitHub App. Used to verify webhook payloads.",
+        required: false,
+      },
+      {
+        key: "slug",
+        label: "App Slug",
+        type: "text",
+        placeholder: "your-github-app-name",
+        helpText:
+          "The URL-friendly name of your GitHub App (from the app URL: github.com/apps/<slug>).",
         required: false,
       },
     ],
