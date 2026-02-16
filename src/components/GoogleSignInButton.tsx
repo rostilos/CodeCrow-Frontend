@@ -1,6 +1,7 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useCallback, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { useGoogleClientId } from "@/hooks/useGoogleClientId";
 
 // Extend Window interface for Google API
 declare global {
@@ -9,8 +10,13 @@ declare global {
       accounts: {
         id: {
           initialize: (config: GoogleInitConfig) => void;
-          renderButton: (parent: HTMLElement, options: GoogleButtonOptions) => void;
-          prompt: (callback?: (notification: PromptNotification) => void) => void;
+          renderButton: (
+            parent: HTMLElement,
+            options: GoogleButtonOptions,
+          ) => void;
+          prompt: (
+            callback?: (notification: PromptNotification) => void,
+          ) => void;
           cancel: () => void;
         };
       };
@@ -23,17 +29,17 @@ interface GoogleInitConfig {
   callback: (response: GoogleCredentialResponse) => void;
   auto_select?: boolean;
   cancel_on_tap_outside?: boolean;
-  ux_mode?: 'popup' | 'redirect';
+  ux_mode?: "popup" | "redirect";
 }
 
 interface GoogleButtonOptions {
-  theme?: 'outline' | 'filled_blue' | 'filled_black';
-  size?: 'large' | 'medium' | 'small';
-  type?: 'standard' | 'icon';
-  shape?: 'rectangular' | 'pill' | 'circle' | 'square';
-  text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
+  theme?: "outline" | "filled_blue" | "filled_black";
+  size?: "large" | "medium" | "small";
+  type?: "standard" | "icon";
+  shape?: "rectangular" | "pill" | "circle" | "square";
+  text?: "signin_with" | "signup_with" | "continue_with" | "signin";
   width?: number;
-  logo_alignment?: 'left' | 'center';
+  logo_alignment?: "left" | "center";
 }
 
 interface PromptNotification {
@@ -51,93 +57,98 @@ export interface GoogleCredentialResponse {
 interface GoogleSignInButtonProps {
   onSuccess: (response: GoogleCredentialResponse) => void;
   onError?: (error: Error) => void;
-  text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
+  text?: "signin_with" | "signup_with" | "continue_with" | "signin";
   isLoading?: boolean;
   disabled?: boolean;
   className?: string;
 }
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+/**
+ * Build-time fallback — if set, used immediately without waiting for
+ * the runtime fetch. The runtime value (from the backend) takes priority.
+ */
+const BUILD_TIME_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 // Native Google Sign-In Button - renders Google's own button
 export function GoogleSignInButton({
   onSuccess,
   onError,
-  text = 'continue_with',
+  text = "continue_with",
   isLoading = false,
   disabled = false,
-  className = '',
+  className = "",
 }: GoogleSignInButtonProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+  const runtimeClientId = useGoogleClientId();
+  const clientId = runtimeClientId || BUILD_TIME_CLIENT_ID;
 
   const handleGoogleCallback = useCallback(
     (response: GoogleCredentialResponse) => {
       if (response.credential) {
         onSuccess(response);
       } else {
-        onError?.(new Error('No credential received from Google'));
+        onError?.(new Error("No credential received from Google"));
       }
     },
-    [onSuccess, onError]
+    [onSuccess, onError],
   );
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) {
-      console.warn('Google Client ID not configured. Set VITE_GOOGLE_CLIENT_ID in your .env file.');
-      return;
-    }
+    if (!clientId) return;
 
     // Check if script is already loaded
-    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    const existingScript = document.querySelector(
+      'script[src="https://accounts.google.com/gsi/client"]',
+    );
     if (existingScript && window.google) {
       setIsScriptLoaded(true);
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
     script.defer = true;
     script.onload = () => {
       setIsScriptLoaded(true);
     };
     script.onerror = () => {
-      onError?.(new Error('Failed to load Google Sign-In script'));
+      onError?.(new Error("Failed to load Google Sign-In script"));
     };
     document.head.appendChild(script);
-  }, [onError]);
+  }, [clientId, onError]);
 
   useEffect(() => {
-    if (!isScriptLoaded || !window.google || !buttonRef.current || !GOOGLE_CLIENT_ID) {
+    if (!isScriptLoaded || !window.google || !buttonRef.current || !clientId) {
       return;
     }
 
     // Initialize Google Sign-In
     window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: clientId,
       callback: handleGoogleCallback,
       auto_select: false,
       cancel_on_tap_outside: true,
-      ux_mode: 'popup',
+      ux_mode: "popup",
     });
 
     // Clear any previous button content
-    buttonRef.current.innerHTML = '';
+    buttonRef.current.innerHTML = "";
 
     // Render the Google button
     window.google.accounts.id.renderButton(buttonRef.current, {
-      theme: 'outline',
-      size: 'large',
-      type: 'standard',
-      shape: 'rectangular',
+      theme: "outline",
+      size: "large",
+      type: "standard",
+      shape: "rectangular",
       text: text,
       width: 400,
-      logo_alignment: 'left',
+      logo_alignment: "left",
     });
-  }, [isScriptLoaded, handleGoogleCallback, text]);
+  }, [isScriptLoaded, clientId, handleGoogleCallback, text]);
 
-  if (!GOOGLE_CLIENT_ID) {
+  if (!clientId) {
     return null;
   }
 
@@ -154,8 +165,8 @@ export function GoogleSignInButton({
     <div className={`w-full ${className}`}>
       <div
         ref={buttonRef}
-        className={`w-full flex justify-center [&>div]:w-full ${disabled ? 'pointer-events-none opacity-50' : ''}`}
-        style={{ minHeight: '44px' }}
+        className={`w-full flex justify-center [&>div]:w-full ${disabled ? "pointer-events-none opacity-50" : ""}`}
+        style={{ minHeight: "44px" }}
       />
     </div>
   );
@@ -167,106 +178,118 @@ export function GoogleSignInButtonCustom({
   onError,
   isLoading = false,
   disabled = false,
-  className = '',
+  className = "",
   children,
 }: GoogleSignInButtonProps & { children?: React.ReactNode }) {
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const hiddenButtonRef = useRef<HTMLDivElement>(null);
+  const runtimeClientId = useGoogleClientId();
+  const clientId = runtimeClientId || BUILD_TIME_CLIENT_ID;
 
   const handleGoogleCallback = useCallback(
     (response: GoogleCredentialResponse) => {
       if (response.credential) {
         onSuccess(response);
       } else {
-        onError?.(new Error('No credential received from Google'));
+        onError?.(new Error("No credential received from Google"));
       }
     },
-    [onSuccess, onError]
+    [onSuccess, onError],
   );
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) {
-      console.warn('Google Client ID not configured. Set VITE_GOOGLE_CLIENT_ID in your .env file.');
-      return;
-    }
+    if (!clientId) return;
 
-    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    const existingScript = document.querySelector(
+      'script[src="https://accounts.google.com/gsi/client"]',
+    );
     if (existingScript && window.google) {
       setIsScriptLoaded(true);
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
     script.defer = true;
     script.onload = () => {
       setIsScriptLoaded(true);
     };
     script.onerror = () => {
-      onError?.(new Error('Failed to load Google Sign-In script'));
+      onError?.(new Error("Failed to load Google Sign-In script"));
     };
     document.head.appendChild(script);
-  }, [onError]);
+  }, [clientId, onError]);
 
   useEffect(() => {
-    if (!isScriptLoaded || !window.google || !hiddenButtonRef.current || !GOOGLE_CLIENT_ID) {
+    if (
+      !isScriptLoaded ||
+      !window.google ||
+      !hiddenButtonRef.current ||
+      !clientId
+    ) {
       return;
     }
 
     window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: clientId,
       callback: handleGoogleCallback,
       auto_select: false,
       cancel_on_tap_outside: true,
-      ux_mode: 'popup',
+      ux_mode: "popup",
     });
 
     // Render a hidden Google button that we'll programmatically click
-    hiddenButtonRef.current.innerHTML = '';
+    hiddenButtonRef.current.innerHTML = "";
     window.google.accounts.id.renderButton(hiddenButtonRef.current, {
-      theme: 'outline',
-      size: 'large',
-      type: 'standard',
+      theme: "outline",
+      size: "large",
+      type: "standard",
     });
 
     setIsInitialized(true);
-  }, [isScriptLoaded, handleGoogleCallback]);
+  }, [isScriptLoaded, clientId, handleGoogleCallback]);
 
   const handleClick = () => {
     if (!isInitialized || !hiddenButtonRef.current) {
-      onError?.(new Error('Google Sign-In is not ready. Please try again.'));
+      onError?.(new Error("Google Sign-In is not ready. Please try again."));
       return;
     }
 
     // Find and click the actual Google button inside the hidden container
-    const googleButton = hiddenButtonRef.current.querySelector('div[role="button"]') as HTMLElement;
+    const googleButton = hiddenButtonRef.current.querySelector(
+      'div[role="button"]',
+    ) as HTMLElement;
     if (googleButton) {
       googleButton.click();
     } else {
-      onError?.(new Error('Google Sign-In button not found. Please refresh and try again.'));
+      onError?.(
+        new Error(
+          "Google Sign-In button not found. Please refresh and try again.",
+        ),
+      );
     }
   };
 
-  if (!GOOGLE_CLIENT_ID) {
+  if (!clientId) {
     return null;
   }
 
   return (
     <>
       {/* Hidden Google button container */}
-      <div 
-        ref={hiddenButtonRef} 
-        style={{ 
-          position: 'absolute', 
-          left: '-9999px', 
-          top: '-9999px',
-          visibility: 'hidden',
-          pointerEvents: 'none'
-        }} 
+      <div
+        ref={hiddenButtonRef}
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          top: "-9999px",
+          visibility: "hidden",
+          pointerEvents: "none",
+        }}
       />
-      
+
       {/* Custom styled button */}
       <Button
         type="button"
@@ -297,7 +320,7 @@ export function GoogleSignInButtonCustom({
             />
           </svg>
         )}
-        {children || 'Continue with Google'}
+        {children || "Continue with Google"}
       </Button>
     </>
   );

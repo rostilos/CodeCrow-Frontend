@@ -51,17 +51,36 @@
     --warning-foreground: 0 0% 100%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(24 100% 50%), hsl(24 100% 60%));
-    --gradient-secondary: linear-gradient(135deg, hsl(221 83% 53%), hsl(221 83% 63%));
-    --gradient-glow: linear-gradient(135deg, hsl(24 100% 50% / 0.15), hsl(221 83% 53% / 0.15));
-    --gradient-subtle: linear-gradient(135deg, hsl(220 14% 96%), hsl(0 0% 100%));
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(24 100% 50%),
+      hsl(24 100% 60%)
+    );
+    --gradient-secondary: linear-gradient(
+      135deg,
+      hsl(221 83% 53%),
+      hsl(221 83% 63%)
+    );
+    --gradient-glow: linear-gradient(
+      135deg,
+      hsl(24 100% 50% / 0.15),
+      hsl(221 83% 53% / 0.15)
+    );
+    --gradient-subtle: linear-gradient(
+      135deg,
+      hsl(220 14% 96%),
+      hsl(0 0% 100%)
+    );
 
     /* Shadows - Refined and Subtle */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-md:
+      0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg:
+      0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl:
+      0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     --shadow-primary: 0 4px 14px 0 hsl(24 100% 50% / 0.25);
     --shadow-glow: 0 0 20px hsl(24 100% 50% / 0.2);
 
@@ -139,9 +158,12 @@
     /* Dark shadows */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
     --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+    --shadow-md:
+      0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg:
+      0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-xl:
+      0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.3);
     --shadow-primary: 0 4px 14px 0 hsl(24 100% 50% / 0.3);
     --shadow-glow: 0 0 20px hsl(24 100% 50% / 0.25);
 
@@ -170,7 +192,9 @@
 
   body {
     @apply bg-background text-foreground antialiased font-sans;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
   }
 
   h1,
@@ -193,7 +217,7 @@
     max-height: 300px !important;
     overscroll-behavior: contain;
   }
-  
+
   [cmdk-list-sizer] {
     overflow: visible !important;
   }
@@ -202,13 +226,115 @@
   button:focus-visible,
   a:focus-visible,
   [role="button"]:focus-visible,
-  [tabindex]:focus-visible:not([tabindex="-1"]):not(input):not(textarea):not([cmdk-input]) {
+  [tabindex]:focus-visible:not([tabindex="-1"]):not(input):not(textarea):not(
+      [cmdk-input]
+    ) {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
-@layer utilities {
+/* ── MDX Code Block Styles (rehype-highlight) ──────────────────── */
+/* Theme-aware syntax highlighting for both light and dark modes */
 
+/* Light theme hljs token colors */
+.mdx-code-block code .hljs-keyword,
+.mdx-code-block code .hljs-selector-tag,
+.mdx-code-block code .hljs-literal,
+.mdx-code-block code .hljs-section,
+.mdx-code-block code .hljs-link {
+  color: #8250df;
+}
+
+.mdx-code-block code .hljs-string,
+.mdx-code-block code .hljs-title,
+.mdx-code-block code .hljs-name,
+.mdx-code-block code .hljs-type,
+.mdx-code-block code .hljs-attribute,
+.mdx-code-block code .hljs-symbol,
+.mdx-code-block code .hljs-bullet {
+  color: #0a3069;
+}
+
+.mdx-code-block code .hljs-number,
+.mdx-code-block code .hljs-meta {
+  color: #0550ae;
+}
+
+.mdx-code-block code .hljs-comment,
+.mdx-code-block code .hljs-quote {
+  color: #6e7781;
+  font-style: italic;
+}
+
+.mdx-code-block code .hljs-built_in,
+.mdx-code-block code .hljs-class .hljs-title {
+  color: #953800;
+}
+
+.mdx-code-block code .hljs-variable,
+.mdx-code-block code .hljs-template-variable {
+  color: #24292f;
+}
+
+.mdx-code-block code .hljs-addition {
+  color: #116329;
+  background-color: #dafbe1;
+}
+.mdx-code-block code .hljs-deletion {
+  color: #82071e;
+  background-color: #ffebe9;
+}
+
+/* Dark theme hljs token colors */
+.dark .mdx-code-block code .hljs-keyword,
+.dark .mdx-code-block code .hljs-selector-tag,
+.dark .mdx-code-block code .hljs-literal,
+.dark .mdx-code-block code .hljs-section,
+.dark .mdx-code-block code .hljs-link {
+  color: #ff7b72;
+}
+
+.dark .mdx-code-block code .hljs-string,
+.dark .mdx-code-block code .hljs-title,
+.dark .mdx-code-block code .hljs-name,
+.dark .mdx-code-block code .hljs-type,
+.dark .mdx-code-block code .hljs-attribute,
+.dark .mdx-code-block code .hljs-symbol,
+.dark .mdx-code-block code .hljs-bullet {
+  color: #a5d6ff;
+}
+
+.dark .mdx-code-block code .hljs-number,
+.dark .mdx-code-block code .hljs-meta {
+  color: #79c0ff;
+}
+
+.dark .mdx-code-block code .hljs-comment,
+.dark .mdx-code-block code .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+
+.dark .mdx-code-block code .hljs-built_in,
+.dark .mdx-code-block code .hljs-class .hljs-title {
+  color: #ffa657;
+}
+
+.dark .mdx-code-block code .hljs-variable,
+.dark .mdx-code-block code .hljs-template-variable {
+  color: #c9d1d9;
+}
+
+.dark .mdx-code-block code .hljs-addition {
+  color: #aff5b4;
+  background-color: #033a16;
+}
+.dark .mdx-code-block code .hljs-deletion {
+  color: #ffdcd7;
+  background-color: #67060c;
+}
+
+@layer utilities {
   /* Glass morphism effect */
   .glass {
     @apply bg-background/80 backdrop-blur-lg;
@@ -230,7 +356,6 @@
   }
 
   @keyframes gradient-shift {
-
     0%,
     100% {
       background-position: 0% 50%;
@@ -332,7 +457,7 @@
   }
 
   .bulb::after {
-    content: '';
+    content: "";
     position: absolute;
     top: -3px;
     left: 2px;
@@ -358,7 +483,9 @@
   }
 
   .festive-glow {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5), 0 0 20px hsl(var(--primary) / 0.3);
+    text-shadow:
+      0 0 10px hsl(var(--primary) / 0.5),
+      0 0 20px hsl(var(--primary) / 0.3);
   }
 }
 

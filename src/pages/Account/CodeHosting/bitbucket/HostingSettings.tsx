@@ -71,6 +71,8 @@ import GitHubHostingSettings from "@/pages/Account/CodeHosting/github/GitHubHost
 import GitLabHostingSettings from "@/pages/Account/CodeHosting/gitlab/GitLabHostingSettings.tsx";
 import bitbucketAppSetupImg from "@/assets/bitbucket-app-setup.png";
 import { cn } from "@/lib/utils";
+import { adminSettingsService } from "@/api_service/admin/adminSettingsService";
+import type { VcsProviderAvailability } from "@/api_service/admin/adminSettings.interface";
 
 // Bitbucket icon component
 const BitbucketIcon = ({ className }: { className?: string }) => (
@@ -138,6 +140,10 @@ export default function HostingSettings() {
     number | null
   >(null);
 
+  // VCS provider availability (fetched from public site config)
+  const [vcsAvailability, setVcsAvailability] =
+    useState<VcsProviderAvailability | null>(null);
+
   // Check if Connect App is configured and load unlinked installations
   useEffect(() => {
     const checkConnectAppConfig = async () => {
@@ -157,6 +163,21 @@ export default function HostingSettings() {
       }
     };
     checkConnectAppConfig();
+  }, []);
+
+  // Fetch VCS provider availability from public site config
+  useEffect(() => {
+    const fetchVcsAvailability = async () => {
+      try {
+        const config = await adminSettingsService.getPublicConfig();
+        if (config.vcsProviders) {
+          setVcsAvailability(config.vcsProviders);
+        }
+      } catch {
+        // If fetch fails, leave as null (all options will be shown by default)
+      }
+    };
+    fetchVcsAvailability();
   }, []);
 
   const fetchConnections = async () => {
@@ -546,7 +567,9 @@ export default function HostingSettings() {
                 </ul>
                 <Button
                   onClick={handleInstallApp}
-                  disabled={isInstallingApp}
+                  disabled={
+                    isInstallingApp || vcsAvailability?.bitbucketOAuth === false
+                  }
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   {isInstallingApp ? (
@@ -561,6 +584,13 @@ export default function HostingSettings() {
                     </>
                   )}
                 </Button>
+                {vcsAvailability?.bitbucketOAuth === false && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    Bitbucket OAuth is not configured on this instance. Ask your
+                    site administrator to set it up in Site Administration →
+                    Bitbucket.
+                  </p>
+                )}
               </div>
             </TabsContent>
 
@@ -647,7 +677,10 @@ export default function HostingSettings() {
                 <Button
                   className="w-full"
                   onClick={handleConnectAppInstall}
-                  disabled={isConnectInstalling}
+                  disabled={
+                    isConnectInstalling ||
+                    vcsAvailability?.bitbucketConnect === false
+                  }
                 >
                   {isConnectInstalling ? (
                     <>
@@ -665,6 +698,13 @@ export default function HostingSettings() {
                     </>
                   )}
                 </Button>
+                {vcsAvailability?.bitbucketConnect === false && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    Bitbucket Connect App is not configured on this instance.
+                    Ask your site administrator to set it up in Site
+                    Administration → Bitbucket Connect.
+                  </p>
+                )}
               </div>
             </TabsContent>
 
@@ -1051,9 +1091,9 @@ export default function HostingSettings() {
       case "bitbucket":
         return renderBitbucketContent();
       case "github":
-        return <GitHubHostingSettings />;
+        return <GitHubHostingSettings vcsAvailability={vcsAvailability} />;
       case "gitlab":
-        return <GitLabHostingSettings />;
+        return <GitLabHostingSettings vcsAvailability={vcsAvailability} />;
       default:
         return renderBitbucketContent();
     }

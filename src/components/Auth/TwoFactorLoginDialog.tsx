@@ -53,15 +53,16 @@ export function TwoFactorLoginDialog({
         tempToken: twoFactorData.tempToken,
         code: verificationCode,
       });
-      
+
       // Construct user object from flat response
       const user = {
         id: response.id,
         email: response.email,
         username: response.username,
         avatarUrl: response.avatarUrl,
+        roles: response.roles ? response.roles.join(",") : "",
       };
-      
+
       onSuccess(response.accessToken, user);
       onOpenChange(false);
     } catch (error: any) {
@@ -72,7 +73,7 @@ export function TwoFactorLoginDialog({
   };
 
   const handleResendCode = async () => {
-    if (!twoFactorData || twoFactorData.twoFactorType !== 'EMAIL') return;
+    if (!twoFactorData || twoFactorData.twoFactorType !== "EMAIL") return;
 
     setLoading(true);
     try {
@@ -91,12 +92,15 @@ export function TwoFactorLoginDialog({
     setVerificationCode("");
   };
 
-  const isTotp = twoFactorData?.twoFactorType === 'TOTP';
+  const isTotp = twoFactorData?.twoFactorType === "TOTP";
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen) handleCancel();
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) handleCancel();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -109,10 +113,10 @@ export function TwoFactorLoginDialog({
           </DialogTitle>
           <DialogDescription>
             {useBackupCode
-              ? 'Enter one of your backup codes'
+              ? "Enter one of your backup codes"
               : isTotp
-              ? 'Enter the 6-digit code from your authenticator app'
-              : 'Enter the verification code sent to your email'}
+                ? "Enter the 6-digit code from your authenticator app"
+                : "Enter the verification code sent to your email"}
           </DialogDescription>
         </DialogHeader>
 
@@ -136,23 +140,27 @@ export function TwoFactorLoginDialog({
 
           {/* Code Input */}
           <div className="space-y-2">
-            <Label>{useBackupCode ? 'Backup Code' : 'Verification Code'}</Label>
+            <Label>{useBackupCode ? "Backup Code" : "Verification Code"}</Label>
             <Input
               type="text"
-              placeholder={useBackupCode ? 'XXXX-XXXX' : '000000'}
+              placeholder={useBackupCode ? "XXXX-XXXX" : "000000"}
               value={verificationCode}
               onChange={(e) => {
                 if (useBackupCode) {
-                  setVerificationCode(e.target.value.toUpperCase().slice(0, 10));
+                  setVerificationCode(
+                    e.target.value.toUpperCase().slice(0, 10),
+                  );
                 } else {
-                  setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                  setVerificationCode(
+                    e.target.value.replace(/\D/g, "").slice(0, 6),
+                  );
                 }
               }}
               className="text-center text-2xl tracking-widest font-mono"
               maxLength={useBackupCode ? 10 : 6}
               autoFocus
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && verificationCode) {
+                if (e.key === "Enter" && verificationCode) {
                   handleVerify();
                 }
               }}
@@ -179,7 +187,9 @@ export function TwoFactorLoginDialog({
               }}
               className="h-auto p-0 text-muted-foreground"
             >
-              {useBackupCode ? 'Use authenticator code instead' : 'Use a backup code instead'}
+              {useBackupCode
+                ? "Use authenticator code instead"
+                : "Use a backup code instead"}
             </Button>
           </div>
         </div>
@@ -198,7 +208,7 @@ export function TwoFactorLoginDialog({
                 Verifying...
               </>
             ) : (
-              'Verify'
+              "Verify"
             )}
           </Button>
         </DialogFooter>

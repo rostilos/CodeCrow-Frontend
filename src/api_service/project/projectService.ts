@@ -1,12 +1,12 @@
-import { API_CONFIG } from '@/config/api';
-import { ApiService } from '@/api_service/api.ts';
+import { API_CONFIG } from "@/config/api";
+import { ApiService } from "@/api_service/api.ts";
 
 export interface CreateProjectRequest {
   name: string;
   namespace: string;
   description?: string;
-  creationMode: 'MANUAL' | 'IMPORT';
-  vcsProvider?: 'BITBUCKET_CLOUD' | 'GITHUB';
+  creationMode: "MANUAL" | "IMPORT";
+  vcsProvider?: "BITBUCKET_CLOUD" | "GITHUB";
   vcsConnectionId?: number;
   repositorySlug?: string;
   repositoryUUID?: string;
@@ -49,8 +49,17 @@ export interface BindRepositoryRequest {
   name?: string;
 }
 
-export type VcsConnectionType = 'OAUTH_MANUAL' | 'APP' | 'CONNECT_APP' | 'GITHUB_APP' | 'OAUTH_APP' | 'PERSONAL_TOKEN' | 'APPLICATION' | 'ACCESS_TOKEN' | 'REPOSITORY_TOKEN';
-export type VcsProvider = 'BITBUCKET_CLOUD' | 'GITHUB' | 'GITLAB';
+export type VcsConnectionType =
+  | "OAUTH_MANUAL"
+  | "APP"
+  | "CONNECT_APP"
+  | "GITHUB_APP"
+  | "OAUTH_APP"
+  | "PERSONAL_TOKEN"
+  | "APPLICATION"
+  | "ACCESS_TOKEN"
+  | "REPOSITORY_TOKEN";
+export type VcsProvider = "BITBUCKET_CLOUD" | "GITHUB" | "GITLAB";
 
 export interface ProjectDTO {
   id: number | string;
@@ -61,8 +70,8 @@ export interface ProjectDTO {
   vcsProvider?: VcsProvider | null;
   aiConnectionId?: number;
   projectVcsWorkspace?: string;
-  projectVcsRepoSlug?: string;  // Backend returns this name
-  projectRepoSlug?: string;     // Alias for compatibility
+  projectVcsRepoSlug?: string; // Backend returns this name
+  projectRepoSlug?: string; // Alias for compatibility
   namespace?: string;
   active?: boolean;
   createdAt?: string;
@@ -100,7 +109,7 @@ export interface BranchDTO {
   infoSeverityCount?: number;
   resolvedCount: number;
   updatedAt: string;
-  analysisResult?: 'PASSED' | 'FAILED' | 'SKIPPED' | null;
+  analysisResult?: "PASSED" | "FAILED" | "SKIPPED" | null;
 }
 
 export interface SetDefaultBranchRequest {
@@ -122,6 +131,7 @@ export interface UpdateBranchAnalysisConfigRequest {
 export interface RagConfigDTO {
   enabled: boolean;
   branch: string | null;
+  includePatterns: string[] | null;
   excludePatterns: string[] | null;
   // Multi-branch RAG settings
   multiBranchEnabled: boolean | null;
@@ -131,6 +141,7 @@ export interface RagConfigDTO {
 export interface UpdateRagConfigRequest {
   enabled: boolean;
   branch?: string | null;
+  includePatterns?: string[] | null;
   excludePatterns?: string[] | null;
   // Multi-branch RAG settings
   multiBranchEnabled?: boolean | null;
@@ -144,14 +155,14 @@ export interface RagBranchIndexDTO {
   commitHash: string | null;
   chunkCount: number;
   fileCount: number;
-  status: 'CREATING' | 'READY' | 'STALE' | 'FAILED';
+  status: "CREATING" | "READY" | "STALE" | "FAILED";
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 // Analysis settings types
-export type InstallationMethod = 'WEBHOOK' | 'PIPELINE' | 'GITHUB_ACTION';
+export type InstallationMethod = "WEBHOOK" | "PIPELINE" | "GITHUB_ACTION";
 
 export interface UpdateAnalysisSettingsRequest {
   prAnalysisEnabled?: boolean;
@@ -161,7 +172,10 @@ export interface UpdateAnalysisSettingsRequest {
 }
 
 // Authorization modes for comment commands
-export type CommandAuthorizationMode = 'ANYONE' | 'ALLOWED_USERS_ONLY' | 'PR_AUTHOR_ONLY';
+export type CommandAuthorizationMode =
+  | "ANYONE"
+  | "ALLOWED_USERS_ONLY"
+  | "PR_AUTHOR_ONLY";
 
 // Comment Commands Configuration types
 export interface CommentCommandsConfigDTO {
@@ -223,7 +237,7 @@ export interface SyncResultResponse {
 
 export interface RagIndexStatusDTO {
   projectId: number;
-  status: 'NOT_INDEXED' | 'INDEXING' | 'INDEXED' | 'UPDATING' | 'FAILED';
+  status: "NOT_INDEXED" | "INDEXING" | "INDEXED" | "UPDATING" | "FAILED";
   indexedBranch: string | null;
   indexedCommitHash: string | null;
   totalFilesIndexed: number | null;
@@ -275,192 +289,367 @@ export interface ProjectListResponse {
 
 class ProjectService extends ApiService {
   async listProjects(workspaceSlug: string): Promise<ProjectDTO[]> {
-    return this.request<ProjectDTO[]>(`/${workspaceSlug}/project/project_list`, {}, true);
+    return this.request<ProjectDTO[]>(
+      `/${workspaceSlug}/project/project_list`,
+      {},
+      true,
+    );
   }
 
   async listProjectsPaginated(
-    workspaceSlug: string, 
-    params: { search?: string; page?: number; size?: number }
+    workspaceSlug: string,
+    params: { search?: string; page?: number; size?: number },
   ): Promise<ProjectListResponse> {
     const searchParams = new URLSearchParams();
     if (params.search) {
-      searchParams.append('search', params.search);
+      searchParams.append("search", params.search);
     }
     if (params.page !== undefined) {
-      searchParams.append('page', String(params.page));
+      searchParams.append("page", String(params.page));
     }
     if (params.size !== undefined) {
-      searchParams.append('size', String(params.size));
+      searchParams.append("size", String(params.size));
     }
     const query = searchParams.toString();
-    const url = query ? `/${workspaceSlug}/project/projects?${query}` : `/${workspaceSlug}/project/projects`;
+    const url = query
+      ? `/${workspaceSlug}/project/projects?${query}`
+      : `/${workspaceSlug}/project/projects`;
     return this.request<ProjectListResponse>(url, {}, true);
   }
 
-  async createProject(workspaceSlug: string, data: CreateProjectRequest): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/create`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }, true);
+  async createProject(
+    workspaceSlug: string,
+    data: CreateProjectRequest,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/create`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      true,
+    );
   }
 
-  async updateProject(workspaceSlug: string, namespace: string, data: UpdateProjectRequest): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }, true);
+  async updateProject(
+    workspaceSlug: string,
+    namespace: string,
+    data: UpdateProjectRequest,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+      true,
+    );
   }
 
   async deleteProject(workspaceSlug: string, namespace: string): Promise<void> {
-    await this.request<void>(`/${workspaceSlug}/project/${namespace}`, { method: 'DELETE' }, true);
+    await this.request<void>(
+      `/${workspaceSlug}/project/${namespace}`,
+      { method: "DELETE" },
+      true,
+    );
   }
 
-  async deleteProjectWithVerification(workspaceSlug: string, namespace: string, verificationCode: string): Promise<void> {
-    await this.request<void>(`/${workspaceSlug}/project/${namespace}`, {
-      method: 'DELETE',
-      headers: {
-        'X-2FA-Code': verificationCode,
+  async deleteProjectWithVerification(
+    workspaceSlug: string,
+    namespace: string,
+    verificationCode: string,
+  ): Promise<void> {
+    await this.request<void>(
+      `/${workspaceSlug}/project/${namespace}`,
+      {
+        method: "DELETE",
+        headers: {
+          "X-2FA-Code": verificationCode,
+        },
       },
-    }, true);
+      true,
+    );
   }
 
-  async bindRepository(workspaceSlug: string, namespace: string, data: BindRepositoryRequest): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/repository/bind`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }, true);
-  }
-
-  async unbindRepository(workspaceSlug: string, namespace: string): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/repository/unbind`, { method: 'DELETE' }, true);
-  }
-
-  async unbindRepositoryWithVerification(workspaceSlug: string, namespace: string, verificationCode: string): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/repository/unbind`, {
-      method: 'DELETE',
-      headers: {
-        'X-2FA-Code': verificationCode,
+  async bindRepository(
+    workspaceSlug: string,
+    namespace: string,
+    data: BindRepositoryRequest,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/repository/bind`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
       },
-    }, true);
+      true,
+    );
   }
 
-  async updateRepositorySettings(workspaceSlug: string, namespace: string, data: any): Promise<void> {
-    await this.request<void>(`/${workspaceSlug}/project/${namespace}/repository/settings`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }, true);
+  async unbindRepository(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/repository/unbind`,
+      { method: "DELETE" },
+      true,
+    );
   }
 
-  async createProjectToken(workspaceSlug: string, namespace: string, data: CreateProjectTokenRequest): Promise<{ token: string }> {
-    return this.request<{ token: string }>(`/${workspaceSlug}/project/${namespace}/token/generate`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }, true);
+  async unbindRepositoryWithVerification(
+    workspaceSlug: string,
+    namespace: string,
+    verificationCode: string,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/repository/unbind`,
+      {
+        method: "DELETE",
+        headers: {
+          "X-2FA-Code": verificationCode,
+        },
+      },
+      true,
+    );
   }
 
-  async listProjectTokens(workspaceSlug: string, namespace: string): Promise<ProjectTokenDTO[]> {
-    return this.request<ProjectTokenDTO[]>(`/${workspaceSlug}/project/${namespace}/token`, {}, true);
+  async updateRepositorySettings(
+    workspaceSlug: string,
+    namespace: string,
+    data: any,
+  ): Promise<void> {
+    await this.request<void>(
+      `/${workspaceSlug}/project/${namespace}/repository/settings`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+      true,
+    );
   }
 
-  async deleteProjectToken(workspaceSlug: string, namespace: string, tokenId: number): Promise<void> {
-    await this.request<void>(`/${workspaceSlug}/project/${namespace}/token/${tokenId}`, {
-      method: 'DELETE',
-    }, true);
+  async createProjectToken(
+    workspaceSlug: string,
+    namespace: string,
+    data: CreateProjectTokenRequest,
+  ): Promise<{ token: string }> {
+    return this.request<{ token: string }>(
+      `/${workspaceSlug}/project/${namespace}/token/generate`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      true,
+    );
+  }
+
+  async listProjectTokens(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<ProjectTokenDTO[]> {
+    return this.request<ProjectTokenDTO[]>(
+      `/${workspaceSlug}/project/${namespace}/token`,
+      {},
+      true,
+    );
+  }
+
+  async deleteProjectToken(
+    workspaceSlug: string,
+    namespace: string,
+    tokenId: number,
+  ): Promise<void> {
+    await this.request<void>(
+      `/${workspaceSlug}/project/${namespace}/token/${tokenId}`,
+      {
+        method: "DELETE",
+      },
+      true,
+    );
   }
 
   // Legacy method - deprecated
-  async generateProjectToken(workspaceSlug: string, namespace: string): Promise<{ token: string }> {
-    return this.createProjectToken(workspaceSlug, namespace, { name: 'Default Token', lifetime: '30d' });
+  async generateProjectToken(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<{ token: string }> {
+    return this.createProjectToken(workspaceSlug, namespace, {
+      name: "Default Token",
+      lifetime: "30d",
+    });
   }
 
-  async bindAiConnection(workspaceSlug: string, namespace: string, aiConnectionId: number): Promise<any> {
-    return this.request<any>(`/${workspaceSlug}/project/${namespace}/ai/bind`, {
-      method: 'PUT',
-      body: JSON.stringify({ aiConnectionId }),
-    }, true);
+  async bindAiConnection(
+    workspaceSlug: string,
+    namespace: string,
+    aiConnectionId: number,
+  ): Promise<any> {
+    return this.request<any>(
+      `/${workspaceSlug}/project/${namespace}/ai/bind`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ aiConnectionId }),
+      },
+      true,
+    );
   }
 
   // helper that fetches list and returns a single project by namespace (frontend convenience)
-  async getProjectByNamespace(workspaceSlug: string, namespace: string): Promise<ProjectDTO | null> {
+  async getProjectByNamespace(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<ProjectDTO | null> {
     const projects = await this.listProjects(workspaceSlug);
-    const found = projects.find(p => p.namespace === namespace);
+    const found = projects.find((p) => p.namespace === namespace);
     return found || null;
   }
 
   // Legacy helper - deprecated, use getProjectByNamespace
-  async getProjectById(workspaceSlug: string, projectId: string | number): Promise<ProjectDTO | null> {
+  async getProjectById(
+    workspaceSlug: string,
+    projectId: string | number,
+  ): Promise<ProjectDTO | null> {
     const projects = await this.listProjects(workspaceSlug);
-    const found = projects.find(p => String(p.id) === String(projectId));
+    const found = projects.find((p) => String(p.id) === String(projectId));
     return found || null;
   }
 
-  async getProjectBranches(workspaceSlug: string, namespace: string): Promise<BranchDTO[]> {
-    return this.request<BranchDTO[]>(`/${workspaceSlug}/project/${namespace}/branches`, {}, true);
+  async getProjectBranches(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<BranchDTO[]> {
+    return this.request<BranchDTO[]>(
+      `/${workspaceSlug}/project/${namespace}/branches`,
+      {},
+      true,
+    );
   }
 
-  async setDefaultBranch(workspaceSlug: string, namespace: string, request: SetDefaultBranchRequest): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/default-branch`, {
-      method: 'PUT',
-      body: JSON.stringify(request),
-    }, true);
+  async setDefaultBranch(
+    workspaceSlug: string,
+    namespace: string,
+    request: SetDefaultBranchRequest,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/default-branch`,
+      {
+        method: "PUT",
+        body: JSON.stringify(request),
+      },
+      true,
+    );
   }
 
-  async getBranchAnalysisConfig(workspaceSlug: string, namespace: string): Promise<BranchAnalysisConfig | null> {
-    return this.request<BranchAnalysisConfig | null>(`/${workspaceSlug}/project/${namespace}/branch-analysis-config`, {}, true);
+  async getBranchAnalysisConfig(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<BranchAnalysisConfig | null> {
+    return this.request<BranchAnalysisConfig | null>(
+      `/${workspaceSlug}/project/${namespace}/branch-analysis-config`,
+      {},
+      true,
+    );
   }
 
-  async updateBranchAnalysisConfig(workspaceSlug: string, namespace: string, request: UpdateBranchAnalysisConfigRequest): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/branch-analysis-config`, {
-      method: 'PUT',
-      body: JSON.stringify(request),
-    }, true);
+  async updateBranchAnalysisConfig(
+    workspaceSlug: string,
+    namespace: string,
+    request: UpdateBranchAnalysisConfigRequest,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/branch-analysis-config`,
+      {
+        method: "PUT",
+        body: JSON.stringify(request),
+      },
+      true,
+    );
   }
 
   // RAG Configuration methods
-  async getRagStatus(workspaceSlug: string, namespace: string): Promise<RagStatusResponse> {
-    return this.request<RagStatusResponse>(`/${workspaceSlug}/project/${namespace}/rag/status`, {}, true);
+  async getRagStatus(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<RagStatusResponse> {
+    return this.request<RagStatusResponse>(
+      `/${workspaceSlug}/project/${namespace}/rag/status`,
+      {},
+      true,
+    );
   }
 
-  async updateRagConfig(workspaceSlug: string, namespace: string, request: UpdateRagConfigRequest): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/rag/config`, {
-      method: 'PUT',
-      body: JSON.stringify(request),
-    }, true);
+  async updateRagConfig(
+    workspaceSlug: string,
+    namespace: string,
+    request: UpdateRagConfigRequest,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/rag/config`,
+      {
+        method: "PUT",
+        body: JSON.stringify(request),
+      },
+      true,
+    );
   }
 
   // Analysis Settings methods
-  async updateAnalysisSettings(workspaceSlug: string, namespace: string, request: UpdateAnalysisSettingsRequest): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/analysis-settings`, {
-      method: 'PUT',
-      body: JSON.stringify(request),
-    }, true);
+  async updateAnalysisSettings(
+    workspaceSlug: string,
+    namespace: string,
+    request: UpdateAnalysisSettingsRequest,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/analysis-settings`,
+      {
+        method: "PUT",
+        body: JSON.stringify(request),
+      },
+      true,
+    );
   }
 
   // Quality Gate methods
-  async updateProjectQualityGate(workspaceSlug: string, namespace: string, qualityGateId: number | null): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/quality-gate`, {
-      method: 'PUT',
-      body: JSON.stringify({ qualityGateId }),
-    }, true);
+  async updateProjectQualityGate(
+    workspaceSlug: string,
+    namespace: string,
+    qualityGateId: number | null,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/quality-gate`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ qualityGateId }),
+      },
+      true,
+    );
   }
 
   // Comment Commands Configuration methods
   async updateCommentCommandsConfig(
-    workspaceSlug: string, 
-    namespace: string, 
-    request: UpdateCommentCommandsConfigRequest
+    workspaceSlug: string,
+    namespace: string,
+    request: UpdateCommentCommandsConfigRequest,
   ): Promise<ProjectDTO> {
-    return this.request<ProjectDTO>(`/${workspaceSlug}/project/${namespace}/comment-commands-config`, {
-      method: 'PUT',
-      body: JSON.stringify(request),
-    }, true);
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/comment-commands-config`,
+      {
+        method: "PUT",
+        body: JSON.stringify(request),
+      },
+      true,
+    );
   }
 
-  async getCommentCommandsConfig(workspaceSlug: string, namespace: string): Promise<CommentCommandsConfigDTO | null> {
+  async getCommentCommandsConfig(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<CommentCommandsConfigDTO | null> {
     return this.request<CommentCommandsConfigDTO | null>(
-      `/${workspaceSlug}/project/${namespace}/comment-commands-config`, 
-      {}, 
-      true
+      `/${workspaceSlug}/project/${namespace}/comment-commands-config`,
+      {},
+      true,
     );
   }
 
@@ -480,11 +669,11 @@ class ProjectService extends ApiService {
     branch: string | null,
     onProgress: (data: RagIndexingProgressEvent) => void,
     onComplete: (data: RagIndexingResult) => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
   ): AbortController {
     const abortController = new AbortController();
-    const token = localStorage.getItem('codecrow_token');
-    
+    const token = localStorage.getItem("codecrow_token");
+
     // Build URL without /api prefix since VITE_API_URL already includes it
     let url = `/${workspaceSlug}/project/${namespace}/rag/trigger`;
     if (branch) {
@@ -493,7 +682,14 @@ class ProjectService extends ApiService {
 
     // Use native EventSource with workaround for auth header
     // Since EventSource doesn't support headers, we use fetch with SSE parsing
-    this.fetchSSE(url, token, abortController.signal, onProgress, onComplete, onError);
+    this.fetchSSE(
+      url,
+      token,
+      abortController.signal,
+      onProgress,
+      onComplete,
+      onError,
+    );
 
     return abortController;
   }
@@ -504,19 +700,20 @@ class ProjectService extends ApiService {
     signal: AbortSignal,
     onProgress: (data: RagIndexingProgressEvent) => void,
     onComplete: (data: RagIndexingResult) => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
   ): Promise<void> {
     try {
       // Get base URL from config (already includes /api)
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
+      const baseUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:8081/api";
       const fullUrl = `${baseUrl}${url}`;
 
       const response = await fetch(fullUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream',
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          Accept: "text/event-stream",
+          "Content-Type": "application/json",
         },
         signal,
       });
@@ -528,59 +725,65 @@ class ProjectService extends ApiService {
       }
 
       if (!response.body) {
-        onError('No response body');
+        onError("No response body");
         return;
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) {
           break;
         }
 
         buffer += decoder.decode(value, { stream: true });
-        
+
         // Parse SSE events
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || ""; // Keep incomplete line in buffer
 
         for (const line of lines) {
           // Handle both 'data: ' (with space) and 'data:' (without space) formats
-          if (line.startsWith('data:')) {
-            const data = line.startsWith('data: ') ? line.slice(6).trim() : line.slice(5).trim();
-            
-            if (data === '__EOF__') {
+          if (line.startsWith("data:")) {
+            const data = line.startsWith("data: ")
+              ? line.slice(6).trim()
+              : line.slice(5).trim();
+
+            if (data === "__EOF__") {
               // Stream complete
               return;
             }
 
             try {
               const parsed = JSON.parse(data);
-              
-              if (parsed.type === 'error' || parsed.status === 'error') {
-                onError(parsed.message || 'Unknown error');
-              } else if (parsed.status === 'completed' || parsed.status === 'skipped' || parsed.status === 'locked') {
+
+              if (parsed.type === "error" || parsed.status === "error") {
+                onError(parsed.message || "Unknown error");
+              } else if (
+                parsed.status === "completed" ||
+                parsed.status === "skipped" ||
+                parsed.status === "locked"
+              ) {
                 onComplete(parsed as RagIndexingResult);
               } else {
                 onProgress(parsed as RagIndexingProgressEvent);
               }
             } catch (e) {
-              console.warn('Failed to parse SSE event:', data, e);
+              console.warn("Failed to parse SSE event:", data, e);
             }
           }
         }
       }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         // Cancelled by user
-        onError('Indexing cancelled');
+        onError("Indexing cancelled");
       } else {
-        onError(error.message || 'Connection error');
+        onError(error.message || "Connection error");
       }
     }
   }
@@ -593,13 +796,13 @@ class ProjectService extends ApiService {
   async getAllowedUsers(
     workspaceSlug: string,
     namespace: string,
-    enabledOnly: boolean = false
+    enabledOnly: boolean = false,
   ): Promise<AllowedUsersResponse> {
-    const params = enabledOnly ? '?enabledOnly=true' : '';
+    const params = enabledOnly ? "?enabledOnly=true" : "";
     return this.request<AllowedUsersResponse>(
       `/${workspaceSlug}/project/${namespace}/allowed-users${params}`,
       {},
-      true
+      true,
     );
   }
 
@@ -609,15 +812,15 @@ class ProjectService extends ApiService {
   async addAllowedUser(
     workspaceSlug: string,
     namespace: string,
-    request: AddAllowedUserRequest
+    request: AddAllowedUserRequest,
   ): Promise<AllowedUserDTO> {
     return this.request<AllowedUserDTO>(
       `/${workspaceSlug}/project/${namespace}/allowed-users`,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(request),
       },
-      true
+      true,
     );
   }
 
@@ -627,12 +830,12 @@ class ProjectService extends ApiService {
   async removeAllowedUser(
     workspaceSlug: string,
     namespace: string,
-    vcsUserId: string
+    vcsUserId: string,
   ): Promise<void> {
     await this.request<void>(
       `/${workspaceSlug}/project/${namespace}/allowed-users/${encodeURIComponent(vcsUserId)}`,
-      { method: 'DELETE' },
-      true
+      { method: "DELETE" },
+      true,
     );
   }
 
@@ -643,15 +846,15 @@ class ProjectService extends ApiService {
     workspaceSlug: string,
     namespace: string,
     vcsUserId: string,
-    enabled: boolean
+    enabled: boolean,
   ): Promise<AllowedUserDTO> {
     return this.request<AllowedUserDTO>(
       `/${workspaceSlug}/project/${namespace}/allowed-users/${encodeURIComponent(vcsUserId)}/enabled`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify({ enabled }),
       },
-      true
+      true,
     );
   }
 
@@ -660,12 +863,12 @@ class ProjectService extends ApiService {
    */
   async syncAllowedUsersFromVcs(
     workspaceSlug: string,
-    namespace: string
+    namespace: string,
   ): Promise<SyncResultResponse> {
     return this.request<SyncResultResponse>(
       `/${workspaceSlug}/project/${namespace}/allowed-users/sync`,
-      { method: 'POST' },
-      true
+      { method: "POST" },
+      true,
     );
   }
 
@@ -674,12 +877,12 @@ class ProjectService extends ApiService {
    */
   async clearAllowedUsers(
     workspaceSlug: string,
-    namespace: string
+    namespace: string,
   ): Promise<void> {
     await this.request<void>(
       `/${workspaceSlug}/project/${namespace}/allowed-users`,
-      { method: 'DELETE' },
-      true
+      { method: "DELETE" },
+      true,
     );
   }
 
@@ -690,12 +893,12 @@ class ProjectService extends ApiService {
    */
   async setupWebhooks(
     workspaceSlug: string,
-    namespace: string
+    namespace: string,
   ): Promise<WebhookSetupResponse> {
     return this.request<WebhookSetupResponse>(
       `/${workspaceSlug}/project/${namespace}/webhooks/setup`,
-      { method: 'POST' },
-      true
+      { method: "POST" },
+      true,
     );
   }
 
@@ -704,12 +907,12 @@ class ProjectService extends ApiService {
    */
   async getWebhookInfo(
     workspaceSlug: string,
-    namespace: string
+    namespace: string,
   ): Promise<WebhookInfoResponse> {
     return this.request<WebhookInfoResponse>(
       `/${workspaceSlug}/project/${namespace}/webhooks/info`,
       {},
-      true
+      true,
     );
   }
 
@@ -721,22 +924,22 @@ class ProjectService extends ApiService {
   async changeVcsConnection(
     workspaceSlug: string,
     namespace: string,
-    request: ChangeVcsConnectionRequest
+    request: ChangeVcsConnectionRequest,
   ): Promise<ProjectDTO> {
     return this.request<ProjectDTO>(
       `/${workspaceSlug}/project/${namespace}/vcs-connection`,
       {
-        method: 'PUT',
+        method: "PUT",
         body: JSON.stringify(request),
       },
-      true
+      true,
     );
   }
 }
 
 // RAG Indexing event types
 export interface RagIndexingProgressEvent {
-  type: 'progress';
+  type: "progress";
   stage: string;
   message: string;
   progress?: number;
@@ -744,7 +947,7 @@ export interface RagIndexingProgressEvent {
 }
 
 export interface RagIndexingResult {
-  status: 'completed' | 'error' | 'skipped' | 'locked';
+  status: "completed" | "error" | "skipped" | "locked";
   message: string;
   filesIndexed?: number;
   branch?: string;

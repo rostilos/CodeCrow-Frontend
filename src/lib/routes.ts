@@ -1,21 +1,23 @@
 /**
  * Centralized route utilities for workspace-aware URL generation.
  * All dashboard routes should use these functions to ensure workspace is included in URLs.
- * 
+ *
  * NOTE: Routes are now organized in separate modules under @/lib/routes/
  * This file re-exports everything for backward compatibility.
  */
 
 // Re-export from modular route files
-export { STATIC_ROUTES } from './routes/static.routes';
-export { DASHBOARD_ROUTES, createWorkspaceRoutes } from './routes/dashboard.routes';
-export { DOCS_ROUTES } from './routes/docs.routes';
-export { extractWorkspaceFromPath, isDashboardPath, isDocsPath } from './routes/utils';
+export { STATIC_ROUTES } from "./routes/static.routes";
+export {
+  DASHBOARD_ROUTES,
+  createWorkspaceRoutes,
+} from "./routes/dashboard.routes";
+export { extractWorkspaceFromPath, isDashboardPath } from "./routes/utils";
 
 // Legacy ROUTES object for backward compatibility
 // Maps old route names to new modular structure
-import { STATIC_ROUTES } from './routes/static.routes';
-import { DASHBOARD_ROUTES } from './routes/dashboard.routes';
+import { STATIC_ROUTES } from "./routes/static.routes";
+import { DASHBOARD_ROUTES } from "./routes/dashboard.routes";
 
 export const ROUTES = {
   // Public routes (no workspace needed)
@@ -24,12 +26,11 @@ export const ROUTES = {
   REGISTER: STATIC_ROUTES.REGISTER,
   FORGOT_PASSWORD: STATIC_ROUTES.FORGOT_PASSWORD,
   RESET_PASSWORD: STATIC_ROUTES.RESET_PASSWORD,
-  DOCS: '/docs',
   WORKSPACE_SELECTION: STATIC_ROUTES.WORKSPACE_SELECTION,
 
   // Dashboard base (requires workspace)
   DASHBOARD: DASHBOARD_ROUTES.DASHBOARD,
-  
+
   // Project routes
   PROJECTS: DASHBOARD_ROUTES.PROJECTS,
   PROJECT_NEW: DASHBOARD_ROUTES.PROJECT_NEW,
@@ -39,15 +40,15 @@ export const ROUTES = {
   PROJECT_SETUP: DASHBOARD_ROUTES.PROJECT_SETUP,
   PROJECT_SETUP_SUCCESS: DASHBOARD_ROUTES.PROJECT_SETUP_SUCCESS,
   PROJECT_SETTINGS: DASHBOARD_ROUTES.PROJECT_SETTINGS,
-  
+
   // Branch/Issue routes
   BRANCH_ISSUES: DASHBOARD_ROUTES.BRANCH_ISSUES,
   ISSUE_DETAIL: DASHBOARD_ROUTES.ISSUE_DETAIL,
-  
+
   // Job routes
   PROJECT_JOBS: DASHBOARD_ROUTES.PROJECT_JOBS,
   PROJECT_JOB_DETAIL: DASHBOARD_ROUTES.PROJECT_JOB_DETAIL,
-  
+
   // Settings routes
   USER_SETTINGS: DASHBOARD_ROUTES.USER_SETTINGS,
   HOSTING_SETTINGS: DASHBOARD_ROUTES.HOSTING_SETTINGS,
@@ -64,11 +65,10 @@ export const ROUTES = {
   TASK_SETTINGS: DASHBOARD_ROUTES.TASK_SETTINGS,
   QUALITY_GATES: DASHBOARD_ROUTES.QUALITY_GATES,
   BILLING_SETTINGS: DASHBOARD_ROUTES.BILLING_SETTINGS,
-  
+
   // Integration routes
   BITBUCKET_CONNECT_HANDSHAKE: DASHBOARD_ROUTES.BITBUCKET_CONNECT_HANDSHAKE,
 } as const;
 
 // Re-export extractWorkspaceFromPath and isDashboardPath for backward compatibility
 // (already exported above from utils, but keep inline versions for legacy code)
-

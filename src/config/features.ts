@@ -40,6 +40,14 @@ export const FEATURES = {
    * Already uses VITE_GOOGLE_CLIENT_ID presence check
    */
   GOOGLE_AUTH: !!import.meta.env.VITE_GOOGLE_CLIENT_ID,
+
+  /**
+   * Instance Admin panel (Site Settings)
+   * Enabled by default for community/self-hosted deployments.
+   * Disabled for cloud (SaaS) deployments where config is managed via application.properties.
+   * When enabled, site admins can configure VCS credentials, LLM API keys, SMTP, etc. via UI.
+   */
+  INSTANCE_ADMIN: import.meta.env.VITE_FEATURE_INSTANCE_ADMIN !== "false",
 } as const;
 
 /**
