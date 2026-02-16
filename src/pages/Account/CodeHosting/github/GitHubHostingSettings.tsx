@@ -16,6 +16,7 @@ import {
 import {
   AlertCircle,
   CheckCircle,
+  Clock,
   ExternalLink,
   Github,
   Link2,
@@ -29,7 +30,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast.ts";
 import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
 import {
@@ -116,9 +117,28 @@ export default function GitHubHostingSettings({
     }
   };
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   useEffect(() => {
     fetchConnections();
   }, [toast, currentWorkspace]);
+
+  // Handle redirect from GitHub App request flow (org owner approval pending)
+  useEffect(() => {
+    if (searchParams.get("pending") === "true") {
+      toast({
+        title: "Installation request sent",
+        description:
+          "Your request has been sent to the organization owner. " +
+          "The connection will activate automatically once the owner approves the GitHub App installation.",
+        duration: 10000,
+      });
+      // Clean up the URL param
+      searchParams.delete("pending");
+      searchParams.delete("connectionId");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams]);
 
   const handleConnectGitHub = async () => {
     if (!currentWorkspace) return;
@@ -266,6 +286,10 @@ export default function GitHubHostingSettings({
       case EGitSetupStatus.ERROR:
       case "ERROR":
         return <XCircle className="h-5 w-5 text-destructive" />;
+      case "PENDING":
+        return <Clock className="h-5 w-5 text-amber-500" />;
+      case "DISABLED":
+        return <XCircle className="h-5 w-5 text-muted-foreground" />;
       default:
         return <AlertCircle className="h-5 w-5 text-warning" />;
     }
@@ -283,6 +307,15 @@ export default function GitHubHostingSettings({
       case EGitSetupStatus.ERROR:
       case "ERROR":
         return <Badge variant="destructive">Error</Badge>;
+      case "PENDING":
+        return (
+          <Badge className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
+            <Clock className="h-3 w-3" />
+            Pending Approval
+          </Badge>
+        );
+      case "DISABLED":
+        return <Badge variant="secondary">Disabled</Badge>;
       default:
         return <Badge variant="secondary">Pending</Badge>;
     }
@@ -459,12 +492,25 @@ export default function GitHubHostingSettings({
                     </div>
                   )}
 
+                  {/* Show pending approval info for org installation requests */}
+                  {connection.status === "PENDING" && (
+                    <div className="flex items-start gap-2 p-3 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 text-sm">
+                      <Clock className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>
+                        Waiting for the organization owner to approve the GitHub
+                        App installation. The connection will activate
+                        automatically once approved.
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
                       className="flex-1"
                       onClick={() => openConnectionDetails(connection)}
+                      disabled={connection.status === "PENDING"}
                     >
                       <Settings className="h-4 w-4 mr-1" />
                       Configure
@@ -473,7 +519,10 @@ export default function GitHubHostingSettings({
                       variant="ghost"
                       size="sm"
                       onClick={() => handleReconnect(connection.id)}
-                      disabled={reconnectingConnectionId === connection.id}
+                      disabled={
+                        reconnectingConnectionId === connection.id ||
+                        connection.status === "PENDING"
+                      }
                       title="Re-authorize connection"
                     >
                       {reconnectingConnectionId === connection.id ? (
@@ -486,7 +535,10 @@ export default function GitHubHostingSettings({
                       variant="ghost"
                       size="sm"
                       onClick={() => handleSyncConnection(connection.id)}
-                      disabled={syncingConnectionId === connection.id}
+                      disabled={
+                        syncingConnectionId === connection.id ||
+                        connection.status === "PENDING"
+                      }
                       title="Refresh connection status"
                     >
                       {syncingConnectionId === connection.id ? (

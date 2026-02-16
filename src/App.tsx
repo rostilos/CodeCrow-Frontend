@@ -72,6 +72,9 @@ const GitHubConfigureConnection = lazy(
 const GitHubOAuthCallback = lazy(
   () => import("./pages/Account/CodeHosting/github/OAuthCallback.tsx"),
 );
+const GitHubAppInstalled = lazy(
+  () => import("./pages/Account/CodeHosting/github/GitHubAppInstalled.tsx"),
+);
 const GitLabAddConnection = lazy(
   () => import("./pages/Account/CodeHosting/gitlab/AddConnection.tsx"),
 );
@@ -145,6 +148,12 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+
+              {/* Public success page for GitHub App installation (org owner, no auth needed) */}
+              <Route
+                path="/github/app-installed"
+                element={<GitHubAppInstalled />}
+              />
 
               {/* Docs now live on codecrow.app — redirect */}
               <Route path="/docs/*" element={<DocsRedirect />} />
