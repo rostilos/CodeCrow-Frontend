@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound, Shield } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound, Shield, Wrench } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -44,9 +44,9 @@ export default function ProjectConfiguration() {
   const { currentWorkspace } = useWorkspace();
   const routes = useWorkspaceRoutes();
   const { canManageWorkspace, canGenerateTokens, loading: permissionsLoading } = usePermissions();
-  
+
   const activeTab = searchParams.get("tab") || "general";
-  
+
   const [project, setProject] = useState<ProjectDTO | null>(null);
   const [codeHostingConfigs, setCodeHostingConfigs] = useState<ProjectCodeHostingConfig[]>([]);
   const [editingConfig, setEditingConfig] = useState<ProjectCodeHostingConfig | null>(null);
@@ -55,11 +55,12 @@ export default function ProjectConfiguration() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>('');
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
   const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<number | null>(null);
-  
+
   // Analysis settings state
   const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
   const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
   const [maxAnalysisTokenLimit, setMaxAnalysisTokenLimit] = useState<number>(200000);
+  const [useMcpTools, setUseMcpTools] = useState(false);
   const [savingAnalysisSettings, setSavingAnalysisSettings] = useState(false);
 
   // Webhook management state
@@ -109,22 +110,23 @@ export default function ProjectConfiguration() {
       setCodeHostingConfigs(mapped);
       setAiConnections(aiConns || []);
       setQualityGates(gates || []);
-      
+
       // Set current AI connection if project has one bound
       if (proj?.aiConnectionId) {
         setSelectedAiConnectionId(proj.aiConnectionId);
       }
-      
+
       // Set current quality gate if project has one bound
       if (proj?.qualityGateId) {
         setSelectedQualityGateId(proj.qualityGateId);
       }
-      
+
       // Set analysis settings from project
       if (proj) {
         setPrAnalysisEnabled(proj.prAnalysisEnabled ?? true);
         setBranchAnalysisEnabled(proj.ragConfig?.enabled ? true : (proj.branchAnalysisEnabled ?? true));
         setMaxAnalysisTokenLimit(proj.maxAnalysisTokenLimit ?? 200000);
+        setUseMcpTools(proj.useMcpTools ?? false);
       }
 
     } catch (err: any) {
@@ -146,7 +148,7 @@ export default function ProjectConfiguration() {
   // Load webhook info when project is loaded and has VCS connection
   const loadWebhookInfo = async () => {
     if (!namespace || !currentWorkspace || !project?.vcsConnectionId) return;
-    
+
     setLoadingWebhookInfo(true);
     try {
       const info = await projectService.getWebhookInfo(currentWorkspace.slug, namespace);
@@ -168,11 +170,11 @@ export default function ProjectConfiguration() {
 
   const handleSetupWebhooks = async () => {
     if (!namespace || !currentWorkspace) return;
-    
+
     setSettingUpWebhooks(true);
     try {
       const result = await projectService.setupWebhooks(currentWorkspace.slug, namespace);
-      
+
       if (result.success) {
         toast({
           title: "Webhooks Configured",
@@ -197,32 +199,34 @@ export default function ProjectConfiguration() {
       setSettingUpWebhooks(false);
     }
   };
-  
+
   const handleSaveAnalysisSettings = async () => {
     if (!namespace || !currentWorkspace) return;
-    
+
     // Prevent disabling branch analysis when RAG is enabled
     const effectiveBranchAnalysisEnabled = project?.ragConfig?.enabled ? true : branchAnalysisEnabled;
-    
+
     setSavingAnalysisSettings(true);
     try {
       await projectService.updateAnalysisSettings(currentWorkspace.slug, namespace, {
         prAnalysisEnabled,
         branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
         installationMethod: project?.installationMethod || null,
-        maxAnalysisTokenLimit
+        maxAnalysisTokenLimit,
+        useMcpTools
       });
-      
+
       // Update local project state
       if (project) {
         setProject({
           ...project,
           prAnalysisEnabled,
           branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
-          maxAnalysisTokenLimit
+          maxAnalysisTokenLimit,
+          useMcpTools
         });
       }
-      
+
       toast({
         title: "Success",
         description: "Analysis settings saved successfully"
@@ -240,11 +244,11 @@ export default function ProjectConfiguration() {
 
   const handleSaveQualityGate = async () => {
     if (!namespace || !currentWorkspace) return;
-    
+
     setSavingQualityGate(true);
     try {
       await projectService.updateProjectQualityGate(currentWorkspace.slug, namespace, selectedQualityGateId);
-      
+
       // Update local project state
       if (project) {
         setProject({
@@ -252,10 +256,10 @@ export default function ProjectConfiguration() {
           qualityGateId: selectedQualityGateId
         });
       }
-      
+
       toast({
         title: "Success",
-        description: selectedQualityGateId 
+        description: selectedQualityGateId
           ? "Quality gate assigned successfully"
           : "Quality gate removed from project"
       });
@@ -325,7 +329,7 @@ export default function ProjectConfiguration() {
 
   const handleSaveConnection = async () => {
     if (!editingConfig || !namespace) return;
-    
+
     // Prepare bind request according to backend DTO
     const bindRequest: BindRepositoryRequest = {
       provider: editingConfig.provider || 'bitbucket',
@@ -413,7 +417,7 @@ export default function ProjectConfiguration() {
 
   const handleBindAiConnection = async (aiConnectionId: number) => {
     if (!namespace) return;
-    
+
     try {
       await projectService.bindAiConnection(currentWorkspace!.slug, namespace, aiConnectionId);
       setSelectedAiConnectionId(aiConnectionId);
@@ -540,8 +544,8 @@ export default function ProjectConfiguration() {
                   <Save className="mr-2 h-4 w-4" />
                   Save Changes
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => navigate(routes.projectSetup(namespace!))}
                 >
                   <FileCode className="mr-2 h-4 w-4" />
@@ -591,8 +595,8 @@ export default function ProjectConfiguration() {
                           </div>
                         </div>
                         <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => setEditingConfig({
                               id: project.vcsConnectionId!,
@@ -645,8 +649,8 @@ export default function ProjectConfiguration() {
                 <CardContent className="space-y-6">
                   <div>
                     <Label htmlFor="vcs-connection">Available VCS Connections</Label>
-                    <Select 
-                      value={selectedConnectionId} 
+                    <Select
+                      value={selectedConnectionId}
                       onValueChange={(value) => {
                         setSelectedConnectionId(value);
                         const connection = codeHostingConfigs.find(c => String(c.id) === value);
@@ -677,8 +681,8 @@ export default function ProjectConfiguration() {
                   {selectedConnectionId && availableRepos.length > 0 && (
                     <div>
                       <Label htmlFor="repository">Select Repository</Label>
-                      <Select 
-                        value={editingConfig.repository} 
+                      <Select
+                        value={editingConfig.repository}
                         onValueChange={(value) => {
                           const repo = availableRepos.find(r => r.name === value);
                           setEditingConfig({
@@ -724,7 +728,7 @@ export default function ProjectConfiguration() {
                   </div>
 
                   <div className="flex space-x-2">
-                    <Button 
+                    <Button
                       onClick={handleSaveConnection}
                       disabled={!selectedConnectionId || !editingConfig.repository}
                     >
@@ -768,7 +772,7 @@ export default function ProjectConfiguration() {
                             <AlertTriangle className="h-5 w-5 text-yellow-600" />
                           )}
                           <h3 className="font-medium">
-                            {loadingWebhookInfo ? 'Loading...' : 
+                            {loadingWebhookInfo ? 'Loading...' :
                               webhookInfo?.webhooksConfigured ? 'Webhooks Configured' : 'Webhooks Not Configured'}
                           </h3>
                         </div>
@@ -784,7 +788,7 @@ export default function ProjectConfiguration() {
                         )}
                       </div>
                       <div className="flex space-x-2">
-                        <Button 
+                        <Button
                           variant={webhookInfo?.webhooksConfigured ? "outline" : "default"}
                           size="sm"
                           onClick={handleSetupWebhooks}
@@ -820,7 +824,7 @@ export default function ProjectConfiguration() {
                       <AlertTriangle className="h-4 w-4" />
                       <AlertTitle>Important Notice</AlertTitle>
                       <AlertDescription>
-                        If you're changing VCS connections or repositories, remember to manually delete 
+                        If you're changing VCS connections or repositories, remember to manually delete
                         the old webhooks from your VCS provider to avoid duplicate triggers or errors.
                       </AlertDescription>
                     </Alert>
@@ -838,8 +842,8 @@ export default function ProjectConfiguration() {
               project={project}
               onUpdate={(updatedProject) => setProject(updatedProject)}
             />
-            <DefaultBranchSelector 
-              project={project} 
+            <DefaultBranchSelector
+              project={project}
               onUpdate={(updatedProject) => setProject(updatedProject)}
             />
           </div>
@@ -898,7 +902,7 @@ export default function ProjectConfiguration() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="p-4 border rounded-lg space-y-3">
                   <div className="flex items-center gap-3">
                     <Cpu className="h-5 w-5 text-primary" />
@@ -922,8 +926,24 @@ export default function ProjectConfiguration() {
                     <span className="text-sm text-muted-foreground">tokens (default: 200,000)</span>
                   </div>
                 </div>
-                
-                <Button 
+
+                <div className="w-full flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Wrench className="h-5 w-5 text-primary" />
+                    <div>
+                      <div className="font-medium">MCP Tools</div>
+                      <div className="text-sm text-muted-foreground">
+                        Enable MCP tool calling during PR review aggregation. Allows the AI to fetch additional file content from the repository for deeper context.
+                      </div>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={useMcpTools}
+                    onCheckedChange={setUseMcpTools}
+                  />
+                </div>
+
+                <Button
                   onClick={handleSaveAnalysisSettings}
                   disabled={savingAnalysisSettings}
                 >
@@ -932,12 +952,12 @@ export default function ProjectConfiguration() {
                 </Button>
               </CardContent>
             </Card>
-            
+
             <BranchPatternConfig
               project={project}
               onUpdate={(updatedProject) => setProject(updatedProject)}
             />
-            
+
             {currentWorkspace && (
               <CommentCommandsConfig
                 project={project}
@@ -974,7 +994,7 @@ export default function ProjectConfiguration() {
                   </div>
                 </div>
               )}
-              
+
               {qualityGates.length === 0 ? (
                 <div className="text-center py-8">
                   <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -994,8 +1014,8 @@ export default function ProjectConfiguration() {
                     <p className="text-sm text-muted-foreground mb-3">
                       Choose a quality gate to define pass/fail criteria for this project's analysis.
                     </p>
-                    <Select 
-                      value={selectedQualityGateId?.toString() || 'none'} 
+                    <Select
+                      value={selectedQualityGateId?.toString() || 'none'}
                       onValueChange={(value) => setSelectedQualityGateId(value === 'none' ? null : parseInt(value))}
                     >
                       <SelectTrigger className="w-full h-11">
@@ -1038,7 +1058,7 @@ export default function ProjectConfiguration() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   {selectedQualityGateId && (
                     <div className="p-4 border rounded-lg bg-muted/50">
                       {(() => {
@@ -1076,9 +1096,9 @@ export default function ProjectConfiguration() {
                       })()}
                     </div>
                   )}
-                  
+
                   <div className="flex gap-2">
-                    <Button 
+                    <Button
                       onClick={handleSaveQualityGate}
                       disabled={savingQualityGate || selectedQualityGateId === project?.qualityGateId}
                     >
@@ -1125,7 +1145,7 @@ export default function ProjectConfiguration() {
                   </p>
                 </div>
               )}
-              
+
               {aiConnections.length === 0 ? (
                 <div className="text-center py-8">
                   <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -1146,7 +1166,7 @@ export default function ProjectConfiguration() {
                       Select an AI connection to bind to this project for AI-powered analysis and features.
                     </p>
                   </div>
-                  
+
                   {aiConnections.map((connection) => (
                     <div key={connection.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">

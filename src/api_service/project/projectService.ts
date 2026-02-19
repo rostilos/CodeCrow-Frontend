@@ -94,6 +94,7 @@ export interface ProjectDTO {
   commentCommandsConfig?: CommentCommandsConfigDTO | null;
   webhooksConfigured?: boolean | null;
   maxAnalysisTokenLimit?: number | null;
+  useMcpTools?: boolean | null;
   // other fields from ProjectDTO are allowed
   [key: string]: any;
 }
@@ -169,6 +170,7 @@ export interface UpdateAnalysisSettingsRequest {
   branchAnalysisEnabled?: boolean;
   installationMethod?: InstallationMethod | null;
   maxAnalysisTokenLimit?: number | null;
+  useMcpTools?: boolean | null;
 }
 
 // Authorization modes for comment commands
