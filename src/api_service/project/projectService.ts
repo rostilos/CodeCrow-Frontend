@@ -289,6 +289,37 @@ export interface ProjectListResponse {
   totalPages: number;
 }
 
+// Custom Project Rules types
+export type RuleType = "ENFORCE" | "SUPPRESS";
+
+export interface CustomRuleDTO {
+  id: string;
+  title: string;
+  description: string;
+  ruleType: RuleType;
+  filePatterns: string[];
+  enabled: boolean;
+  priority: number;
+}
+
+export interface ProjectRulesConfigDTO {
+  rules: CustomRuleDTO[];
+}
+
+export interface UpdateProjectRulesRequest {
+  rules: CustomRuleRequestDTO[];
+}
+
+export interface CustomRuleRequestDTO {
+  id?: string;
+  title: string;
+  description: string;
+  ruleType: RuleType;
+  filePatterns: string[];
+  enabled: boolean;
+  priority: number;
+}
+
 class ProjectService extends ApiService {
   async listProjects(workspaceSlug: string): Promise<ProjectDTO[]> {
     return this.request<ProjectDTO[]>(
@@ -651,6 +682,33 @@ class ProjectService extends ApiService {
     return this.request<CommentCommandsConfigDTO | null>(
       `/${workspaceSlug}/project/${namespace}/comment-commands-config`,
       {},
+      true,
+    );
+  }
+
+  // Custom Project Rules methods
+  async getProjectRulesConfig(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<ProjectRulesConfigDTO> {
+    return this.request<ProjectRulesConfigDTO>(
+      `/${workspaceSlug}/project/${namespace}/project-rules`,
+      {},
+      true,
+    );
+  }
+
+  async updateProjectRules(
+    workspaceSlug: string,
+    namespace: string,
+    request: UpdateProjectRulesRequest,
+  ): Promise<ProjectDTO> {
+    return this.request<ProjectDTO>(
+      `/${workspaceSlug}/project/${namespace}/project-rules`,
+      {
+        method: "PUT",
+        body: JSON.stringify(request),
+      },
       true,
     );
   }

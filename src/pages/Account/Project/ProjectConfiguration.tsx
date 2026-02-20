@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound, Shield, Wrench } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound, Shield, Wrench, ScrollText } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -23,6 +23,7 @@ import MainBranchSelector from "@/components/MainBranchSelector";
 import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
 import CommentCommandsConfig from "@/components/CommentCommandsConfig";
+import CustomRulesConfig from "@/components/CustomRulesConfig";
 import { qualityGateService, QualityGate } from "@/api_service/qualitygate/qualityGateService";
 import { cn } from "@/lib/utils";
 
@@ -460,6 +461,7 @@ export default function ProjectConfiguration() {
     { id: "codehosting", label: "Code Hosting", icon: FolderGit2 },
     { id: "branches", label: "Branches", icon: GitBranch },
     { id: "analysis-scope", label: "Analysis Scope", icon: Target },
+    { id: "custom-rules", label: "Custom Rules", icon: ScrollText },
     { id: "quality-gate", label: "Quality Gate", icon: Shield },
     { id: "ai", label: "AI Connections", icon: Cpu },
     { id: "rag", label: "RAG Indexing", icon: Database },
@@ -1218,6 +1220,14 @@ export default function ProjectConfiguration() {
             workspaceSlug={currentWorkspace.slug}
             project={project}
             onProjectUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        ) : null;
+
+      case "custom-rules":
+        return project ? (
+          <CustomRulesConfig
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
           />
         ) : null;
 
