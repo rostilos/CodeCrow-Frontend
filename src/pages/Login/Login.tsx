@@ -35,6 +35,7 @@ import { useGoogleClientId } from "@/hooks/useGoogleClientId";
 import { TwoFactorLoginDialog } from "@/components/Auth/TwoFactorLoginDialog";
 import { TwoFactorRequiredResponse } from "@/api_service/auth/twoFactorService.interface";
 import { ROUTES } from "@/lib/routes";
+import { workspaceService } from "@/api_service/workspace/workspaceService";
 
 const loginSchema = z.object({
   username: z.string(),
@@ -102,7 +103,7 @@ export default function Login() {
         description: "Welcome to CodeCrow!",
       });
 
-      handleSuccessfulAuth();
+      await handleSuccessfulAuth();
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -114,7 +115,7 @@ export default function Login() {
     }
   };
 
-  const handleTwoFactorSuccess = (_token: string, _user: any) => {
+  const handleTwoFactorSuccess = async (_token: string, _user: any) => {
     // Token and user data (including roles) are already saved
     // by ApiService.request() in the interceptor.
 
@@ -123,7 +124,7 @@ export default function Login() {
       description: "Welcome to CodeCrow!",
     });
 
-    handleSuccessfulAuth();
+    await handleSuccessfulAuth();
   };
 
   const handleTwoFactorCancel = () => {
@@ -143,7 +144,7 @@ export default function Login() {
         description: "Welcome to CodeCrow!",
       });
 
-      handleSuccessfulAuth();
+      await handleSuccessfulAuth();
     } catch (error: any) {
       toast({
         title: "Google login failed",
@@ -163,7 +164,7 @@ export default function Login() {
     });
   };
 
-  const handleSuccessfulAuth = () => {
+  const handleSuccessfulAuth = async () => {
     const intendedDestination = localStorage.getItem("intendedDestination");
     if (intendedDestination) {
       localStorage.removeItem("intendedDestination");
@@ -173,6 +174,16 @@ export default function Login() {
       if (savedWorkspaceSlug) {
         navigate(ROUTES.PROJECTS(savedWorkspaceSlug));
       } else {
+        try {
+          const workspaces = await workspaceService.getUserWorkspaces();
+          if (workspaces && workspaces.length > 0) {
+            localStorage.setItem("currentWorkspaceSlug", workspaces[0].slug);
+            navigate(ROUTES.PROJECTS(workspaces[0].slug));
+            return;
+          }
+        } catch (e) {
+          // Ignore error and fallback to /workspace
+        }
         navigate("/workspace");
       }
     }

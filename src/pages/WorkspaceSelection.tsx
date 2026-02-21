@@ -87,6 +87,17 @@ export default function WorkspaceSelection() {
     return (user.username || user.email || "?")[0].toUpperCase();
   }, [user]);
 
+  // Redirect to projects if workspaces exist
+  useEffect(() => {
+    if (!loading && workspaces.length > 0) {
+      const savedWorkspaceSlug = localStorage.getItem("currentWorkspaceSlug");
+      const targetWorkspace =
+        workspaces.find((w) => w.slug === savedWorkspaceSlug) || workspaces[0];
+      setCurrentWorkspace(targetWorkspace);
+      navigate(ROUTES.PROJECTS(targetWorkspace.slug));
+    }
+  }, [loading, workspaces, navigate, setCurrentWorkspace]);
+
   // Fetch recent projects across all workspaces
   useEffect(() => {
     if (workspaces.length === 0) return;
@@ -285,7 +296,7 @@ export default function WorkspaceSelection() {
     </DialogContent>
   );
 
-  if (loading) {
+  if (loading || workspaces.length > 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
