@@ -19,6 +19,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
   AlertCircle,
   CheckCircle,
@@ -434,12 +435,80 @@ export default function HostingSettings() {
 
   if (isFetchingData) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" />
-          <span>Loading connections...</span>
-        </CardContent>
-      </Card>
+      <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-40 -left-40 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 w-full">
+          {/* Page Header */}
+          <div className="w-full bg-background/40 backdrop-blur-xl border-b border-border/40 shadow-sm sticky top-0 z-40">
+            <div className="container mx-auto px-4 lg:px-8 py-6 sm:py-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center gap-5">
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20 shadow-inner block">
+                    <Cloud className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-4 w-96 max-w-full" />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-8">
+                <div className="flex space-x-2 border-b border-border/40 pb-px">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-24 rounded-t-lg rounded-b-none" />)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="container mx-auto px-4 lg:px-8 py-8 space-y-10">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-96 max-w-full" />
+                </div>
+                <Skeleton className="h-10 w-32" />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[1, 2].map((i) => (
+                  <Card key={i} className="group overflow-hidden rounded-2xl border-white/10 dark:border-white/5 bg-white/40 dark:bg-black/40 backdrop-blur-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-10 w-10 rounded-xl" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="p-3 bg-background/30 rounded-xl border border-border/30 space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-24" />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Skeleton className="h-9 w-24" />
+                          <Skeleton className="h-9 w-24" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -848,113 +917,86 @@ export default function HostingSettings() {
             <Zap className="h-5 w-5 text-blue-500" />
             App Connections
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {appConnections.map((connection) => (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {appConnections.map((connection, index) => (
               <Card
                 key={connection.id}
-                className="hover:shadow-md transition-shadow border-blue-200"
+                className="group cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1.5 border-border/50 hover:border-primary/40 flex flex-col bg-card/60 backdrop-blur-xl overflow-hidden relative animate-in fade-in slide-in-from-bottom-8"
+                style={{ animationFillMode: "both", animationDelay: `${index * 50}ms` }}
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Cloud className="h-5 w-5 text-blue-500" />
-                      <span className="truncate">
-                        {connection.externalWorkspaceSlug ||
-                          connection.connectionName}
-                      </span>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/60 via-blue-500 to-blue-500/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] transition-all duration-500 group-hover:animate-pulse" />
+                <CardHeader className="pb-3 pt-5 px-5 relative z-10">
+                  <CardTitle className="mb-2 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="h-10 w-10 rounded-xl bg-background/80 shadow-sm ring-1 ring-border flex items-center justify-center shrink-0 group-hover:ring-blue-500/40 group-hover:bg-blue-500/10 transition-all duration-300">
+                          <Cloud className="h-5 w-5 text-blue-500/80 group-hover:text-blue-500 group-hover:scale-110 transition-all duration-300" />
+                        </div>
+                        <span className="text-lg font-bold group-hover:text-blue-500 transition-colors truncate">
+                          {connection.externalWorkspaceSlug || connection.connectionName}
+                        </span>
+                      </div>
+                      <CardDescription className="text-xs ml-[3.25rem] mt-[-0.25rem] opacity-80 group-hover:opacity-100 transition-opacity">
+                        Connected {new Date(connection.createdAt).toLocaleDateString()}
+                      </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       {getConnectionTypeBadge(connection.connectionType)}
                       {getStatusBadge(connection.status)}
                     </div>
                   </CardTitle>
-                  <CardDescription className="flex items-center space-x-2">
-                    <span>
-                      Workspace: {connection.externalWorkspaceSlug || "N/A"}
-                    </span>
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">
-                        Repositories:{" "}
-                      </span>
-                      <span className="font-medium">
-                        {connection.repoCount || 0}
-                      </span>
+                <CardContent className="pt-0 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
+                  <div className="space-y-2 mt-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-blue-500/20 transition-colors">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground font-medium">Workspace</span>
+                      <span className="font-semibold truncate max-w-[150px]">{connection.externalWorkspaceSlug || "N/A"}</span>
                     </div>
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Connected: </span>
-                      <span className="font-medium">
-                        {new Date(connection.createdAt).toLocaleDateString()}
-                      </span>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground font-medium">Repositories</span>
+                      <span className="font-semibold">{connection.repoCount || 0}</span>
                     </div>
                     {connection.tokenExpiresAt && (
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">
-                          Token expires:{" "}
-                        </span>
-                        <span className="font-medium">
-                          {new Date(connection.tokenExpiresAt).toLocaleString()}
-                        </span>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground font-medium">Expires</span>
+                        <span className="font-semibold">{new Date(connection.tokenExpiresAt).toLocaleDateString()}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Show reconnect warning only when connection has error status (refresh failed) */}
                   {connection.status === "ERROR" && (
-                    <div className="flex items-center gap-2 p-2 rounded bg-destructive/10 text-destructive text-sm">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>Connection needs re-authorization</span>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 text-destructive text-sm font-medium border border-destructive/20 mt-1 flex-shrink-0">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span className="truncate">Auth required</span>
                     </div>
                   )}
 
-                  <div className="flex space-x-2">
+                  <div className="mt-auto pt-2 grid grid-cols-4 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
+                      className="col-span-2 h-9 font-semibold hover:bg-blue-500/10 hover:text-blue-500 transition-colors hover:border-blue-500/40"
                       onClick={() => openAppConnectionDetails(connection)}
                     >
                       <Settings className="h-4 w-4 mr-1" />
                       Configure
                     </Button>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-full shrink-0 border-border/60 hover:bg-primary/10 hover:text-primary transition-colors"
                       onClick={() => handleReconnect(connection.id)}
                       disabled={reconnectingConnectionId === connection.id}
                       title="Re-authorize connection"
                     >
-                      {reconnectingConnectionId === connection.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Link2 className="h-4 w-4" />
-                      )}
+                      {reconnectingConnectionId === connection.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
                     </Button>
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSyncAppConnection(connection.id)}
-                      disabled={syncingConnectionId === connection.id}
-                      title="Refresh connection status"
-                    >
-                      {syncingConnectionId === connection.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-full shrink-0 border-border/60 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors hover:border-destructive/30"
                       onClick={() => {
-                        setConnectionToDelete({
-                          id: connection.id,
-                          type: "app",
-                        });
+                        setConnectionToDelete({ id: connection.id, type: "app" });
                         setDeleteDialogOpen(true);
                       }}
                       title="Delete connection"
@@ -1008,75 +1050,72 @@ export default function HostingSettings() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {manualConnections.map((connection) => (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {manualConnections.map((connection, index) => (
               <Card
                 key={connection.id}
-                className="hover:shadow-md transition-shadow"
+                className="group cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1.5 border-border/50 hover:border-primary/40 flex flex-col bg-card/60 backdrop-blur-xl overflow-hidden relative animate-in fade-in slide-in-from-bottom-8"
+                style={{ animationFillMode: "both", animationDelay: `${index * 50}ms` }}
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(
-                        connection.setupStatus || EGitSetupStatus.PENDING,
-                      )}
-                      <span className="truncate">
-                        {connection.connectionName}
-                      </span>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-gray-500/60 via-gray-500 to-gray-500/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] transition-all duration-500 group-hover:animate-pulse" />
+                <CardHeader className="pb-3 pt-5 px-5 relative z-10">
+                  <CardTitle className="mb-2 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="h-10 w-10 rounded-xl bg-background/80 shadow-sm ring-1 ring-border flex items-center justify-center shrink-0 group-hover:ring-gray-500/40 group-hover:bg-gray-500/10 transition-all duration-300">
+                          {getStatusIcon(connection.setupStatus || EGitSetupStatus.PENDING)}
+                        </div>
+                        <span className="text-lg font-bold group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors truncate">
+                          {connection.connectionName}
+                        </span>
+                      </div>
+                      <CardDescription className="text-xs ml-[3.25rem] mt-[-0.25rem] opacity-80 group-hover:opacity-100 transition-opacity">
+                        Workspace: {connection.workspaceId}
+                      </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge variant="outline" className="text-[10px] py-0">
                         <Settings className="h-3 w-3 mr-1" />
                         OAuth
                       </Badge>
-                      {getStatusBadge(
-                        connection.setupStatus || EGitSetupStatus.PENDING,
-                      )}
+                      {getStatusBadge(connection.setupStatus || EGitSetupStatus.PENDING)}
                     </div>
                   </CardTitle>
-                  <CardDescription className="flex items-center space-x-2">
-                    <span>Workspace: {connection.workspaceId}</span>
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">
-                        Repositories:{" "}
-                      </span>
-                      <span className="font-medium">
-                        {connection.repoCount}
-                      </span>
+                <CardContent className="pt-0 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
+                  <div className="space-y-2 mt-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-gray-500/20 transition-colors">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground font-medium">Repositories</span>
+                      <span className="font-semibold">{connection.repoCount}</span>
                     </div>
                   </div>
 
-                  <div className="flex space-x-2">
+                  {connection.setupStatus === EGitSetupStatus.ERROR && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 text-destructive text-sm font-medium border border-destructive/20 mt-1 flex-shrink-0">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span className="truncate">Check credentials</span>
+                    </div>
+                  )}
+
+                  <div className="mt-auto pt-2 flex space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
-                      onClick={() =>
-                        configureBitbucketConnection(connection.id)
-                      }
+                      className="flex-1 h-9 font-semibold hover:bg-gray-500/10 hover:text-foreground transition-colors hover:border-gray-500/40"
+                      onClick={() => configureBitbucketConnection(connection.id)}
                     >
-                      <Settings className="h-4 w-4 mr-1" />
+                      <Settings className="h-4 w-4 mr-2" />
                       Configure
                     </Button>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 border-border/60 hover:bg-primary/10 hover:text-primary transition-colors"
                       onClick={() => modifyBitbucketConnection(connection.id)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                   </div>
-
-                  {connection.setupStatus === EGitSetupStatus.ERROR && (
-                    <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
-                      Connection error. Please check your credentials and try
-                      reconnecting.
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))}
@@ -1100,69 +1139,90 @@ export default function HostingSettings() {
   };
 
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <div className="flex items-center space-x-2">
-          <GitBranch className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold tracking-tight">VCS Connections</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Manage your code hosting connections
-        </p>
-      </div>
+    <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+      <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-40 -left-40 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left Side Navigation */}
-        <nav className="lg:w-64 shrink-0">
-          <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
+      {/* Main Content Wrapper */}
+      <div className="relative z-10 w-full">
+        {/* Page Header */}
+        <div className="w-full bg-background/40 backdrop-blur-xl border-b border-border/40 shadow-sm sticky top-0 z-40">
+          <div className="container mx-auto px-4 lg:px-8 py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20 shadow-inner">
+                  <GitBranch className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+                    VCS Connections
+                  </h1>
+                  <p className="text-base text-muted-foreground font-medium mt-1">
+                    Manage your code hosting connections
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </nav>
+        </div>
 
-        {/* Main Content */}
-        <main className="flex-1 min-w-0">{renderContent()}</main>
+        <div className="container mx-auto px-4 lg:px-8 py-8 space-y-10">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left Side Navigation */}
+            <nav className="lg:w-64 shrink-0">
+              <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavClick(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+
+            {/* Main Content */}
+            <main className="flex-1 min-w-0">{renderContent()}</main>
+          </div>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Connection?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this connection. Any projects using
+                  this connection will need to be reconfigured. This action cannot
+                  be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteConnection}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Connection?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this connection. Any projects using
-              this connection will need to be reconfigured. This action cannot
-              be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConnection}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

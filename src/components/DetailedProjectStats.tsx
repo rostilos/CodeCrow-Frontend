@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef} from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     AlertTriangle,
     ShieldAlert,
@@ -15,17 +15,17 @@ import {
     Clock,
     Target
 } from 'lucide-react';
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
-import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
-import {Badge} from '@/components/ui/badge';
-import {Progress} from '@/components/ui/progress';
-import {ProjectStatsData} from './ProjectStats';
-import {ChartContainer, ChartTooltip, ChartTooltipContent} from '@/components/ui/chart';
-import {LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Tooltip, Legend} from 'recharts';
-import {analysisService, AnalysisTrendData, BranchIssuesTrendPoint} from '@/api_service/analysis/analysisService';
-import {format} from 'date-fns';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
-import {cn} from '@/lib/utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { ProjectStatsData } from './ProjectStats';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { analysisService, AnalysisTrendData, BranchIssuesTrendPoint } from '@/api_service/analysis/analysisService';
+import { format } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 // Cache for trend data to avoid repeated API calls
 const trendDataCache = new Map<string, { data: AnalysisTrendData[] | BranchIssuesTrendPoint[]; timestamp: number }>();
@@ -80,15 +80,15 @@ interface DetailedProjectStatsProps {
 }
 
 export default function DetailedProjectStats({
-                                                 stats,
-                                                 workspaceSlug,
-                                                 projectNamespace,
-                                                 branchName,
-                                                 onSeverityClick,
-                                                 onViewAllIssues,
-                                                 onViewResolvedIssues,
-                                                 onFileClick
-                                             }: DetailedProjectStatsProps) {
+    stats,
+    workspaceSlug,
+    projectNamespace,
+    branchName,
+    onSeverityClick,
+    onViewAllIssues,
+    onViewResolvedIssues,
+    onFileClick
+}: DetailedProjectStatsProps) {
     const [selectedTab, setSelectedTab] = useState('overview');
     const [trendData, setTrendData] = useState<AnalysisTrendData[]>([]);
     const [issuesTrendData, setIssuesTrendData] = useState<BranchIssuesTrendPoint[]>([]);
@@ -100,7 +100,7 @@ export default function DetailedProjectStats({
         const fetchTrendData = async () => {
             const cacheKey = `${chartType}-${workspaceSlug}-${projectNamespace}-${branchName || ''}-${timeframe}`;
             const cached = trendDataCache.get(cacheKey);
-            
+
             // Return cached data if valid
             if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
                 if (chartType === 'resolved') {
@@ -110,7 +110,7 @@ export default function DetailedProjectStats({
                 }
                 return;
             }
-            
+
             try {
                 setIsLoadingTrend(true);
                 if (chartType === 'resolved') {
@@ -153,15 +153,15 @@ export default function DetailedProjectStats({
     const getSeverityIcon = (severity: string, className: string = "h-4 w-4") => {
         switch (severity) {
             case 'critical':
-                return <ShieldAlert className={className} style={{color: getSeverityColor('critical')}}/>;
+                return <ShieldAlert className={className} style={{ color: getSeverityColor('critical') }} />;
             case 'high':
-                return <AlertTriangle className={className} style={{color: getSeverityColor('high')}}/>;
+                return <AlertTriangle className={className} style={{ color: getSeverityColor('high') }} />;
             case 'medium':
-                return <AlertCircle className={className} style={{color: getSeverityColor('medium')}}/>;
+                return <AlertCircle className={className} style={{ color: getSeverityColor('medium') }} />;
             case 'low':
-                return <Info className={className} style={{color: getSeverityColor('low')}}/>;
+                return <Info className={className} style={{ color: getSeverityColor('low') }} />;
             case 'info':
-                return <Info className={className} style={{color: getSeverityColor('info')}}/>;
+                return <Info className={className} style={{ color: getSeverityColor('info') }} />;
             default:
                 return null;
         }
@@ -171,7 +171,7 @@ export default function DetailedProjectStats({
         switch (status) {
             case 'completed':
                 return <Badge variant="default"
-                              className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>;
+                    className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>;
             case 'failed':
                 return <Badge variant="destructive">Failed</Badge>;
             case 'in_progress':
@@ -189,7 +189,7 @@ export default function DetailedProjectStats({
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {onViewAllIssues && (
                     <Card
-                        className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
+                        className="bg-card/60 backdrop-blur-md border-border/50 shadow-sm border-l-8 border-l-primary cursor-pointer hover:shadow-md hover:bg-card/80 transition-all duration-300 hover:-translate-y-0.5"
                         onClick={onViewAllIssues}
                     >
                         <CardContent className="p-4">
@@ -199,7 +199,7 @@ export default function DetailedProjectStats({
                                     <p className="text-2xl font-bold mt-1">{stats.totalIssues}</p>
                                 </div>
                                 <div className="p-2 rounded-lg bg-primary/10">
-                                    <Activity className="h-5 w-5 text-primary"/>
+                                    <Activity className="h-5 w-5 text-primary" />
                                 </div>
                             </div>
                         </CardContent>
@@ -207,8 +207,8 @@ export default function DetailedProjectStats({
                 )}
                 <Card
                     className={cn(
-                        "border-l-4 border-l-destructive/80",
-                        onSeverityClick && "cursor-pointer hover:shadow-md transition-all duration-200 hover:border-destructive/30"
+                        "bg-card/60 backdrop-blur-md border-border/50 shadow-sm border-l-8 border-l-destructive/80 transition-all duration-300",
+                        onSeverityClick && "cursor-pointer hover:shadow-md hover:bg-card/80 hover:-translate-y-0.5"
                     )}
                     onClick={() => onSeverityClick?.('HIGH')}
                 >
@@ -227,8 +227,8 @@ export default function DetailedProjectStats({
 
                 <Card
                     className={cn(
-                        "border-l-4 border-l-warning",
-                        onSeverityClick && "cursor-pointer hover:shadow-md transition-all duration-200 hover:border-warning/30"
+                        "bg-card/60 backdrop-blur-md border-border/50 shadow-sm border-l-8 border-l-warning transition-all duration-300",
+                        onSeverityClick && "cursor-pointer hover:shadow-md hover:bg-card/80 hover:-translate-y-0.5"
                     )}
                     onClick={() => onSeverityClick?.('MEDIUM')}
                 >
@@ -247,8 +247,8 @@ export default function DetailedProjectStats({
 
                 <Card
                     className={cn(
-                        "border-l-4 border-l-muted-foreground/30",
-                        onSeverityClick && "cursor-pointer hover:shadow-md transition-all duration-200"
+                        "bg-card/60 backdrop-blur-md border-border/50 shadow-sm border-l-8 border-l-muted-foreground/30 transition-all duration-300",
+                        onSeverityClick && "cursor-pointer hover:shadow-md hover:bg-card/80 hover:-translate-y-0.5"
                     )}
                     onClick={() => onSeverityClick?.('LOW')}
                 >
@@ -267,8 +267,8 @@ export default function DetailedProjectStats({
 
                 <Card
                     className={cn(
-                        "border-l-4 border-l-blue-400/50",
-                        onSeverityClick && "cursor-pointer hover:shadow-md transition-all duration-200"
+                        "bg-card/60 backdrop-blur-md border-border/50 shadow-sm border-l-8 border-l-blue-400/50 transition-all duration-300",
+                        onSeverityClick && "cursor-pointer hover:shadow-md hover:bg-card/80 hover:-translate-y-0.5"
                     )}
                     onClick={() => onSeverityClick?.('INFO')}
                 >
@@ -288,8 +288,8 @@ export default function DetailedProjectStats({
                 {/* Resolved Issues Card */}
                 <Card
                     className={cn(
-                        "border-l-4 border-l-green-500",
-                        onViewResolvedIssues && "cursor-pointer hover:shadow-md transition-all duration-200 hover:border-green-400/30"
+                        "bg-card/60 backdrop-blur-md border-border/50 shadow-sm border-l-8 border-l-green-500 transition-all duration-300",
+                        onViewResolvedIssues && "cursor-pointer hover:shadow-md hover:bg-card/80 hover:-translate-y-0.5"
                     )}
                     onClick={onViewResolvedIssues}
                 >
@@ -300,7 +300,7 @@ export default function DetailedProjectStats({
                                 <p className="text-2xl font-bold mt-1 text-green-600">{stats.resolvedIssuesCount || 0}</p>
                             </div>
                             <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                                <CheckCircle2 className="h-5 w-5 text-green-600"/>
+                                <CheckCircle2 className="h-5 w-5 text-green-600" />
                             </div>
                         </div>
                     </CardContent>
@@ -308,11 +308,13 @@ export default function DetailedProjectStats({
             </div>
 
             {/* Analysis Overview Card */}
-            <Card>
+            <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-lg overflow-hidden relative">
+                {/* Subtle top glow */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/30 via-primary/50 to-primary/30" />
                 <CardHeader className="pb-4">
                     <div className="flex items-center gap-2">
                         <div className="p-1.5 rounded-lg bg-muted">
-                            <BarChart3 className="h-4 w-4"/>
+                            <BarChart3 className="h-4 w-4" />
                         </div>
                         <div>
                             <CardTitle className="text-base">Analysis Overview</CardTitle>
@@ -373,7 +375,7 @@ export default function DetailedProjectStats({
                                         <div className="w-20 bg-muted rounded-full h-2 overflow-hidden">
                                             <div
                                                 className="bg-destructive h-2 rounded-full transition-all"
-                                                style={{width: `${totalIssuesByType > 0 ? ((stats.securityIssues || 0) / totalIssuesByType) * 100 : 0}%`}}
+                                                style={{ width: `${totalIssuesByType > 0 ? ((stats.securityIssues || 0) / totalIssuesByType) * 100 : 0}%` }}
                                             />
                                         </div>
                                         <span className="text-sm font-medium w-8 text-right">{stats.securityIssues || 0}</span>
@@ -386,7 +388,7 @@ export default function DetailedProjectStats({
                                         <div className="w-20 bg-muted rounded-full h-2 overflow-hidden">
                                             <div
                                                 className="bg-warning h-2 rounded-full transition-all"
-                                                style={{width: `${totalIssuesByType > 0 ? ((stats.qualityIssues || 0) / totalIssuesByType) * 100 : 0}%`}}
+                                                style={{ width: `${totalIssuesByType > 0 ? ((stats.qualityIssues || 0) / totalIssuesByType) * 100 : 0}%` }}
                                             />
                                         </div>
                                         <span className="text-sm font-medium w-8 text-right">{stats.qualityIssues || 0}</span>
@@ -399,7 +401,7 @@ export default function DetailedProjectStats({
                                         <div className="w-20 bg-muted rounded-full h-2 overflow-hidden">
                                             <div
                                                 className="bg-primary h-2 rounded-full transition-all"
-                                                style={{width: `${totalIssuesByType > 0 ? ((stats.performanceIssues || 0) / totalIssuesByType) * 100 : 0}%`}}
+                                                style={{ width: `${totalIssuesByType > 0 ? ((stats.performanceIssues || 0) / totalIssuesByType) * 100 : 0}%` }}
                                             />
                                         </div>
                                         <span className="text-sm font-medium w-8 text-right">{stats.performanceIssues || 0}</span>
@@ -412,7 +414,7 @@ export default function DetailedProjectStats({
                                         <div className="w-20 bg-muted rounded-full h-2 overflow-hidden">
                                             <div
                                                 className="bg-muted-foreground h-2 rounded-full transition-all"
-                                                style={{width: `${totalIssuesByType > 0 ? ((stats.styleIssues || 0) / totalIssuesByType) * 100 : 0}%`}}
+                                                style={{ width: `${totalIssuesByType > 0 ? ((stats.styleIssues || 0) / totalIssuesByType) * 100 : 0}%` }}
                                             />
                                         </div>
                                         <span className="text-sm font-medium w-8 text-right">{stats.styleIssues || 0}</span>
@@ -442,19 +444,19 @@ export default function DetailedProjectStats({
                                     <div>
                                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resolution Rate</p>
                                         <p className="text-2xl font-bold mt-1">
-                                            {stats.totalIssues + (stats.resolvedIssuesCount || 0) > 0 
+                                            {stats.totalIssues + (stats.resolvedIssuesCount || 0) > 0
                                                 ? `${Math.round(((stats.resolvedIssuesCount || 0) / (stats.totalIssues + (stats.resolvedIssuesCount || 0))) * 100)}%`
                                                 : '0%'}
                                         </p>
                                     </div>
                                     <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                                        <Percent className="h-5 w-5 text-green-600"/>
+                                        <Percent className="h-5 w-5 text-green-600" />
                                     </div>
                                 </div>
-                                <Progress 
-                                    value={stats.totalIssues + (stats.resolvedIssuesCount || 0) > 0 
-                                        ? ((stats.resolvedIssuesCount || 0) / (stats.totalIssues + (stats.resolvedIssuesCount || 0))) * 100 
-                                        : 0} 
+                                <Progress
+                                    value={stats.totalIssues + (stats.resolvedIssuesCount || 0) > 0
+                                        ? ((stats.resolvedIssuesCount || 0) / (stats.totalIssues + (stats.resolvedIssuesCount || 0))) * 100
+                                        : 0}
                                     className="h-1.5 mt-3"
                                 />
                             </CardContent>
@@ -467,17 +469,17 @@ export default function DetailedProjectStats({
                                     <div>
                                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">High Severity %</p>
                                         <p className="text-2xl font-bold mt-1">
-                                            {stats.totalIssues > 0 
+                                            {stats.totalIssues > 0
                                                 ? `${Math.round((stats.highIssues / stats.totalIssues) * 100)}%`
                                                 : '0%'}
                                         </p>
                                     </div>
                                     <div className="p-2 rounded-lg bg-destructive/10">
-                                        <AlertTriangle className="h-5 w-5 text-destructive"/>
+                                        <AlertTriangle className="h-5 w-5 text-destructive" />
                                     </div>
                                 </div>
-                                <Progress 
-                                    value={stats.totalIssues > 0 ? (stats.highIssues / stats.totalIssues) * 100 : 0} 
+                                <Progress
+                                    value={stats.totalIssues > 0 ? (stats.highIssues / stats.totalIssues) * 100 : 0}
                                     className="h-1.5 mt-3 [&>div]:bg-destructive"
                                 />
                             </CardContent>
@@ -494,7 +496,7 @@ export default function DetailedProjectStats({
                                         </p>
                                     </div>
                                     <div className="p-2 rounded-lg bg-primary/10">
-                                        <Target className="h-5 w-5 text-primary"/>
+                                        <Target className="h-5 w-5 text-primary" />
                                     </div>
                                 </div>
                             </CardContent>
@@ -507,7 +509,7 @@ export default function DetailedProjectStats({
                                     <div>
                                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last Scan</p>
                                         <p className="text-lg font-bold mt-1">
-                                            {stats.lastAnalysisDate 
+                                            {stats.lastAnalysisDate
                                                 ? format(new Date(stats.lastAnalysisDate), 'MMM dd')
                                                 : 'Never'}
                                         </p>
@@ -518,7 +520,7 @@ export default function DetailedProjectStats({
                                         )}
                                     </div>
                                     <div className="p-2 rounded-lg bg-muted">
-                                        <Clock className="h-5 w-5 text-muted-foreground"/>
+                                        <Clock className="h-5 w-5 text-muted-foreground" />
                                     </div>
                                 </div>
                             </CardContent>
@@ -526,25 +528,27 @@ export default function DetailedProjectStats({
                     </div>
 
                     {/* Trend Chart */}
-                    <Card>
+                    <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-lg overflow-hidden relative">
+                        {/* Subtle top glow */}
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/30 via-primary/50 to-primary/30" />
                         <CardHeader className="pb-4">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
                                     <CardTitle className="text-base flex items-center gap-2">
-                                        <BarChart3 className="h-4 w-4"/>
+                                        <BarChart3 className="h-4 w-4" />
                                         Analysis Trend (PRs to {branchName || 'all branches'})
                                     </CardTitle>
                                     <CardDescription className="text-xs mt-1">
-                                        {chartType === 'resolved' 
+                                        {chartType === 'resolved'
                                             ? 'Issue resolution rates from PR analyses'
                                             : 'Issues found in PR analyses over time'}
                                     </CardDescription>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Select value={chartType}
-                                            onValueChange={(value: 'resolved' | 'issues') => setChartType(value)}>
+                                        onValueChange={(value: 'resolved' | 'issues') => setChartType(value)}>
                                         <SelectTrigger className="w-[140px] h-9">
-                                            <SelectValue/>
+                                            <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="resolved">Resolved Rate</SelectItem>
@@ -552,9 +556,9 @@ export default function DetailedProjectStats({
                                         </SelectContent>
                                     </Select>
                                     <Select value={timeframe.toString()}
-                                            onValueChange={(value) => setTimeframe(Number(value))}>
+                                        onValueChange={(value) => setTimeframe(Number(value))}>
                                         <SelectTrigger className="w-[120px] h-9">
-                                            <SelectValue/>
+                                            <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="7">Last 7 days</SelectItem>
@@ -569,18 +573,18 @@ export default function DetailedProjectStats({
                         <CardContent>
                             {isLoadingTrend ? (
                                 <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                                    <Activity className="h-8 w-8 animate-pulse"/>
+                                    <Activity className="h-8 w-8 animate-pulse" />
                                 </div>
                             ) : chartType === 'resolved' && trendData.length === 0 ? (
                                 <div
                                     className="h-[300px] flex flex-col items-center justify-center text-muted-foreground">
-                                    <BarChart3 className="h-12 w-12 mb-2"/>
+                                    <BarChart3 className="h-12 w-12 mb-2" />
                                     <p>No trend data available</p>
                                 </div>
                             ) : chartType === 'issues' && issuesTrendData.length === 0 ? (
                                 <div
                                     className="h-[300px] flex flex-col items-center justify-center text-muted-foreground">
-                                    <BarChart3 className="h-12 w-12 mb-2"/>
+                                    <BarChart3 className="h-12 w-12 mb-2" />
                                     <p>No issues trend data available</p>
                                 </div>
                             ) : chartType === 'resolved' ? (
@@ -595,7 +599,7 @@ export default function DetailedProjectStats({
                                 >
                                     <LineChart
                                         data={trendData}
-                                        margin={{top: 10, right: 10, left: 0, bottom: 0}}
+                                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                                     >
                                         <CartesianGrid
                                             strokeDasharray="3 3"
@@ -607,16 +611,16 @@ export default function DetailedProjectStats({
                                             tickFormatter={(value) => format(new Date(value), 'MM/dd')}
                                             className="text-xs"
                                             stroke="hsl(var(--muted-foreground))"
-                                            tick={{fill: 'hsl(var(--muted-foreground))'}}
-                                            axisLine={{stroke: 'hsl(var(--border))'}}
+                                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                                            axisLine={{ stroke: 'hsl(var(--border))' }}
                                         />
                                         <YAxis
                                             className="text-xs"
                                             domain={[0, 1]}
                                             tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
                                             stroke="hsl(var(--muted-foreground))"
-                                            tick={{fill: 'hsl(var(--muted-foreground))'}}
-                                            axisLine={{stroke: 'hsl(var(--border))'}}
+                                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                                            axisLine={{ stroke: 'hsl(var(--border))' }}
                                         />
                                         <ChartTooltip
                                             content={<ChartTooltipContent
@@ -669,7 +673,7 @@ export default function DetailedProjectStats({
                                 >
                                     <LineChart
                                         data={issuesTrendData}
-                                        margin={{top: 10, right: 10, left: 0, bottom: 0}}
+                                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                                     >
                                         <CartesianGrid
                                             strokeDasharray="3 3"
@@ -681,14 +685,14 @@ export default function DetailedProjectStats({
                                             tickFormatter={(value) => format(new Date(value), 'MM/dd')}
                                             className="text-xs"
                                             stroke="hsl(var(--muted-foreground))"
-                                            tick={{fill: 'hsl(var(--muted-foreground))'}}
-                                            axisLine={{stroke: 'hsl(var(--border))'}}
+                                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                                            axisLine={{ stroke: 'hsl(var(--border))' }}
                                         />
                                         <YAxis
                                             className="text-xs"
                                             stroke="hsl(var(--muted-foreground))"
-                                            tick={{fill: 'hsl(var(--muted-foreground))'}}
-                                            axisLine={{stroke: 'hsl(var(--border))'}}
+                                            tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                                            axisLine={{ stroke: 'hsl(var(--border))' }}
                                         />
                                         <ChartTooltip
                                             content={<ChartTooltipContent
@@ -761,32 +765,31 @@ export default function DetailedProjectStats({
                                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
                                     <div className="flex items-center gap-2">
                                         <TrendingUp
-                                            className={`h-4 w-4 ${
-                                                stats.trend === 'up' ? 'text-destructive' :
-                                                    stats.trend === 'down' ? 'text-green-600' :
-                                                        'text-muted-foreground'
-                                            }`}
+                                            className={`h-4 w-4 ${stats.trend === 'up' ? 'text-destructive' :
+                                                stats.trend === 'down' ? 'text-green-600' :
+                                                    'text-muted-foreground'
+                                                }`}
                                         />
                                         <span className="text-sm font-medium">Trend</span>
                                     </div>
                                     <span className="text-sm text-muted-foreground">
-                    {stats.trend === 'up' ? 'Issues increasing' :
-                        stats.trend === 'down' ? 'Issues decreasing' :
-                            'Issues stable'}
-                  </span>
+                                        {stats.trend === 'up' ? 'Issues increasing' :
+                                            stats.trend === 'down' ? 'Issues decreasing' :
+                                                'Issues stable'}
+                                    </span>
                                 </div>
 
                                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
                                     <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground"/>
+                                        <Calendar className="h-4 w-4 text-muted-foreground" />
                                         <span className="text-sm font-medium">Last Analysis</span>
                                     </div>
                                     <span className="text-sm text-muted-foreground">
-                    {stats.lastAnalysisDate ?
-                        new Date(stats.lastAnalysisDate).toLocaleDateString() :
-                        'No analysis yet'
-                    }
-                  </span>
+                                        {stats.lastAnalysisDate ?
+                                            new Date(stats.lastAnalysisDate).toLocaleDateString() :
+                                            'No analysis yet'
+                                        }
+                                    </span>
                                 </div>
                             </div>
                         </CardContent>
@@ -794,7 +797,9 @@ export default function DetailedProjectStats({
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-4">
-                    <Card>
+                    <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-lg overflow-hidden relative">
+                        {/* Subtle top glow */}
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/30 via-primary/50 to-primary/30" />
                         <CardHeader className="pb-4">
                             <CardTitle className="text-base">Analysis History</CardTitle>
                             <CardDescription className="text-xs">Recent analysis runs and their results</CardDescription>
@@ -806,10 +811,10 @@ export default function DetailedProjectStats({
                                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                         .map((analysis, index) => (
                                             <div key={index}
-                                                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30 transition-colors">
+                                                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/30 transition-colors">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-1.5 rounded-md bg-muted">
-                                                        <GitBranch className="h-3.5 w-3.5 text-muted-foreground"/>
+                                                        <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-medium">
@@ -829,7 +834,7 @@ export default function DetailedProjectStats({
                                 ) : (
                                     <div className="text-center py-8 text-muted-foreground">
                                         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-muted mb-3">
-                                            <Activity className="h-6 w-6"/>
+                                            <Activity className="h-6 w-6" />
                                         </div>
                                         <p className="text-sm">No analysis history available</p>
                                     </div>
@@ -840,7 +845,9 @@ export default function DetailedProjectStats({
                 </TabsContent>
 
                 <TabsContent value="files" className="mt-4">
-                    <Card>
+                    <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-lg overflow-hidden relative">
+                        {/* Subtle top glow */}
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/30 via-primary/50 to-primary/30" />
                         <CardHeader className="pb-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -864,9 +871,9 @@ export default function DetailedProjectStats({
                                         // Calculate width for issues bar (relative to max issues in list)
                                         const maxIssues = Math.max(...stats.topFiles!.map(f => f.issues));
                                         const barWidth = maxIssues > 0 ? (fileData.issues / maxIssues) * 100 : 0;
-                                        
+
                                         return (
-                                            <div 
+                                            <div
                                                 key={index}
                                                 className={cn(
                                                     "relative flex items-center justify-between p-3 rounded-lg border overflow-hidden group",
@@ -875,18 +882,18 @@ export default function DetailedProjectStats({
                                                 onClick={() => onFileClick?.(fileData.file)}
                                             >
                                                 {/* Background bar showing relative issue count */}
-                                                <div 
+                                                <div
                                                     className={cn(
                                                         "absolute inset-y-0 left-0 transition-all opacity-10",
-                                                        fileData.severity === 'critical' || fileData.severity === 'high' 
-                                                            ? 'bg-destructive' 
-                                                            : fileData.severity === 'medium' 
-                                                                ? 'bg-warning' 
+                                                        fileData.severity === 'critical' || fileData.severity === 'high'
+                                                            ? 'bg-destructive'
+                                                            : fileData.severity === 'medium'
+                                                                ? 'bg-warning'
                                                                 : 'bg-muted-foreground'
                                                     )}
                                                     style={{ width: `${barWidth}%` }}
                                                 />
-                                                
+
                                                 <div className="flex items-center gap-3 flex-1 min-w-0 relative z-10">
                                                     <div className="flex items-center justify-center w-6 h-6 rounded-md bg-muted text-xs font-medium shrink-0">
                                                         {index + 1}
@@ -911,7 +918,7 @@ export default function DetailedProjectStats({
                                 ) : (
                                     <div className="text-center py-8 text-muted-foreground">
                                         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-muted mb-3">
-                                            <FileCode className="h-6 w-6"/>
+                                            <FileCode className="h-6 w-6" />
                                         </div>
                                         <p className="text-sm">No file data available</p>
                                         <p className="text-xs mt-1">Files with issues will appear here after analysis</p>

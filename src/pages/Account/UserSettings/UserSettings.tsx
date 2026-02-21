@@ -292,47 +292,67 @@ export default function UserSettings() {
         return null;
     }
   };
-
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <div className="flex items-center space-x-2">
-          <Settings className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold tracking-tight">User Settings</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Manage your profile, security, and account preferences
-        </p>
-      </div>
+    <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+      <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-40 -left-40 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left Side Navigation */}
-        <nav className="lg:w-64 shrink-0">
-          <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
+      {/* Main Content Wrapper */}
+      <div className="relative z-10 w-full">
+        {/* Page Header */}
+        <div className="w-full bg-background/40 backdrop-blur-xl border-b border-border/40 shadow-sm sticky top-0 z-40">
+          <div className="container mx-auto px-4 lg:px-8 py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20 shadow-inner">
+                  <Settings className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+                    User Settings
+                  </h1>
+                  <p className="text-base text-muted-foreground font-medium mt-1">
+                    Manage your profile, security, and account preferences
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </nav>
+        </div>
 
-        {/* Main Content */}
-        <main className="flex-1 min-w-0">{renderContent()}</main>
+        <div className="container mx-auto px-4 lg:px-8 py-8 space-y-10">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left Side Navigation */}
+            <nav className="lg:w-64 shrink-0">
+              <div className="lg:sticky lg:top-6 space-y-1 bg-card rounded-lg border p-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavClick(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+
+            {/* Main Content */}
+            <main className="flex-1 min-w-0">{renderContent()}</main>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -81,20 +81,18 @@ export function TopNavigation({
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `text-sm transition-colors hover:text-foreground ${
-      isActive
-        ? "text-orange-500 font-bold"
-        : "font-medium text-muted-foreground"
+    `text-sm transition-colors hover:text-foreground ${isActive
+      ? "text-orange-500 font-bold"
+      : "font-medium text-muted-foreground"
     }`;
 
   const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-      isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
     }`;
 
   return (
     <header className="sticky top-0 z-50 h-14 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center justify-between px-4 lg:px-6 h-full relative z-10">
+      <div className="container mx-auto flex items-center justify-between px-4 lg:px-6 h-full relative z-10">
         {/* Left side - Logo, Mobile Menu and Navigation */}
         <div className="flex items-center gap-4 lg:gap-8">
           {/* Mobile Menu — hidden in minimal mode */}

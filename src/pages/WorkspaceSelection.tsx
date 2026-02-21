@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  Zap,
 } from "lucide-react";
 import {
   Card,
@@ -302,70 +303,99 @@ export default function WorkspaceSelection() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+      <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-40 -left-40 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
       {/* Header — same TopNavigation as workspace dashboard, but in minimal mode */}
       <TopNavigation minimal />
 
       {/* Main Content */}
-      <div className="container px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="max-w-5xl mx-auto space-y-8">
+      <div className="container relative z-10 px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        <div className="max-w-6xl mx-auto space-y-12">
           {/* ─── Welcome Section ─── */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-            <Avatar className="h-14 w-14 border-2 border-primary/20">
-              <AvatarImage src={user?.avatarUrl} alt={user?.name || "User"} />
-              <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                {userInitials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                {user?.email || "Manage your workspaces and projects"}
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-card/50 backdrop-blur-sm border border-border/50 p-6 sm:p-8 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-5">
+              <Avatar className="h-16 w-16 border-2 border-background shadow-md ring-2 ring-primary/20">
+                <AvatarImage src={user?.avatarUrl} alt={user?.name || "User"} />
+                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary text-xl font-bold">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+                  Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+                  !
+                </h1>
+                <p className="text-muted-foreground mt-1.5 text-base">
+                  {user?.email || "Manage your workspaces and projects"}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Dialog
+                open={showCreateDialog}
+                onOpenChange={setShowCreateDialog}
+              >
+                <DialogTrigger asChild>
+                  <Button
+                    size="lg"
+                    className="shadow-md hover:shadow-lg transition-all"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    New Workspace
+                  </Button>
+                </DialogTrigger>
+                {createWorkspaceDialogContent()}
+              </Dialog>
             </div>
           </div>
 
           {/* ─── Quick Stats ─── */}
           {workspaces.length > 0 && (
-            <div className="grid grid-cols-3 gap-4">
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Building className="h-5 w-5 text-primary" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/20 transition-colors shadow-sm">
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                    <Building className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{workspaces.length}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-3xl font-bold tracking-tight">
+                      {workspaces.length}
+                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">
                       Workspace{workspaces.length !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <FolderGit2 className="h-5 w-5 text-blue-500" />
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-blue-500/20 transition-colors shadow-sm">
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20">
+                    <FolderGit2 className="h-6 w-6 text-blue-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">
+                    <p className="text-3xl font-bold tracking-tight">
                       {projectsLoading ? "…" : totalProjects}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-medium text-muted-foreground">
                       Project{totalProjects !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
-                    <Users className="h-5 w-5 text-emerald-500" />
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50 hover:border-emerald-500/20 transition-colors shadow-sm">
+                <CardContent className="p-6 flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
+                    <Users className="h-6 w-6 text-emerald-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{totalMembers}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-3xl font-bold tracking-tight">
+                      {totalMembers}
+                    </p>
+                    <p className="text-sm font-medium text-muted-foreground">
                       Member{totalMembers !== 1 ? "s" : ""}
                     </p>
                   </div>
@@ -374,245 +404,247 @@ export default function WorkspaceSelection() {
             </div>
           )}
 
-          {/* ─── Workspaces Section ─── */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Building className="h-5 w-5 text-muted-foreground" />
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* ─── Workspaces Section (Left Column, takes 2/3) ─── */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold tracking-tight flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-md bg-primary/10">
+                    <Building className="h-5 w-5 text-primary" />
+                  </div>
                   Your Workspaces
                 </h2>
               </div>
-              <Dialog
-                open={showCreateDialog}
-                onOpenChange={setShowCreateDialog}
-              >
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Workspace
-                  </Button>
-                </DialogTrigger>
-                {createWorkspaceDialogContent()}
-              </Dialog>
-            </div>
 
-            {workspaces.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="p-10 text-center">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted mb-6">
-                    <Building className="h-7 w-7 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    No Workspaces Yet
-                  </h3>
-                  <p className="text-muted-foreground mb-6">
-                    Get started by creating your first workspace
-                  </p>
-                  <Dialog
-                    open={showCreateDialog}
-                    onOpenChange={setShowCreateDialog}
-                  >
-                    <DialogTrigger asChild>
-                      <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Workspace
-                      </Button>
-                    </DialogTrigger>
-                    {createWorkspaceDialogContent("-empty")}
-                  </Dialog>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {workspaces.map((workspace) => (
-                  <Card
-                    key={workspace.id}
-                    className="group hover:shadow-md hover:border-primary/30 transition-all cursor-pointer"
-                    onClick={() => handleSelectWorkspace(workspace)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base font-semibold truncate group-hover:text-primary transition-colors">
-                            {workspace.name}
-                          </CardTitle>
-                          <CardDescription className="mt-1 line-clamp-2 text-sm">
-                            {workspace.description || "No description"}
-                          </CardDescription>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" />
-                          <span>
-                            {workspace.membersCount ??
-                              workspace.members?.length ??
-                              0}{" "}
-                            members
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5" />
-                          <span>
-                            {workspace.createdAt
-                              ? new Date(
-                                  workspace.createdAt,
-                                ).toLocaleDateString()
-                              : "Recently"}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* ─── Recent Projects ─── */}
-          {workspaces.length > 0 && (
-            <section>
-              <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                <Clock className="h-5 w-5 text-muted-foreground" />
-                Recent Projects
-              </h2>
-
-              {projectsLoading ? (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                      <span className="text-sm">Loading projects…</span>
+              {workspaces.length === 0 ? (
+                <Card className="border-dashed border-2 bg-transparent shadow-none">
+                  <CardContent className="p-12 text-center flex flex-col items-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/5 ring-1 ring-primary/10 mb-6">
+                      <Building className="h-8 w-8 text-primary/60" />
                     </div>
-                  </CardContent>
-                </Card>
-              ) : recentProjects.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="p-8 text-center">
-                    <FolderGit2 className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      No projects yet. Open a workspace and create your first
-                      project.
+                    <h3 className="text-xl font-bold mb-2">
+                      No Workspaces Yet
+                    </h3>
+                    <p className="text-muted-foreground mb-8 max-w-sm">
+                      Get started by creating your first workspace to organize
+                      your projects and team.
                     </p>
+                    <Dialog
+                      open={showCreateDialog}
+                      onOpenChange={setShowCreateDialog}
+                    >
+                      <DialogTrigger asChild>
+                        <Button size="lg" className="shadow-sm">
+                          <Plus className="h-5 w-5 mr-2" />
+                          Create Workspace
+                        </Button>
+                      </DialogTrigger>
+                      {createWorkspaceDialogContent("-empty")}
+                    </Dialog>
                   </CardContent>
                 </Card>
               ) : (
-                <Card>
-                  <CardContent className="p-0 divide-y divide-border">
-                    {recentProjects.map((project) => (
-                      <button
-                        key={`${project.workspaceSlug}-${project.id}`}
-                        onClick={() => handleOpenProject(project)}
-                        className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left group"
-                      >
-                        <div className="p-2 rounded-lg bg-muted group-hover:bg-primary/10 transition-colors">
-                          <FolderGit2 className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm truncate group-hover:text-primary transition-colors">
-                              {project.name}
-                            </span>
-                            {project.defaultBranchStats &&
-                              project.defaultBranchStats.totalIssues > 0 && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px] px-1.5 py-0 h-5 shrink-0"
-                                >
-                                  {project.defaultBranchStats
-                                    .highSeverityCount > 0 && (
-                                    <AlertTriangle className="h-3 w-3 text-orange-500 mr-1" />
-                                  )}
-                                  {project.defaultBranchStats.totalIssues} issue
-                                  {project.defaultBranchStats.totalIssues !== 1
-                                    ? "s"
-                                    : ""}
-                                </Badge>
-                              )}
+                <div className="grid sm:grid-cols-2 gap-5">
+                  {workspaces.map((workspace) => (
+                    <Card
+                      key={workspace.id}
+                      className="group relative overflow-hidden bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-pointer"
+                      onClick={() => handleSelectWorkspace(workspace)}
+                    >
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/40 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <CardHeader className="pb-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0 pr-4">
+                            <CardTitle className="text-lg font-bold truncate group-hover:text-primary transition-colors">
+                              {workspace.name}
+                            </CardTitle>
+                            <CardDescription className="mt-1.5 line-clamp-2 text-sm leading-relaxed">
+                              {workspace.description ||
+                                "No description provided for this workspace."}
+                            </CardDescription>
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-muted-foreground truncate">
-                              {project.workspaceName}
-                            </span>
-                            {project.mainBranch && (
-                              <>
-                                <span className="text-muted-foreground/40">
-                                  ·
-                                </span>
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <GitBranch className="h-3 w-3" />
-                                  {project.mainBranch}
-                                </span>
-                              </>
-                            )}
+                          <div className="h-8 w-8 rounded-full bg-primary/5 flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                            <ArrowRight className="h-4 w-4 text-primary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground shrink-0 hidden sm:block">
-                          {project.createdAt
-                            ? new Date(project.createdAt).toLocaleDateString()
-                            : ""}
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
+                          <div className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md">
+                            <Users className="h-4 w-4 text-primary/60" />
+                            <span>
+                              {workspace.membersCount ??
+                                workspace.members?.length ??
+                                0}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md">
+                            <Calendar className="h-4 w-4 text-primary/60" />
+                            <span>
+                              {workspace.createdAt
+                                ? new Date(
+                                    workspace.createdAt,
+                                  ).toLocaleDateString(undefined, {
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "Recently"}
+                            </span>
+                          </div>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      </button>
-                    ))}
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               )}
-            </section>
-          )}
-
-          {/* ─── Quick Actions ─── */}
-          <section>
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              Quick Actions
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Card
-                className="group hover:shadow-md hover:border-blue-500/30 transition-all cursor-pointer"
-                onClick={() => window.open(CROSS_LINKS.docs, "_blank")}
-              >
-                <CardContent className="p-5 flex items-center gap-4">
-                  <div className="p-2.5 rounded-xl bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
-                    <BookOpen className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm group-hover:text-blue-500 transition-colors flex items-center gap-1">
-                      Documentation
-                      <ExternalLink className="h-3 w-3" />
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Guides, setup & API reference
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card
-                className="group hover:shadow-md hover:border-emerald-500/30 transition-all cursor-pointer"
-                onClick={() =>
-                  window.open(`${CROSS_LINKS.docs}/getting-started`, "_blank")
-                }
-              >
-                <CardContent className="p-5 flex items-center gap-4">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm group-hover:text-emerald-500 transition-colors flex items-center gap-1">
-                      Getting Started
-                      <ExternalLink className="h-3 w-3" />
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Setup your first code review
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
-          </section>
+
+            {/* ─── Right Column (Recent Projects & Quick Actions) ─── */}
+            <div className="space-y-8">
+              {/* ─── Recent Projects ─── */}
+              {workspaces.length > 0 && (
+                <section className="space-y-6">
+                  <h2 className="text-xl font-bold tracking-tight flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-md bg-blue-500/10">
+                      <Clock className="h-5 w-5 text-blue-500" />
+                    </div>
+                    Recent Projects
+                  </h2>
+
+                  {projectsLoading ? (
+                    <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+                      <CardContent className="p-8 flex justify-center">
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                          <span className="text-sm font-medium">
+                            Loading projects…
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : recentProjects.length === 0 ? (
+                    <Card className="border-dashed border-2 bg-transparent shadow-none">
+                      <CardContent className="p-8 text-center">
+                        <FolderGit2 className="h-10 w-10 text-muted-foreground/50 mx-auto mb-4" />
+                        <p className="text-sm text-muted-foreground font-medium">
+                          No projects yet. Open a workspace to create one.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card className="bg-card/50 backdrop-blur-sm border-border/50 overflow-hidden shadow-sm">
+                      <div className="divide-y divide-border/50">
+                        {recentProjects.map((project) => (
+                          <button
+                            key={`${project.workspaceSlug}-${project.id}`}
+                            onClick={() => handleOpenProject(project)}
+                            className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left group"
+                          >
+                            <div className="p-2.5 rounded-xl bg-background shadow-sm ring-1 ring-border group-hover:ring-primary/30 group-hover:bg-primary/5 transition-all">
+                              <FolderGit2 className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                                  {project.name}
+                                </span>
+                                {project.defaultBranchStats &&
+                                  project.defaultBranchStats.totalIssues >
+                                    0 && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] px-1.5 py-0 h-5 shrink-0 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-0"
+                                    >
+                                      {project.defaultBranchStats
+                                        .highSeverityCount > 0 && (
+                                        <AlertTriangle className="h-3 w-3 mr-1" />
+                                      )}
+                                      {project.defaultBranchStats.totalIssues}
+                                    </Badge>
+                                  )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs font-medium text-muted-foreground truncate">
+                                  {project.workspaceName}
+                                </span>
+                                {project.mainBranch && (
+                                  <>
+                                    <span className="text-muted-foreground/30">
+                                      •
+                                    </span>
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <GitBranch className="h-3 w-3" />
+                                      {project.mainBranch}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
+                </section>
+              )}
+
+              {/* ─── Quick Actions ─── */}
+              <section className="space-y-6">
+                <h2 className="text-xl font-bold tracking-tight flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-md bg-emerald-500/10">
+                    <Zap className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  Quick Actions
+                </h2>
+                <div className="grid gap-4">
+                  <Card
+                    className="group hover:shadow-md hover:border-blue-500/40 transition-all duration-300 cursor-pointer bg-card/50 backdrop-blur-sm border-border/50"
+                    onClick={() => window.open(CROSS_LINKS.docs, "_blank")}
+                  >
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="p-2.5 rounded-xl bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors ring-1 ring-blue-500/20">
+                        <BookOpen className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm group-hover:text-blue-500 transition-colors flex items-center gap-1.5">
+                          Documentation
+                          <ExternalLink className="h-3 w-3 opacity-50" />
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Guides, setup & API reference
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card
+                    className="group hover:shadow-md hover:border-emerald-500/40 transition-all duration-300 cursor-pointer bg-card/50 backdrop-blur-sm border-border/50"
+                    onClick={() =>
+                      window.open(
+                        `${CROSS_LINKS.docs}/getting-started`,
+                        "_blank",
+                      )
+                    }
+                  >
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="p-2.5 rounded-xl bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors ring-1 ring-emerald-500/20">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm group-hover:text-emerald-500 transition-colors flex items-center gap-1.5">
+                          Getting Started
+                          <ExternalLink className="h-3 w-3 opacity-50" />
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Setup your first code review
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </section>
+            </div>
+          </div>
         </div>
       </div>
     </div>

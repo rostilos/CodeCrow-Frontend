@@ -440,7 +440,7 @@ export default function GitHubHostingSettings({
             <Zap className="h-5 w-5 text-purple-500" />
             OAuth Connections
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {appConnections.map((connection) => (
               <Card
                 key={connection.id}
@@ -577,7 +577,7 @@ export default function GitHubHostingSettings({
             <Settings className="h-5 w-5 text-gray-500" />
             Personal Access Token Connections
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {oauthConnections.map((connection) => (
               <Card
                 key={connection.id}

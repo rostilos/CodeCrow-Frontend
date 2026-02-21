@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Search } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
@@ -28,7 +34,7 @@ export default function SelectRepoPage() {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [query, setQuery] = useState<string>("");
   const [searching, setSearching] = useState<boolean>(false);
-  
+
   const debouncedQuery = useDebounce(query, 300);
 
   // keep projectName and provider that were passed from NewProject
@@ -59,40 +65,40 @@ export default function SelectRepoPage() {
       } else {
         setLoadingMore(true);
       }
-      
+
       // Use appropriate service based on provider
       let res;
-      if (provider === 'GITHUB') {
+      if (provider === "GITHUB") {
         res = await githubService.getRepositories(
-          currentWorkspace!.slug, 
-          Number(connectionId), 
+          currentWorkspace!.slug,
+          Number(connectionId),
           pageToLoad + 1, // API uses 1-based pagination
-          searchQuery
+          searchQuery,
         );
       } else {
         res = await bitbucketCloudService.getRepositories(
-          currentWorkspace!.slug, 
-          Number(connectionId), 
+          currentWorkspace!.slug,
+          Number(connectionId),
           pageToLoad + 1, // API uses 1-based pagination
-          searchQuery
+          searchQuery,
         );
       }
-      
+
       // res is { items, hasNext } as implemented in service
-      const items = Array.isArray(res) ? res : (res.items || []);
+      const items = Array.isArray(res) ? res : res.items || [];
       const next = Array.isArray(res) ? false : !!res.hasNext;
-      
+
       // Normalize items - ensure slug is set for GitHub repos
       const normalizedItems = items.map((r: any) => ({
         ...r,
         slug: r.slug || r.name,
-        id: r.id || r.uuid || r.name
+        id: r.id || r.uuid || r.name,
       }));
-      
+
       if (pageToLoad === 0) {
         setRepos(normalizedItems);
       } else {
-        setRepos(prev => [...prev, ...normalizedItems]);
+        setRepos((prev) => [...prev, ...normalizedItems]);
       }
       setHasNext(next);
       setPage(pageToLoad);
@@ -100,7 +106,7 @@ export default function SelectRepoPage() {
       toast({
         title: "Error",
         description: err?.message || "Failed to load repositories",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -124,27 +130,33 @@ export default function SelectRepoPage() {
 
   const handleSelect = (repo: any) => {
     // return to NewProject page with the selected repo, connectionId, and provider in location.state
-    navigate(routes.projectNew(), { 
-      state: { 
-        selectedRepo: repo, 
+    navigate(routes.projectNew(), {
+      state: {
+        selectedRepo: repo,
         connectionId: Number(connectionId),
-        provider: provider
-      } 
+        provider: provider,
+      },
     });
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate(routes.projectNew())}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(routes.projectNew())}
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Select Repository</h1>
             <p className="text-muted-foreground">
-              {passedProjectName ? `For project: "${passedProjectName}"` : "Choose repository to bind"}
+              {passedProjectName
+                ? `For project: "${passedProjectName}"`
+                : "Choose repository to bind"}
             </p>
           </div>
         </div>
@@ -153,7 +165,9 @@ export default function SelectRepoPage() {
       <Card>
         <CardHeader>
           <CardTitle>Repositories</CardTitle>
-          <CardDescription>Browse repositories for connection #{connectionId}</CardDescription>
+          <CardDescription>
+            Browse repositories for connection #{connectionId}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -177,15 +191,24 @@ export default function SelectRepoPage() {
             <div className="text-center py-8">Loading repositories...</div>
           ) : repos.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {debouncedQuery ? "No repositories found matching your search" : "No repositories found"}
+              {debouncedQuery
+                ? "No repositories found matching your search"
+                : "No repositories found"}
             </div>
           ) : (
             <div className="space-y-2">
               {repos.map((r: any) => (
-                <div key={r.id || r.slug || r.full_name} className="flex items-center justify-between border rounded p-3">
+                <div
+                  key={r.id || r.slug || r.full_name}
+                  className="flex items-center justify-between border rounded p-3"
+                >
                   <div>
-                    <div className="font-medium">{r.full_name || r.name || r.slug}</div>
-                    <div className="text-sm text-muted-foreground">{r.description || r.slug || ""}</div>
+                    <div className="font-medium">
+                      {r.full_name || r.name || r.slug}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {r.description || r.slug || ""}
+                    </div>
                   </div>
                   <div className="flex space-x-2">
                     <Button onClick={() => handleSelect(r)}>Select</Button>

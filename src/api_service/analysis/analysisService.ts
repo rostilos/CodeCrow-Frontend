@@ -122,6 +122,7 @@ export interface DetailedStatsResponse {
   styleIssues?: number;
   // The actual backend field
   issuesByType?: Record<string, number>;
+  issuesBySeverity?: Record<string, number>;
   resolvedIssuesCount: number;
   openIssuesCount: number;
   ignoredIssuesCount: number;
@@ -228,8 +229,8 @@ export interface BranchIssuesTrendPoint {
 class AnalysisService extends ApiService {
   async updateIssueStatus(
     workspaceSlug: string,
-    namespace: string, 
-    issueId: string | number, 
+    namespace: string,
+    issueId: string | number,
     isResolved: boolean,
     comment?: string,
     resolvedByPr?: number,
@@ -239,7 +240,7 @@ class AnalysisService extends ApiService {
     if (comment) body.comment = comment;
     if (resolvedByPr) body.resolvedByPr = resolvedByPr;
     if (resolvedCommitHash) body.resolvedCommitHash = resolvedCommitHash;
-    
+
     return this.request<IssueStatusUpdateResponse>(`/${workspaceSlug}/projects/${namespace}/analysis/issues/${issueId}/status`, {
       method: 'PUT',
       body: JSON.stringify(body),
@@ -265,31 +266,31 @@ class AnalysisService extends ApiService {
 
   async getAnalysisHistory(
     workspaceSlug: string,
-    namespace: string, 
-    page: number = 1, 
-    pageSize: number = 20, 
+    namespace: string,
+    page: number = 1,
+    pageSize: number = 20,
     branch?: string
   ): Promise<AnalysesHistoryResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
     });
-    
+
     if (branch) {
       params.append('branch', branch);
     }
 
     return this.request<AnalysesHistoryResponse>(
       `/${workspaceSlug}/project/${namespace}/analysis/history?${params.toString()}`,
-      {}, 
+      {},
       true
     );
   }
 
   async getPullRequests(
     workspaceSlug: string,
-    namespace: string, 
-    page: number = 1, 
+    namespace: string,
+    page: number = 1,
     pageSize: number = 20
   ): Promise<PullRequestSummary[]> {
     const params = new URLSearchParams({
@@ -299,19 +300,19 @@ class AnalysisService extends ApiService {
 
     return this.request<PullRequestSummary[]>(
       `/${workspaceSlug}/project/${namespace}/pull-requests?${params.toString()}`,
-      {}, 
+      {},
       true
     );
   }
 
   async getAnalysisDataByPR(
     workspaceSlug: string,
-    namespace: string, 
+    namespace: string,
     pullRequestId: string
   ): Promise<AnalysisIssue[]> {
     return this.request<AnalysisIssue[]>(
       `/${workspaceSlug}/project/${namespace}/analysis/pull-requests/${pullRequestId}/issues`,
-      {}, 
+      {},
       true
     );
   }
@@ -335,12 +336,12 @@ class AnalysisService extends ApiService {
 
   async getIssueById(
     workspaceSlug: string,
-    namespace: string, 
+    namespace: string,
     issueId: string | number
   ): Promise<AnalysisIssue> {
     return this.request<AnalysisIssue>(
       `/${workspaceSlug}/project/${namespace}/analysis/issues/${issueId}`,
-      {}, 
+      {},
       true
     );
   }
@@ -354,16 +355,16 @@ class AnalysisService extends ApiService {
     const params = new URLSearchParams({
       pullRequestId: pullRequestId,
     });
-    
+
     if (prVersion !== undefined) {
       params.append('prVersion', prVersion.toString());
     }
-    
+
     const url = `/${workspaceSlug}/project/${namespace}/analysis/issues?${params.toString()}`;
-    
+
     const response = await this.request<AnalysisIssuesResponse>(url, {}, true);
     console.log('Raw API response for analysis issues:', response);
-    
+
     return response;
   }
 
@@ -379,7 +380,7 @@ class AnalysisService extends ApiService {
     const queryString = params.toString();
     return this.request<AnalysisTrendData[]>(
       `/${workspaceSlug}/projects/${namespace}/analysis/trends/resolved${queryString ? `?${queryString}` : ''}`,
-      {}, 
+      {},
       true
     );
   }
@@ -401,7 +402,7 @@ class AnalysisService extends ApiService {
     }
     return this.request<BranchIssuesTrendPoint[]>(
       `/${workspaceSlug}/projects/${namespace}/analysis/trends/issues?${params.toString()}`,
-      {}, 
+      {},
       true
     );
   }
@@ -411,9 +412,9 @@ class AnalysisService extends ApiService {
   }
 
   async getBranchIssues(
-    workspaceSlug: string, 
-    namespace: string, 
-    branchName: string, 
+    workspaceSlug: string,
+    namespace: string,
+    branchName: string,
     status: string = 'open',
     page: number = 1,
     pageSize: number = 50,
@@ -427,13 +428,13 @@ class AnalysisService extends ApiService {
       author?: string;
     }
   ): Promise<{ issues: AnalysisIssue[]; total: number; page: number; pageSize: number }> {
-    const params = new URLSearchParams({ 
+    const params = new URLSearchParams({
       status,
       page: page.toString(),
       pageSize: pageSize.toString(),
       excludeDiff: excludeDiff.toString()
     });
-    
+
     // Add optional filter params
     if (filters?.severity && filters.severity !== 'ALL') {
       params.append('severity', filters.severity);
@@ -453,16 +454,16 @@ class AnalysisService extends ApiService {
     if (filters?.author && filters.author !== 'ALL') {
       params.append('author', filters.author);
     }
-    
+
     // Branch name goes as query param to avoid Cloudflare blocking encoded slashes in path
     params.append('branchName', branchName);
-    
+
     const response = await this.request<AnalysisIssue[] | { issues: AnalysisIssue[]; total: number; page: number; pageSize: number }>(
-      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues?${params.toString()}`, 
-      {}, 
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues?${params.toString()}`,
+      {},
       true
     );
-    
+
     // Handle backward compatibility - if API returns array, wrap it in paginated response
     if (Array.isArray(response)) {
       return {
@@ -472,7 +473,7 @@ class AnalysisService extends ApiService {
         pageSize: response.length
       };
     }
-    
+
     return response;
   }
 }

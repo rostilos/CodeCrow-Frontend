@@ -205,7 +205,7 @@ export default function IssueDetails() {
       return;
     }
     e.preventDefault();
-    
+
     // Pass scopeIssues via route state to avoid reloading
     // Use replace: true to update URL without adding to history stack (avoids full re-render)
     navigate(getIssueUrl(targetIssueId), {
@@ -219,37 +219,37 @@ export default function IssueDetails() {
 
     try {
       const isResolved = newStatus === 'resolved';
-      
+
       // Capture PR context if we're viewing from a PR scope
       const prNumber = scopePrNumber ? parseInt(scopePrNumber) : undefined;
       // Use the issue's commit hash as context for the resolution
       const commitHash = issue?.commitHash || undefined;
-      
+
       const response = await analysisService.updateIssueStatus(
-        currentWorkspace.slug, 
-        namespace, 
-        issueId, 
+        currentWorkspace.slug,
+        namespace,
+        issueId,
         isResolved,
         undefined, // comment
         isResolved ? prNumber : undefined,
         isResolved ? commitHash : undefined
       );
-      
+
       if (!response.success) {
         throw new Error(response.errorMessage || 'Failed to update issue status');
       }
-      
+
       // Update local state with resolution info
       const now = new Date().toISOString();
-      setIssue(prev => prev ? { 
-        ...prev, 
+      setIssue(prev => prev ? {
+        ...prev,
         status: newStatus,
         resolvedAt: isResolved ? now : null,
         resolvedBy: isResolved ? 'manual' : null,
         resolvedByPr: isResolved ? prNumber : null,
         resolvedCommitHash: isResolved ? commitHash : null,
       } : null);
-      
+
       // Update in scope list too
       setScopeIssues(prev => prev.map(i => i.id === issueId ? { ...i, status: newStatus } : i));
       toast({
@@ -272,14 +272,14 @@ export default function IssueDetails() {
       low: "bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-300"
     };
 
-      const displayText = severity.toUpperCase();
+    const displayText = severity.toUpperCase();
 
-      if(minimal) {
-          return (
-              <Badge className={`shrink-0 h-4 w-4 ${colors[severity as keyof typeof colors] || colors.medium}`}/>
-          )
-      }
+    if (minimal) {
       return (
+        <Badge className={`shrink-0 h-4 w-4 ${colors[severity as keyof typeof colors] || colors.medium}`} />
+      )
+    }
+    return (
       <Badge className={colors[severity as keyof typeof colors] || colors.medium}>
         {displayText}
       </Badge>
@@ -322,7 +322,7 @@ export default function IssueDetails() {
     };
 
     const lines = diffContent.split('\n');
-    const sections: Array<{type: 'header' | 'hunk' | 'content', content: string, language?: string}> = [];
+    const sections: Array<{ type: 'header' | 'hunk' | 'content', content: string, language?: string }> = [];
     let currentLanguage = 'text';
     let currentHunk: string[] = [];
     let inHunkContent = false;
@@ -536,381 +536,419 @@ export default function IssueDetails() {
   const nextIssue = currentIndex < scopeIssues.length - 1 ? scopeIssues[currentIndex + 1] : null;
 
   return (
-    <div className="flex h-[calc(100vh-64px)] ">
-      {/* Left Sidebar - Issues List */}
-      <div className={cn(
-        "border-r border-l  bg-card transition-all duration-200 flex flex-col",
-        sidebarCollapsed ? "w-10" : "w-80"
-      )}>
-        {/* Sidebar Toggle */}
-        <div className="p-2 border-b flex items-center justify-between">
-          {!sidebarCollapsed && (
-            <span className="text-sm font-medium">Issues ({scopeIssues.length})</span>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          >
-            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
-        </div>
-
-        {!sidebarCollapsed && (
-          <ScrollArea className="flex-1">
-            {scopeLoading ? (
-              <div className="p-3 space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : scopeIssues.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                No issues in scope
-              </div>
-            ) : (
-              <div className="p-2">
-                {scopeIssues.map((scopeIssue) => (
-                  <Link
-                    key={scopeIssue.id}
-                    to={getIssueUrl(scopeIssue.id)}
-                    onClick={(e) => navigateToIssue(e, scopeIssue.id)}
-                    onAuxClick={(e) => {
-                      if (e.button === 1) {
-                        window.open(getIssueUrl(scopeIssue.id), '_blank');
-                      }
-                    }}
-                    className={cn(
-                      "block w-full text-left p-2 rounded-md hover:bg-primary/10 transition-colors mb-1",
-                      scopeIssue.id === issueId && "bg-primary/10"
-                    )}
-                  >
-                    <div className="flex items-start gap-2">
-                      {getSeverityBadge(scopeIssue.severity, true)}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate" title={scopeIssue.title}>{scopeIssue.title}</p>
-                        <p className="text-xs text-muted-foreground truncate" title={scopeIssue.file}>{scopeIssue.file}</p>
-                      </div>
-                      {scopeIssue.status === 'resolved' && (
-                        <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+    <div className="container mx-auto py-4 lg:py-6 h-[calc(100vh-64px)]">
+      <div className="flex h-full w-full overflow-hidden rounded-xl border border-border/50 shadow-sm relative">
+        {/* Left Sidebar - Issues List */}
+        <div className={cn(
+          "border-r border-border/50 bg-card/60 backdrop-blur-xl transition-all duration-300 flex flex-col z-10 shrink-0",
+          sidebarCollapsed ? "w-12 items-center" : "w-80 max-w-[320px]"
+        )}>
+          {/* Sidebar Toggle */}
+          <div className="p-3 border-b border-border/50 flex items-center justify-between min-h-[53px]">
+            {!sidebarCollapsed && (
+              <span className="text-sm font-semibold tracking-tight">Issues <Badge variant="secondary" className="ml-1 px-1.5 font-mono text-[10px]">{scopeIssues.length}</Badge></span>
             )}
-          </ScrollArea>
-        )}
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-auto container pt-6">
-        {/* Top Navigation Bar */}
-        <div className="flex items-center justify-between mb-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to={backUrl}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-          </Button>
-
-          {/* Navigation between issues */}
-          {scopeIssues.length > 1 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {currentIndex + 1} of {scopeIssues.length}
-              </span>
-              {prevIssue ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                >
-                  <Link 
-                    to={getIssueUrl(prevIssue.id)}
-                    onClick={(e) => navigateToIssue(e, prevIssue.id)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Link>
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              )}
-              {nextIssue ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                >
-                  <Link 
-                    to={getIssueUrl(nextIssue.id)}
-                    onClick={(e) => navigateToIssue(e, nextIssue.id)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" disabled>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Issue Header - Compact Metadata Bar */}
-        <div className="flex justify-between gap-x-4">
-          <div className="bg-card border rounded-lg p-4 mb-6 w-full">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2 flex-1 min-w-0">
-              <h1 className="text-lg font-bold leading-tight">{issue.title}</h1>
-              <div className="flex gap-x-4 text-xs">
-              </div>
-            </div>
-            {canManageWorkspace() && (
-              <div className="flex items-center gap-2">
-                <Select
-                  value={issue.status}
-                  onValueChange={(value) => handleUpdateIssueStatus(value as 'open' | 'resolved')}
-                >
-                  <SelectTrigger className="w-[120px] h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-7 w-7 p-0 shrink-0 rounded-md hover:bg-primary/10 hover:text-primary transition-colors", sidebarCollapsed && "w-8 h-8")}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            >
+              {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-              {getSeverityBadge(issue.severity)}
-              {issue.issueCategory && (
-                  <Badge
+
+          {!sidebarCollapsed && (
+            <ScrollArea className="flex-1 w-full overflow-hidden">
+              {scopeLoading ? (
+                <div className="p-4 space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : scopeIssues.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 p-6 text-center text-sm text-muted-foreground w-full">
+                  <CheckCircle className="h-8 w-8 mb-2 opacity-20" />
+                  <p>No issues in scope</p>
+                </div>
+              ) : (
+                <div className="p-3 space-y-5 overflow-hidden w-full">
+                  {(() => {
+                    const groups: Record<string, typeof scopeIssues> = {};
+                    scopeIssues.forEach(issue => {
+                      const file = issue.file || 'Unknown File';
+                      if (!groups[file]) groups[file] = [];
+                      groups[file].push(issue);
+                    });
+                    const groupedIssues = Object.keys(groups).sort().map(file => ({
+                      file,
+                      issues: groups[file]
+                    }));
+
+                    return groupedIssues.map((group) => (
+                      <div key={group.file} className="space-y-1.5 w-full">
+                        <div className="flex items-center gap-2 px-1 text-xs font-semibold text-muted-foreground/80 mb-2">
+                          <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                          <span className="truncate w-full min-w-0" title={group.file}>
+                            <span className="direction-rtl unicode-bidi-plaintext truncate w-full inline-block">{group.file.split(/[/\\]/).pop()}</span>
+                          </span>
+                        </div>
+                        {group.issues.map((scopeIssue) => (
+                          <Link
+                            key={scopeIssue.id}
+                            to={getIssueUrl(scopeIssue.id)}
+                            onClick={(e) => navigateToIssue(e, scopeIssue.id)}
+                            onAuxClick={(e) => {
+                              if (e.button === 1) {
+                                window.open(getIssueUrl(scopeIssue.id), '_blank');
+                              }
+                            }}
+                            className={cn(
+                              "group flex w-full text-left p-2.5 rounded-lg border transition-all duration-200 overflow-hidden relative",
+                              scopeIssue.id === issueId
+                                ? "bg-primary/10 border-primary/30 shadow-sm"
+                                : "bg-background/40 border-transparent hover:bg-background/80 hover:border-border hover:shadow-sm"
+                            )}
+                          >
+                            <div className="flex flex-col min-w-0 w-full overflow-hidden">
+                              <div className="flex items-center gap-2 max-w-full overflow-hidden">
+                                <div className="shrink-0 flex items-center justify-center">
+                                  {getSeverityBadge(scopeIssue.severity, true)}
+                                </div>
+                                <p className={cn(
+                                  "text-xs font-medium leading-relaxed truncate flex-1 min-w-0 pr-1",
+                                  scopeIssue.id === issueId ? "text-foreground" : "text-muted-foreground group-hover:text-foreground transition-colors"
+                                )} title={scopeIssue.title}>
+                                  {scopeIssue.title}
+                                </p>
+                                {scopeIssue.status === 'resolved' && (
+                                  <div className="shrink-0 bg-green-500/10 p-0.5 rounded-full ml-auto">
+                                    <CheckCircle className="h-3 w-3 text-green-500" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
+            </ScrollArea>
+          )}
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-auto bg-muted/10 relative min-w-0">
+          <div className="px-4 lg:px-8 py-6 w-full max-w-6xl mx-auto">
+            {/* Top Navigation Bar */}
+            <div className="flex items-center justify-between mb-4">
+              <Button variant="ghost" size="sm" asChild>
+                <Link to={backUrl}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Link>
+              </Button>
+
+              {/* Navigation between issues */}
+              {scopeIssues.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {currentIndex + 1} of {scopeIssues.length}
+                  </span>
+                  {prevIssue ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                    >
+                      <Link
+                        to={getIssueUrl(prevIssue.id)}
+                        onClick={(e) => navigateToIssue(e, prevIssue.id)}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {nextIssue ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                    >
+                      <Link
+                        to={getIssueUrl(nextIssue.id)}
+                        onClick={(e) => navigateToIssue(e, nextIssue.id)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Issue Header - Compact Metadata Bar */}
+            <div className="flex justify-between gap-x-4">
+              <div className="bg-card border rounded-lg p-4 mb-6 w-full">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="space-y-2 flex-1 min-w-0">
+                    <h1 className="text-lg font-bold leading-tight">{issue.title}</h1>
+                    <div className="flex gap-x-4 text-xs">
+                    </div>
+                  </div>
+                  {canManageWorkspace() && (
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={issue.status}
+                        onValueChange={(value) => handleUpdateIssueStatus(value as 'open' | 'resolved')}
+                      >
+                        <SelectTrigger className="w-[120px] h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">Open</SelectItem>
+                          <SelectItem value="resolved">Resolved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {getSeverityBadge(issue.severity)}
+                  {issue.issueCategory && (
+                    <Badge
                       variant="outline"
                       className={cn(
-                          getCategoryInfo(issue.issueCategory).color,
-                          getCategoryInfo(issue.issueCategory).bgColor,
-                          getCategoryInfo(issue.issueCategory).borderColor,
-                          "text-xs"
+                        getCategoryInfo(issue.issueCategory).color,
+                        getCategoryInfo(issue.issueCategory).bgColor,
+                        getCategoryInfo(issue.issueCategory).borderColor,
+                        "text-xs"
                       )}
-                  >
+                    >
                       {getCategoryInfo(issue.issueCategory).label}
-                  </Badge>
-              )}
-              <Separator orientation="vertical" className="h-4" />
-              <TooltipProvider>
-                  <Tooltip>
+                    </Badge>
+                  )}
+                  <Separator orientation="vertical" className="h-4" />
+                  <TooltipProvider>
+                    <Tooltip>
                       <TooltipTrigger asChild>
-                          <button
-                              onClick={() => {
-                                  const fullPath = `${issue.file}${issue.line > 0 ? `:${issue.line}` : ''}`;
-                                  navigator.clipboard.writeText(fullPath);
-                                  toast({
-                                      title: "Copied to clipboard",
-                                      description: fullPath,
-                                  });
-                              }}
-                              className="text-xs text-muted-foreground flex items-center gap-1 max-w-[200px] lg:max-w-[500px] hover:text-foreground transition-colors cursor-pointer group"
-                          >
-                              <FileText className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate">{issue.file}</span>
-                              {issue.line > 0 && <span className="flex-shrink-0">:{issue.line}</span>}
-                              <Copy className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </button>
+                        <button
+                          onClick={() => {
+                            const fullPath = `${issue.file}${issue.line > 0 ? `:${issue.line}` : ''}`;
+                            navigator.clipboard.writeText(fullPath);
+                            toast({
+                              title: "Copied to clipboard",
+                              description: fullPath,
+                            });
+                          }}
+                          className="text-xs text-muted-foreground flex items-center gap-1 max-w-[200px] lg:max-w-[500px] hover:text-foreground transition-colors cursor-pointer group"
+                        >
+                          <FileText className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{issue.file}</span>
+                          {issue.line > 0 && <span className="flex-shrink-0">:{issue.line}</span>}
+                          <Copy className="h-3 w-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent>
-                          <p className="font-mono text-xs">{issue.file}{issue.line > 0 ? `:${issue.line}` : ''}</p>
-                          <p className="text-xs text-muted-foreground">Click to copy</p>
+                        <p className="font-mono text-xs">{issue.file}{issue.line > 0 ? `:${issue.line}` : ''}</p>
+                        <p className="text-xs text-muted-foreground">Click to copy</p>
                       </TooltipContent>
-                  </Tooltip>
-              </TooltipProvider>
-              <Separator orientation="vertical" className="h-4" />
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <GitBranch className="h-3 w-3" />
-                  {issue.branch}
-          </span>
-              <Separator orientation="vertical" className="h-4" />
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-                  {new Date(issue.createdAt).toLocaleDateString()}
-          </span>
-              {issue.vcsAuthorUsername && (
-                  <>
-                    <Separator orientation="vertical" className="h-4" />
-                    <span className="text-xs flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
-                      <User className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-medium text-foreground/80">{issue.vcsAuthorUsername}</span>
-                    </span>
-                  </>
-              )}
-              <Separator orientation="vertical" className="h-4" />
-              {issue.prNumber && (
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Separator orientation="vertical" className="h-4" />
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    PR #{issue.prNumber}
+                    <GitBranch className="h-3 w-3" />
+                    {issue.branch}
                   </span>
-              )}
-              <Separator orientation="vertical" className="h-4" />
-              {issue.commitHash && (
+                  <Separator orientation="vertical" className="h-4" />
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    {issue.commitHash.substring(0, 8)}
+                    <Clock className="h-3 w-3" />
+                    {new Date(issue.createdAt).toLocaleDateString()}
                   </span>
-              )}
-          </div>
-            </div>
-        </div>
-
-        <div className="md:flex justify-between gap-2">
-          {/* Resolution Info - shown when issue is resolved */}
-          {issue.status === 'resolved' && (issue.resolvedAt || issue.resolvedBy || issue.resolvedDescription || issue.resolvedCommitHash) && (
-            <Card className="mb-6 border-green-500/30 bg-green-500/5 basis-1/2">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 text-green-600 dark:text-green-400">
-                  <CheckCircle className="h-4 w-4" />
-                  Resolution Information
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Details about how and when this issue was resolved
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  {issue.resolvedAt && (
-                    <div>
-                      <span className="text-muted-foreground">Resolved on:</span>
-                      <span className="ml-2 font-medium">{new Date(issue.resolvedAt).toLocaleString()}</span>
-                    </div>
+                  {issue.vcsAuthorUsername && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span className="text-xs flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-medium text-foreground/80">{issue.vcsAuthorUsername}</span>
+                      </span>
+                    </>
                   )}
-                  {issue.resolvedBy && (
-                    <div>
-                      <span className="text-muted-foreground">Resolved by:</span>
-                      <span className="ml-2 font-medium">{issue.resolvedBy}</span>
-                    </div>
-                  )}
-                  {issue.resolvedByPr && (
-                    <div>
-                      <span className="text-muted-foreground">Resolved in PR:</span>
-                      {buildPrUrl(issue.resolvedByPr) ? (
-                        <a 
-                          href={buildPrUrl(issue.resolvedByPr)!} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="ml-2 font-medium text-green-600 dark:text-green-400 hover:underline inline-flex items-center gap-1"
-                        >
-                          #{issue.resolvedByPr}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <span className="ml-2 font-medium">#{issue.resolvedByPr}</span>
-                      )}
-                    </div>
-                  )}
-                  {issue.resolvedCommitHash && (
-                    <div>
-                      <span className="text-muted-foreground">Resolved in commit:</span>
-                      <span className="ml-2 font-mono font-medium">{issue.resolvedCommitHash.substring(0, 8)}</span>
-                    </div>
-                  )}
-                </div>
-                {issue.resolvedDescription && (
-                  <div className="pt-2 border-t">
-                    <span className="text-muted-foreground text-sm">Resolution explanation:</span>
-                    <p className="mt-1 text-sm text-foreground leading-relaxed">{issue.resolvedDescription}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Original Issue Detection Info */}
-          {(issue.analysisId || issue.prNumber || issue.commitHash) && (
-            <Card className="mb-6 border-blue-500/30 bg-blue-500/5 basis-1/2 grow">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                  <GitPullRequest className="h-4 w-4" />
-                  Original Detection
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Where this issue was first identified
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  {issue.analysisId && (
-                    <div>
-                      <span className="text-muted-foreground">Analysis ID:</span>
-                      <span className="ml-2 font-medium">#{issue.analysisId}</span>
-                    </div>
-                  )}
+                  <Separator orientation="vertical" className="h-4" />
                   {issue.prNumber && (
-                    <div>
-                      <span className="text-muted-foreground">Detected in PR:</span>
-                      {buildPrUrl(issue.prNumber) ? (
-                        <a 
-                          href={buildPrUrl(issue.prNumber)!} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="ml-2 font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
-                        >
-                          #{issue.prNumber}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <span className="ml-2 font-medium">#{issue.prNumber}</span>
-                      )}
-                    </div>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      PR #{issue.prNumber}
+                    </span>
                   )}
+                  <Separator orientation="vertical" className="h-4" />
                   {issue.commitHash && (
-                    <div>
-                      <span className="text-muted-foreground">Detected in commit:</span>
-                      <span className="ml-2 font-mono font-medium">{issue.commitHash.substring(0, 8)}</span>
-                    </div>
-                  )}
-                  {issue.detectedAt && (
-                    <div>
-                      <span className="text-muted-foreground">Detected on:</span>
-                      <span className="ml-2 font-medium">{new Date(issue.detectedAt).toLocaleString()}</span>
-                    </div>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      {issue.commitHash.substring(0, 8)}
+                    </span>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              </div>
+            </div>
 
-        {/* Issue Content */}
-        <div className="space-y-6">
-          {/* Description */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Issue Description
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-foreground leading-relaxed">{descriptionText}</p>
-            </CardContent>
-          </Card>
+            <div className="md:flex justify-between gap-2">
+              {/* Resolution Info - shown when issue is resolved */}
+              {issue.status === 'resolved' && (issue.resolvedAt || issue.resolvedBy || issue.resolvedDescription || issue.resolvedCommitHash) && (
+                <Card className="mb-6 border-green-500/30 bg-green-500/5 basis-1/2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <CheckCircle className="h-4 w-4" />
+                      Resolution Information
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Details about how and when this issue was resolved
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      {issue.resolvedAt && (
+                        <div>
+                          <span className="text-muted-foreground">Resolved on:</span>
+                          <span className="ml-2 font-medium">{new Date(issue.resolvedAt).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {issue.resolvedBy && (
+                        <div>
+                          <span className="text-muted-foreground">Resolved by:</span>
+                          <span className="ml-2 font-medium">{issue.resolvedBy}</span>
+                        </div>
+                      )}
+                      {issue.resolvedByPr && (
+                        <div>
+                          <span className="text-muted-foreground">Resolved in PR:</span>
+                          {buildPrUrl(issue.resolvedByPr) ? (
+                            <a
+                              href={buildPrUrl(issue.resolvedByPr)!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 font-medium text-green-600 dark:text-green-400 hover:underline inline-flex items-center gap-1"
+                            >
+                              #{issue.resolvedByPr}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <span className="ml-2 font-medium">#{issue.resolvedByPr}</span>
+                          )}
+                        </div>
+                      )}
+                      {issue.resolvedCommitHash && (
+                        <div>
+                          <span className="text-muted-foreground">Resolved in commit:</span>
+                          <span className="ml-2 font-mono font-medium">{issue.resolvedCommitHash.substring(0, 8)}</span>
+                        </div>
+                      )}
+                    </div>
+                    {issue.resolvedDescription && (
+                      <div className="pt-2 border-t">
+                        <span className="text-muted-foreground text-sm">Resolution explanation:</span>
+                        <p className="mt-1 text-sm text-foreground leading-relaxed">{issue.resolvedDescription}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
-          {/* Code Diff */}
-          {diffContent && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Suggested Fix</CardTitle>
-                <CardDescription className="text-xs">
-                  Suggested code change to resolve this issue
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {renderDiff(diffContent)}
-              </CardContent>
-            </Card>
-          )}
+              {/* Original Issue Detection Info */}
+              {(issue.analysisId || issue.prNumber || issue.commitHash) && (
+                <Card className="mb-6 border-blue-500/30 bg-blue-500/5 basis-1/2 grow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                      <GitPullRequest className="h-4 w-4" />
+                      Original Detection
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Where this issue was first identified
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      {issue.analysisId && (
+                        <div>
+                          <span className="text-muted-foreground">Analysis ID:</span>
+                          <span className="ml-2 font-medium">#{issue.analysisId}</span>
+                        </div>
+                      )}
+                      {issue.prNumber && (
+                        <div>
+                          <span className="text-muted-foreground">Detected in PR:</span>
+                          {buildPrUrl(issue.prNumber) ? (
+                            <a
+                              href={buildPrUrl(issue.prNumber)!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                            >
+                              #{issue.prNumber}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <span className="ml-2 font-medium">#{issue.prNumber}</span>
+                          )}
+                        </div>
+                      )}
+                      {issue.commitHash && (
+                        <div>
+                          <span className="text-muted-foreground">Detected in commit:</span>
+                          <span className="ml-2 font-mono font-medium">{issue.commitHash.substring(0, 8)}</span>
+                        </div>
+                      )}
+                      {issue.detectedAt && (
+                        <div>
+                          <span className="text-muted-foreground">Detected on:</span>
+                          <span className="ml-2 font-medium">{new Date(issue.detectedAt).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Issue Content */}
+            <div className="space-y-6">
+              {/* Description */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Issue Description
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-foreground leading-relaxed">{descriptionText}</p>
+                </CardContent>
+              </Card>
+
+              {/* Code Diff */}
+              {diffContent && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Suggested Fix</CardTitle>
+                    <CardDescription className="text-xs">
+                      Suggested code change to resolve this issue
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {renderDiff(diffContent)}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
