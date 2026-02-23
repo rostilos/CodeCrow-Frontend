@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   BarChart3,
   GitBranch,
+  GitCommit,
   Users,
   Key,
   Settings,
@@ -87,6 +88,7 @@ import {
   AnalysisResultType,
 } from "@/components/AnalysisResultBadge";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { GitGraphViewer } from "@/components/GitGraph/GitGraphViewer";
 import type {
   AnalysisIssue,
   PullRequestSummary,
@@ -199,12 +201,12 @@ export default function ProjectDashboard() {
     useState<DetailedProjectStatsData | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
-  const [prTab, setPrTab] = useState<"preview" | "issues" | "activity">(
-    "preview",
-  );
-  const [branchTab, setBranchTab] = useState<"preview" | "issues" | "activity">(
-    "preview",
-  );
+  const [prTab, setPrTab] = useState<
+    "preview" | "issues" | "activity" | "graph"
+  >("preview");
+  const [branchTab, setBranchTab] = useState<
+    "preview" | "issues" | "activity" | "graph"
+  >("preview");
   const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
 
@@ -1524,6 +1526,25 @@ export default function ProjectDashboard() {
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
+              <button
+                onClick={() =>
+                  selectionType === "branch"
+                    ? setBranchTab("graph")
+                    : setPrTab("graph")
+                }
+                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                  (selectionType === "branch" ? branchTab : prTab) === "graph"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GitCommit className="h-3.5 w-3.5" />
+                Git Graph
+                {(selectionType === "branch" ? branchTab : prTab) ===
+                  "graph" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>
             </div>
             {selectionType === "pr" && selectedPR && maxVersion > 1 && (
               <div className="-mt-4">
@@ -1741,6 +1762,32 @@ export default function ProjectDashboard() {
                     refreshKey={jobsRefreshKey}
                     activeTab={branchTab}
                   />
+                </CardContent>
+              </Card>
+            ) : branchTab === "graph" ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <GitCommit className="h-5 w-5" />
+                    Git Commit Graph
+                  </CardTitle>
+                  <CardDescription>
+                    Visual representation of the commit DAG with analysis status
+                    per commit
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {project?.id ? (
+                    <GitGraphViewer
+                      projectId={project.id}
+                      workspaceSlug={currentWorkspace?.slug}
+                      namespace={namespace}
+                    />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>Project not loaded yet.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : null}
@@ -2284,6 +2331,34 @@ export default function ProjectDashboard() {
                 </CardContent>
               </Card>
             )}
+
+            {prTab === "graph" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <GitCommit className="h-5 w-5" />
+                    Git Commit Graph
+                  </CardTitle>
+                  <CardDescription>
+                    Visual representation of the commit DAG with analysis status
+                    per commit
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {project?.id ? (
+                    <GitGraphViewer
+                      projectId={project.id}
+                      workspaceSlug={currentWorkspace?.slug}
+                      namespace={namespace}
+                    />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>Project not loaded yet.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         ) : (
           /* No branch or PR selected - show content based on active tab */
@@ -2325,6 +2400,37 @@ export default function ProjectDashboard() {
                     refreshKey={jobsRefreshKey}
                     activeTab={selectionType === "branch" ? branchTab : prTab}
                   />
+                </CardContent>
+              </Card>
+            )}
+            {(selectionType === "branch" ? branchTab : prTab) === "graph" && (
+              <Card className="mx-auto">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <GitCommit className="h-5 w-5" />
+                    Git Commit Graph
+                  </CardTitle>
+                  <CardDescription>
+                    Visual representation of the commit DAG with analysis status
+                    per commit
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {project?.id ? (
+                    <GitGraphViewer
+                      projectId={project.id}
+                      workspaceSlug={currentWorkspace?.slug}
+                      namespace={namespace}
+                    />
+                  ) : (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertTitle>No project</AlertTitle>
+                      <AlertDescription>
+                        Please select a project to view the git commit graph.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </CardContent>
               </Card>
             )}
