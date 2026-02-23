@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -714,6 +713,59 @@ export default function AISettings() {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+
+              {/* Overview Section */}
+              {connections.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <Brain className="mr-2 h-5 w-5" />
+                        Total Connections
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {connections.length}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <Settings className="mr-2 h-5 w-5" />
+                        Active Providers
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {new Set(connections.map((c) => c.providerKey)).size}
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-2">
+                        Unique AI providers configured
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <CheckCircle className="mr-2 h-5 w-5" />
+                        Models Available
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {new Set(connections.map((c) => c.aiModel)).size}
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-2">
+                        Different AI models configured
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
             </div>

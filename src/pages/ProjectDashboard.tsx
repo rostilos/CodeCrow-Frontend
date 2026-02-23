@@ -1,13 +1,54 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, BarChart3, GitBranch, Users, Key, Settings, Calendar, Activity, AlertCircle, RefreshCw, Info, Check, ChevronsUpDown, CheckCircle, CheckCircle2, CheckSquare, Square, FileText, Clock, Eye, AlertTriangle, ExternalLink } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
+import {
+  ArrowLeft,
+  BarChart3,
+  GitBranch,
+  GitCommit,
+  Users,
+  Key,
+  Settings,
+  Calendar,
+  Activity,
+  AlertCircle,
+  RefreshCw,
+  Info,
+  Check,
+  ChevronsUpDown,
+  CheckCircle,
+  CheckCircle2,
+  CheckSquare,
+  Square,
+  FileText,
+  Clock,
+  Eye,
+  AlertTriangle,
+  ExternalLink,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Command,
   CommandEmpty,
@@ -15,48 +56,61 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command';
+} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { useWorkspace } from '@/context/WorkspaceContext';
-import { projectService, ProjectDTO, VcsProvider } from '@/api_service/project/projectService';
-import { useToast } from '@/hooks/use-toast';
-import DetailedProjectStats, { DetailedProjectStatsData } from '@/components/DetailedProjectStats';
-import { analysisService, PullRequestsByBranchResponse } from '@/api_service/analysis/analysisService';
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import {
+  projectService,
+  ProjectDTO,
+  VcsProvider,
+} from "@/api_service/project/projectService";
+import { useToast } from "@/hooks/use-toast";
+import DetailedProjectStats, {
+  DetailedProjectStatsData,
+} from "@/components/DetailedProjectStats";
+import {
+  analysisService,
+  PullRequestsByBranchResponse,
+} from "@/api_service/analysis/analysisService";
 import { usePermissions } from "@/hooks/usePermissions";
-import BranchPRHierarchy from '@/components/BranchPRHierarchy';
-import IssuesByFileDisplay from '@/components/IssuesByFileDisplay';
-import IssueFilterPanel, { IssueFilters } from '@/components/IssueFilterPanel';
-import JobsList from '@/components/JobsList';
-import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
-import { AnalysisResultBadge, AnalysisResultType } from '@/components/AnalysisResultBadge';
-import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import BranchPRHierarchy from "@/components/BranchPRHierarchy";
+import IssuesByFileDisplay from "@/components/IssuesByFileDisplay";
+import IssueFilterPanel, { IssueFilters } from "@/components/IssueFilterPanel";
+import JobsList from "@/components/JobsList";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import {
+  AnalysisResultBadge,
+  AnalysisResultType,
+} from "@/components/AnalysisResultBadge";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { GitGraphViewer } from "@/components/GitGraph/GitGraphViewer";
 import type {
   AnalysisIssue,
   PullRequestSummary,
   PullRequestDTO,
-  AnalysisIssueSummary
-} from '@/api_service/analysis/analysisService';
+  AnalysisIssueSummary,
+} from "@/api_service/analysis/analysisService";
 
 // Helper function to build VCS PR URL
 function buildPrUrl(
   vcsProvider: VcsProvider | null | undefined,
   vcsWorkspace: string | undefined,
   repoSlug: string | undefined,
-  prNumber: number
+  prNumber: number,
 ): string | null {
   if (!vcsProvider || !vcsWorkspace || !repoSlug) return null;
 
   switch (vcsProvider) {
-    case 'BITBUCKET_CLOUD':
+    case "BITBUCKET_CLOUD":
       return `https://bitbucket.org/${vcsWorkspace}/${repoSlug}/pull-requests/${prNumber}`;
-    case 'GITHUB':
+    case "GITHUB":
       return `https://github.com/${vcsWorkspace}/${repoSlug}/pull/${prNumber}`;
-    case 'GITLAB':
+    case "GITLAB":
       return `https://gitlab.com/${vcsWorkspace}/${repoSlug}/-/merge_requests/${prNumber}`;
     default:
       return null;
@@ -68,16 +122,16 @@ function buildCommitUrl(
   vcsProvider: VcsProvider | null | undefined,
   vcsWorkspace: string | undefined,
   repoSlug: string | undefined,
-  commitHash: string
+  commitHash: string,
 ): string | null {
   if (!vcsProvider || !vcsWorkspace || !repoSlug || !commitHash) return null;
 
   switch (vcsProvider) {
-    case 'BITBUCKET_CLOUD':
+    case "BITBUCKET_CLOUD":
       return `https://bitbucket.org/${vcsWorkspace}/${repoSlug}/commits/${commitHash}`;
-    case 'GITHUB':
+    case "GITHUB":
       return `https://github.com/${vcsWorkspace}/${repoSlug}/commit/${commitHash}`;
-    case 'GITLAB':
+    case "GITLAB":
       return `https://gitlab.com/${vcsWorkspace}/${repoSlug}/-/commit/${commitHash}`;
     default:
       return null;
@@ -97,25 +151,32 @@ export default function ProjectDashboard() {
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   const [project, setProject] = useState<ProjectDTO | null>(null);
-  const [detailedStats, setDetailedStats] = useState<DetailedProjectStatsData | null>(null);
+  const [detailedStats, setDetailedStats] =
+    useState<DetailedProjectStatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [pullRequests, setPullRequests] = useState<PullRequestSummary[]>([]);
   const [analysisIssues, setAnalysisIssues] = useState<AnalysisIssue[]>([]);
-  const [issueSummary, setIssueSummary] = useState<AnalysisIssueSummary | null>(null);
-  const [selectedPR, setSelectedPR] = useState<PullRequestSummary | PullRequestDTO | null>(null);
+  const [issueSummary, setIssueSummary] = useState<AnalysisIssueSummary | null>(
+    null,
+  );
+  const [selectedPR, setSelectedPR] = useState<
+    PullRequestSummary | PullRequestDTO | null
+  >(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [maxVersion, setMaxVersion] = useState<number>(1);
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
-  const [versionCommitHash, setVersionCommitHash] = useState<string | null>(null);
+  const [versionCommitHash, setVersionCommitHash] = useState<string | null>(
+    null,
+  );
   const [prSelectOpen, setPrSelectOpen] = useState(false);
-  const [prSearchQuery, setPrSearchQuery] = useState('');
+  const [prSearchQuery, setPrSearchQuery] = useState("");
   const [filters, setFilters] = useState<IssueFilters>({
-    severity: 'ALL',
-    status: 'open',
-    category: 'ALL',
-    filePath: '',
-    author: 'ALL',
+    severity: "ALL",
+    status: "open",
+    category: "ALL",
+    filePath: "",
+    author: "ALL",
     dateFrom: undefined,
     dateTo: undefined,
   });
@@ -127,20 +188,27 @@ export default function ProjectDashboard() {
   const [branchIssuesPageSize] = useState(50);
   const { canManageWorkspace } = usePermissions();
   const [branches, setBranches] = useState<string[]>([]);
-  const [prsByBranch, setPrsByBranch] = useState<PullRequestsByBranchResponse>({});
-  const [defaultBranchName, setDefaultBranchName] = useState<string | null>(null);
+  const [prsByBranch, setPrsByBranch] = useState<PullRequestsByBranchResponse>(
+    {},
+  );
+  const [defaultBranchName, setDefaultBranchName] = useState<string | null>(
+    null,
+  );
   const [selectOpen, setSelectOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectionType, setSelectionType] = useState<'branch' | 'pr'>('branch');
-  const [branchStats, setBranchStats] = useState<DetailedProjectStatsData | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectionType, setSelectionType] = useState<"branch" | "pr">("branch");
+  const [branchStats, setBranchStats] =
+    useState<DetailedProjectStatsData | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
-  const [prTab, setPrTab] = useState<'preview' | 'issues' | 'activity'>('preview');
-  const [branchTab, setBranchTab] = useState<'preview' | 'issues' | 'activity'>('preview');
+  const [prTab, setPrTab] = useState<
+    "preview" | "issues" | "activity" | "graph"
+  >("preview");
+  const [branchTab, setBranchTab] = useState<
+    "preview" | "issues" | "activity" | "graph"
+  >("preview");
   const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
-
-
 
   useEffect(() => {
     loadProject();
@@ -149,41 +217,47 @@ export default function ProjectDashboard() {
 
     // Read filters from URL
     const newFilters: IssueFilters = {
-      severity: 'ALL',
-      status: 'open', // Default to showing only open issues
-      category: 'ALL',
-      filePath: '',
-      author: 'ALL',
+      severity: "ALL",
+      status: "open", // Default to showing only open issues
+      category: "ALL",
+      filePath: "",
+      author: "ALL",
       dateFrom: undefined,
       dateTo: undefined,
     };
 
-    const severityParam = searchParams.get('severity');
-    if (severityParam && ['HIGH', 'MEDIUM', 'LOW', 'ALL'].includes(severityParam.toUpperCase())) {
+    const severityParam = searchParams.get("severity");
+    if (
+      severityParam &&
+      ["HIGH", "MEDIUM", "LOW", "ALL"].includes(severityParam.toUpperCase())
+    ) {
       newFilters.severity = severityParam.toUpperCase();
     }
 
-    const statusParam = searchParams.get('status');
-    if (statusParam && ['open', 'resolved', 'ALL'].includes(statusParam.toLowerCase())) {
+    const statusParam = searchParams.get("status");
+    if (
+      statusParam &&
+      ["open", "resolved", "ALL"].includes(statusParam.toLowerCase())
+    ) {
       newFilters.status = statusParam.toLowerCase();
     }
 
-    const categoryParam = searchParams.get('category');
+    const categoryParam = searchParams.get("category");
     if (categoryParam) {
       newFilters.category = categoryParam.toUpperCase();
     }
 
-    const fileParam = searchParams.get('filePath');
+    const fileParam = searchParams.get("filePath");
     if (fileParam) {
       newFilters.filePath = fileParam;
     }
 
-    const dateFromParam = searchParams.get('dateFrom');
+    const dateFromParam = searchParams.get("dateFrom");
     if (dateFromParam) {
       newFilters.dateFrom = new Date(dateFromParam);
     }
 
-    const dateToParam = searchParams.get('dateTo');
+    const dateToParam = searchParams.get("dateTo");
     if (dateToParam) {
       newFilters.dateTo = new Date(dateToParam);
     }
@@ -191,24 +265,25 @@ export default function ProjectDashboard() {
     setFilters(newFilters);
 
     // Check if returnTab is set (coming back from issue detail page)
-    const returnTab = searchParams.get('returnTab');
-    if (returnTab && ['preview', 'issues', 'activity'].includes(returnTab)) {
-      setBranchTab(returnTab as 'preview' | 'issues' | 'activity');
-      setPrTab(returnTab as 'preview' | 'issues' | 'activity');
+    const returnTab = searchParams.get("returnTab");
+    if (returnTab && ["preview", "issues", "activity"].includes(returnTab)) {
+      setBranchTab(returnTab as "preview" | "issues" | "activity");
+      setPrTab(returnTab as "preview" | "issues" | "activity");
     } else {
       // Auto-switch to issues tab if any filter is set (e.g., from VCS severity link)
-      const hasActiveFilter = severityParam || statusParam || categoryParam || fileParam;
+      const hasActiveFilter =
+        severityParam || statusParam || categoryParam || fileParam;
       if (hasActiveFilter) {
         // Set the tab to 'issues' for both branch and PR views
-        setBranchTab('issues');
-        setPrTab('issues');
+        setBranchTab("issues");
+        setPrTab("issues");
       }
     }
 
     // Restore branch selection from URL
-    const urlBranch = searchParams.get('branch');
+    const urlBranch = searchParams.get("branch");
     if (urlBranch) {
-      setSelectionType('branch');
+      setSelectionType("branch");
       setSelectedBranch(urlBranch);
       loadBranchData(urlBranch);
     }
@@ -216,7 +291,12 @@ export default function ProjectDashboard() {
 
   // Lazy load branch issues when switching to Issues tab
   useEffect(() => {
-    if (selectionType === 'branch' && branchTab === 'issues' && selectedBranch && !branchLoading) {
+    if (
+      selectionType === "branch" &&
+      branchTab === "issues" &&
+      selectedBranch &&
+      !branchLoading
+    ) {
       // Always load issues when switching to issues tab (fresh load)
       if (branchIssues.length === 0) {
         loadBranchIssues(selectedBranch, 1, false);
@@ -224,11 +304,11 @@ export default function ProjectDashboard() {
     }
   }, [branchTab, selectionType, selectedBranch]);
 
-  const activeTab = searchParams.get('tab') || 'analysis';
+  const activeTab = searchParams.get("tab") || "analysis";
 
   const handleTabChange = (value: string) => {
     const newParams = new URLSearchParams(searchParams);
-    newParams.set('tab', value);
+    newParams.set("tab", value);
     setSearchParams(newParams);
   };
 
@@ -236,7 +316,10 @@ export default function ProjectDashboard() {
     if (!namespace || !currentWorkspace) return;
     try {
       setLoading(true);
-      const proj = await projectService.getProjectByNamespace(currentWorkspace.slug, namespace);
+      const proj = await projectService.getProjectByNamespace(
+        currentWorkspace.slug,
+        namespace,
+      );
       setProject(proj);
     } catch (error: any) {
       toast({
@@ -253,19 +336,24 @@ export default function ProjectDashboard() {
     if (!namespace || !currentWorkspace) return;
     try {
       setStatsLoading(true);
-      const stats = await analysisService.getProjectDetailedStats(currentWorkspace.slug, namespace);
+      const stats = await analysisService.getProjectDetailedStats(
+        currentWorkspace.slug,
+        namespace,
+      );
       // Map issuesByType to individual fields if present
       const mappedStats: DetailedProjectStatsData = {
         ...stats,
-        securityIssues: stats.issuesByType?.security ?? stats.securityIssues ?? 0,
+        securityIssues:
+          stats.issuesByType?.security ?? stats.securityIssues ?? 0,
         qualityIssues: stats.issuesByType?.quality ?? stats.qualityIssues ?? 0,
-        performanceIssues: stats.issuesByType?.performance ?? stats.performanceIssues ?? 0,
+        performanceIssues:
+          stats.issuesByType?.performance ?? stats.performanceIssues ?? 0,
         styleIssues: stats.issuesByType?.style ?? stats.styleIssues ?? 0,
         infoIssues: stats.issuesBySeverity?.INFO ?? 0,
       };
       setDetailedStats(mappedStats);
     } catch (error: any) {
-      console.warn('Failed to load detailed stats:', error);
+      console.warn("Failed to load detailed stats:", error);
       // Don't show error toast for stats, just log it
     } finally {
       setStatsLoading(false);
@@ -276,34 +364,41 @@ export default function ProjectDashboard() {
     if (!currentWorkspace || !namespace) return;
 
     try {
-      const projectData = await projectService.getProjectByNamespace(currentWorkspace.slug, namespace);
+      const projectData = await projectService.getProjectByNamespace(
+        currentWorkspace.slug,
+        namespace,
+      );
       const defaultBranch = projectData.defaultBranchStats?.branchName || null;
       setDefaultBranchName(defaultBranch);
 
-      const data = await analysisService.getPullRequestsByBranch(currentWorkspace.slug, namespace);
+      const data = await analysisService.getPullRequestsByBranch(
+        currentWorkspace.slug,
+        namespace,
+      );
       const branchList = Object.keys(data);
       setBranches(branchList);
       setPrsByBranch(data);
 
       // Auto-select default branch or first branch if no selection
-      const urlPrId = searchParams.get('prId');
-      const urlBranch = searchParams.get('branch');
+      const urlPrId = searchParams.get("prId");
+      const urlBranch = searchParams.get("branch");
 
       if (!urlPrId && !urlBranch && branchList.length > 0) {
-        const branchToSelect = defaultBranch && branchList.includes(defaultBranch)
-          ? defaultBranch
-          : branchList[0];
+        const branchToSelect =
+          defaultBranch && branchList.includes(defaultBranch)
+            ? defaultBranch
+            : branchList[0];
         setSelectedBranch(branchToSelect);
-        setSelectionType('branch');
+        setSelectionType("branch");
         loadBranchData(branchToSelect);
 
         // Update URL
         const newParams = new URLSearchParams(searchParams);
-        newParams.set('branch', branchToSelect);
+        newParams.set("branch", branchToSelect);
         setSearchParams(newParams, { replace: true });
       }
     } catch (error: any) {
-      console.error('Failed to load branches:', error);
+      console.error("Failed to load branches:", error);
       toast({
         title: "Error loading branches",
         description: error.message || "Could not load branches",
@@ -319,13 +414,19 @@ export default function ProjectDashboard() {
     setStatsLoading(true);
     try {
       // Only load stats initially - issues will be loaded lazily when Issues tab is selected
-      const stats = await analysisService.getProjectDetailedStats(currentWorkspace.slug, namespace, branchName);
+      const stats = await analysisService.getProjectDetailedStats(
+        currentWorkspace.slug,
+        namespace,
+        branchName,
+      );
       // Map issuesByType to individual fields if present
       const mappedStats: DetailedProjectStatsData = {
         ...stats,
-        securityIssues: stats.issuesByType?.security ?? stats.securityIssues ?? 0,
+        securityIssues:
+          stats.issuesByType?.security ?? stats.securityIssues ?? 0,
         qualityIssues: stats.issuesByType?.quality ?? stats.qualityIssues ?? 0,
-        performanceIssues: stats.issuesByType?.performance ?? stats.performanceIssues ?? 0,
+        performanceIssues:
+          stats.issuesByType?.performance ?? stats.performanceIssues ?? 0,
         styleIssues: stats.issuesByType?.style ?? stats.styleIssues ?? 0,
         infoIssues: stats.issuesBySeverity?.INFO ?? 0,
       };
@@ -333,7 +434,7 @@ export default function ProjectDashboard() {
       // Clear previous issues - will be loaded when Issues tab is clicked
       setBranchIssues([]);
     } catch (error: any) {
-      console.error('Failed to load branch data:', error);
+      console.error("Failed to load branch data:", error);
       toast({
         title: "Error loading branch data",
         description: error.message || "Could not load branch information",
@@ -350,34 +451,44 @@ export default function ProjectDashboard() {
 
     try {
       setAnalysisLoading(true);
-      const pullRequestsData = await analysisService.getPullRequests(currentWorkspace.slug, namespace);
+      const pullRequestsData = await analysisService.getPullRequests(
+        currentWorkspace.slug,
+        namespace,
+      );
       // Sort by PR number in descending order (highest first)
-      const sortedPullRequests = pullRequestsData.sort((a, b) => b.prNumber - a.prNumber);
+      const sortedPullRequests = pullRequestsData.sort(
+        (a, b) => b.prNumber - a.prNumber,
+      );
       setPullRequests(sortedPullRequests);
 
       // Check if there's a PR ID in the URL params
-      const urlPrId = searchParams.get('prId');
-      const urlVersion = searchParams.get('version');
+      const urlPrId = searchParams.get("prId");
+      const urlVersion = searchParams.get("version");
       let prToSelect: PullRequestSummary | null = null;
 
       if (urlPrId && sortedPullRequests.length > 0) {
-        const foundPR = sortedPullRequests.find(p => String(p.id) === urlPrId);
+        const foundPR = sortedPullRequests.find(
+          (p) => String(p.id) === urlPrId,
+        );
         if (foundPR) {
           prToSelect = foundPR;
-          setSelectionType('pr');
+          setSelectionType("pr");
           setSelectedPR(foundPR);
           const versionToLoad = urlVersion ? parseInt(urlVersion) : undefined;
           await loadAnalysisIssuesForPR(foundPR, versionToLoad);
         }
       }
     } catch (error: any) {
-      console.error('Failed to load project analysis:', error);
+      console.error("Failed to load project analysis:", error);
     } finally {
       setAnalysisLoading(false);
     }
   };
 
-  const loadAnalysisIssuesForPR = async (pr: PullRequestSummary | PullRequestDTO, version?: number) => {
+  const loadAnalysisIssuesForPR = async (
+    pr: PullRequestSummary | PullRequestDTO,
+    version?: number,
+  ) => {
     if (!currentWorkspace || !namespace) return;
 
     // Clear selections when loading new PR
@@ -388,7 +499,7 @@ export default function ProjectDashboard() {
         currentWorkspace.slug,
         namespace,
         String(pr.prNumber),
-        version
+        version,
       );
       setAnalysisIssues(response.issues);
       setIssueSummary(response.summary);
@@ -397,10 +508,11 @@ export default function ProjectDashboard() {
       setVersionCommitHash(response.commitHash || null);
 
       // Set version to what was actually loaded (version param or latest)
-      const loadedVersion = version !== undefined ? version : (response.maxVersion || 1);
+      const loadedVersion =
+        version !== undefined ? version : response.maxVersion || 1;
       setSelectedVersion(loadedVersion);
     } catch (error: any) {
-      console.error('Failed to load analysis issues:', error);
+      console.error("Failed to load analysis issues:", error);
       setAnalysisIssues([]);
       setIssueSummary(null);
       setMaxVersion(1);
@@ -409,7 +521,12 @@ export default function ProjectDashboard() {
     }
   };
 
-  const loadBranchIssues = async (branchName: string, page: number = 1, append: boolean = false, filterOverrides?: IssueFilters) => {
+  const loadBranchIssues = async (
+    branchName: string,
+    page: number = 1,
+    append: boolean = false,
+    filterOverrides?: IssueFilters,
+  ) => {
     if (!currentWorkspace || !namespace) return;
 
     // Use passed filters or current state
@@ -421,7 +538,7 @@ export default function ProjectDashboard() {
         currentWorkspace.slug,
         namespace,
         branchName,
-        activeFilters.status || 'open',
+        activeFilters.status || "open",
         page,
         branchIssuesPageSize,
         true, // excludeDiff
@@ -432,10 +549,10 @@ export default function ProjectDashboard() {
           dateFrom: activeFilters.dateFrom,
           dateTo: activeFilters.dateTo,
           author: activeFilters.author,
-        }
+        },
       );
       if (append) {
-        setBranchIssues(prev => [...prev, ...response.issues]);
+        setBranchIssues((prev) => [...prev, ...response.issues]);
       } else {
         setBranchIssues(response.issues);
       }
@@ -443,7 +560,7 @@ export default function ProjectDashboard() {
       setBranchIssuesPage(page);
       setSelectedBranch(branchName);
     } catch (error: any) {
-      console.error('Failed to load branch issues:', error);
+      console.error("Failed to load branch issues:", error);
       toast({
         title: "Failed to load branch issues",
         description: error.message || "Could not load issues for this branch",
@@ -484,30 +601,32 @@ export default function ProjectDashboard() {
       ];
 
       // If a branch is currently selected, also refresh branch-specific data
-      if (selectionType === 'branch' && selectedBranch) {
+      if (selectionType === "branch" && selectedBranch) {
         refreshPromises.push(loadBranchData(selectedBranch));
         // Also refresh branch issues if on issues tab
-        if (branchTab === 'issues') {
+        if (branchTab === "issues") {
           refreshPromises.push(loadBranchIssues(selectedBranch, 1, false));
         }
       }
 
       // If a PR is currently selected, refresh its issues
-      if (selectionType === 'pr' && selectedPR) {
-        refreshPromises.push(loadAnalysisIssuesForPR(selectedPR, selectedVersion));
+      if (selectionType === "pr" && selectedPR) {
+        refreshPromises.push(
+          loadAnalysisIssuesForPR(selectedPR, selectedVersion),
+        );
       }
 
       await Promise.all(refreshPromises);
 
       // Trigger JobsList refresh
-      setJobsRefreshKey(prev => prev + 1);
+      setJobsRefreshKey((prev) => prev + 1);
 
       toast({
         title: "Refreshed",
         description: "All data has been updated",
       });
     } catch (error: any) {
-      console.error('Failed to refresh data:', error);
+      console.error("Failed to refresh data:", error);
       toast({
         title: "Refresh failed",
         description: error.message || "Could not refresh data",
@@ -521,15 +640,15 @@ export default function ProjectDashboard() {
   const handlePRChange = async (pr: PullRequestSummary | PullRequestDTO) => {
     setSelectedPR(pr);
     setSelectOpen(false);
-    setSelectionType('pr');
+    setSelectionType("pr");
 
     // Reset filters when changing PR
     const defaultFilters: IssueFilters = {
-      severity: 'ALL',
-      status: 'open',
-      category: 'ALL',
-      filePath: '',
-      author: 'ALL',
+      severity: "ALL",
+      status: "open",
+      category: "ALL",
+      filePath: "",
+      author: "ALL",
       dateFrom: undefined,
       dateTo: undefined,
     };
@@ -537,7 +656,7 @@ export default function ProjectDashboard() {
 
     // Update URL with prId (remove filter params)
     const newParams = new URLSearchParams();
-    newParams.set('prId', String(pr.id));
+    newParams.set("prId", String(pr.id));
     setSearchParams(newParams, { replace: true });
 
     await loadPRAnalysis(pr);
@@ -546,15 +665,15 @@ export default function ProjectDashboard() {
   const handleBranchChange = async (branchName: string) => {
     setSelectedBranch(branchName);
     setSelectOpen(false);
-    setSelectionType('branch');
+    setSelectionType("branch");
 
     // Reset filters when changing branch
     const defaultFilters: IssueFilters = {
-      severity: 'ALL',
-      status: 'open',
-      category: 'ALL',
-      filePath: '',
-      author: 'ALL',
+      severity: "ALL",
+      status: "open",
+      category: "ALL",
+      filePath: "",
+      author: "ALL",
       dateFrom: undefined,
       dateTo: undefined,
     };
@@ -566,13 +685,13 @@ export default function ProjectDashboard() {
 
     // Update URL with branch (remove filter params)
     const newParams = new URLSearchParams();
-    newParams.set('branch', branchName);
+    newParams.set("branch", branchName);
     setSearchParams(newParams, { replace: true });
 
     await loadBranchData(branchName);
 
     // If we are on the issues tab, also load the issues for the new branch
-    if (branchTab === 'issues') {
+    if (branchTab === "issues") {
       await loadBranchIssues(branchName, 1, false);
     }
   };
@@ -583,11 +702,11 @@ export default function ProjectDashboard() {
 
     // Reset filters when changing version
     const defaultFilters: IssueFilters = {
-      severity: 'ALL',
-      status: 'open',
-      category: 'ALL',
-      filePath: '',
-      author: 'ALL',
+      severity: "ALL",
+      status: "open",
+      category: "ALL",
+      filePath: "",
+      author: "ALL",
       dateFrom: undefined,
       dateTo: undefined,
     };
@@ -596,8 +715,8 @@ export default function ProjectDashboard() {
     // Update URL params to persist version selection (remove filter params)
     if (selectedPR) {
       const params = new URLSearchParams();
-      params.set('prId', String(selectedPR.id));
-      params.set('version', String(versionNum));
+      params.set("prId", String(selectedPR.id));
+      params.set("version", String(versionNum));
       setSearchParams(params, { replace: true });
       loadAnalysisIssuesForPR(selectedPR, versionNum);
     }
@@ -608,90 +727,100 @@ export default function ProjectDashboard() {
   };
 
   // Helper to clear filters and URL params when switching to preview tab
-  const clearFiltersAndSwitchToPreview = useCallback((type: 'branch' | 'pr') => {
-    const defaultFilters: IssueFilters = {
-      severity: 'ALL',
-      status: 'open',
-      category: 'ALL',
-      filePath: '',
-      author: 'ALL',
-      dateFrom: undefined,
-      dateTo: undefined,
-    };
-    setFilters(defaultFilters);
+  const clearFiltersAndSwitchToPreview = useCallback(
+    (type: "branch" | "pr") => {
+      const defaultFilters: IssueFilters = {
+        severity: "ALL",
+        status: "open",
+        category: "ALL",
+        filePath: "",
+        author: "ALL",
+        dateFrom: undefined,
+        dateTo: undefined,
+      };
+      setFilters(defaultFilters);
 
-    // Remove filter params from URL but keep selection params
-    const newParams = new URLSearchParams();
-    if (type === 'branch' && selectedBranch) {
-      newParams.set('branch', selectedBranch);
-      setBranchTab('preview');
-    } else if (type === 'pr' && selectedPR) {
-      newParams.set('prId', String(selectedPR.id));
-      if (selectedVersion > 1) {
-        newParams.set('version', String(selectedVersion));
+      // Remove filter params from URL but keep selection params
+      const newParams = new URLSearchParams();
+      if (type === "branch" && selectedBranch) {
+        newParams.set("branch", selectedBranch);
+        setBranchTab("preview");
+      } else if (type === "pr" && selectedPR) {
+        newParams.set("prId", String(selectedPR.id));
+        if (selectedVersion > 1) {
+          newParams.set("version", String(selectedVersion));
+        }
+        setPrTab("preview");
       }
-      setPrTab('preview');
-    }
-    setSearchParams(newParams, { replace: true });
-  }, [selectedBranch, selectedPR, selectedVersion, setSearchParams]);
+      setSearchParams(newParams, { replace: true });
+    },
+    [selectedBranch, selectedPR, selectedVersion, setSearchParams],
+  );
 
-  const handleFiltersChange = useCallback((newFilters: IssueFilters) => {
-    setFilters(newFilters);
+  const handleFiltersChange = useCallback(
+    (newFilters: IssueFilters) => {
+      setFilters(newFilters);
 
-    // Update URL params
-    const newParams = new URLSearchParams(searchParams);
+      // Update URL params
+      const newParams = new URLSearchParams(searchParams);
 
-    if (newFilters.severity !== 'ALL') {
-      newParams.set('severity', newFilters.severity);
-    } else {
-      newParams.delete('severity');
-    }
+      if (newFilters.severity !== "ALL") {
+        newParams.set("severity", newFilters.severity);
+      } else {
+        newParams.delete("severity");
+      }
 
-    // Only add status to URL if it's not the default 'open'
-    if (newFilters.status !== 'open') {
-      newParams.set('status', newFilters.status);
-    } else {
-      newParams.delete('status');
-    }
+      // Only add status to URL if it's not the default 'open'
+      if (newFilters.status !== "open") {
+        newParams.set("status", newFilters.status);
+      } else {
+        newParams.delete("status");
+      }
 
-    if (newFilters.category !== 'ALL') {
-      newParams.set('category', newFilters.category);
-    } else {
-      newParams.delete('category');
-    }
+      if (newFilters.category !== "ALL") {
+        newParams.set("category", newFilters.category);
+      } else {
+        newParams.delete("category");
+      }
 
-    if (newFilters.filePath) {
-      newParams.set('filePath', newFilters.filePath);
-    } else {
-      newParams.delete('filePath');
-    }
+      if (newFilters.filePath) {
+        newParams.set("filePath", newFilters.filePath);
+      } else {
+        newParams.delete("filePath");
+      }
 
-    if (newFilters.author) {
-      newParams.set('author', newFilters.author);
-    } else {
-      newParams.delete('author');
-    }
+      if (newFilters.author) {
+        newParams.set("author", newFilters.author);
+      } else {
+        newParams.delete("author");
+      }
 
-    if (newFilters.dateFrom) {
-      newParams.set('dateFrom', newFilters.dateFrom.toISOString());
-    } else {
-      newParams.delete('dateFrom');
-    }
+      if (newFilters.dateFrom) {
+        newParams.set("dateFrom", newFilters.dateFrom.toISOString());
+      } else {
+        newParams.delete("dateFrom");
+      }
 
-    if (newFilters.dateTo) {
-      newParams.set('dateTo', newFilters.dateTo.toISOString());
-    } else {
-      newParams.delete('dateTo');
-    }
+      if (newFilters.dateTo) {
+        newParams.set("dateTo", newFilters.dateTo.toISOString());
+      } else {
+        newParams.delete("dateTo");
+      }
 
-    setSearchParams(newParams);
+      setSearchParams(newParams);
 
-    // Reload branch issues from backend with new filters when in branch mode
-    if (selectionType === 'branch' && selectedBranch && branchTab === 'issues') {
-      setBranchIssuesPage(1);
-      loadBranchIssues(selectedBranch, 1, false, newFilters);
-    }
-  }, [searchParams, selectionType, selectedBranch, branchTab, setSearchParams]);
+      // Reload branch issues from backend with new filters when in branch mode
+      if (
+        selectionType === "branch" &&
+        selectedBranch &&
+        branchTab === "issues"
+      ) {
+        setBranchIssuesPage(1);
+        loadBranchIssues(selectedBranch, 1, false, newFilters);
+      }
+    },
+    [searchParams, selectionType, selectedBranch, branchTab, setSearchParams],
+  );
 
   const handlePRSelect = (pr: PullRequestDTO) => {
     const prSummary: PullRequestSummary = {
@@ -705,14 +834,18 @@ export default function ProjectDashboard() {
     loadAnalysisIssuesForPR(prSummary);
   };
 
-  const handleUpdateIssueStatus = async (issueId: string, newStatus: 'open' | 'resolved') => {
+  const handleUpdateIssueStatus = async (
+    issueId: string,
+    newStatus: "open" | "resolved",
+  ) => {
     if (!currentWorkspace || !namespace) return;
 
     try {
-      const isResolved = newStatus === 'resolved';
+      const isResolved = newStatus === "resolved";
       // Find the issue to get its commit hash for context
-      const issueToUpdate = analysisIssues.find(i => i.id === issueId);
-      const commitHash = issueToUpdate?.commitHash || selectedPR?.commitHash || undefined;
+      const issueToUpdate = analysisIssues.find((i) => i.id === issueId);
+      const commitHash =
+        issueToUpdate?.commitHash || selectedPR?.commitHash || undefined;
       // Use selected PR number if available
       const prNumber = selectedPR?.prNumber || undefined;
 
@@ -723,20 +856,26 @@ export default function ProjectDashboard() {
         isResolved,
         undefined, // comment
         isResolved ? prNumber : undefined,
-        isResolved ? commitHash : undefined
+        isResolved ? commitHash : undefined,
       );
 
       // Update the issue in local state
-      setAnalysisIssues(prev => prev.map(issue =>
-        issue.id === issueId ? { ...issue, status: newStatus } : issue
-      ));
+      setAnalysisIssues((prev) =>
+        prev.map((issue) =>
+          issue.id === issueId ? { ...issue, status: newStatus } : issue,
+        ),
+      );
 
       // Update PR status in prsByBranch if analysisResult changed
-      if (response.success && response.analysisId && response.analysisResult !== undefined) {
-        setPrsByBranch(prev => {
+      if (
+        response.success &&
+        response.analysisId &&
+        response.analysisResult !== undefined
+      ) {
+        setPrsByBranch((prev) => {
           const updated = { ...prev };
           for (const branchName of Object.keys(updated)) {
-            updated[branchName] = updated[branchName].map(pr => {
+            updated[branchName] = updated[branchName].map((pr) => {
               // Match by PR number or analysis ID relationship
               if (selectedPR && pr.prNumber === selectedPR.prNumber) {
                 return {
@@ -756,9 +895,9 @@ export default function ProjectDashboard() {
         });
 
         // Update selectedPR if it's a PullRequestDTO with analysisResult
-        if (selectedPR && 'analysisResult' in selectedPR) {
-          setSelectedPR(prev => {
-            if (!prev || !('analysisResult' in prev)) return prev;
+        if (selectedPR && "analysisResult" in selectedPR) {
+          setSelectedPR((prev) => {
+            if (!prev || !("analysisResult" in prev)) return prev;
             return {
               ...prev,
               analysisResult: response.analysisResult,
@@ -786,7 +925,7 @@ export default function ProjectDashboard() {
   };
 
   const handleSelectionChange = (issueId: string, selected: boolean) => {
-    setSelectedIssues(prev => {
+    setSelectedIssues((prev) => {
       const next = new Set(prev);
       if (selected) {
         next.add(issueId);
@@ -801,38 +940,41 @@ export default function ProjectDashboard() {
     if (selectedIssues.size === currentFilteredIssues.length) {
       setSelectedIssues(new Set());
     } else {
-      setSelectedIssues(new Set(currentFilteredIssues.map(i => i.id)));
+      setSelectedIssues(new Set(currentFilteredIssues.map((i) => i.id)));
     }
   };
 
-  const handleBulkStatusUpdate = async (newStatus: 'open' | 'resolved') => {
+  const handleBulkStatusUpdate = async (newStatus: "open" | "resolved") => {
     if (!currentWorkspace || !namespace || selectedIssues.size === 0) return;
 
     setBulkUpdating(true);
     try {
-      const isResolved = newStatus === 'resolved';
+      const isResolved = newStatus === "resolved";
       const result = await analysisService.bulkUpdateIssueStatus(
         currentWorkspace.slug,
         namespace,
         Array.from(selectedIssues),
-        isResolved
+        isResolved,
       );
 
       // Update local state for successful updates
-      if (selectionType === 'branch' && branchTab === 'issues') {
+      if (selectionType === "branch" && branchTab === "issues") {
         // Update branch issues state
-        setBranchIssues(prev => prev.map(issue =>
-          selectedIssues.has(issue.id) && !result.failedIds.includes(Number(issue.id))
-            ? { ...issue, status: newStatus }
-            : issue
-        ));
+        setBranchIssues((prev) =>
+          prev.map((issue) =>
+            selectedIssues.has(issue.id) &&
+            !result.failedIds.includes(Number(issue.id))
+              ? { ...issue, status: newStatus }
+              : issue,
+          ),
+        );
         // Reload branch issues to get updated count and filtered list
         if (selectedBranch) {
           await loadBranchIssues(selectedBranch, 1, false);
           // Also reload stats to update the counter in the tab
           await loadBranchData(selectedBranch);
         }
-      } else if (selectionType === 'branch') {
+      } else if (selectionType === "branch") {
         // For branch preview tab, reload branch stats
         if (selectedBranch) {
           await loadBranchData(selectedBranch);
@@ -841,16 +983,19 @@ export default function ProjectDashboard() {
         }
       } else {
         // Update PR analysis issues state
-        setAnalysisIssues(prev => prev.map(issue =>
-          selectedIssues.has(issue.id) && !result.failedIds.includes(Number(issue.id))
-            ? { ...issue, status: newStatus }
-            : issue
-        ));
+        setAnalysisIssues((prev) =>
+          prev.map((issue) =>
+            selectedIssues.has(issue.id) &&
+            !result.failedIds.includes(Number(issue.id))
+              ? { ...issue, status: newStatus }
+              : issue,
+          ),
+        );
       }
 
       toast({
         title: "Bulk update complete",
-        description: `${result.successCount} issue(s) updated${result.failureCount > 0 ? `, ${result.failureCount} failed` : ''}`,
+        description: `${result.successCount} issue(s) updated${result.failureCount > 0 ? `, ${result.failureCount} failed` : ""}`,
         variant: result.failureCount > 0 ? "destructive" : "default",
       });
 
@@ -870,21 +1015,24 @@ export default function ProjectDashboard() {
   const getSeverityBadge = (severity: string) => {
     const colors = {
       high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-      medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-      low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      medium:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+      low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
     };
 
     return (
-      <Badge className={colors[severity as keyof typeof colors] || colors.medium}>
+      <Badge
+        className={colors[severity as keyof typeof colors] || colors.medium}
+      >
         {severity.toUpperCase()}
       </Badge>
     );
   };
 
   // Filter issues by all criteria
-  const filteredIssues = analysisIssues.filter(issue => {
+  const filteredIssues = analysisIssues.filter((issue) => {
     // Severity filter
-    if (filters.severity !== 'ALL') {
+    if (filters.severity !== "ALL") {
       const issueSeverity = issue.severity?.toUpperCase();
       if (issueSeverity !== filters.severity) {
         return false;
@@ -892,15 +1040,17 @@ export default function ProjectDashboard() {
     }
 
     // Status filter
-    if (filters.status !== 'ALL') {
+    if (filters.status !== "ALL") {
       if (issue.status !== filters.status) {
         return false;
       }
     }
 
     // Category filter
-    if (filters.category !== 'ALL') {
-      const issueCategory = issue.issueCategory?.toUpperCase().replace(/[- ]/g, '_') || 'CODE_QUALITY';
+    if (filters.category !== "ALL") {
+      const issueCategory =
+        issue.issueCategory?.toUpperCase().replace(/[- ]/g, "_") ||
+        "CODE_QUALITY";
       if (issueCategory !== filters.category) {
         return false;
       }
@@ -938,7 +1088,7 @@ export default function ProjectDashboard() {
     // Author filter
     if (filters.author) {
       const authorLower = filters.author.toLowerCase();
-      const issueAuthor = issue.vcsAuthorUsername?.toLowerCase() || '';
+      const issueAuthor = issue.vcsAuthorUsername?.toLowerCase() || "";
       if (!issueAuthor.includes(authorLower)) {
         return false;
       }
@@ -964,7 +1114,7 @@ export default function ProjectDashboard() {
 
     const searchLower = searchQuery.toLowerCase();
     const prNumber = String(pr.prNumber).toLowerCase();
-    const sourceBranch = (pr.sourceBranchName || '').toLowerCase();
+    const sourceBranch = (pr.sourceBranchName || "").toLowerCase();
     const targetBranch = pr.targetBranchName.toLowerCase();
     const commitHash = pr.commitHash.toLowerCase();
 
@@ -981,38 +1131,40 @@ export default function ProjectDashboard() {
     const branchPRs = prsByBranch[branchName] || [];
     if (branchPRs.length === 0) return null;
 
-    const prsWithStatus = branchPRs.filter(pr => pr.analysisResult);
+    const prsWithStatus = branchPRs.filter((pr) => pr.analysisResult);
     if (prsWithStatus.length === 0) return null;
 
     // If any PR failed, the branch is considered failed
-    if (prsWithStatus.some(pr => pr.analysisResult === 'FAILED')) {
-      return 'FAILED';
+    if (prsWithStatus.some((pr) => pr.analysisResult === "FAILED")) {
+      return "FAILED";
     }
     // If all PRs with status have passed, branch is passed
-    if (prsWithStatus.every(pr => pr.analysisResult === 'PASSED')) {
-      return 'PASSED';
+    if (prsWithStatus.every((pr) => pr.analysisResult === "PASSED")) {
+      return "PASSED";
     }
     // Mixed states or all skipped
-    return 'SKIPPED';
+    return "SKIPPED";
   };
 
   // Filtered issues based on current selection
   // For branch issues: server returns pre-filtered results for status/severity/category/filePath/dates
-  const currentFilteredIssues = selectionType === 'branch'
-    ? branchIssues
-    : filteredIssues;
+  const currentFilteredIssues =
+    selectionType === "branch" ? branchIssues : filteredIssues;
 
   // Total issue count: for branch issues use server total, for PR issues use filtered length
-  const currentIssuesTotalCount = selectionType === 'branch'
-    ? branchIssuesTotalCount
-    : filteredIssues.length;
+  const currentIssuesTotalCount =
+    selectionType === "branch" ? branchIssuesTotalCount : filteredIssues.length;
 
   const getIssueIcon = (type: string) => {
     switch (type) {
-      case 'security': return <AlertCircle className="h-4 w-4 text-red-500" />;
-      case 'quality': return <Activity className="h-4 w-4 text-blue-500" />;
-      case 'performance': return <BarChart3 className="h-4 w-4 text-orange-500" />;
-      default: return <AlertCircle className="h-4 w-4 text-gray-500" />;
+      case "security":
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case "quality":
+        return <Activity className="h-4 w-4 text-blue-500" />;
+      case "performance":
+        return <BarChart3 className="h-4 w-4 text-orange-500" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -1024,7 +1176,7 @@ export default function ProjectDashboard() {
     navigate(routes.projectSettings(namespace!));
   };
 
-  const handleSeverityClick = (severity: 'HIGH' | 'MEDIUM' | 'LOW') => {
+  const handleSeverityClick = (severity: "HIGH" | "MEDIUM" | "LOW") => {
     if (selectedBranch) {
       navigate(routes.branchIssues(namespace!, selectedBranch, { severity }));
     }
@@ -1032,7 +1184,9 @@ export default function ProjectDashboard() {
 
   const handleFileClick = (filename: string) => {
     if (selectedBranch) {
-      navigate(routes.branchIssues(namespace!, selectedBranch, { filePath: filename }));
+      navigate(
+        routes.branchIssues(namespace!, selectedBranch, { filePath: filename }),
+      );
     }
   };
 
@@ -1044,7 +1198,10 @@ export default function ProjectDashboard() {
           <div className="h-4 bg-muted/50 rounded w-1/2 animate-pulse"></div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-muted/50 rounded-xl animate-pulse"></div>
+              <div
+                key={i}
+                className="h-24 bg-muted/50 rounded-xl animate-pulse"
+              ></div>
             ))}
           </div>
         </div>
@@ -1060,7 +1217,9 @@ export default function ProjectDashboard() {
             <AlertCircle className="h-8 w-8 text-muted-foreground" />
           </div>
           <h1 className="text-2xl font-bold mb-2">Project Not Found</h1>
-          <p className="text-muted-foreground mb-6">The requested project could not be found.</p>
+          <p className="text-muted-foreground mb-6">
+            The requested project could not be found.
+          </p>
           <Button onClick={() => navigate(routes.projects())}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Projects
@@ -1079,10 +1238,13 @@ export default function ProjectDashboard() {
             <div className="flex items-center gap-3 min-w-0">
               <h1 className="text-lg font-semibold truncate">{project.name}</h1>
               <span className="text-muted-foreground">/</span>
-              <Popover open={selectOpen} onOpenChange={(open) => {
-                setSelectOpen(open);
-                if (!open) setSearchQuery('');
-              }}>
+              <Popover
+                open={selectOpen}
+                onOpenChange={(open) => {
+                  setSelectOpen(open);
+                  if (!open) setSearchQuery("");
+                }}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -1091,7 +1253,7 @@ export default function ProjectDashboard() {
                     className="max-w-[400px] justify-between h-9"
                     size="sm"
                   >
-                    {selectionType === 'branch' && selectedBranch ? (
+                    {selectionType === "branch" && selectedBranch ? (
                       <span className="truncate flex items-center gap-2">
                         <GitBranch className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{selectedBranch}</span>
@@ -1103,22 +1265,37 @@ export default function ProjectDashboard() {
                           />
                         )}
                         {defaultBranchName === selectedBranch && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Default</Badge>
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            Default
+                          </Badge>
                         )}
                       </span>
-                    ) : selectionType === 'pr' && selectedPR ? (
+                    ) : selectionType === "pr" && selectedPR ? (
                       <span className="truncate flex items-center gap-2">
-                        <span className="truncate">PR #{selectedPR.prNumber} - {selectedPR.sourceBranchName ? `${selectedPR.sourceBranchName} → ${selectedPR.targetBranchName}` : selectedPR.targetBranchName}</span>
-                        {'analysisResult' in selectedPR && selectedPR.analysisResult && (
-                          <AnalysisResultBadge
-                            result={selectedPR.analysisResult as AnalysisResultType}
-                            size="sm"
-                            showLabel={false}
-                          />
-                        )}
+                        <span className="truncate">
+                          PR #{selectedPR.prNumber} -{" "}
+                          {selectedPR.sourceBranchName
+                            ? `${selectedPR.sourceBranchName} → ${selectedPR.targetBranchName}`
+                            : selectedPR.targetBranchName}
+                        </span>
+                        {"analysisResult" in selectedPR &&
+                          selectedPR.analysisResult && (
+                            <AnalysisResultBadge
+                              result={
+                                selectedPR.analysisResult as AnalysisResultType
+                              }
+                              size="sm"
+                              showLabel={false}
+                            />
+                          )}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground">Select branch or PR</span>
+                      <span className="text-muted-foreground">
+                        Select branch or PR
+                      </span>
                     )}
                     <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                   </Button>
@@ -1131,7 +1308,9 @@ export default function ProjectDashboard() {
                       onValueChange={setSearchQuery}
                     />
                     <CommandList className="max-h-[300px]">
-                      <CommandEmpty>No branches or pull requests found.</CommandEmpty>
+                      <CommandEmpty>
+                        No branches or pull requests found.
+                      </CommandEmpty>
 
                       {filteredBranches.length > 0 && (
                         <CommandGroup heading="Branches">
@@ -1145,7 +1324,9 @@ export default function ProjectDashboard() {
                                 className="text-sm"
                               >
                                 <GitBranch className="mr-2 h-4 w-4 shrink-0" />
-                                <span className="truncate flex-1">{branch}</span>
+                                <span className="truncate flex-1">
+                                  {branch}
+                                </span>
                                 {branchStatus && (
                                   <AnalysisResultBadge
                                     result={branchStatus}
@@ -1155,12 +1336,20 @@ export default function ProjectDashboard() {
                                   />
                                 )}
                                 {defaultBranchName === branch && (
-                                  <Badge variant="secondary" className="ml-2 text-[10px]">Default</Badge>
+                                  <Badge
+                                    variant="secondary"
+                                    className="ml-2 text-[10px]"
+                                  >
+                                    Default
+                                  </Badge>
                                 )}
                                 <Check
                                   className={cn(
                                     "ml-2 h-4 w-4 shrink-0",
-                                    selectionType === 'branch' && selectedBranch === branch ? "opacity-100" : "opacity-0"
+                                    selectionType === "branch" &&
+                                      selectedBranch === branch
+                                      ? "opacity-100"
+                                      : "opacity-0",
                                   )}
                                 />
                               </CommandItem>
@@ -1169,11 +1358,12 @@ export default function ProjectDashboard() {
                         </CommandGroup>
                       )}
 
-                      {filteredBranches.length > 0 && filteredPullRequests.length > 0 && (
-                        <div className="px-2 py-1.5">
-                          <Separator />
-                        </div>
-                      )}
+                      {filteredBranches.length > 0 &&
+                        filteredPullRequests.length > 0 && (
+                          <div className="px-2 py-1.5">
+                            <Separator />
+                          </div>
+                        )}
 
                       {filteredPullRequests.length > 0 && (
                         <CommandGroup heading="Pull Requests">
@@ -1182,7 +1372,7 @@ export default function ProjectDashboard() {
                               project?.vcsProvider,
                               project?.projectVcsWorkspace,
                               getRepoSlug(project),
-                              pr.prNumber
+                              pr.prNumber,
                             );
                             return (
                               <CommandItem
@@ -1193,11 +1383,16 @@ export default function ProjectDashboard() {
                               >
                                 <GitBranch className="mr-2 h-4 w-4 shrink-0" />
                                 <span className="truncate flex-1">
-                                  PR #{pr.prNumber} - {pr.sourceBranchName ? `${pr.sourceBranchName} → ${pr.targetBranchName}` : pr.targetBranchName}
+                                  PR #{pr.prNumber} -{" "}
+                                  {pr.sourceBranchName
+                                    ? `${pr.sourceBranchName} → ${pr.targetBranchName}`
+                                    : pr.targetBranchName}
                                 </span>
                                 {pr.analysisResult && (
                                   <AnalysisResultBadge
-                                    result={pr.analysisResult as AnalysisResultType}
+                                    result={
+                                      pr.analysisResult as AnalysisResultType
+                                    }
                                     size="sm"
                                     showLabel={false}
                                     className="ml-2"
@@ -1218,7 +1413,10 @@ export default function ProjectDashboard() {
                                 <Check
                                   className={cn(
                                     "ml-2 h-4 w-4 shrink-0",
-                                    selectionType === 'pr' && selectedPR?.id === pr.id ? "opacity-100" : "opacity-0"
+                                    selectionType === "pr" &&
+                                      selectedPR?.id === pr.id
+                                      ? "opacity-100"
+                                      : "opacity-0",
                                   )}
                                 />
                               </CommandItem>
@@ -1230,9 +1428,10 @@ export default function ProjectDashboard() {
                   </Command>
                 </PopoverContent>
               </Popover>
-              {selectionType === 'pr' && (
+              {selectionType === "pr" && (
                 <span className="text-sm text-muted-foreground">
-                  {currentIssuesTotalCount} issue{currentIssuesTotalCount !== 1 ? 's' : ''}
+                  {currentIssuesTotalCount} issue
+                  {currentIssuesTotalCount !== 1 ? "s" : ""}
                 </span>
               )}
             </div>
@@ -1243,15 +1442,13 @@ export default function ProjectDashboard() {
                 disabled={analysisLoading}
                 size="sm"
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${analysisLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${analysisLoading ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
               {canManageWorkspace() && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                >
+                <Button variant="outline" size="sm" asChild>
                   <Link to={routes.projectSettings(namespace!)}>
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
@@ -1266,65 +1463,106 @@ export default function ProjectDashboard() {
             <div className="flex items-center gap-6">
               <button
                 onClick={() => clearFiltersAndSwitchToPreview(selectionType)}
-                className={`pb-3 text-base font-medium transition-colors relative ${(selectionType === 'branch' ? branchTab : prTab) === 'preview'
-                  ? 'text-orange-500 !font-bold'
-                  : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                className={`pb-3 text-base font-medium transition-colors relative ${
+                  (selectionType === "branch" ? branchTab : prTab) === "preview"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 Preview
-                {(selectionType === 'branch' ? branchTab : prTab) === 'preview' && (
+                {(selectionType === "branch" ? branchTab : prTab) ===
+                  "preview" && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
               <button
-                onClick={() => selectionType === 'branch' ? setBranchTab('issues') : setPrTab('issues')}
-                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${(selectionType === 'branch' ? branchTab : prTab) === 'issues'
-                  ? 'text-orange-500 !font-bold'
-                  : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                onClick={() =>
+                  selectionType === "branch"
+                    ? setBranchTab("issues")
+                    : setPrTab("issues")
+                }
+                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                  (selectionType === "branch" ? branchTab : prTab) === "issues"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 Issues
-                {selectionType === 'branch' && selectedBranch && (
+                {selectionType === "branch" && selectedBranch && (
                   <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                    {branchTab === 'issues' && branchIssuesTotalCount > 0
+                    {branchTab === "issues" && branchIssuesTotalCount > 0
                       ? branchIssuesTotalCount
-                      : (branchStats?.totalIssues || 0)}
+                      : branchStats?.totalIssues || 0}
                   </Badge>
                 )}
-                {selectionType === 'pr' && selectedPR && currentFilteredIssues.length > 0 && (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                    {currentFilteredIssues.length}
-                  </Badge>
-                )}
-                {(selectionType === 'branch' ? branchTab : prTab) === 'issues' && (
+                {selectionType === "pr" &&
+                  selectedPR &&
+                  currentFilteredIssues.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                      {currentFilteredIssues.length}
+                    </Badge>
+                  )}
+                {(selectionType === "branch" ? branchTab : prTab) ===
+                  "issues" && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
               <button
-                onClick={() => selectionType === 'branch' ? setBranchTab('activity') : setPrTab('activity')}
-                className={`pb-3 text-base font-medium transition-colors relative ${(selectionType === 'branch' ? branchTab : prTab) === 'activity'
-                  ? 'text-orange-500 !font-bold'
-                  : 'text-muted-foreground hover:text-foreground'
-                  }`}
+                onClick={() =>
+                  selectionType === "branch"
+                    ? setBranchTab("activity")
+                    : setPrTab("activity")
+                }
+                className={`pb-3 text-base font-medium transition-colors relative ${
+                  (selectionType === "branch" ? branchTab : prTab) ===
+                  "activity"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 Activity
-                {(selectionType === 'branch' ? branchTab : prTab) === 'activity' && (
+                {(selectionType === "branch" ? branchTab : prTab) ===
+                  "activity" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>
+              <button
+                onClick={() =>
+                  selectionType === "branch"
+                    ? setBranchTab("graph")
+                    : setPrTab("graph")
+                }
+                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                  (selectionType === "branch" ? branchTab : prTab) === "graph"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GitCommit className="h-3.5 w-3.5" />
+                Git Graph
+                {(selectionType === "branch" ? branchTab : prTab) ===
+                  "graph" && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
             </div>
-            {selectionType === 'pr' && selectedPR && maxVersion > 1 && (
-              <div className='-mt-4'>
-                <Select value={String(selectedVersion)} onValueChange={handleVersionChange}>
+            {selectionType === "pr" && selectedPR && maxVersion > 1 && (
+              <div className="-mt-4">
+                <Select
+                  value={String(selectedVersion)}
+                  onValueChange={handleVersionChange}
+                >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Version" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: maxVersion }, (_, i) => i + 1).map((v) => (
-                      <SelectItem key={v} value={String(v)}>
-                        Version {v}
-                      </SelectItem>
-                    ))}
+                    {Array.from({ length: maxVersion }, (_, i) => i + 1).map(
+                      (v) => (
+                        <SelectItem key={v} value={String(v)}>
+                          Version {v}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1335,15 +1573,17 @@ export default function ProjectDashboard() {
 
       {/* Main Content */}
       <div className="container mx-auto p-4 lg:p-6">
-        {selectionType === 'branch' && selectedBranch ? (
+        {selectionType === "branch" && selectedBranch ? (
           <div className="space-y-4">
             {/* Branch Tab Content */}
             {statsLoading ? (
               <div className="text-center py-16">
                 <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading branch statistics...</p>
+                <p className="text-muted-foreground">
+                  Loading branch statistics...
+                </p>
               </div>
-            ) : branchTab === 'preview' ? (
+            ) : branchTab === "preview" ? (
               branchStats ? (
                 <DetailedProjectStats
                   stats={branchStats}
@@ -1351,10 +1591,10 @@ export default function ProjectDashboard() {
                   projectNamespace={namespace!}
                   branchName={selectedBranch}
                   onSeverityClick={handleSeverityClick}
-                  onViewAllIssues={() => setBranchTab('issues')}
+                  onViewAllIssues={() => setBranchTab("issues")}
                   onViewResolvedIssues={() => {
-                    setFilters(prev => ({ ...prev, status: 'resolved' }));
-                    setBranchTab('issues');
+                    setFilters((prev) => ({ ...prev, status: "resolved" }));
+                    setBranchTab("issues");
                   }}
                   onFileClick={handleFileClick}
                 />
@@ -1363,11 +1603,12 @@ export default function ProjectDashboard() {
                   <Info className="h-4 w-4" />
                   <AlertTitle>No statistics available</AlertTitle>
                   <AlertDescription>
-                    Statistics for branch "{selectedBranch}" could not be loaded.
+                    Statistics for branch "{selectedBranch}" could not be
+                    loaded.
                   </AlertDescription>
                 </Alert>
               )
-            ) : branchTab === 'issues' ? (
+            ) : branchTab === "issues" ? (
               <div className="flex gap-6">
                 {/* Filter Sidebar - Left */}
                 <div className="w-64 shrink-0 hidden lg:block self-start">
@@ -1384,15 +1625,22 @@ export default function ProjectDashboard() {
                     <CardHeader className="pb-4">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
-                          <CardTitle className="text-lg">Branch Issues</CardTitle>
+                          <CardTitle className="text-lg">
+                            Branch Issues
+                          </CardTitle>
                           <CardDescription className="mt-1">
-                            {currentIssuesTotalCount} issue{currentIssuesTotalCount !== 1 ? 's' : ''} found
+                            {currentIssuesTotalCount} issue
+                            {currentIssuesTotalCount !== 1 ? "s" : ""} found
                           </CardDescription>
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(routes.branchIssues(namespace!, selectedBranch))}
+                          onClick={() =>
+                            navigate(
+                              routes.branchIssues(namespace!, selectedBranch),
+                            )
+                          }
                         >
                           View Full Page
                         </Button>
@@ -1408,7 +1656,8 @@ export default function ProjectDashboard() {
                             size="sm"
                             onClick={handleSelectAll}
                           >
-                            {selectedIssues.size === currentFilteredIssues.length ? (
+                            {selectedIssues.size ===
+                            currentFilteredIssues.length ? (
                               <>
                                 <Square className="mr-2 h-4 w-4" />
                                 Deselect All
@@ -1421,7 +1670,8 @@ export default function ProjectDashboard() {
                             )}
                           </Button>
                           <span className="text-sm text-muted-foreground">
-                            {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''} selected
+                            {selectedIssues.size} issue
+                            {selectedIssues.size !== 1 ? "s" : ""} selected
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1429,7 +1679,7 @@ export default function ProjectDashboard() {
                             variant="outline"
                             size="sm"
                             disabled={bulkUpdating}
-                            onClick={() => handleBulkStatusUpdate('resolved')}
+                            onClick={() => handleBulkStatusUpdate("resolved")}
                           >
                             Mark as Resolved
                           </Button>
@@ -1437,7 +1687,7 @@ export default function ProjectDashboard() {
                             variant="outline"
                             size="sm"
                             disabled={bulkUpdating}
-                            onClick={() => handleBulkStatusUpdate('open')}
+                            onClick={() => handleBulkStatusUpdate("open")}
                           >
                             Mark as Open
                           </Button>
@@ -1445,7 +1695,9 @@ export default function ProjectDashboard() {
                       </div>
                     )}
 
-                    <CardContent className={selectedIssues.size > 0 ? "pt-4" : ""}>
+                    <CardContent
+                      className={selectedIssues.size > 0 ? "pt-4" : ""}
+                    >
                       {branchLoading ? (
                         <div className="text-center py-12 text-muted-foreground">
                           <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
@@ -1455,7 +1707,9 @@ export default function ProjectDashboard() {
                         <div className="text-center py-12 text-muted-foreground">
                           <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />
                           <p className="font-medium">No issues found</p>
-                          <p className="text-sm mt-1">No issues match the current filters</p>
+                          <p className="text-sm mt-1">
+                            No issues match the current filters
+                          </p>
                         </div>
                       ) : (
                         <>
@@ -1482,7 +1736,9 @@ export default function ProjectDashboard() {
                                 onClick={loadMoreBranchIssues}
                                 disabled={branchLoading}
                               >
-                                {branchLoading ? 'Loading...' : `Load More (${branchIssues.length} of ${branchIssuesTotalCount})`}
+                                {branchLoading
+                                  ? "Loading..."
+                                  : `Load More (${branchIssues.length} of ${branchIssuesTotalCount})`}
                               </Button>
                             </div>
                           )}
@@ -1492,45 +1748,81 @@ export default function ProjectDashboard() {
                   </Card>
                 </div>
               </div>
-            ) : branchTab === 'activity' ? (
+            ) : branchTab === "activity" ? (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Activity</CardTitle>
-                  <CardDescription>Background jobs and analysis history</CardDescription>
+                  <CardDescription>
+                    Background jobs and analysis history
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} activeTab={branchTab} />
+                  <JobsList
+                    projectNamespace={namespace || ""}
+                    refreshKey={jobsRefreshKey}
+                    activeTab={branchTab}
+                  />
+                </CardContent>
+              </Card>
+            ) : branchTab === "graph" ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <GitCommit className="h-5 w-5" />
+                    Git Commit Graph
+                  </CardTitle>
+                  <CardDescription>
+                    Visual representation of the commit DAG with analysis status
+                    per commit
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {project?.id ? (
+                    <GitGraphViewer
+                      projectId={project.id}
+                      workspaceSlug={currentWorkspace?.slug}
+                      namespace={namespace}
+                    />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>Project not loaded yet.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : null}
           </div>
-        ) : selectionType === 'pr' && selectedPR ? (
+        ) : selectionType === "pr" && selectedPR ? (
           <div className="space-y-4">
             {/* PR Tab Content */}
-            {prTab === 'preview' && (
+            {prTab === "preview" && (
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
                         PR #{selectedPR.prNumber}
-                        {'analysisResult' in selectedPR && selectedPR.analysisResult && (
-                          <AnalysisResultBadge
-                            result={selectedPR.analysisResult as AnalysisResultType}
-                            size="md"
-                          />
-                        )}
+                        {"analysisResult" in selectedPR &&
+                          selectedPR.analysisResult && (
+                            <AnalysisResultBadge
+                              result={
+                                selectedPR.analysisResult as AnalysisResultType
+                              }
+                              size="md"
+                            />
+                          )}
                         {(() => {
                           // For the latest version or single version, link to PR
                           // For older versions, link to the specific commit
-                          const isLatestOrOnlyVersion = selectedVersion === maxVersion || maxVersion <= 1;
+                          const isLatestOrOnlyVersion =
+                            selectedVersion === maxVersion || maxVersion <= 1;
 
                           if (isLatestOrOnlyVersion) {
                             const prUrl = buildPrUrl(
                               project?.vcsProvider,
                               project?.projectVcsWorkspace,
                               getRepoSlug(project),
-                              selectedPR.prNumber
+                              selectedPR.prNumber,
                             );
                             return prUrl ? (
                               <a
@@ -1538,26 +1830,28 @@ export default function ProjectDashboard() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-muted-foreground hover:text-primary transition-colors"
-                                title={`Open PR #${selectedPR.prNumber} in ${project?.vcsProvider?.replace('_', ' ')}`}
+                                title={`Open PR #${selectedPR.prNumber} in ${project?.vcsProvider?.replace("_", " ")}`}
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </a>
                             ) : null;
                           } else {
                             // Older version - link to specific commit
-                            const commitUrl = versionCommitHash ? buildCommitUrl(
-                              project?.vcsProvider,
-                              project?.projectVcsWorkspace,
-                              getRepoSlug(project),
-                              versionCommitHash
-                            ) : null;
+                            const commitUrl = versionCommitHash
+                              ? buildCommitUrl(
+                                  project?.vcsProvider,
+                                  project?.projectVcsWorkspace,
+                                  getRepoSlug(project),
+                                  versionCommitHash,
+                                )
+                              : null;
                             return commitUrl ? (
                               <a
                                 href={commitUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-muted-foreground hover:text-primary transition-colors"
-                                title={`View commit ${versionCommitHash?.slice(0, 7)} (version ${selectedVersion}) in ${project?.vcsProvider?.replace('_', ' ')}`}
+                                title={`View commit ${versionCommitHash?.slice(0, 7)} (version ${selectedVersion}) in ${project?.vcsProvider?.replace("_", " ")}`}
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </a>
@@ -1568,16 +1862,21 @@ export default function ProjectDashboard() {
                       <CardDescription className="mt-1 flex items-center">
                         <span className="inline-flex items-center gap-2">
                           <GitBranch className="h-3 w-3" />
-                          {selectedPR.sourceBranchName || 'unknown'} → {selectedPR.targetBranchName}
+                          {selectedPR.sourceBranchName || "unknown"} →{" "}
+                          {selectedPR.targetBranchName}
                         </span>
                         {/* Show the version's commit hash, not the PR's latest commit hash */}
                         {(versionCommitHash || selectedPR.commitHash) && (
                           <span className="inline-flex items-center gap-1 ml-2">
                             <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                              {(versionCommitHash || selectedPR.commitHash)?.slice(0, 7)}
+                              {(
+                                versionCommitHash || selectedPR.commitHash
+                              )?.slice(0, 7)}
                             </code>
                             {selectedVersion < maxVersion && maxVersion > 1 && (
-                              <span className="text-xs text-muted-foreground">(v{selectedVersion})</span>
+                              <span className="text-xs text-muted-foreground">
+                                (v{selectedVersion})
+                              </span>
                             )}
                           </span>
                         )}
@@ -1587,7 +1886,14 @@ export default function ProjectDashboard() {
                     <div className="text-right text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <AlertCircle className="h-4 w-4" />
-                        <span>{analysisIssues.filter(i => i.status !== 'resolved').length} open issues</span>
+                        <span>
+                          {
+                            analysisIssues.filter(
+                              (i) => i.status !== "resolved",
+                            ).length
+                          }{" "}
+                          open issues
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1605,13 +1911,21 @@ export default function ProjectDashboard() {
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         <Card
                           className="border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/30"
-                          onClick={() => setPrTab('issues')}
+                          onClick={() => setPrTab("issues")}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Open Issues</p>
-                                <p className="text-2xl font-bold mt-1">{analysisIssues.filter(i => i.status !== 'resolved').length}</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                  Open Issues
+                                </p>
+                                <p className="text-2xl font-bold mt-1">
+                                  {
+                                    analysisIssues.filter(
+                                      (i) => i.status !== "resolved",
+                                    ).length
+                                  }
+                                </p>
                               </div>
                               <div className="p-2 rounded-lg bg-primary/10">
                                 <Activity className="h-5 w-5 text-primary" />
@@ -1622,16 +1936,28 @@ export default function ProjectDashboard() {
                         <Card
                           className="border-l-4 border-l-destructive/80 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-destructive/30"
                           onClick={() => {
-                            setFilters(prev => ({ ...prev, severity: 'HIGH', status: 'open' }));
-                            setPrTab('issues');
+                            setFilters((prev) => ({
+                              ...prev,
+                              severity: "HIGH",
+                              status: "open",
+                            }));
+                            setPrTab("issues");
                           }}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">High</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                  High
+                                </p>
                                 <p className="text-2xl font-bold mt-1">
-                                  {analysisIssues.filter(i => i.severity?.toUpperCase() === 'HIGH' && i.status !== 'resolved').length}
+                                  {
+                                    analysisIssues.filter(
+                                      (i) =>
+                                        i.severity?.toUpperCase() === "HIGH" &&
+                                        i.status !== "resolved",
+                                    ).length
+                                  }
                                 </p>
                               </div>
                               <div className="p-2 rounded-lg bg-destructive/10">
@@ -1643,16 +1969,28 @@ export default function ProjectDashboard() {
                         <Card
                           className="border-l-4 border-l-warning cursor-pointer hover:shadow-md transition-all duration-200 hover:border-warning/30"
                           onClick={() => {
-                            setFilters(prev => ({ ...prev, severity: 'MEDIUM', status: 'open' }));
-                            setPrTab('issues');
+                            setFilters((prev) => ({
+                              ...prev,
+                              severity: "MEDIUM",
+                              status: "open",
+                            }));
+                            setPrTab("issues");
                           }}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Medium</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                  Medium
+                                </p>
                                 <p className="text-2xl font-bold mt-1">
-                                  {analysisIssues.filter(i => i.severity?.toUpperCase() === 'MEDIUM' && i.status !== 'resolved').length}
+                                  {
+                                    analysisIssues.filter(
+                                      (i) =>
+                                        i.severity?.toUpperCase() ===
+                                          "MEDIUM" && i.status !== "resolved",
+                                    ).length
+                                  }
                                 </p>
                               </div>
                               <div className="p-2 rounded-lg bg-warning/10">
@@ -1664,16 +2002,28 @@ export default function ProjectDashboard() {
                         <Card
                           className="border-l-4 border-l-muted-foreground/30 cursor-pointer hover:shadow-md transition-all duration-200"
                           onClick={() => {
-                            setFilters(prev => ({ ...prev, severity: 'LOW', status: 'open' }));
-                            setPrTab('issues');
+                            setFilters((prev) => ({
+                              ...prev,
+                              severity: "LOW",
+                              status: "open",
+                            }));
+                            setPrTab("issues");
                           }}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Low</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                  Low
+                                </p>
                                 <p className="text-2xl font-bold mt-1">
-                                  {analysisIssues.filter(i => i.severity?.toUpperCase() === 'LOW' && i.status !== 'resolved').length}
+                                  {
+                                    analysisIssues.filter(
+                                      (i) =>
+                                        i.severity?.toUpperCase() === "LOW" &&
+                                        i.status !== "resolved",
+                                    ).length
+                                  }
                                 </p>
                               </div>
                               <div className="p-2 rounded-lg bg-muted">
@@ -1685,16 +2035,26 @@ export default function ProjectDashboard() {
                         <Card
                           className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-green-400/30"
                           onClick={() => {
-                            setFilters(prev => ({ ...prev, status: 'resolved', severity: 'ALL' }));
-                            setPrTab('issues');
+                            setFilters((prev) => ({
+                              ...prev,
+                              status: "resolved",
+                              severity: "ALL",
+                            }));
+                            setPrTab("issues");
                           }}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resolved</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                  Resolved
+                                </p>
                                 <p className="text-2xl font-bold mt-1 text-green-600">
-                                  {analysisIssues.filter(i => i.status === 'resolved').length}
+                                  {
+                                    analysisIssues.filter(
+                                      (i) => i.status === "resolved",
+                                    ).length
+                                  }
                                 </p>
                               </div>
                               <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
@@ -1723,53 +2083,91 @@ export default function ProjectDashboard() {
                       {/* Files affected */}
                       {currentFilteredIssues.length > 0 && (
                         <div>
-                          <h4 className="font-medium mb-3">Files with Issues</h4>
+                          <h4 className="font-medium mb-3">
+                            Files with Issues
+                          </h4>
                           <div className="space-y-2">
-                            {Array.from(new Set(currentFilteredIssues.map(i => i.file))).slice(0, 5).map((file, i) => {
-                              const fileIssues = currentFilteredIssues.filter(issue => issue.file === file);
-                              const highCount = fileIssues.filter(i => i.severity?.toUpperCase() === 'HIGH').length;
-                              const mediumCount = fileIssues.filter(i => i.severity?.toUpperCase() === 'MEDIUM').length;
-                              const lowCount = fileIssues.filter(i => i.severity?.toUpperCase() === 'LOW').length;
-                              return (
-                                <div
-                                  key={i}
-                                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                                  onClick={() => {
-                                    setFilters(prev => ({ ...prev, filePath: file }));
-                                    setPrTab('issues');
-                                  }}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span className="text-sm truncate">{file}</span>
+                            {Array.from(
+                              new Set(currentFilteredIssues.map((i) => i.file)),
+                            )
+                              .slice(0, 5)
+                              .map((file, i) => {
+                                const fileIssues = currentFilteredIssues.filter(
+                                  (issue) => issue.file === file,
+                                );
+                                const highCount = fileIssues.filter(
+                                  (i) => i.severity?.toUpperCase() === "HIGH",
+                                ).length;
+                                const mediumCount = fileIssues.filter(
+                                  (i) => i.severity?.toUpperCase() === "MEDIUM",
+                                ).length;
+                                const lowCount = fileIssues.filter(
+                                  (i) => i.severity?.toUpperCase() === "LOW",
+                                ).length;
+                                return (
+                                  <div
+                                    key={i}
+                                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                                    onClick={() => {
+                                      setFilters((prev) => ({
+                                        ...prev,
+                                        filePath: file,
+                                      }));
+                                      setPrTab("issues");
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                      <span className="text-sm truncate">
+                                        {file}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {highCount > 0 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="bg-orange-500/10 text-orange-600 border-orange-500/20"
+                                        >
+                                          {highCount}
+                                        </Badge>
+                                      )}
+                                      {mediumCount > 0 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                                        >
+                                          {mediumCount}
+                                        </Badge>
+                                      )}
+                                      {lowCount > 0 && (
+                                        <Badge
+                                          variant="outline"
+                                          className="bg-green-500/10 text-green-600 border-green-500/20"
+                                        >
+                                          {lowCount}
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    {highCount > 0 && (
-                                      <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
-                                        {highCount}
-                                      </Badge>
-                                    )}
-                                    {mediumCount > 0 && (
-                                      <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-                                        {mediumCount}
-                                      </Badge>
-                                    )}
-                                    {lowCount > 0 && (
-                                      <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
-                                        {lowCount}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            {Array.from(new Set(currentFilteredIssues.map(i => i.file))).length > 5 && (
+                                );
+                              })}
+                            {Array.from(
+                              new Set(currentFilteredIssues.map((i) => i.file)),
+                            ).length > 5 && (
                               <Button
                                 variant="ghost"
                                 className="w-full text-muted-foreground"
-                                onClick={() => setPrTab('issues')}
+                                onClick={() => setPrTab("issues")}
                               >
-                                View all {Array.from(new Set(currentFilteredIssues.map(i => i.file))).length} files →
+                                View all{" "}
+                                {
+                                  Array.from(
+                                    new Set(
+                                      currentFilteredIssues.map((i) => i.file),
+                                    ),
+                                  ).length
+                                }{" "}
+                                files →
                               </Button>
                             )}
                           </div>
@@ -1780,14 +2178,18 @@ export default function ProjectDashboard() {
                         <div className="text-center py-8">
                           <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500/50" />
                           <p className="font-medium">All clear!</p>
-                          <p className="text-sm text-muted-foreground mt-1">No issues found in this PR</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            No issues found in this PR
+                          </p>
                         </div>
                       )}
 
                       {selectedPR.description && (
                         <div>
                           <h4 className="font-medium mb-2">Description</h4>
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedPR.description}</p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {selectedPR.description}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1796,7 +2198,7 @@ export default function ProjectDashboard() {
               </Card>
             )}
 
-            {prTab === 'issues' && (
+            {prTab === "issues" && (
               <div className="flex gap-6">
                 {/* Filter Sidebar - Left */}
                 <div className="w-64 shrink-0 hidden lg:block self-start">
@@ -1813,9 +2215,12 @@ export default function ProjectDashboard() {
                     <CardHeader className="pb-4">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
-                          <CardTitle className="text-lg">Analysis Issues</CardTitle>
+                          <CardTitle className="text-lg">
+                            Analysis Issues
+                          </CardTitle>
                           <CardDescription className="mt-1">
-                            {currentIssuesTotalCount} issue{currentIssuesTotalCount !== 1 ? 's' : ''} found
+                            {currentIssuesTotalCount} issue
+                            {currentIssuesTotalCount !== 1 ? "s" : ""} found
                           </CardDescription>
                         </div>
                       </div>
@@ -1830,7 +2235,8 @@ export default function ProjectDashboard() {
                             size="sm"
                             onClick={handleSelectAll}
                           >
-                            {selectedIssues.size === currentFilteredIssues.length ? (
+                            {selectedIssues.size ===
+                            currentFilteredIssues.length ? (
                               <>
                                 <Square className="mr-2 h-4 w-4" />
                                 Deselect All
@@ -1843,7 +2249,8 @@ export default function ProjectDashboard() {
                             )}
                           </Button>
                           <span className="text-sm text-muted-foreground">
-                            {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''} selected
+                            {selectedIssues.size} issue
+                            {selectedIssues.size !== 1 ? "s" : ""} selected
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1851,7 +2258,7 @@ export default function ProjectDashboard() {
                             variant="outline"
                             size="sm"
                             disabled={bulkUpdating}
-                            onClick={() => handleBulkStatusUpdate('resolved')}
+                            onClick={() => handleBulkStatusUpdate("resolved")}
                           >
                             Mark as Resolved
                           </Button>
@@ -1859,7 +2266,7 @@ export default function ProjectDashboard() {
                             variant="outline"
                             size="sm"
                             disabled={bulkUpdating}
-                            onClick={() => handleBulkStatusUpdate('open')}
+                            onClick={() => handleBulkStatusUpdate("open")}
                           >
                             Mark as Open
                           </Button>
@@ -1867,7 +2274,9 @@ export default function ProjectDashboard() {
                       </div>
                     )}
 
-                    <CardContent className={selectedIssues.size > 0 ? "pt-4" : ""}>
+                    <CardContent
+                      className={selectedIssues.size > 0 ? "pt-4" : ""}
+                    >
                       {analysisLoading ? (
                         <div className="text-center py-12 text-muted-foreground">
                           <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
@@ -1877,7 +2286,9 @@ export default function ProjectDashboard() {
                         <div className="text-center py-12 text-muted-foreground">
                           <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />
                           <p className="font-medium">No issues found</p>
-                          <p className="text-sm mt-1">No analysis issues match the current filters</p>
+                          <p className="text-sm mt-1">
+                            No analysis issues match the current filters
+                          </p>
                         </div>
                       ) : (
                         <IssuesByFileDisplay
@@ -1903,14 +2314,48 @@ export default function ProjectDashboard() {
               </div>
             )}
 
-            {prTab === 'activity' && (
+            {prTab === "activity" && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Activity</CardTitle>
-                  <CardDescription>Background jobs and analysis history</CardDescription>
+                  <CardDescription>
+                    Background jobs and analysis history
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} activeTab={prTab} />
+                  <JobsList
+                    projectNamespace={namespace || ""}
+                    refreshKey={jobsRefreshKey}
+                    activeTab={prTab}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {prTab === "graph" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <GitCommit className="h-5 w-5" />
+                    Git Commit Graph
+                  </CardTitle>
+                  <CardDescription>
+                    Visual representation of the commit DAG with analysis status
+                    per commit
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {project?.id ? (
+                    <GitGraphViewer
+                      projectId={project.id}
+                      workspaceSlug={currentWorkspace?.slug}
+                      namespace={namespace}
+                    />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>Project not loaded yet.</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -1918,16 +2363,17 @@ export default function ProjectDashboard() {
         ) : (
           /* No branch or PR selected - show content based on active tab */
           <div className="space-y-4">
-            {(selectionType === 'branch' ? branchTab : prTab) === 'preview' && (
+            {(selectionType === "branch" ? branchTab : prTab) === "preview" && (
               <Alert className="mx-auto">
                 <Info className="h-4 w-4" />
                 <AlertTitle>No selection</AlertTitle>
                 <AlertDescription>
-                  Please select a branch or pull request to view analysis results.
+                  Please select a branch or pull request to view analysis
+                  results.
                 </AlertDescription>
               </Alert>
             )}
-            {(selectionType === 'branch' ? branchTab : prTab) === 'issues' && (
+            {(selectionType === "branch" ? branchTab : prTab) === "issues" && (
               <Alert className="mx-auto">
                 <Info className="h-4 w-4" />
                 <AlertTitle>No selection</AlertTitle>
@@ -1936,17 +2382,55 @@ export default function ProjectDashboard() {
                 </AlertDescription>
               </Alert>
             )}
-            {(selectionType === 'branch' ? branchTab : prTab) === 'activity' && (
+            {(selectionType === "branch" ? branchTab : prTab) ===
+              "activity" && (
               <Card className="mx-auto">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Activity className="h-5 w-5" />
                     Activity
                   </CardTitle>
-                  <CardDescription>Background jobs and analysis history</CardDescription>
+                  <CardDescription>
+                    Background jobs and analysis history
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <JobsList projectNamespace={namespace || ''} refreshKey={jobsRefreshKey} activeTab={selectionType === 'branch' ? branchTab : prTab} />
+                  <JobsList
+                    projectNamespace={namespace || ""}
+                    refreshKey={jobsRefreshKey}
+                    activeTab={selectionType === "branch" ? branchTab : prTab}
+                  />
+                </CardContent>
+              </Card>
+            )}
+            {(selectionType === "branch" ? branchTab : prTab) === "graph" && (
+              <Card className="mx-auto">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <GitCommit className="h-5 w-5" />
+                    Git Commit Graph
+                  </CardTitle>
+                  <CardDescription>
+                    Visual representation of the commit DAG with analysis status
+                    per commit
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {project?.id ? (
+                    <GitGraphViewer
+                      projectId={project.id}
+                      workspaceSlug={currentWorkspace?.slug}
+                      namespace={namespace}
+                    />
+                  ) : (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertTitle>No project</AlertTitle>
+                      <AlertDescription>
+                        Please select a project to view the git commit graph.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </CardContent>
               </Card>
             )}
