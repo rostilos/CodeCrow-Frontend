@@ -141,14 +141,29 @@ function computeLayout(
   // ── Step 1: Assign branches to commits via first-parent walks ──
   const branchOf = new Map<string, string>();
 
-  // Count merge target frequency to prioritize base branches
+  // Count merge target frequency to prioritize base branches.
+  // Sources: CodeAnalysis targetBranch + parsed merge-commit messages.
   const mergeTargetFreq = new Map<string, number>();
   for (const c of commits) {
-    if (c.parents.length > 1 && c.targetBranch) {
-      mergeTargetFreq.set(
-        c.targetBranch,
-        (mergeTargetFreq.get(c.targetBranch) || 0) + 1,
-      );
+    if (c.parents.length > 1) {
+      if (c.targetBranch) {
+        mergeTargetFreq.set(
+          c.targetBranch,
+          (mergeTargetFreq.get(c.targetBranch) || 0) + 1,
+        );
+      }
+      // Also parse target from merge message for unanalyzed commits
+      if (c.message) {
+        let mt = c.message.match(/^Merge branch '[^']+' into (\S+)/i);
+        if (!mt)
+          mt = c.message.match(
+            /^Merge remote-tracking branch '[^']+' into (\S+)/i,
+          );
+        if (mt) {
+          const target = mt[1];
+          mergeTargetFreq.set(target, (mergeTargetFreq.get(target) || 0) + 1);
+        }
+      }
     }
   }
 
@@ -184,11 +199,66 @@ function computeLayout(
     }
   }
 
-  // Try to derive branch from merge commit messages
+  // ── Infer branch names from merge commit messages ──
+  // Covers: Bitbucket PR merges, local branch merges, remote-tracking merges
+  const inferBranchFromMessage = (
+    msg: string,
+  ): { source: string; target?: string } | null => {
+    // "Merged in feature/foo (pull request #123)" — Bitbucket PR
+    let m = msg.match(/^Merged in (\S+)\s*\(pull request/i);
+    if (m) return { source: m[1] };
+
+    // "Merge pull request #123 from org/feature/foo" — GitHub PR
+    m = msg.match(/^Merge pull request .+ from (\S+)/i);
+    if (m) return { source: m[1] };
+
+    // "Merge branch 'feature/foo' into target-branch"
+    m = msg.match(/^Merge branch '([^']+)' into (\S+)/i);
+    if (m) return { source: m[1], target: m[2] };
+
+    // "Merge branch 'feature/foo'" (no explicit target)
+    m = msg.match(/^Merge branch '([^']+)'/i);
+    if (m) return { source: m[1] };
+
+    // "Merge remote-tracking branch 'origin/branch' into target"
+    m = msg.match(
+      /^Merge remote-tracking branch '(?:origin\/)?([^']+)'(?: into (\S+))?/i,
+    );
+    if (m) return { source: m[1], target: m[2] };
+
+    return null;
+  };
+
+  // Pass 1: parse all merge commits and walk their second-parent chains
   for (const c of commits) {
-    if (!branchOf.has(c.hash) && c.message) {
-      const m = c.message.match(/Merge (?:pull request|branch) .* from (\S+)/i);
-      if (m) branchOf.set(c.hash, m[1]);
+    if (c.parents.length <= 1 || !c.message) continue;
+    const parsed = inferBranchFromMessage(c.message);
+    if (!parsed) continue;
+
+    // Assign the merge commit itself to the target branch if known
+    if (parsed.target && !branchOf.has(c.hash)) {
+      branchOf.set(c.hash, parsed.target);
+    }
+
+    // Walk the second-parent chain (the merged-in branch)
+    let hash: string | null = c.parents[1];
+    while (hash && commitMap.has(hash) && !branchOf.has(hash)) {
+      branchOf.set(hash, parsed.source);
+      const commit = commitMap.get(hash)!;
+      hash = commit.parents.length > 0 ? commit.parents[0] : null;
+    }
+  }
+
+  // Pass 2: any merge commit still unassigned — tag it from its message
+  for (const c of commits) {
+    if (branchOf.has(c.hash)) continue;
+    if (c.message) {
+      const parsed = inferBranchFromMessage(c.message);
+      if (parsed?.target) {
+        branchOf.set(c.hash, parsed.target);
+      } else if (parsed?.source) {
+        branchOf.set(c.hash, parsed.source);
+      }
     }
   }
 
