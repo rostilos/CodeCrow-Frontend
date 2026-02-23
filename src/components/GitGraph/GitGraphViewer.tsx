@@ -54,6 +54,7 @@ interface CommitData {
   analysisResult?: string | null;
   analysisType?: string | null;
   prNumber?: number | null;
+  prId?: number | null;
   sourceBranch?: string | null;
   targetBranch?: string | null;
   totalIssues?: number;
@@ -1019,7 +1020,7 @@ export const GitGraphViewer = ({
               // Build analysis URL if workspace context is available
               const analysisUrl =
                 workspaceSlug && namespace
-                  ? `/dashboard/${workspaceSlug}/projects/${namespace}${commit.prNumber ? `?pr=${commit.prNumber}` : ""}`
+                  ? `/dashboard/${workspaceSlug}/projects/${namespace}${commit.prId ? `?prId=${commit.prId}` : ""}`
                   : null;
 
               return (
