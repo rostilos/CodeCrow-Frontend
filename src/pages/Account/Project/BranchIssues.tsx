@@ -344,14 +344,22 @@ export default function BranchIssues() {
     return matchesDateFrom && matchesDateTo;
   });
 
-  const handleGoBack = () => {
-    // Navigate back to project dashboard with the branch selected and issues tab open
+  const handleGoBack = (e: React.MouseEvent) => {
+    // Allow ctrl+click and middle-click to open in new tab
+    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+    e.preventDefault();
+    navigate(-1);
+  };
+
+  // Fallback URL for ctrl+click / new tab — includes branch + issues tab
+  const backUrl = (() => {
     const params = new URLSearchParams();
     if (branchName) {
       params.set("branch", decodeURIComponent(branchName));
     }
-    navigate(`${routes.projectDetail(namespace!)}?${params.toString()}`);
-  };
+    params.set("subTab", "issues");
+    return `${routes.projectDetail(namespace!)}?${params.toString()}`;
+  })();
 
   if (loading) {
     return (
@@ -367,9 +375,11 @@ export default function BranchIssues() {
 
   return (
     <div className="container p-6">
-      <Button variant="ghost" onClick={handleGoBack} size="sm" className="mb-6">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Project Dashboard
+      <Button variant="ghost" size="sm" className="mb-6" asChild>
+        <Link to={backUrl} onClick={handleGoBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Project Dashboard
+        </Link>
       </Button>
 
       <div className="mb-6 flex items-center justify-between">

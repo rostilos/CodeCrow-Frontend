@@ -283,6 +283,11 @@ export interface SnippetLine {
   content: string;
 }
 
+export interface SourceAvailabilityResponse {
+  branches: string[];
+  prNumbers: number[];
+}
+
 class AnalysisService extends ApiService {
   async updateIssueStatus(
     workspaceSlug: string,
@@ -368,13 +373,13 @@ class AnalysisService extends ApiService {
     namespace: string,
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<PullRequestSummary[]> {
+  ): Promise<PullRequestsResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
     });
 
-    return this.request<PullRequestSummary[]>(
+    return this.request<PullRequestsResponse>(
       `/${workspaceSlug}/project/${namespace}/pull-requests?${params.toString()}`,
       {},
       true,
@@ -675,6 +680,155 @@ class AnalysisService extends ApiService {
     });
     return this.request<FileSnippetResponse>(
       `/${workspaceSlug}/project/${namespace}/analysis/${analysisId}/file-snippet?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  // ── PR-level Source Code Viewer API ────────────────────────────────────
+
+  async getPrFiles(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+  ): Promise<AnalysisFilesResponse> {
+    return this.request<AnalysisFilesResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/pr/${prNumber}/files`,
+      {},
+      true,
+    );
+  }
+
+  async getPrFileView(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+    filePath: string,
+  ): Promise<FileViewResponse> {
+    const params = new URLSearchParams({ path: filePath });
+    return this.request<FileViewResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/pr/${prNumber}/file-view?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  async getPrFileSnippet(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+    filePath: string,
+    line: number,
+    context: number = 10,
+  ): Promise<FileSnippetResponse> {
+    const params = new URLSearchParams({
+      path: filePath,
+      line: String(line),
+      context: String(context),
+    });
+    return this.request<FileSnippetResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/pr/${prNumber}/file-snippet?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  async getPrFileSnippetByRange(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+    filePath: string,
+    startLine: number,
+    endLine: number,
+  ): Promise<FileSnippetResponse> {
+    const params = new URLSearchParams({
+      path: filePath,
+      startLine: String(startLine),
+      endLine: String(endLine),
+    });
+    return this.request<FileSnippetResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/pr/${prNumber}/file-snippet?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  // ── Branch-level Source Code Viewer API ─────────────────────────────
+
+  async getBranchFiles(
+    workspaceSlug: string,
+    namespace: string,
+    branchName: string,
+  ): Promise<AnalysisFilesResponse> {
+    return this.request<AnalysisFilesResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/branch/${encodeURIComponent(branchName)}/files`,
+      {},
+      true,
+    );
+  }
+
+  async getBranchFileView(
+    workspaceSlug: string,
+    namespace: string,
+    branchName: string,
+    filePath: string,
+  ): Promise<FileViewResponse> {
+    const params = new URLSearchParams({ path: filePath });
+    return this.request<FileViewResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/branch/${encodeURIComponent(branchName)}/file-view?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  async getBranchFileSnippet(
+    workspaceSlug: string,
+    namespace: string,
+    branchName: string,
+    filePath: string,
+    line: number,
+    context: number = 10,
+  ): Promise<FileSnippetResponse> {
+    const params = new URLSearchParams({
+      path: filePath,
+      line: String(line),
+      context: String(context),
+    });
+    return this.request<FileSnippetResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/branch/${encodeURIComponent(branchName)}/file-snippet?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  async getBranchFileSnippetByRange(
+    workspaceSlug: string,
+    namespace: string,
+    branchName: string,
+    filePath: string,
+    startLine: number,
+    endLine: number,
+  ): Promise<FileSnippetResponse> {
+    const params = new URLSearchParams({
+      path: filePath,
+      startLine: String(startLine),
+      endLine: String(endLine),
+    });
+    return this.request<FileSnippetResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/branch/${encodeURIComponent(branchName)}/file-snippet?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  // ── Source Availability API ────────────────────────────────────────
+
+  async getSourceAvailability(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<SourceAvailabilityResponse> {
+    return this.request<SourceAvailabilityResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/source-availability`,
       {},
       true,
     );

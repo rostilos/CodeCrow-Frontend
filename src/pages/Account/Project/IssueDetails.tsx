@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   useParams,
   useNavigate,
@@ -98,6 +98,32 @@ export default function IssueDetails() {
   const [snippetExpanding, setSnippetExpanding] = useState<
     "up" | "down" | null
   >(null);
+
+  // Track current snippet coverage via ref (avoids stale closures in effects)
+  const snippetRangeRef = useRef<{
+    file: string;
+    start: number;
+    end: number;
+  } | null>(null);
+  useEffect(() => {
+    snippetRangeRef.current = snippet
+      ? {
+          file: snippet.filePath,
+          start: snippet.startLine,
+          end: snippet.endLine,
+        }
+      : null;
+  }, [snippet]);
+
+  // Stable key: only changes when the set of same-file issue lines changes
+  const sameFileIssueKey = useMemo(() => {
+    if (!issue?.file) return "";
+    return scopeIssues
+      .filter((si) => si.file === issue.file && si.line > 0)
+      .map((si) => si.line)
+      .sort((a, b) => a - b)
+      .join(",");
+  }, [issue?.file, scopeIssues]);
 
   // Get scope parameters from URL
   const scopeBranch = searchParams.get("branch");
@@ -239,49 +265,137 @@ export default function IssueDetails() {
     }
   }, [issue, scopeBranch, scopePrNumber, currentWorkspace, namespace]);
 
-  // Load code snippet when issue is available and has an analysisId + file + line
+  // Load code snippet when issue is available and has a file + line.
+  // Uses a range that covers ALL issues in the same file (from scopeIssues)
+  // so that every inline annotation is visible without additional fetches.
+  // When switching between issues in the SAME file, the existing snippet
+  // already covers them — no re-fetch, no loading flash.
   useEffect(() => {
     if (!issue || !currentWorkspace || !namespace) return;
-    if (!issue.analysisId || !issue.file || !issue.line || issue.line <= 0) {
+    if (!issue.file || !issue.line || issue.line <= 0) {
       setSnippet(null);
       return;
     }
+    // Need at least one source: analysisId, branch, or prNumber
+    if (!issue.analysisId && !issue.branch && !issue.prNumber) {
+      setSnippet(null);
+      return;
+    }
+
+    const MARGIN = 10;
+
+    // Compute the range that covers ALL same-file issues (not just the current one)
+    const sameFileLines = sameFileIssueKey
+      ? sameFileIssueKey.split(",").map(Number)
+      : [issue.line];
+    let rangeStart = Math.max(
+      1,
+      Math.min(...sameFileLines, issue.line) - MARGIN,
+    );
+    let rangeEnd = Math.max(...sameFileLines, issue.line) + MARGIN;
+
+    // Check if existing snippet already covers this range (via ref, avoids stale closure)
+    const existing = snippetRangeRef.current;
+    if (existing && existing.file === issue.file) {
+      if (rangeStart >= existing.start && rangeEnd <= existing.end) {
+        // Snippet already covers every same-file issue — nothing to fetch
+        return;
+      }
+      // Merge with existing range so we never shrink the visible window
+      rangeStart = Math.max(1, Math.min(existing.start, rangeStart));
+      rangeEnd = Math.max(existing.end, rangeEnd);
+    }
+
+    const isSameFile = existing?.file === issue.file;
     let cancelled = false;
+
     const fetchSnippet = async () => {
-      setSnippetLoading(true);
+      // Only show the loading skeleton for the very first load or a file change;
+      // same-file expansions keep the current snippet visible.
+      if (!isSameFile) setSnippetLoading(true);
+
       try {
-        const data = await analysisService.getFileSnippet(
-          currentWorkspace.slug,
-          namespace,
-          issue.analysisId!,
-          issue.file,
-          issue.line,
-          10,
-        );
-        if (!cancelled) setSnippet(data);
+        let data: FileSnippetResponse | null = null;
+
+        // 1) Try analysis-level range
+        if (issue.analysisId) {
+          try {
+            data = await analysisService.getFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.analysisId,
+              issue.file,
+              rangeStart,
+              rangeEnd,
+            );
+          } catch {
+            /* fallback */
+          }
+        }
+
+        // 2) Fallback: branch-level range
+        if (!data && issue.branch) {
+          try {
+            data = await analysisService.getBranchFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.branch,
+              issue.file,
+              rangeStart,
+              rangeEnd,
+            );
+          } catch {
+            /* fallback */
+          }
+        }
+
+        // 3) Fallback: PR-level range
+        if (!data && issue.prNumber) {
+          try {
+            data = await analysisService.getPrFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.prNumber,
+              issue.file,
+              rangeStart,
+              rangeEnd,
+            );
+          } catch {
+            /* all sources failed */
+          }
+        }
+
+        if (!cancelled) {
+          setSnippet(data);
+          setSnippetLoading(false);
+        }
       } catch {
-        if (!cancelled) setSnippet(null);
-      } finally {
-        if (!cancelled) setSnippetLoading(false);
+        if (!cancelled) {
+          if (!isSameFile) setSnippet(null);
+          setSnippetLoading(false);
+        }
       }
     };
+
     fetchSnippet();
     return () => {
       cancelled = true;
     };
-  }, [issue?.id, issue?.analysisId, currentWorkspace, namespace]);
+  }, [
+    issue?.id,
+    issue?.analysisId,
+    sameFileIssueKey,
+    currentWorkspace,
+    namespace,
+  ]);
 
   // Expand snippet up or down by 20 lines
   const handleSnippetExpand = useCallback(
     async (direction: "up" | "down") => {
-      if (
-        !snippet ||
-        !issue ||
-        !currentWorkspace ||
-        !namespace ||
-        !issue.analysisId
-      )
-        return;
+      if (!snippet || !issue || !currentWorkspace || !namespace) return;
+      // Need at least one source
+      if (!issue.analysisId && !issue.branch && !issue.prNumber) return;
+
       const EXPAND_LINES = 20;
       const newStart =
         direction === "up"
@@ -297,15 +411,57 @@ export default function IssueDetails() {
 
       setSnippetExpanding(direction);
       try {
-        const data = await analysisService.getFileSnippetByRange(
-          currentWorkspace.slug,
-          namespace,
-          issue.analysisId,
-          snippet.filePath,
-          newStart,
-          newEnd,
-        );
-        setSnippet(data);
+        let data: FileSnippetResponse | null = null;
+
+        // Try analysis-level first
+        if (issue.analysisId) {
+          try {
+            data = await analysisService.getFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.analysisId,
+              snippet.filePath,
+              newStart,
+              newEnd,
+            );
+          } catch {
+            /* fallback */
+          }
+        }
+
+        // Fallback: branch-level
+        if (!data && issue.branch) {
+          try {
+            data = await analysisService.getBranchFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.branch,
+              snippet.filePath,
+              newStart,
+              newEnd,
+            );
+          } catch {
+            /* fallback */
+          }
+        }
+
+        // Fallback: PR-level
+        if (!data && issue.prNumber) {
+          try {
+            data = await analysisService.getPrFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.prNumber,
+              snippet.filePath,
+              newStart,
+              newEnd,
+            );
+          } catch {
+            /* all failed */
+          }
+        }
+
+        if (data) setSnippet(data);
       } catch {
         // Silently fail — snippet stays as is
       } finally {
@@ -677,7 +833,7 @@ export default function IssueDetails() {
     );
   };
 
-  if (loading) {
+  if (loading && !issue) {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center space-x-4">
@@ -708,7 +864,14 @@ export default function IssueDetails() {
     return (
       <div className="mx-auto p-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={backUrl}>
+          <Link
+            to={backUrl}
+            onClick={(e) => {
+              if (e.ctrlKey || e.metaKey || e.button === 1) return;
+              e.preventDefault();
+              navigate(-1);
+            }}
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Analysis
           </Link>
@@ -796,7 +959,7 @@ export default function IssueDetails() {
           </div>
 
           {!sidebarCollapsed && (
-            <ScrollArea className="flex-1 w-full overflow-hidden">
+            <ScrollArea className="flex-1 w-full overflow-hidden [&>div>div]:!block">
               {scopeLoading ? (
                 <div className="p-4 space-y-3">
                   {[...Array(5)].map((_, i) => (
@@ -897,7 +1060,14 @@ export default function IssueDetails() {
             {/* Top Navigation Bar */}
             <div className="flex items-center justify-between mb-4">
               <Button variant="ghost" size="sm" asChild>
-                <Link to={backUrl}>
+                <Link
+                  to={backUrl}
+                  onClick={(e) => {
+                    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+                    e.preventDefault();
+                    navigate(-1);
+                  }}
+                >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Link>
@@ -1157,42 +1327,56 @@ export default function IssueDetails() {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       {issue.analysisId && (
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <span className="text-muted-foreground">
-                              Analysis ID:
-                            </span>
-                            <span className="ml-2 font-medium">
-                              #{issue.analysisId}
-                            </span>
-                          </div>
-                          <Link
-                            to={
-                              issue.branch
-                                ? routes.branchSourceView(
-                                    namespace!,
-                                    issue.branch,
-                                    {
-                                      file: issue.file || "",
-                                      issueId: String(issue.id),
-                                    },
-                                  )
-                                : routes.analysisSourceView(
-                                    namespace!,
-                                    issue.analysisId,
-                                    {
-                                      file: issue.file || "",
-                                      issueId: String(issue.id),
-                                    },
-                                  )
-                            }
-                            className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                          >
-                            View Source
-                            <ExternalLink className="h-3 w-3" />
-                          </Link>
+                        <div>
+                          <span className="text-muted-foreground">
+                            Analysis ID:
+                          </span>
+                          <span className="ml-2 font-medium">
+                            #{issue.analysisId}
+                          </span>
                         </div>
                       )}
+                      {snippet &&
+                        (issue.branch ||
+                          issue.prNumber ||
+                          issue.analysisId) && (
+                          <div className="flex items-center">
+                            <Link
+                              to={
+                                issue.branch
+                                  ? routes.branchSourceView(
+                                      namespace!,
+                                      issue.branch,
+                                      {
+                                        file: issue.file || "",
+                                        issueId: String(issue.id),
+                                      },
+                                    )
+                                  : issue.prNumber
+                                    ? routes.prSourceView(
+                                        namespace!,
+                                        issue.prNumber,
+                                        {
+                                          file: issue.file || "",
+                                          issueId: String(issue.id),
+                                        },
+                                      )
+                                    : routes.analysisSourceView(
+                                        namespace!,
+                                        issue.analysisId!,
+                                        {
+                                          file: issue.file || "",
+                                          issueId: String(issue.id),
+                                        },
+                                      )
+                              }
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                            >
+                              View Source
+                              <ExternalLink className="h-3 w-3" />
+                            </Link>
+                          </div>
+                        )}
                       {issue.prNumber && (
                         <div>
                           <span className="text-muted-foreground">
@@ -1250,33 +1434,43 @@ export default function IssueDetails() {
                       <Code2 className="h-4 w-4" />
                       Source Context
                     </CardTitle>
-                    {snippet && issue.analysisId && (
-                      <Link
-                        to={
-                          issue.branch
-                            ? routes.branchSourceView(
-                                namespace!,
-                                issue.branch,
-                                {
-                                  file: issue.file || "",
-                                  issueId: String(issue.id),
-                                },
-                              )
-                            : routes.analysisSourceView(
-                                namespace!,
-                                issue.analysisId,
-                                {
-                                  file: issue.file || "",
-                                  issueId: String(issue.id),
-                                },
-                              )
-                        }
-                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                      >
-                        View full file
-                        <ExternalLink className="h-3 w-3" />
-                      </Link>
-                    )}
+                    {snippet &&
+                      (issue.branch || issue.prNumber || issue.analysisId) && (
+                        <Link
+                          to={
+                            issue.branch
+                              ? routes.branchSourceView(
+                                  namespace!,
+                                  issue.branch,
+                                  {
+                                    file: issue.file || "",
+                                    issueId: String(issue.id),
+                                  },
+                                )
+                              : issue.prNumber
+                                ? routes.prSourceView(
+                                    namespace!,
+                                    issue.prNumber,
+                                    {
+                                      file: issue.file || "",
+                                      issueId: String(issue.id),
+                                    },
+                                  )
+                                : routes.analysisSourceView(
+                                    namespace!,
+                                    issue.analysisId!,
+                                    {
+                                      file: issue.file || "",
+                                      issueId: String(issue.id),
+                                    },
+                                  )
+                          }
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          View full file
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      )}
                   </div>
                   {snippet && (
                     <CardDescription className="text-xs font-mono">
@@ -1301,8 +1495,16 @@ export default function IssueDetails() {
                     </div>
                   ) : snippet ? (
                     <IssueCodeSnippet
+                      key={issueId}
                       snippet={snippet}
                       issueLineNumber={issue.line}
+                      activeIssue={{
+                        issueId: issueId!,
+                        lineNumber: issue.line,
+                        severity: issue.severity,
+                        title: issue.title,
+                        category: issue.issueCategory,
+                      }}
                       theme={theme}
                       language={detectLanguageForFile(snippet.filePath)}
                       onExpand={handleSnippetExpand}
@@ -1380,6 +1582,13 @@ function SeverityIconSmall({ severity }: { severity: string }) {
 interface IssueCodeSnippetProps {
   snippet: FileSnippetResponse;
   issueLineNumber: number;
+  activeIssue?: {
+    issueId: string;
+    lineNumber: number;
+    severity: string;
+    title: string;
+    category?: string;
+  };
   theme: string;
   language: string;
   onExpand?: (direction: "up" | "down") => void;
@@ -1389,11 +1598,25 @@ interface IssueCodeSnippetProps {
 function IssueCodeSnippet({
   snippet,
   issueLineNumber,
+  activeIssue,
   theme: themeMode,
   language,
   onExpand,
   expanding,
 }: IssueCodeSnippetProps) {
+  const activeLineRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to the active issue line whenever the highlighted line changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      activeLineRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [issueLineNumber]);
+
   // Build a set of lines that have issues for quick lookup
   const issuesByLine = new Map<number, InlineIssue[]>();
   snippet.issues.forEach((issue) => {
@@ -1401,6 +1624,33 @@ function IssueCodeSnippet({
     existing.push(issue);
     issuesByLine.set(issue.lineNumber, existing);
   });
+
+  // Ensure the active issue always has an annotation card on its line,
+  // even if snippet.issues (backend) didn't include it (e.g. different analysisId).
+  // Note: InlineIssue.issueId is a numeric DB key while activeIssue.issueId is
+  // a UUID string from the URL, so we match by title instead.
+  if (activeIssue && activeIssue.lineNumber > 0) {
+    const lineIssues = issuesByLine.get(activeIssue.lineNumber) || [];
+    const alreadyPresent = lineIssues.some(
+      (iss) => iss.title === activeIssue.title,
+    );
+    if (!alreadyPresent) {
+      lineIssues.push({
+        issueId: Number(activeIssue.issueId) || 0,
+        lineNumber: activeIssue.lineNumber,
+        severity: activeIssue.severity,
+        title: activeIssue.title,
+        reason: "",
+        category: activeIssue.category || "",
+        resolved: false,
+        suggestedFixDescription: null,
+        suggestedFixDiff: null,
+        trackedFromIssueId: null,
+        trackingConfidence: null,
+      });
+      issuesByLine.set(activeIssue.lineNumber, lineIssues);
+    }
+  }
 
   const canExpandUp = snippet.startLine > 1;
   const canExpandDown = snippet.endLine < snippet.totalLineCount;
@@ -1466,7 +1716,10 @@ function IssueCodeSnippet({
           : null;
 
         return (
-          <div key={line.lineNumber}>
+          <div
+            key={line.lineNumber}
+            ref={isIssueLine ? activeLineRef : undefined}
+          >
             <div
               className={cn(
                 "flex group",
@@ -1519,46 +1772,59 @@ function IssueCodeSnippet({
             </div>
 
             {/* Inline issue annotation cards */}
-            {lineIssues?.map((iss) => (
-              <div
-                key={iss.issueId}
-                className="ml-12 mr-3 my-1 rounded-md border border-border/50 bg-muted/30 px-3 py-1.5 text-xs"
-              >
-                <div className="flex items-center gap-2">
-                  <SeverityIconSmall severity={iss.severity} />
-                  <Badge
-                    className={cn(
-                      "text-[10px] px-1.5 py-0",
-                      iss.severity.toLowerCase() === "high"
-                        ? "bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-300"
-                        : iss.severity.toLowerCase() === "medium"
-                          ? "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300"
-                          : iss.severity.toLowerCase() === "low"
-                            ? "bg-green-200 text-green-800 dark:bg-green-900/60 dark:text-green-300"
-                            : "bg-blue-200 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
-                    )}
-                  >
-                    {iss.severity.toUpperCase()}
-                  </Badge>
-                  {iss.category && (
+            {lineIssues?.map((iss) => {
+              // isIssueLine is the reliable indicator (line highlight works).
+              // For lines with multiple annotations, use title to pick the right one.
+              const isActive =
+                isIssueLine &&
+                activeIssue != null &&
+                (lineIssues!.length === 1 || iss.title === activeIssue.title);
+              return (
+                <div
+                  key={iss.issueId}
+                  className={cn(
+                    "ml-12 mr-3 my-1 rounded-md border px-3 py-1.5 text-xs",
+                    isActive
+                      ? "border-primary/50 bg-primary/10 ring-1 ring-primary/30"
+                      : "border-border/50 bg-muted/30",
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <SeverityIconSmall severity={iss.severity} />
                     <Badge
-                      variant="outline"
                       className={cn(
                         "text-[10px] px-1.5 py-0",
-                        getCategoryInfo(iss.category).color,
-                        getCategoryInfo(iss.category).bgColor,
-                        getCategoryInfo(iss.category).borderColor,
+                        iss.severity.toLowerCase() === "high"
+                          ? "bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-300"
+                          : iss.severity.toLowerCase() === "medium"
+                            ? "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300"
+                            : iss.severity.toLowerCase() === "low"
+                              ? "bg-green-200 text-green-800 dark:bg-green-900/60 dark:text-green-300"
+                              : "bg-blue-200 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
                       )}
                     >
-                      {getCategoryInfo(iss.category).label}
+                      {iss.severity.toUpperCase()}
                     </Badge>
-                  )}
-                  <span className="text-muted-foreground/70 ml-auto">
-                    {iss.title}
-                  </span>
+                    {iss.category && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[10px] px-1.5 py-0",
+                          getCategoryInfo(iss.category).color,
+                          getCategoryInfo(iss.category).bgColor,
+                          getCategoryInfo(iss.category).borderColor,
+                        )}
+                      >
+                        {getCategoryInfo(iss.category).label}
+                      </Badge>
+                    )}
+                    <span className="text-muted-foreground/70 ml-auto">
+                      {iss.title}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       })}

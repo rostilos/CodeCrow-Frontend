@@ -105,6 +105,9 @@ const BranchIssues = lazy(
 const AnalysisSourceView = lazy(
   () => import("./pages/Account/Project/AnalysisSourceView.tsx"),
 );
+const PrSourceView = lazy(
+  () => import("./pages/Account/Project/PrSourceView.tsx"),
+);
 const BranchSourceView = lazy(
   () => import("./pages/Account/Project/BranchSourceView.tsx"),
 );
@@ -250,6 +253,10 @@ const App = () => (
                             <Route
                               path="projects/:namespace/analysis/:analysisId/source"
                               element={<AnalysisSourceView />}
+                            />
+                            <Route
+                              path="projects/:namespace/pr/:prNumber/source"
+                              element={<PrSourceView />}
                             />
                             <Route
                               path="projects/:namespace/settings"

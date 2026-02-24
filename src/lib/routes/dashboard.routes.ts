@@ -114,6 +114,20 @@ export const DASHBOARD_ROUTES = {
     }
     return base;
   },
+  PR_SOURCE_VIEW: (
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: string | number,
+    params?: Record<string, string>,
+  ) => {
+    const base = `/dashboard/${workspaceSlug}/projects/${namespace}/pr/${prNumber}/source`;
+    if (params) {
+      const searchParams = new URLSearchParams(params);
+      const queryString = searchParams.toString();
+      return queryString ? `${base}?${queryString}` : base;
+    }
+    return base;
+  },
 
   // Job routes
   PROJECT_JOBS: (workspaceSlug: string, namespace: string) =>
@@ -235,6 +249,17 @@ export function createWorkspaceRoutes(workspaceSlug: string) {
         workspaceSlug,
         namespace,
         branchName,
+        params,
+      ),
+    prSourceView: (
+      namespace: string,
+      prNumber: string | number,
+      params?: Record<string, string>,
+    ) =>
+      DASHBOARD_ROUTES.PR_SOURCE_VIEW(
+        workspaceSlug,
+        namespace,
+        prNumber,
         params,
       ),
     projectJobs: (namespace: string) =>
