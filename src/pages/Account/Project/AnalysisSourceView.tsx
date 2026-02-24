@@ -896,11 +896,14 @@ export default function AnalysisSourceView({
     return (
       <div className="container mx-auto p-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={backLink} onClick={(e) => {
-            if (e.ctrlKey || e.metaKey || e.button === 1) return;
-            e.preventDefault();
-            navigate(-1);
-          }}>
+          <Link
+            to={backLink}
+            onClick={(e) => {
+              if (e.ctrlKey || e.metaKey || e.button === 1) return;
+              e.preventDefault();
+              navigate(-1);
+            }}
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Project
           </Link>
@@ -932,11 +935,14 @@ export default function AnalysisSourceView({
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/60 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
-            <Link to={backLink} onClick={(e) => {
-              if (e.ctrlKey || e.metaKey || e.button === 1) return;
-              e.preventDefault();
-              navigate(-1);
-            }}>
+            <Link
+              to={backLink}
+              onClick={(e) => {
+                if (e.ctrlKey || e.metaKey || e.button === 1) return;
+                e.preventDefault();
+                navigate(-1);
+              }}
+            >
               <ArrowLeft className="h-4 w-4 mr-1.5" />
               Back
             </Link>

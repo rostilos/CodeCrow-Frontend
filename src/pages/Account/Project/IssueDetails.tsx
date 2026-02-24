@@ -864,11 +864,14 @@ export default function IssueDetails() {
     return (
       <div className="mx-auto p-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={backUrl} onClick={(e) => {
-            if (e.ctrlKey || e.metaKey || e.button === 1) return;
-            e.preventDefault();
-            navigate(-1);
-          }}>
+          <Link
+            to={backUrl}
+            onClick={(e) => {
+              if (e.ctrlKey || e.metaKey || e.button === 1) return;
+              e.preventDefault();
+              navigate(-1);
+            }}
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Analysis
           </Link>
@@ -1057,11 +1060,14 @@ export default function IssueDetails() {
             {/* Top Navigation Bar */}
             <div className="flex items-center justify-between mb-4">
               <Button variant="ghost" size="sm" asChild>
-                <Link to={backUrl} onClick={(e) => {
-                  if (e.ctrlKey || e.metaKey || e.button === 1) return;
-                  e.preventDefault();
-                  navigate(-1);
-                }}>
+                <Link
+                  to={backUrl}
+                  onClick={(e) => {
+                    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+                    e.preventDefault();
+                    navigate(-1);
+                  }}
+                >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Link>
