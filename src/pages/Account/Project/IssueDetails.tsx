@@ -796,7 +796,7 @@ export default function IssueDetails() {
           </div>
 
           {!sidebarCollapsed && (
-            <ScrollArea className="flex-1 w-full overflow-hidden">
+            <ScrollArea className="flex-1 w-full overflow-hidden &>div>div:!block">
               {scopeLoading ? (
                 <div className="p-4 space-y-3">
                   {[...Array(5)].map((_, i) => (
