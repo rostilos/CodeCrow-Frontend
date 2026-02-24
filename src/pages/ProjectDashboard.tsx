@@ -29,6 +29,7 @@ import {
   Eye,
   AlertTriangle,
   ExternalLink,
+  FileCode,
 } from "lucide-react";
 import {
   Card,
@@ -202,10 +203,10 @@ export default function ProjectDashboard() {
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [prTab, setPrTab] = useState<
-    "preview" | "issues" | "activity" | "graph"
+    "preview" | "issues" | "activity" | "graph" | "source"
   >("preview");
   const [branchTab, setBranchTab] = useState<
-    "preview" | "issues" | "activity" | "graph"
+    "preview" | "issues" | "activity" | "graph" | "source"
   >("preview");
   const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
@@ -266,9 +267,12 @@ export default function ProjectDashboard() {
 
     // Check if returnTab is set (coming back from issue detail page)
     const returnTab = searchParams.get("returnTab");
-    if (returnTab && ["preview", "issues", "activity"].includes(returnTab)) {
-      setBranchTab(returnTab as "preview" | "issues" | "activity");
-      setPrTab(returnTab as "preview" | "issues" | "activity");
+    if (
+      returnTab &&
+      ["preview", "issues", "activity", "source"].includes(returnTab)
+    ) {
+      setBranchTab(returnTab as "preview" | "issues" | "activity" | "source");
+      setPrTab(returnTab as "preview" | "issues" | "activity" | "source");
     } else {
       // Auto-switch to issues tab if any filter is set (e.g., from VCS severity link)
       const hasActiveFilter =
@@ -1545,6 +1549,42 @@ export default function ProjectDashboard() {
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
+              <button
+                onClick={() => {
+                  if (selectionType === "branch") {
+                    if (selectedBranch && namespace) {
+                      navigate(
+                        routes.branchSourceView(namespace, selectedBranch),
+                      );
+                    } else {
+                      setBranchTab("source");
+                    }
+                  } else {
+                    if (selectedPR?.sourceBranchName && namespace) {
+                      navigate(
+                        routes.branchSourceView(
+                          namespace,
+                          selectedPR.sourceBranchName,
+                        ),
+                      );
+                    } else {
+                      setPrTab("source");
+                    }
+                  }
+                }}
+                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                  (selectionType === "branch" ? branchTab : prTab) === "source"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <FileCode className="h-3.5 w-3.5" />
+                Source Code
+                {(selectionType === "branch" ? branchTab : prTab) ===
+                  "source" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>
             </div>
             {selectionType === "pr" && selectedPR && maxVersion > 1 && (
               <div className="-mt-4">
@@ -1788,6 +1828,37 @@ export default function ProjectDashboard() {
                       <p>Project not loaded yet.</p>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            ) : branchTab === "source" ? (
+              <Card className="mx-auto">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileCode className="h-5 w-5" />
+                    Source Code
+                  </CardTitle>
+                  <CardDescription>
+                    Browse the source code for this branch
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">
+                      Redirecting to source code viewer…
+                    </p>
+                    <Button
+                      onClick={() =>
+                        namespace &&
+                        selectedBranch &&
+                        navigate(
+                          routes.branchSourceView(namespace, selectedBranch),
+                        )
+                      }
+                    >
+                      <FileCode className="h-4 w-4 mr-2" />
+                      Open Source Viewer
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ) : null}
@@ -2359,6 +2430,42 @@ export default function ProjectDashboard() {
                 </CardContent>
               </Card>
             )}
+
+            {prTab === "source" && (
+              <Card className="mx-auto">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileCode className="h-5 w-5" />
+                    Source Code
+                  </CardTitle>
+                  <CardDescription>
+                    Browse the source code for this pull request's branch
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">
+                      Redirecting to source code viewer…
+                    </p>
+                    <Button
+                      onClick={() =>
+                        namespace &&
+                        selectedPR?.sourceBranchName &&
+                        navigate(
+                          routes.branchSourceView(
+                            namespace,
+                            selectedPR.sourceBranchName,
+                          ),
+                        )
+                      }
+                    >
+                      <FileCode className="h-4 w-4 mr-2" />
+                      Open Source Viewer
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         ) : (
           /* No branch or PR selected - show content based on active tab */
@@ -2433,6 +2540,15 @@ export default function ProjectDashboard() {
                   )}
                 </CardContent>
               </Card>
+            )}
+            {(selectionType === "branch" ? branchTab : prTab) === "source" && (
+              <Alert className="mx-auto">
+                <Info className="h-4 w-4" />
+                <AlertTitle>No selection</AlertTitle>
+                <AlertDescription>
+                  Please select a branch or pull request to view source code.
+                </AlertDescription>
+              </Alert>
             )}
           </div>
         )}

@@ -725,6 +725,24 @@ export default function ProjectDashboard() {
                           <Badge variant="outline">
                             Commit: {selectedPR.commitHash.substring(0, 8)}
                           </Badge>
+                          {selectedProject?.namespace && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() =>
+                                navigate(
+                                  routes.branchSourceView(
+                                    selectedProject.namespace,
+                                    selectedPR.targetBranchName,
+                                  ),
+                                )
+                              }
+                            >
+                              <FileCode className="h-3.5 w-3.5 mr-1" />
+                              Source
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>

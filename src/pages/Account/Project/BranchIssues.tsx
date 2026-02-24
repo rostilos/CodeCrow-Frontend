@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, CheckSquare, Square } from "lucide-react";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
+import {
+  ArrowLeft,
+  CheckSquare,
+  Square,
+  Code2,
+  ExternalLink,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -361,10 +372,25 @@ export default function BranchIssues() {
         Back to Project Dashboard
       </Button>
 
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight">
           Branch Issues: {decodeURIComponent(branchName || "")}
         </h1>
+        {namespace && branchName && (
+          <Button variant="outline" size="sm" asChild>
+            <Link
+              to={routes.branchSourceView(
+                namespace,
+                decodeURIComponent(branchName),
+              )}
+              className="flex items-center gap-1.5"
+            >
+              <Code2 className="h-4 w-4" />
+              View Source
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-6">
