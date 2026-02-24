@@ -1560,12 +1560,9 @@ export default function ProjectDashboard() {
                       setBranchTab("source");
                     }
                   } else {
-                    if (selectedPR?.sourceBranchName && namespace) {
+                    if (selectedPR?.prNumber && namespace) {
                       navigate(
-                        routes.branchSourceView(
-                          namespace,
-                          selectedPR.sourceBranchName,
-                        ),
+                        routes.prSourceView(namespace, selectedPR.prNumber),
                       );
                     } else {
                       setPrTab("source");
@@ -2439,7 +2436,7 @@ export default function ProjectDashboard() {
                     Source Code
                   </CardTitle>
                   <CardDescription>
-                    Browse the source code for this pull request's branch
+                    Browse the accumulated source code for this pull request
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -2450,12 +2447,9 @@ export default function ProjectDashboard() {
                     <Button
                       onClick={() =>
                         namespace &&
-                        selectedPR?.sourceBranchName &&
+                        selectedPR?.prNumber &&
                         navigate(
-                          routes.branchSourceView(
-                            namespace,
-                            selectedPR.sourceBranchName,
-                          ),
+                          routes.prSourceView(namespace, selectedPR.prNumber),
                         )
                       }
                     >

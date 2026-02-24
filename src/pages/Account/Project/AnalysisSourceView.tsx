@@ -480,10 +480,20 @@ function IssueBadges({
 
 // ── Main Component ──────────────────────────────────────────────────
 
-export default function AnalysisSourceView() {
-  const { namespace, analysisId } = useParams<{
+// ── Component Props ─────────────────────────────────────────────────
+
+export interface SourceViewProps {
+  /** 'analysis' (default) uses analysisId from URL; 'pr' uses prNumber from URL */
+  mode?: "analysis" | "pr";
+}
+
+export default function AnalysisSourceView({
+  mode = "analysis",
+}: SourceViewProps) {
+  const { namespace, analysisId, prNumber } = useParams<{
     namespace: string;
     analysisId: string;
+    prNumber: string;
   }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentWorkspace } = useWorkspace();
@@ -513,14 +523,29 @@ export default function AnalysisSourceView() {
   // ── Data Loading ──────────────────────────────────────────────────
 
   const loadFiles = useCallback(async () => {
-    if (!currentWorkspace || !namespace || !analysisId) return;
+    if (!currentWorkspace || !namespace) return;
+
+    // Determine what to load based on mode
+    if (mode === "pr") {
+      if (!prNumber) return;
+    } else {
+      if (!analysisId) return;
+    }
+
     try {
       setLoading(true);
-      const data = await analysisService.getAnalysisFiles(
-        currentWorkspace.slug,
-        namespace,
-        analysisId,
-      );
+      const data =
+        mode === "pr"
+          ? await analysisService.getPrFiles(
+              currentWorkspace.slug,
+              namespace,
+              prNumber!,
+            )
+          : await analysisService.getAnalysisFiles(
+              currentWorkspace.slug,
+              namespace,
+              analysisId!,
+            );
       setFilesData(data);
 
       // Auto-expand directories that contain files with issues
@@ -557,22 +582,37 @@ export default function AnalysisSourceView() {
     } finally {
       setLoading(false);
     }
-  }, [currentWorkspace, namespace, analysisId]);
+  }, [currentWorkspace, namespace, analysisId, prNumber, mode]);
 
   const loadFileView = useCallback(
     async (filePath: string) => {
-      if (!currentWorkspace || !namespace || !analysisId) return;
+      if (!currentWorkspace || !namespace) return;
+
+      if (mode === "pr") {
+        if (!prNumber) return;
+      } else {
+        if (!analysisId) return;
+      }
+
       try {
         setFileLoading(true);
         setFileView(null);
         setActiveIssueId(null);
 
-        const data = await analysisService.getFileView(
-          currentWorkspace.slug,
-          namespace,
-          analysisId,
-          filePath,
-        );
+        const data =
+          mode === "pr"
+            ? await analysisService.getPrFileView(
+                currentWorkspace.slug,
+                namespace,
+                prNumber!,
+                filePath,
+              )
+            : await analysisService.getFileView(
+                currentWorkspace.slug,
+                namespace,
+                analysisId!,
+                filePath,
+              );
         setFileView(data);
 
         // Update URL without navigation
@@ -595,7 +635,7 @@ export default function AnalysisSourceView() {
         setFileLoading(false);
       }
     },
-    [currentWorkspace, namespace, analysisId],
+    [currentWorkspace, namespace, analysisId, prNumber, mode],
   );
 
   useEffect(() => {
@@ -775,7 +815,7 @@ export default function AnalysisSourceView() {
             <Code2 className="h-4 w-4 text-primary" />
             <span className="font-semibold">Source Viewer</span>
             <Badge variant="outline" className="text-[10px] font-mono">
-              Analysis #{analysisId}
+              {mode === "pr" ? `PR #${prNumber}` : `Analysis #${analysisId}`}
             </Badge>
             {filesData.commitHash && (
               <Badge variant="secondary" className="text-[10px] font-mono">

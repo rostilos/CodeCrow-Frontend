@@ -679,6 +679,74 @@ class AnalysisService extends ApiService {
       true,
     );
   }
+
+  // ── PR-level Source Code Viewer API ────────────────────────────────────
+
+  async getPrFiles(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+  ): Promise<AnalysisFilesResponse> {
+    return this.request<AnalysisFilesResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/pr/${prNumber}/files`,
+      {},
+      true,
+    );
+  }
+
+  async getPrFileView(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+    filePath: string,
+  ): Promise<FileViewResponse> {
+    const params = new URLSearchParams({ path: filePath });
+    return this.request<FileViewResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/pr/${prNumber}/file-view?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  async getPrFileSnippet(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+    filePath: string,
+    line: number,
+    context: number = 10,
+  ): Promise<FileSnippetResponse> {
+    const params = new URLSearchParams({
+      path: filePath,
+      line: String(line),
+      context: String(context),
+    });
+    return this.request<FileSnippetResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/pr/${prNumber}/file-snippet?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  async getPrFileSnippetByRange(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+    filePath: string,
+    startLine: number,
+    endLine: number,
+  ): Promise<FileSnippetResponse> {
+    const params = new URLSearchParams({
+      path: filePath,
+      startLine: String(startLine),
+      endLine: String(endLine),
+    });
+    return this.request<FileSnippetResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis/pr/${prNumber}/file-snippet?${params.toString()}`,
+      {},
+      true,
+    );
+  }
 }
 
 export const analysisService = new AnalysisService();
