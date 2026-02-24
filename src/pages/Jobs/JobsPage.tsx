@@ -1,57 +1,75 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  jobApi, 
-  Job, 
-  JobLog, 
-  JobStatus, 
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import {
+  jobApi,
+  Job,
+  JobLog,
+  JobStatus,
   JobType,
-  JobFilters 
-} from '@/api_service/job/jobApi';
-import { useWorkspace } from '@/context/WorkspaceContext';
-import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  RefreshCw, 
-  Play, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+  JobFilters,
+} from "@/api_service/job/jobApi";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Play,
+  CheckCircle,
+  XCircle,
+  Clock,
   AlertTriangle,
-  Loader2
-} from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+  Loader2,
+} from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
 
 const JobStatusBadge = ({ status }: { status: JobStatus }) => {
-  const variants: Record<JobStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline', icon: React.ReactNode }> = {
-    PENDING: { variant: 'secondary', icon: <Clock className="h-3 w-3" /> },
-    QUEUED: { variant: 'secondary', icon: <Clock className="h-3 w-3" /> },
-    RUNNING: { variant: 'default', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-    COMPLETED: { variant: 'outline', icon: <CheckCircle className="h-3 w-3 text-green-500" /> },
-    FAILED: { variant: 'destructive', icon: <XCircle className="h-3 w-3" /> },
-    CANCELLED: { variant: 'secondary', icon: <AlertTriangle className="h-3 w-3" /> },
-    WAITING: { variant: 'secondary', icon: <Clock className="h-3 w-3" /> },
-    SKIPPED: { variant: 'outline', icon: <AlertTriangle className="h-3 w-3 text-yellow-500" /> },
+  const variants: Record<
+    JobStatus,
+    {
+      variant: "default" | "secondary" | "destructive" | "outline";
+      icon: React.ReactNode;
+    }
+  > = {
+    PENDING: { variant: "secondary", icon: <Clock className="h-3 w-3" /> },
+    QUEUED: { variant: "secondary", icon: <Clock className="h-3 w-3" /> },
+    RUNNING: {
+      variant: "default",
+      icon: <Loader2 className="h-3 w-3 animate-spin" />,
+    },
+    COMPLETED: {
+      variant: "outline",
+      icon: <CheckCircle className="h-3 w-3 text-green-500" />,
+    },
+    FAILED: { variant: "destructive", icon: <XCircle className="h-3 w-3" /> },
+    CANCELLED: {
+      variant: "secondary",
+      icon: <AlertTriangle className="h-3 w-3" />,
+    },
+    WAITING: { variant: "secondary", icon: <Clock className="h-3 w-3" /> },
+    SKIPPED: {
+      variant: "outline",
+      icon: <AlertTriangle className="h-3 w-3 text-yellow-500" />,
+    },
   };
 
   const { variant, icon } = variants[status];
@@ -66,24 +84,24 @@ const JobStatusBadge = ({ status }: { status: JobStatus }) => {
 
 const JobTypeBadge = ({ type }: { type: JobType }) => {
   const labels: Record<JobType, string> = {
-    PR_ANALYSIS: 'PR Analysis',
-    BRANCH_ANALYSIS: 'Branch Analysis',
-    BRANCH_RECONCILIATION: 'Branch Reconciliation',
-    RAG_INITIAL_INDEX: 'Initial Indexing',
-    RAG_INCREMENTAL_INDEX: 'Incremental Index',
-    MANUAL_ANALYSIS: 'Manual Analysis',
-    REPO_SYNC: 'Repo Sync',
-    SUMMARIZE_COMMAND: 'Summarize',
-    ASK_COMMAND: 'Ask',
-    ANALYZE_COMMAND: 'Analyze',
-    REVIEW_COMMAND: 'Review',
+    PR_ANALYSIS: "PR Analysis",
+    BRANCH_ANALYSIS: "Branch Analysis",
+    BRANCH_RECONCILIATION: "Branch Reconciliation",
+    RAG_INITIAL_INDEX: "Initial Indexing",
+    RAG_INCREMENTAL_INDEX: "Incremental Index",
+    MANUAL_ANALYSIS: "Manual Analysis",
+    REPO_SYNC: "Repo Sync",
+    SUMMARIZE_COMMAND: "Summarize",
+    ASK_COMMAND: "Ask",
+    ANALYZE_COMMAND: "Analyze",
+    REVIEW_COMMAND: "Review",
   };
 
   return <Badge variant="outline">{labels[type] || type}</Badge>;
 };
 
 const formatDuration = (ms?: number): string => {
-  if (!ms) return '-';
+  if (!ms) return "-";
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   const minutes = Math.floor(ms / 60000);
@@ -96,15 +114,32 @@ export default function JobsPage() {
   const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const routes = useWorkspaceRoutes();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('ALL');
-  const [typeFilter, setTypeFilter] = useState<JobType | 'ALL'>('ALL');
+
+  // Derive filter/page state from URL search params
+  const statusFilter = (searchParams.get("status") as JobStatus) || "ALL";
+  const typeFilter = (searchParams.get("type") as JobType) || "ALL";
+  const page = parseInt(searchParams.get("page") || "0", 10);
+
+  const updateSearchParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === null) next.delete(key);
+          else next.set(key, value);
+        }
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
   const fetchJobs = useCallback(async () => {
     if (!currentWorkspace || !namespace) return;
@@ -116,16 +151,20 @@ export default function JobsPage() {
       const filters: JobFilters = {
         page,
         size: 20,
-        ...(statusFilter !== 'ALL' && { status: statusFilter }),
-        ...(typeFilter !== 'ALL' && { type: typeFilter }),
+        ...(statusFilter !== "ALL" && { status: statusFilter }),
+        ...(typeFilter !== "ALL" && { type: typeFilter }),
       };
 
-      const response = await jobApi.listProjectJobs(currentWorkspace.slug, namespace, filters);
+      const response = await jobApi.listProjectJobs(
+        currentWorkspace.slug,
+        namespace,
+        filters,
+      );
       setJobs(response.jobs);
       setTotalPages(response.totalPages);
       setTotalElements(response.totalElements);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load jobs');
+      setError(err instanceof Error ? err.message : "Failed to load jobs");
     } finally {
       setLoading(false);
     }
@@ -137,15 +176,24 @@ export default function JobsPage() {
 
   // Auto-refresh for running jobs
   useEffect(() => {
-    const hasRunningJobs = jobs.some(j => j.status === 'RUNNING' || j.status === 'PENDING');
+    const hasRunningJobs = jobs.some(
+      (j) => j.status === "RUNNING" || j.status === "PENDING",
+    );
     if (!hasRunningJobs) return;
 
     const interval = setInterval(fetchJobs, 5000);
     return () => clearInterval(interval);
   }, [jobs, fetchJobs]);
 
-  const handleJobClick = (jobId: string) => {
-    navigate(routes.projectJobDetail(namespace!, jobId));
+  const getJobUrl = (jobId: string) => {
+    return routes.projectJobDetail(namespace!, jobId);
+  };
+
+  const handleJobClick = (e: React.MouseEvent, jobId: string) => {
+    // Allow ctrl+click and middle-click to open in new tab
+    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+    e.preventDefault();
+    navigate(getJobUrl(jobId));
   };
 
   if (loading && jobs.length === 0) {
@@ -161,9 +209,9 @@ export default function JobsPage() {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => navigate(routes.projectDetail(namespace!))}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
@@ -177,16 +225,20 @@ export default function JobsPage() {
           </div>
         </div>
         <Button onClick={fetchJobs} variant="outline" size="sm">
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+          />
           Refresh
         </Button>
       </div>
 
       {/* Filters */}
       <div className="flex gap-4">
-        <Select 
-          value={statusFilter} 
-          onValueChange={(v) => { setStatusFilter(v as JobStatus | 'ALL'); setPage(0); }}
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => {
+            updateSearchParams({ status: v === "ALL" ? null : v, page: null });
+          }}
         >
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Status" />
@@ -202,9 +254,11 @@ export default function JobsPage() {
           </SelectContent>
         </Select>
 
-        <Select 
-          value={typeFilter} 
-          onValueChange={(v) => { setTypeFilter(v as JobType | 'ALL'); setPage(0); }}
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => {
+            updateSearchParams({ type: v === "ALL" ? null : v, page: null });
+          }}
         >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Type" />
@@ -214,7 +268,9 @@ export default function JobsPage() {
             <SelectItem value="PR_ANALYSIS">PR Analysis</SelectItem>
             <SelectItem value="BRANCH_ANALYSIS">Branch Analysis</SelectItem>
             <SelectItem value="RAG_INITIAL_INDEX">Initial Indexing</SelectItem>
-            <SelectItem value="RAG_INCREMENTAL_INDEX">Incremental Index</SelectItem>
+            <SelectItem value="RAG_INCREMENTAL_INDEX">
+              Incremental Index
+            </SelectItem>
             <SelectItem value="SUMMARIZE_COMMAND">Summarize Command</SelectItem>
             <SelectItem value="ASK_COMMAND">Ask Command</SelectItem>
             <SelectItem value="ANALYZE_COMMAND">Analyze Command</SelectItem>
@@ -249,26 +305,39 @@ export default function JobsPage() {
             <TableBody>
               {jobs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No jobs found
                   </TableCell>
                 </TableRow>
               ) : (
                 jobs.map((job) => (
-                  <TableRow 
-                    key={job.id} 
+                  <TableRow
+                    key={job.id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleJobClick(job.id)}
+                    onClick={(e) => handleJobClick(e, job.id)}
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        window.open(getJobUrl(job.id), "_blank");
+                      }
+                    }}
                   >
                     <TableCell>
-                      <div>
+                      <Link
+                        to={getJobUrl(job.id)}
+                        onClick={(e) => e.preventDefault()}
+                        className="block"
+                      >
                         <p className="font-medium">{job.title}</p>
                         <p className="text-xs text-muted-foreground">
                           {job.branchName && `Branch: ${job.branchName}`}
                           {job.prNumber && ` • PR #${job.prNumber}`}
-                          {job.commitHash && ` • ${job.commitHash.substring(0, 7)}`}
+                          {job.commitHash &&
+                            ` • ${job.commitHash.substring(0, 7)}`}
                         </p>
-                      </div>
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <JobTypeBadge type={job.jobType} />
@@ -282,11 +351,12 @@ export default function JobsPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      {job.status === 'RUNNING' && job.progress !== undefined ? (
+                      {job.status === "RUNNING" &&
+                      job.progress !== undefined ? (
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-primary transition-all" 
+                            <div
+                              className="h-full bg-primary transition-all"
                               style={{ width: `${job.progress}%` }}
                             />
                           </div>
@@ -298,8 +368,13 @@ export default function JobsPage() {
                     </TableCell>
                     <TableCell>{formatDuration(job.durationMs)}</TableCell>
                     <TableCell>
-                      <span className="text-sm" title={format(new Date(job.createdAt), 'PPpp')}>
-                        {formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })}
+                      <span
+                        className="text-sm"
+                        title={format(new Date(job.createdAt), "PPpp")}
+                      >
+                        {formatDistanceToNow(new Date(job.createdAt), {
+                          addSuffix: true,
+                        })}
                       </span>
                     </TableCell>
                   </TableRow>
@@ -321,7 +396,11 @@ export default function JobsPage() {
               variant="outline"
               size="sm"
               disabled={page === 0}
-              onClick={() => setPage(p => p - 1)}
+              onClick={() =>
+                updateSearchParams({
+                  page: page - 1 <= 0 ? null : String(page - 1),
+                })
+              }
             >
               <ChevronLeft className="h-4 w-4" />
               Previous
@@ -333,7 +412,7 @@ export default function JobsPage() {
               variant="outline"
               size="sm"
               disabled={page >= totalPages - 1}
-              onClick={() => setPage(p => p + 1)}
+              onClick={() => updateSearchParams({ page: String(page + 1) })}
             >
               Next
               <ChevronRight className="h-4 w-4" />

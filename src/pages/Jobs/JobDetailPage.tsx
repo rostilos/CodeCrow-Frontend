@@ -281,14 +281,15 @@ export default function JobDetailPage() {
     );
   }
 
-  // Build back URL with returnTab if available
+  // Build back URL: if opened from project dashboard (has returnTab), go back there;
+  // otherwise go to the jobs list page (preserves filters via browser history)
   const getBackUrl = () => {
     if (returnTab) {
       const params = new URLSearchParams();
       params.set('returnTab', returnTab);
       return `${routes.projectDetail(namespace!)}?${params.toString()}`;
     }
-    return routes.projectDetail(namespace!);
+    return routes.projectJobs(namespace!);
   };
 
   const handleBack = (e: React.MouseEvent) => {
@@ -297,11 +298,7 @@ export default function JobDetailPage() {
       return;
     }
     e.preventDefault();
-    if (returnTab) {
-      navigate(getBackUrl());
-    } else {
-      navigate(-1);
-    }
+    navigate(-1);
   };
 
   return (

@@ -333,7 +333,7 @@ export default function ProjectDashboard() {
       branchIssuesLoaded.current = true;
       loadBranchIssues(selectedBranch, 1, false);
     }
-  }, [branchTab, selectionType, selectedBranch]);
+  }, [branchTab, selectionType, selectedBranch, branchLoading]);
 
   // Persist active sub-tab in URL for browser back button support
   useEffect(() => {
@@ -703,7 +703,7 @@ export default function ProjectDashboard() {
     // Update URL with prId (remove filter params)
     const newParams = new URLSearchParams();
     newParams.set("prId", String(pr.id));
-    setSearchParams(newParams, { replace: true });
+    setSearchParams(newParams);
 
     await loadPRAnalysis(pr);
   };
@@ -732,7 +732,7 @@ export default function ProjectDashboard() {
     // Update URL with branch (remove filter params)
     const newParams = new URLSearchParams();
     newParams.set("branch", branchName);
-    setSearchParams(newParams, { replace: true });
+    setSearchParams(newParams);
 
     await loadBranchData(branchName);
 
@@ -763,7 +763,7 @@ export default function ProjectDashboard() {
       const params = new URLSearchParams();
       params.set("prId", String(selectedPR.id));
       params.set("version", String(versionNum));
-      setSearchParams(params, { replace: true });
+      setSearchParams(params);
       loadAnalysisIssuesForPR(selectedPR, versionNum);
     }
   };
@@ -798,7 +798,7 @@ export default function ProjectDashboard() {
         }
         setPrTab("preview");
       }
-      setSearchParams(newParams, { replace: true });
+      setSearchParams(newParams);
     },
     [selectedBranch, selectedPR, selectedVersion, setSearchParams],
   );
