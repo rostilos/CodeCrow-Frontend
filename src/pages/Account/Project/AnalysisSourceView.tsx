@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
+import {
+  useParams,
+  useSearchParams,
+  Link,
+  useNavigate,
+} from "react-router-dom";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import {
   analysisService,
@@ -821,8 +826,7 @@ export default function AnalysisSourceView({
   );
 
   const currentSelectorValue = useMemo(() => {
-    if (mode === "branch" && decodedBranch)
-      return `branch:${decodedBranch}`;
+    if (mode === "branch" && decodedBranch) return `branch:${decodedBranch}`;
     if (mode === "pr" && prNumber) return `pr:${prNumber}`;
     return "";
   }, [mode, decodedBranch, prNumber]);

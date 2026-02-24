@@ -11,4 +11,3 @@ import AnalysisSourceView from "./AnalysisSourceView";
 export default function BranchSourceView() {
   return <AnalysisSourceView mode="branch" />;
 }
-

@@ -322,13 +322,7 @@ export default function IssueDetails() {
   // Expand snippet up or down by 20 lines
   const handleSnippetExpand = useCallback(
     async (direction: "up" | "down") => {
-      if (
-        !snippet ||
-        !issue ||
-        !currentWorkspace ||
-        !namespace
-      )
-        return;
+      if (!snippet || !issue || !currentWorkspace || !namespace) return;
       // Need at least one source
       if (!issue.analysisId && !issue.branch && !issue.prNumber) return;
 
@@ -360,7 +354,9 @@ export default function IssueDetails() {
               newStart,
               newEnd,
             );
-          } catch { /* fallback */ }
+          } catch {
+            /* fallback */
+          }
         }
 
         // Fallback: branch-level
@@ -374,7 +370,9 @@ export default function IssueDetails() {
               newStart,
               newEnd,
             );
-          } catch { /* fallback */ }
+          } catch {
+            /* fallback */
+          }
         }
 
         // Fallback: PR-level
@@ -388,7 +386,9 @@ export default function IssueDetails() {
               newStart,
               newEnd,
             );
-          } catch { /* all failed */ }
+          } catch {
+            /* all failed */
+          }
         }
 
         if (data) setSnippet(data);
@@ -1252,44 +1252,47 @@ export default function IssueDetails() {
                           </span>
                         </div>
                       )}
-                      {snippet && (issue.branch || issue.prNumber || issue.analysisId) && (
-                        <div className="flex items-center">
-                          <Link
-                            to={
-                              issue.branch
-                                ? routes.branchSourceView(
-                                    namespace!,
-                                    issue.branch,
-                                    {
-                                      file: issue.file || "",
-                                      issueId: String(issue.id),
-                                    },
-                                  )
-                                : issue.prNumber
-                                  ? routes.prSourceView(
+                      {snippet &&
+                        (issue.branch ||
+                          issue.prNumber ||
+                          issue.analysisId) && (
+                          <div className="flex items-center">
+                            <Link
+                              to={
+                                issue.branch
+                                  ? routes.branchSourceView(
                                       namespace!,
-                                      issue.prNumber,
+                                      issue.branch,
                                       {
                                         file: issue.file || "",
                                         issueId: String(issue.id),
                                       },
                                     )
-                                  : routes.analysisSourceView(
-                                      namespace!,
-                                      issue.analysisId!,
-                                      {
-                                        file: issue.file || "",
-                                        issueId: String(issue.id),
-                                      },
-                                    )
-                            }
-                            className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                          >
-                            View Source
-                            <ExternalLink className="h-3 w-3" />
-                          </Link>
-                        </div>
-                      )}
+                                  : issue.prNumber
+                                    ? routes.prSourceView(
+                                        namespace!,
+                                        issue.prNumber,
+                                        {
+                                          file: issue.file || "",
+                                          issueId: String(issue.id),
+                                        },
+                                      )
+                                    : routes.analysisSourceView(
+                                        namespace!,
+                                        issue.analysisId!,
+                                        {
+                                          file: issue.file || "",
+                                          issueId: String(issue.id),
+                                        },
+                                      )
+                              }
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                            >
+                              View Source
+                              <ExternalLink className="h-3 w-3" />
+                            </Link>
+                          </div>
+                        )}
                       {issue.prNumber && (
                         <div>
                           <span className="text-muted-foreground">
@@ -1347,42 +1350,43 @@ export default function IssueDetails() {
                       <Code2 className="h-4 w-4" />
                       Source Context
                     </CardTitle>
-                    {snippet && (issue.branch || issue.prNumber || issue.analysisId) && (
-                      <Link
-                        to={
-                          issue.branch
-                            ? routes.branchSourceView(
-                                namespace!,
-                                issue.branch,
-                                {
-                                  file: issue.file || "",
-                                  issueId: String(issue.id),
-                                },
-                              )
-                            : issue.prNumber
-                              ? routes.prSourceView(
+                    {snippet &&
+                      (issue.branch || issue.prNumber || issue.analysisId) && (
+                        <Link
+                          to={
+                            issue.branch
+                              ? routes.branchSourceView(
                                   namespace!,
-                                  issue.prNumber,
+                                  issue.branch,
                                   {
                                     file: issue.file || "",
                                     issueId: String(issue.id),
                                   },
                                 )
-                              : routes.analysisSourceView(
-                                  namespace!,
-                                  issue.analysisId!,
-                                  {
-                                    file: issue.file || "",
-                                    issueId: String(issue.id),
-                                  },
-                                )
-                        }
-                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                      >
-                        View full file
-                        <ExternalLink className="h-3 w-3" />
-                      </Link>
-                    )}
+                              : issue.prNumber
+                                ? routes.prSourceView(
+                                    namespace!,
+                                    issue.prNumber,
+                                    {
+                                      file: issue.file || "",
+                                      issueId: String(issue.id),
+                                    },
+                                  )
+                                : routes.analysisSourceView(
+                                    namespace!,
+                                    issue.analysisId!,
+                                    {
+                                      file: issue.file || "",
+                                      issueId: String(issue.id),
+                                    },
+                                  )
+                          }
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          View full file
+                          <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      )}
                   </div>
                   {snippet && (
                     <CardDescription className="text-xs font-mono">

@@ -225,7 +225,9 @@ export default function ProjectDashboard() {
       analysisService
         .getSourceAvailability(currentWorkspace.slug, namespace)
         .then(setSourceAvailability)
-        .catch(() => { /* non-critical */ });
+        .catch(() => {
+          /* non-critical */
+        });
     }
 
     // Read filters from URL
@@ -278,13 +280,18 @@ export default function ProjectDashboard() {
     setFilters(newFilters);
 
     // Check if returnTab is set (coming back from issue detail page) or subTab (persisted tab)
-    const returnTab = searchParams.get("returnTab") || searchParams.get("subTab");
+    const returnTab =
+      searchParams.get("returnTab") || searchParams.get("subTab");
     if (
       returnTab &&
       ["preview", "issues", "activity", "graph", "source"].includes(returnTab)
     ) {
-      setBranchTab(returnTab as "preview" | "issues" | "activity" | "graph" | "source");
-      setPrTab(returnTab as "preview" | "issues" | "activity" | "graph" | "source");
+      setBranchTab(
+        returnTab as "preview" | "issues" | "activity" | "graph" | "source",
+      );
+      setPrTab(
+        returnTab as "preview" | "issues" | "activity" | "graph" | "source",
+      );
       // Clean up one-time returnTab param, persist as subTab for browser back
       if (searchParams.has("returnTab")) {
         const cleanParams = new URLSearchParams(searchParams);
@@ -1594,28 +1601,29 @@ export default function ProjectDashboard() {
                     sourceAvailability.prNumbers.includes(
                       selectedPR.prNumber,
                     ))) && (
-              <button
-                onClick={() => {
-                  if (selectionType === "branch") {
-                    setBranchTab("source");
-                  } else {
-                    setPrTab("source");
-                  }
-                }}
-                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
-                  (selectionType === "branch" ? branchTab : prTab) === "source"
-                    ? "text-orange-500 !font-bold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <FileCode className="h-3.5 w-3.5" />
-                Source Code
-                {(selectionType === "branch" ? branchTab : prTab) ===
-                  "source" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                  <button
+                    onClick={() => {
+                      if (selectionType === "branch") {
+                        setBranchTab("source");
+                      } else {
+                        setPrTab("source");
+                      }
+                    }}
+                    className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                      (selectionType === "branch" ? branchTab : prTab) ===
+                      "source"
+                        ? "text-orange-500 !font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <FileCode className="h-3.5 w-3.5" />
+                    Source Code
+                    {(selectionType === "branch" ? branchTab : prTab) ===
+                      "source" && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                    )}
+                  </button>
                 )}
-              </button>
-              )}
             </div>
             {selectionType === "pr" && selectedPR && maxVersion > 1 && (
               <div className="-mt-4">
@@ -1875,7 +1883,8 @@ export default function ProjectDashboard() {
                 <CardContent>
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">
-                      View source files captured during analysis. Older branches may not have source files available.
+                      View source files captured during analysis. Older branches
+                      may not have source files available.
                     </p>
                     <Button
                       onClick={() =>
@@ -2509,7 +2518,8 @@ export default function ProjectDashboard() {
                 <CardContent>
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">
-                      View source files captured across analysis iterations. Older pull requests may not have source files available.
+                      View source files captured across analysis iterations.
+                      Older pull requests may not have source files available.
                     </p>
                     <Button
                       onClick={() =>
