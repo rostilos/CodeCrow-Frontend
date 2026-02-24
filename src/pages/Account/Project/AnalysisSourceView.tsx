@@ -288,6 +288,7 @@ interface FileTreeItemProps {
   onSelectFile: (filePath: string) => void;
   activeIssueId: number | null;
   fileView: FileViewResponse | null;
+  fileLoading: boolean;
   onIssueClick: (filePath: string, issue: InlineIssue) => void;
 }
 
@@ -300,6 +301,7 @@ function FileTreeItem({
   onSelectFile,
   activeIssueId,
   fileView,
+  fileLoading,
   onIssueClick,
 }: FileTreeItemProps) {
   const isExpanded = expandedDirs.has(node.fullPath);
@@ -345,6 +347,7 @@ function FileTreeItem({
                 onSelectFile={onSelectFile}
                 activeIssueId={activeIssueId}
                 fileView={fileView}
+                fileLoading={fileLoading}
                 onIssueClick={onIssueClick}
               />
             ))}
@@ -357,17 +360,14 @@ function FileTreeItem({
   // File node
   const isSelected = selectedFile === node.fullPath;
   const hasIssues = node.issueCount > 0;
-  const isIssuesExpanded =
-    isSelected && expandedDirs.has(`file:${node.fullPath}`);
+  // Issues are shown when the file is selected (always expanded for active file)
+  const isIssuesExpanded = isSelected && hasIssues;
 
   return (
     <div>
       <button
         onClick={() => {
           onSelectFile(node.fullPath);
-          if (hasIssues) {
-            onToggleDir(`file:${node.fullPath}`);
-          }
         }}
         className={cn(
           "w-full flex items-center gap-1 py-1 px-1.5 rounded text-left text-xs transition-colors",
@@ -404,58 +404,57 @@ function FileTreeItem({
       </button>
 
       {/* Expanded inline issues for selected file */}
-      {hasIssues && isIssuesExpanded && isSelected && fileView && (
+      {isIssuesExpanded && (
         <div
           className="border-l border-border/40 space-y-0.5 py-1"
           style={{ marginLeft: paddingLeft + 16, paddingLeft: 8 }}
         >
-          {fileView.issues
-            .sort(
-              (a, b) =>
-                (SEVERITY_ORDER[a.severity.toLowerCase()] ?? 9) -
-                (SEVERITY_ORDER[b.severity.toLowerCase()] ?? 9),
-            )
-            .map((issue) => (
-              <button
-                key={issue.issueId}
-                onClick={() => onIssueClick(node.fullPath, issue)}
-                className={cn(
-                  "w-full flex items-start gap-1.5 px-2 py-1.5 rounded text-left text-[11px] transition-colors",
-                  activeIssueId === issue.issueId
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-              >
-                <SeverityIcon
-                  severity={issue.severity}
-                  className="mt-0.5 shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <span className="line-clamp-2 leading-relaxed">
-                    {issue.title}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/60 mt-0.5 block">
-                    Line {issue.lineNumber}
-                  </span>
-                </div>
-                {issue.resolved && (
-                  <CheckCircle className="h-3 w-3 text-green-500 shrink-0 mt-0.5" />
-                )}
-              </button>
-            ))}
-        </div>
-      )}
-
-      {/* Issue summary for unselected files */}
-      {hasIssues && isIssuesExpanded && !isSelected && (
-        <div
-          className="border-l border-border/40 py-1"
-          style={{ marginLeft: paddingLeft + 16, paddingLeft: 8 }}
-        >
-          <span className="text-[10px] text-muted-foreground/60 px-2">
-            {node.issueCount} issue{node.issueCount !== 1 ? "s" : ""} — click to
-            view
-          </span>
+          {fileLoading ? (
+            <div className="px-2 py-1">
+              <span className="text-[10px] text-muted-foreground/60 animate-pulse">
+                Loading issues…
+              </span>
+            </div>
+          ) : fileView && fileView.issues.length > 0 ? (
+            fileView.issues
+              .sort(
+                (a, b) =>
+                  (SEVERITY_ORDER[a.severity.toLowerCase()] ?? 9) -
+                  (SEVERITY_ORDER[b.severity.toLowerCase()] ?? 9),
+              )
+              .map((issue) => (
+                <button
+                  key={issue.issueId}
+                  onClick={() => onIssueClick(node.fullPath, issue)}
+                  className={cn(
+                    "w-full flex items-start gap-1.5 px-2 py-1.5 rounded text-left text-[11px] transition-colors",
+                    activeIssueId === issue.issueId
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                >
+                  <SeverityIcon
+                    severity={issue.severity}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="line-clamp-2 leading-relaxed">
+                      {issue.title}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60 mt-0.5 block">
+                      Line {issue.lineNumber}
+                    </span>
+                  </div>
+                  {issue.resolved && (
+                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0 mt-0.5" />
+                  )}
+                </button>
+              ))
+          ) : (
+            <span className="text-[10px] text-muted-foreground/60 px-2">
+              {node.issueCount} issue{node.issueCount !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -528,8 +527,13 @@ export default function AnalysisSourceView({
   const [loading, setLoading] = useState(true);
   const [fileLoading, setFileLoading] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(320);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [activeIssueId, setActiveIssueId] = useState<number | null>(null);
+
+  // Drag-resize sidebar
+  const isResizing = useRef(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Source availability for the branch/PR selector
   const [sourceAvailability, setSourceAvailability] =
@@ -635,6 +639,17 @@ export default function AnalysisSourceView({
         setFileView(null);
         setActiveIssueId(null);
 
+        // Update URL immediately so sidebar highlights the selected file
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("file", filePath);
+            next.delete("issueId");
+            return next;
+          },
+          { replace: true },
+        );
+
         let data: FileViewResponse;
 
         if (mode === "pr") {
@@ -660,17 +675,6 @@ export default function AnalysisSourceView({
           );
         }
         setFileView(data);
-
-        // Update URL without navigation
-        setSearchParams(
-          (prev) => {
-            const next = new URLSearchParams(prev);
-            next.set("file", filePath);
-            next.delete("issueId");
-            return next;
-          },
-          { replace: true },
-        );
       } catch (error: any) {
         toast({
           title: "Failed to load file",
@@ -698,6 +702,36 @@ export default function AnalysisSourceView({
         /* non-critical */
       });
   }, [currentWorkspace, namespace]);
+
+  // Sidebar drag-resize handlers
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current || !sidebarRef.current) return;
+      e.preventDefault();
+      const sidebarLeft = sidebarRef.current.getBoundingClientRect().left;
+      const newWidth = Math.max(200, Math.min(600, e.clientX - sidebarLeft));
+      setSidebarWidth(newWidth);
+    };
+    const handleMouseUp = () => {
+      if (isResizing.current) {
+        isResizing.current = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+    };
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  const startResizing = useCallback(() => {
+    isResizing.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
   // Scroll to highlighted issue after file loads
   useEffect(() => {
@@ -1004,10 +1038,12 @@ export default function AnalysisSourceView({
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar — File tree + issues */}
         <div
+          ref={sidebarRef}
           className={cn(
-            "border-r border-border/50 bg-card/40 transition-all duration-300 flex flex-col shrink-0",
-            sidebarCollapsed ? "w-10" : "w-80",
+            "bg-card/40 flex flex-col shrink-0 relative",
+            sidebarCollapsed ? "w-10" : "",
           )}
+          style={sidebarCollapsed ? undefined : { width: sidebarWidth }}
         >
           {/* Sidebar toggle */}
           <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/30 min-h-[36px]">
@@ -1038,17 +1074,25 @@ export default function AnalysisSourceView({
                     key={node.fullPath}
                     node={node}
                     depth={0}
-                    selectedFile={fileView?.filePath ?? null}
+                    selectedFile={selectedFile}
                     expandedDirs={expandedDirs}
                     onToggleDir={handleToggleDir}
                     onSelectFile={(filePath) => loadFileView(filePath)}
                     activeIssueId={activeIssueId}
                     fileView={fileView}
+                    fileLoading={fileLoading}
                     onIssueClick={handleSidebarIssueClick}
                   />
                 ))}
               </div>
             </ScrollArea>
+          )}
+          {/* Resize drag handle */}
+          {!sidebarCollapsed && (
+            <div
+              onMouseDown={startResizing}
+              className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors z-10 border-r border-border/50"
+            />
           )}
         </div>
 
