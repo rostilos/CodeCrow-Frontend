@@ -95,6 +95,7 @@ import type {
   PullRequestSummary,
   PullRequestDTO,
   AnalysisIssueSummary,
+  SourceAvailabilityResponse,
 } from "@/api_service/analysis/analysisService";
 
 // Helper function to build VCS PR URL
@@ -187,6 +188,7 @@ export default function ProjectDashboard() {
   const [branchIssuesPage, setBranchIssuesPage] = useState(1);
   const [branchIssuesTotalCount, setBranchIssuesTotalCount] = useState(0);
   const [branchIssuesPageSize] = useState(50);
+  const branchIssuesLoaded = useRef(false);
   const { canManageWorkspace } = usePermissions();
   const [branches, setBranches] = useState<string[]>([]);
   const [prsByBranch, setPrsByBranch] = useState<PullRequestsByBranchResponse>(
@@ -210,11 +212,21 @@ export default function ProjectDashboard() {
   >("preview");
   const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
+  const [sourceAvailability, setSourceAvailability] =
+    useState<SourceAvailabilityResponse | null>(null);
 
   useEffect(() => {
     loadProject();
     loadProjectAnalysis();
     loadBranches();
+
+    // Load source availability for conditional Source Code tab
+    if (currentWorkspace && namespace) {
+      analysisService
+        .getSourceAvailability(currentWorkspace.slug, namespace)
+        .then(setSourceAvailability)
+        .catch(() => { /* non-critical */ });
+    }
 
     // Read filters from URL
     const newFilters: IssueFilters = {
@@ -265,14 +277,23 @@ export default function ProjectDashboard() {
 
     setFilters(newFilters);
 
-    // Check if returnTab is set (coming back from issue detail page)
-    const returnTab = searchParams.get("returnTab");
+    // Check if returnTab is set (coming back from issue detail page) or subTab (persisted tab)
+    const returnTab = searchParams.get("returnTab") || searchParams.get("subTab");
     if (
       returnTab &&
-      ["preview", "issues", "activity", "source"].includes(returnTab)
+      ["preview", "issues", "activity", "graph", "source"].includes(returnTab)
     ) {
-      setBranchTab(returnTab as "preview" | "issues" | "activity" | "source");
-      setPrTab(returnTab as "preview" | "issues" | "activity" | "source");
+      setBranchTab(returnTab as "preview" | "issues" | "activity" | "graph" | "source");
+      setPrTab(returnTab as "preview" | "issues" | "activity" | "graph" | "source");
+      // Clean up one-time returnTab param, persist as subTab for browser back
+      if (searchParams.has("returnTab")) {
+        const cleanParams = new URLSearchParams(searchParams);
+        cleanParams.delete("returnTab");
+        if (returnTab !== "preview") {
+          cleanParams.set("subTab", returnTab);
+        }
+        setSearchParams(cleanParams, { replace: true });
+      }
     } else {
       // Auto-switch to issues tab if any filter is set (e.g., from VCS severity link)
       const hasActiveFilter =
@@ -299,14 +320,28 @@ export default function ProjectDashboard() {
       selectionType === "branch" &&
       branchTab === "issues" &&
       selectedBranch &&
-      !branchLoading
+      !branchLoading &&
+      !branchIssuesLoaded.current
     ) {
-      // Always load issues when switching to issues tab (fresh load)
-      if (branchIssues.length === 0) {
-        loadBranchIssues(selectedBranch, 1, false);
-      }
+      branchIssuesLoaded.current = true;
+      loadBranchIssues(selectedBranch, 1, false);
     }
   }, [branchTab, selectionType, selectedBranch]);
+
+  // Persist active sub-tab in URL for browser back button support
+  useEffect(() => {
+    const currentSubTab = selectionType === "branch" ? branchTab : prTab;
+    const urlSubTab = searchParams.get("subTab") || "preview";
+    if (currentSubTab !== urlSubTab) {
+      const newParams = new URLSearchParams(searchParams);
+      if (currentSubTab !== "preview") {
+        newParams.set("subTab", currentSubTab);
+      } else {
+        newParams.delete("subTab");
+      }
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [branchTab, prTab, selectionType]);
 
   const activeTab = searchParams.get("tab") || "analysis";
 
@@ -437,6 +472,7 @@ export default function ProjectDashboard() {
       setBranchStats(mappedStats);
       // Clear previous issues - will be loaded when Issues tab is clicked
       setBranchIssues([]);
+      branchIssuesLoaded.current = false;
     } catch (error: any) {
       console.error("Failed to load branch data:", error);
       toast({
@@ -455,12 +491,12 @@ export default function ProjectDashboard() {
 
     try {
       setAnalysisLoading(true);
-      const pullRequestsData = await analysisService.getPullRequests(
+      const pullRequestsResponse = await analysisService.getPullRequests(
         currentWorkspace.slug,
         namespace,
       );
       // Sort by PR number in descending order (highest first)
-      const sortedPullRequests = pullRequestsData.sort(
+      const sortedPullRequests = (pullRequestsResponse.content || []).sort(
         (a, b) => b.prNumber - a.prNumber,
       );
       setPullRequests(sortedPullRequests);
@@ -562,7 +598,6 @@ export default function ProjectDashboard() {
       }
       setBranchIssuesTotalCount(response.total);
       setBranchIssuesPage(page);
-      setSelectedBranch(branchName);
     } catch (error: any) {
       console.error("Failed to load branch issues:", error);
       toast({
@@ -1549,24 +1584,22 @@ export default function ProjectDashboard() {
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
+              {/* Source Code tab — only shown when selected branch/PR has source snapshots */}
+              {sourceAvailability &&
+                ((selectionType === "branch" &&
+                  selectedBranch &&
+                  sourceAvailability.branches.includes(selectedBranch)) ||
+                  (selectionType === "pr" &&
+                    selectedPR &&
+                    sourceAvailability.prNumbers.includes(
+                      selectedPR.prNumber,
+                    ))) && (
               <button
                 onClick={() => {
                   if (selectionType === "branch") {
-                    if (selectedBranch && namespace) {
-                      navigate(
-                        routes.branchSourceView(namespace, selectedBranch),
-                      );
-                    } else {
-                      setBranchTab("source");
-                    }
+                    setBranchTab("source");
                   } else {
-                    if (selectedPR?.prNumber && namespace) {
-                      navigate(
-                        routes.prSourceView(namespace, selectedPR.prNumber),
-                      );
-                    } else {
-                      setPrTab("source");
-                    }
+                    setPrTab("source");
                   }
                 }}
                 className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
@@ -1582,6 +1615,7 @@ export default function ProjectDashboard() {
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
+              )}
             </div>
             {selectionType === "pr" && selectedPR && maxVersion > 1 && (
               <div className="-mt-4">
@@ -1835,13 +1869,13 @@ export default function ProjectDashboard() {
                     Source Code
                   </CardTitle>
                   <CardDescription>
-                    Browse the source code for this branch
+                    Browse the analyzed source code files for this branch
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">
-                      Redirecting to source code viewer…
+                      View source files captured during analysis. Older branches may not have source files available.
                     </p>
                     <Button
                       onClick={() =>
@@ -2096,6 +2130,39 @@ export default function ProjectDashboard() {
                               </div>
                               <div className="p-2 rounded-lg bg-muted">
                                 <Info className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card
+                          className="border-l-4 border-l-blue-400/50 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-blue-300/30"
+                          onClick={() => {
+                            setFilters((prev) => ({
+                              ...prev,
+                              severity: "INFO",
+                              status: "open",
+                            }));
+                            setPrTab("issues");
+                          }}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                  Info
+                                </p>
+                                <p className="text-2xl font-bold mt-1">
+                                  {
+                                    analysisIssues.filter(
+                                      (i) =>
+                                        i.severity?.toUpperCase() === "INFO" &&
+                                        i.status !== "resolved",
+                                    ).length
+                                  }
+                                </p>
+                              </div>
+                              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                <Info className="h-5 w-5 text-blue-500" />
                               </div>
                             </div>
                           </CardContent>
@@ -2442,7 +2509,7 @@ export default function ProjectDashboard() {
                 <CardContent>
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">
-                      Redirecting to source code viewer…
+                      View source files captured across analysis iterations. Older pull requests may not have source files available.
                     </p>
                     <Button
                       onClick={() =>

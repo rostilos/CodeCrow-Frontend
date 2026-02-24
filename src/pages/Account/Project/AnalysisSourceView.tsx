@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import {
   analysisService,
@@ -7,6 +7,7 @@ import {
   type AnalysisFileEntry,
   type FileViewResponse,
   type InlineIssue,
+  type SourceAvailabilityResponse,
 } from "@/api_service/analysis/analysisService";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ import {
   FolderOpen,
   Folder,
   ChevronLeft,
+  GitBranch,
+  GitPullRequest,
 } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -41,6 +44,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ── Language detection ──────────────────────────────────────────────
 
@@ -483,23 +493,27 @@ function IssueBadges({
 // ── Component Props ─────────────────────────────────────────────────
 
 export interface SourceViewProps {
-  /** 'analysis' (default) uses analysisId from URL; 'pr' uses prNumber from URL */
-  mode?: "analysis" | "pr";
+  /** 'analysis' (default) uses analysisId from URL; 'pr' uses prNumber from URL; 'branch' uses branchName from URL */
+  mode?: "analysis" | "pr" | "branch";
 }
 
 export default function AnalysisSourceView({
   mode = "analysis",
 }: SourceViewProps) {
-  const { namespace, analysisId, prNumber } = useParams<{
+  const { namespace, analysisId, prNumber, branchName } = useParams<{
     namespace: string;
     analysisId: string;
     prNumber: string;
+    branchName: string;
   }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   const { theme } = useTheme();
   const routes = useWorkspaceRoutes();
+
+  const decodedBranch = branchName ? decodeURIComponent(branchName) : "";
 
   // State
   const [filesData, setFilesData] = useState<AnalysisFilesResponse | null>(
@@ -511,6 +525,10 @@ export default function AnalysisSourceView({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [activeIssueId, setActiveIssueId] = useState<number | null>(null);
+
+  // Source availability for the branch/PR selector
+  const [sourceAvailability, setSourceAvailability] =
+    useState<SourceAvailabilityResponse | null>(null);
 
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const issueRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -528,24 +546,35 @@ export default function AnalysisSourceView({
     // Determine what to load based on mode
     if (mode === "pr") {
       if (!prNumber) return;
+    } else if (mode === "branch") {
+      if (!decodedBranch) return;
     } else {
       if (!analysisId) return;
     }
 
     try {
       setLoading(true);
-      const data =
-        mode === "pr"
-          ? await analysisService.getPrFiles(
-              currentWorkspace.slug,
-              namespace,
-              prNumber!,
-            )
-          : await analysisService.getAnalysisFiles(
-              currentWorkspace.slug,
-              namespace,
-              analysisId!,
-            );
+      let data: AnalysisFilesResponse;
+
+      if (mode === "pr") {
+        data = await analysisService.getPrFiles(
+          currentWorkspace.slug,
+          namespace,
+          prNumber!,
+        );
+      } else if (mode === "branch") {
+        data = await analysisService.getBranchFiles(
+          currentWorkspace.slug,
+          namespace,
+          decodedBranch,
+        );
+      } else {
+        data = await analysisService.getAnalysisFiles(
+          currentWorkspace.slug,
+          namespace,
+          analysisId!,
+        );
+      }
       setFilesData(data);
 
       // Auto-expand directories that contain files with issues
@@ -582,7 +611,7 @@ export default function AnalysisSourceView({
     } finally {
       setLoading(false);
     }
-  }, [currentWorkspace, namespace, analysisId, prNumber, mode]);
+  }, [currentWorkspace, namespace, analysisId, prNumber, decodedBranch, mode]);
 
   const loadFileView = useCallback(
     async (filePath: string) => {
@@ -590,6 +619,8 @@ export default function AnalysisSourceView({
 
       if (mode === "pr") {
         if (!prNumber) return;
+      } else if (mode === "branch") {
+        if (!decodedBranch) return;
       } else {
         if (!analysisId) return;
       }
@@ -599,20 +630,30 @@ export default function AnalysisSourceView({
         setFileView(null);
         setActiveIssueId(null);
 
-        const data =
-          mode === "pr"
-            ? await analysisService.getPrFileView(
-                currentWorkspace.slug,
-                namespace,
-                prNumber!,
-                filePath,
-              )
-            : await analysisService.getFileView(
-                currentWorkspace.slug,
-                namespace,
-                analysisId!,
-                filePath,
-              );
+        let data: FileViewResponse;
+
+        if (mode === "pr") {
+          data = await analysisService.getPrFileView(
+            currentWorkspace.slug,
+            namespace,
+            prNumber!,
+            filePath,
+          );
+        } else if (mode === "branch") {
+          data = await analysisService.getBranchFileView(
+            currentWorkspace.slug,
+            namespace,
+            decodedBranch,
+            filePath,
+          );
+        } else {
+          data = await analysisService.getFileView(
+            currentWorkspace.slug,
+            namespace,
+            analysisId!,
+            filePath,
+          );
+        }
         setFileView(data);
 
         // Update URL without navigation
@@ -635,12 +676,23 @@ export default function AnalysisSourceView({
         setFileLoading(false);
       }
     },
-    [currentWorkspace, namespace, analysisId, prNumber, mode],
+    [currentWorkspace, namespace, analysisId, prNumber, decodedBranch, mode],
   );
 
   useEffect(() => {
     loadFiles();
   }, [loadFiles]);
+
+  // Load source availability for the branch/PR selector
+  useEffect(() => {
+    if (!currentWorkspace || !namespace) return;
+    analysisService
+      .getSourceAvailability(currentWorkspace.slug, namespace)
+      .then(setSourceAvailability)
+      .catch(() => {
+        /* non-critical */
+      });
+  }, [currentWorkspace, namespace]);
 
   // Scroll to highlighted issue after file loads
   useEffect(() => {
@@ -752,6 +804,39 @@ export default function AnalysisSourceView({
     return parts.slice(0, -1).join("/");
   };
 
+  // ── Source selector handler ────────────────────────────────────────
+
+  const handleSourceSwitch = useCallback(
+    (value: string) => {
+      if (!namespace) return;
+      if (value.startsWith("branch:")) {
+        const branch = value.substring(7);
+        navigate(routes.branchSourceView(namespace, branch));
+      } else if (value.startsWith("pr:")) {
+        const pr = value.substring(3);
+        navigate(routes.prSourceView(namespace, Number(pr)));
+      }
+    },
+    [namespace, navigate, routes],
+  );
+
+  const currentSelectorValue = useMemo(() => {
+    if (mode === "branch" && decodedBranch)
+      return `branch:${decodedBranch}`;
+    if (mode === "pr" && prNumber) return `pr:${prNumber}`;
+    return "";
+  }, [mode, decodedBranch, prNumber]);
+
+  /** Build a back link that preserves branch/PR context for the dashboard */
+  const backLink = useMemo(() => {
+    const base = routes.projectDetail(namespace!);
+    if (mode === "branch" && decodedBranch) {
+      return `${base}?branch=${encodeURIComponent(decodedBranch)}&subTab=source`;
+    }
+    // For PR mode we don't have the database prId, so just return base
+    return base;
+  }, [namespace, mode, decodedBranch, routes]);
+
   // ── Loading state ─────────────────────────────────────────────────
 
   if (loading) {
@@ -773,7 +858,7 @@ export default function AnalysisSourceView({
     return (
       <div className="container mx-auto p-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={routes.projectDetail(namespace!)}>
+          <Link to={backLink}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Project
           </Link>
@@ -805,7 +890,7 @@ export default function AnalysisSourceView({
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/60 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
-            <Link to={routes.projectDetail(namespace!)}>
+            <Link to={backLink}>
               <ArrowLeft className="h-4 w-4 mr-1.5" />
               Back
             </Link>
@@ -815,34 +900,99 @@ export default function AnalysisSourceView({
             <Code2 className="h-4 w-4 text-primary" />
             <span className="font-semibold">Source Viewer</span>
             <Badge variant="outline" className="text-[10px] font-mono">
-              {mode === "pr" ? `PR #${prNumber}` : `Analysis #${analysisId}`}
+              {mode === "branch" ? (
+                <>
+                  <GitBranch className="h-3 w-3 mr-1 inline" />
+                  {decodedBranch}
+                </>
+              ) : mode === "pr" ? (
+                `PR #${prNumber}`
+              ) : (
+                `Analysis #${analysisId}`
+              )}
             </Badge>
-            {filesData.commitHash && (
+            {filesData?.commitHash && (
               <Badge variant="secondary" className="text-[10px] font-mono">
                 {filesData.commitHash.substring(0, 8)}
               </Badge>
             )}
-            {filesData.prVersion && (
+            {filesData?.prVersion && (
               <Badge variant="secondary" className="text-[10px]">
                 v{filesData.prVersion}
               </Badge>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>
-            {filesData.files.length} files · {totalIssues} issues
-          </span>
-          {totalHigh > 0 && (
-            <Badge className="bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-300 text-[10px]">
-              {totalHigh} high
-            </Badge>
-          )}
-          {totalMedium > 0 && (
-            <Badge className="bg-yellow-200 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300 text-[10px]">
-              {totalMedium} medium
-            </Badge>
-          )}
+        <div className="flex items-center gap-3">
+          {/* Branch/PR selector — only for branch and pr modes with availability data */}
+          {sourceAvailability &&
+            (mode === "branch" || mode === "pr") &&
+            (sourceAvailability.branches.length > 0 ||
+              sourceAvailability.prNumbers.length > 0) && (
+              <Select
+                value={currentSelectorValue}
+                onValueChange={handleSourceSwitch}
+              >
+                <SelectTrigger className="w-[240px] h-8 text-xs">
+                  <SelectValue placeholder="Switch source..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceAvailability.branches.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Branches
+                      </div>
+                      {sourceAvailability.branches.map((branch) => (
+                        <SelectItem
+                          key={`branch:${branch}`}
+                          value={`branch:${branch}`}
+                          className="text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <GitBranch className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{branch}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {sourceAvailability.prNumbers.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-1">
+                        Pull Requests
+                      </div>
+                      {sourceAvailability.prNumbers.map((pr) => (
+                        <SelectItem
+                          key={`pr:${pr}`}
+                          value={`pr:${pr}`}
+                          className="text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <GitPullRequest className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span>PR #{pr}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              {filesData.files.length} files · {totalIssues} issues
+            </span>
+            {totalHigh > 0 && (
+              <Badge className="bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-300 text-[10px]">
+                {totalHigh} high
+              </Badge>
+            )}
+            {totalMedium > 0 && (
+              <Badge className="bg-yellow-200 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300 text-[10px]">
+                {totalMedium} medium
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 

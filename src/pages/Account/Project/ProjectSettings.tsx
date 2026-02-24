@@ -128,6 +128,7 @@ export default function ProjectDashboard() {
           }),
         analysisService
           .getPullRequests(currentWorkspace.slug, namespace, 1, 20)
+          .then((res) => res.content || [])
           .catch((err) => {
             console.warn("Failed to load pull requests:", err);
             // Return mock data for development

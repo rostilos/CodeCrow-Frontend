@@ -239,10 +239,16 @@ export default function IssueDetails() {
     }
   }, [issue, scopeBranch, scopePrNumber, currentWorkspace, namespace]);
 
-  // Load code snippet when issue is available and has an analysisId + file + line
+  // Load code snippet when issue is available and has a file + line.
+  // Tries analysis-level first, then falls back to branch-level or PR-level.
   useEffect(() => {
     if (!issue || !currentWorkspace || !namespace) return;
-    if (!issue.analysisId || !issue.file || !issue.line || issue.line <= 0) {
+    if (!issue.file || !issue.line || issue.line <= 0) {
+      setSnippet(null);
+      return;
+    }
+    // Need at least one source: analysisId, branch, or prNumber
+    if (!issue.analysisId && !issue.branch && !issue.prNumber) {
       setSnippet(null);
       return;
     }
@@ -250,14 +256,56 @@ export default function IssueDetails() {
     const fetchSnippet = async () => {
       setSnippetLoading(true);
       try {
-        const data = await analysisService.getFileSnippet(
-          currentWorkspace.slug,
-          namespace,
-          issue.analysisId!,
-          issue.file,
-          issue.line,
-          10,
-        );
+        let data: FileSnippetResponse | null = null;
+
+        // 1) Try analysis-level snippet (fastest, most specific)
+        if (issue.analysisId) {
+          try {
+            data = await analysisService.getFileSnippet(
+              currentWorkspace.slug,
+              namespace,
+              issue.analysisId,
+              issue.file,
+              issue.line,
+              10,
+            );
+          } catch {
+            // Analysis-level failed, will try fallbacks
+          }
+        }
+
+        // 2) Fallback: branch-level snippet
+        if (!data && issue.branch) {
+          try {
+            data = await analysisService.getBranchFileSnippet(
+              currentWorkspace.slug,
+              namespace,
+              issue.branch,
+              issue.file,
+              issue.line,
+              10,
+            );
+          } catch {
+            // Branch-level failed, will try PR fallback
+          }
+        }
+
+        // 3) Fallback: PR-level snippet
+        if (!data && issue.prNumber) {
+          try {
+            data = await analysisService.getPrFileSnippet(
+              currentWorkspace.slug,
+              namespace,
+              issue.prNumber,
+              issue.file,
+              issue.line,
+              10,
+            );
+          } catch {
+            // All sources failed
+          }
+        }
+
         if (!cancelled) setSnippet(data);
       } catch {
         if (!cancelled) setSnippet(null);
@@ -278,10 +326,12 @@ export default function IssueDetails() {
         !snippet ||
         !issue ||
         !currentWorkspace ||
-        !namespace ||
-        !issue.analysisId
+        !namespace
       )
         return;
+      // Need at least one source
+      if (!issue.analysisId && !issue.branch && !issue.prNumber) return;
+
       const EXPAND_LINES = 20;
       const newStart =
         direction === "up"
@@ -297,15 +347,51 @@ export default function IssueDetails() {
 
       setSnippetExpanding(direction);
       try {
-        const data = await analysisService.getFileSnippetByRange(
-          currentWorkspace.slug,
-          namespace,
-          issue.analysisId,
-          snippet.filePath,
-          newStart,
-          newEnd,
-        );
-        setSnippet(data);
+        let data: FileSnippetResponse | null = null;
+
+        // Try analysis-level first
+        if (issue.analysisId) {
+          try {
+            data = await analysisService.getFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.analysisId,
+              snippet.filePath,
+              newStart,
+              newEnd,
+            );
+          } catch { /* fallback */ }
+        }
+
+        // Fallback: branch-level
+        if (!data && issue.branch) {
+          try {
+            data = await analysisService.getBranchFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.branch,
+              snippet.filePath,
+              newStart,
+              newEnd,
+            );
+          } catch { /* fallback */ }
+        }
+
+        // Fallback: PR-level
+        if (!data && issue.prNumber) {
+          try {
+            data = await analysisService.getPrFileSnippetByRange(
+              currentWorkspace.slug,
+              namespace,
+              issue.prNumber,
+              snippet.filePath,
+              newStart,
+              newEnd,
+            );
+          } catch { /* all failed */ }
+        }
+
+        if (data) setSnippet(data);
       } catch {
         // Silently fail — snippet stays as is
       } finally {
@@ -1157,15 +1243,17 @@ export default function IssueDetails() {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       {issue.analysisId && (
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <span className="text-muted-foreground">
-                              Analysis ID:
-                            </span>
-                            <span className="ml-2 font-medium">
-                              #{issue.analysisId}
-                            </span>
-                          </div>
+                        <div>
+                          <span className="text-muted-foreground">
+                            Analysis ID:
+                          </span>
+                          <span className="ml-2 font-medium">
+                            #{issue.analysisId}
+                          </span>
+                        </div>
+                      )}
+                      {snippet && (issue.branch || issue.prNumber || issue.analysisId) && (
+                        <div className="flex items-center">
                           <Link
                             to={
                               issue.branch
@@ -1177,14 +1265,23 @@ export default function IssueDetails() {
                                       issueId: String(issue.id),
                                     },
                                   )
-                                : routes.analysisSourceView(
-                                    namespace!,
-                                    issue.analysisId,
-                                    {
-                                      file: issue.file || "",
-                                      issueId: String(issue.id),
-                                    },
-                                  )
+                                : issue.prNumber
+                                  ? routes.prSourceView(
+                                      namespace!,
+                                      issue.prNumber,
+                                      {
+                                        file: issue.file || "",
+                                        issueId: String(issue.id),
+                                      },
+                                    )
+                                  : routes.analysisSourceView(
+                                      namespace!,
+                                      issue.analysisId!,
+                                      {
+                                        file: issue.file || "",
+                                        issueId: String(issue.id),
+                                      },
+                                    )
                             }
                             className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
                           >
@@ -1250,7 +1347,7 @@ export default function IssueDetails() {
                       <Code2 className="h-4 w-4" />
                       Source Context
                     </CardTitle>
-                    {snippet && issue.analysisId && (
+                    {snippet && (issue.branch || issue.prNumber || issue.analysisId) && (
                       <Link
                         to={
                           issue.branch
@@ -1262,14 +1359,23 @@ export default function IssueDetails() {
                                   issueId: String(issue.id),
                                 },
                               )
-                            : routes.analysisSourceView(
-                                namespace!,
-                                issue.analysisId,
-                                {
-                                  file: issue.file || "",
-                                  issueId: String(issue.id),
-                                },
-                              )
+                            : issue.prNumber
+                              ? routes.prSourceView(
+                                  namespace!,
+                                  issue.prNumber,
+                                  {
+                                    file: issue.file || "",
+                                    issueId: String(issue.id),
+                                  },
+                                )
+                              : routes.analysisSourceView(
+                                  namespace!,
+                                  issue.analysisId!,
+                                  {
+                                    file: issue.file || "",
+                                    issueId: String(issue.id),
+                                  },
+                                )
                         }
                         className="text-xs text-primary hover:underline flex items-center gap-1"
                       >
