@@ -96,7 +96,7 @@ export default function IssueDetails() {
   const [snippet, setSnippet] = useState<FileSnippetResponse | null>(null);
   const [snippetLoading, setSnippetLoading] = useState(false);
   const [snippetExpanding, setSnippetExpanding] = useState<
-    "up" | "down" | null
+    "up" | "down" | "all" | null
   >(null);
 
   // Track current snippet coverage via ref (avoids stale closures in effects)
@@ -151,9 +151,26 @@ export default function IssueDetails() {
 
     try {
       setLoading(true);
+
+      // When navigating from the branch issue listing the ID is a
+      // BranchIssue PK — use the branch-specific endpoint so we hit
+      // the right table.  The presence of `scopeBranch` (the ?branch=
+      // search param) is the discriminator.
+      const issuePromise = scopeBranch
+        ? analysisService.getBranchIssueById(
+            currentWorkspace.slug,
+            namespace,
+            issueId,
+          )
+        : analysisService.getIssueById(
+            currentWorkspace.slug,
+            namespace,
+            issueId,
+          );
+
       // Load issue and project info in parallel
       const [issueData, projectData] = await Promise.all([
-        analysisService.getIssueById(currentWorkspace.slug, namespace, issueId),
+        issuePromise,
         projectService.getProjectByNamespace(currentWorkspace.slug, namespace),
       ]);
       setIssue(issueData);
@@ -254,7 +271,7 @@ export default function IssueDetails() {
 
   useEffect(() => {
     loadIssue();
-  }, [currentWorkspace, namespace, issueId]);
+  }, [currentWorkspace, namespace, issueId, scopeBranch]);
 
   useEffect(() => {
     // Skip loading if we already have scope issues from route state
@@ -317,51 +334,98 @@ export default function IssueDetails() {
       try {
         let data: FileSnippetResponse | null = null;
 
-        // 1) Try analysis-level range
-        if (issue.analysisId) {
-          try {
-            data = await analysisService.getFileSnippetByRange(
-              currentWorkspace.slug,
-              namespace,
-              issue.analysisId,
-              issue.file,
-              rangeStart,
-              rangeEnd,
-            );
-          } catch {
-            /* fallback */
-          }
-        }
+        // When in branch context the branch file snapshot is the most
+        // up-to-date source — try it first.  For PR / analysis context
+        // we keep the original priority: analysis → branch → PR.
+        const inBranchScope = !!scopeBranch;
 
-        // 2) Fallback: branch-level range
-        if (!data && issue.branch) {
-          try {
-            data = await analysisService.getBranchFileSnippetByRange(
-              currentWorkspace.slug,
-              namespace,
-              issue.branch,
-              issue.file,
-              rangeStart,
-              rangeEnd,
-            );
-          } catch {
-            /* fallback */
+        if (inBranchScope) {
+          // ── Branch context: branch → analysis → PR ──
+          if (!data && issue.branch) {
+            try {
+              data = await analysisService.getBranchFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.branch,
+                issue.file,
+                rangeStart,
+                rangeEnd,
+              );
+            } catch {
+              /* fallback */
+            }
           }
-        }
-
-        // 3) Fallback: PR-level range
-        if (!data && issue.prNumber) {
-          try {
-            data = await analysisService.getPrFileSnippetByRange(
-              currentWorkspace.slug,
-              namespace,
-              issue.prNumber,
-              issue.file,
-              rangeStart,
-              rangeEnd,
-            );
-          } catch {
-            /* all sources failed */
+          if (!data && issue.analysisId) {
+            try {
+              data = await analysisService.getFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.analysisId,
+                issue.file,
+                rangeStart,
+                rangeEnd,
+              );
+            } catch {
+              /* fallback */
+            }
+          }
+          if (!data && issue.prNumber) {
+            try {
+              data = await analysisService.getPrFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.prNumber,
+                issue.file,
+                rangeStart,
+                rangeEnd,
+              );
+            } catch {
+              /* all sources failed */
+            }
+          }
+        } else {
+          // ── PR / analysis context: analysis → branch → PR ──
+          if (issue.analysisId) {
+            try {
+              data = await analysisService.getFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.analysisId,
+                issue.file,
+                rangeStart,
+                rangeEnd,
+              );
+            } catch {
+              /* fallback */
+            }
+          }
+          if (!data && issue.branch) {
+            try {
+              data = await analysisService.getBranchFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.branch,
+                issue.file,
+                rangeStart,
+                rangeEnd,
+              );
+            } catch {
+              /* fallback */
+            }
+          }
+          if (!data && issue.prNumber) {
+            try {
+              data = await analysisService.getPrFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.prNumber,
+                issue.file,
+                rangeStart,
+                rangeEnd,
+              );
+            } catch {
+              /* all sources failed */
+            }
           }
         }
 
@@ -389,22 +453,26 @@ export default function IssueDetails() {
     namespace,
   ]);
 
-  // Expand snippet up or down by 20 lines
+  // Expand snippet up or down by 50 lines
   const handleSnippetExpand = useCallback(
-    async (direction: "up" | "down") => {
+    async (direction: "up" | "down" | "all") => {
       if (!snippet || !issue || !currentWorkspace || !namespace) return;
       // Need at least one source
       if (!issue.analysisId && !issue.branch && !issue.prNumber) return;
 
-      const EXPAND_LINES = 20;
+      const EXPAND_LINES = 50;
       const newStart =
         direction === "up"
           ? Math.max(1, snippet.startLine - EXPAND_LINES)
-          : snippet.startLine;
+          : direction === "all"
+            ? 1
+            : snippet.startLine;
       const newEnd =
         direction === "down"
           ? Math.min(snippet.totalLineCount, snippet.endLine + EXPAND_LINES)
-          : snippet.endLine;
+          : direction === "all"
+            ? snippet.totalLineCount
+            : snippet.endLine;
 
       // No change — already at file boundary
       if (newStart === snippet.startLine && newEnd === snippet.endLine) return;
@@ -413,51 +481,95 @@ export default function IssueDetails() {
       try {
         let data: FileSnippetResponse | null = null;
 
-        // Try analysis-level first
-        if (issue.analysisId) {
-          try {
-            data = await analysisService.getFileSnippetByRange(
-              currentWorkspace.slug,
-              namespace,
-              issue.analysisId,
-              snippet.filePath,
-              newStart,
-              newEnd,
-            );
-          } catch {
-            /* fallback */
-          }
-        }
+        // Use same priority as the initial snippet fetch:
+        // branch context → branch first; otherwise analysis first.
+        const inBranchScope = !!scopeBranch;
 
-        // Fallback: branch-level
-        if (!data && issue.branch) {
-          try {
-            data = await analysisService.getBranchFileSnippetByRange(
-              currentWorkspace.slug,
-              namespace,
-              issue.branch,
-              snippet.filePath,
-              newStart,
-              newEnd,
-            );
-          } catch {
-            /* fallback */
+        if (inBranchScope) {
+          if (!data && issue.branch) {
+            try {
+              data = await analysisService.getBranchFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.branch,
+                snippet.filePath,
+                newStart,
+                newEnd,
+              );
+            } catch {
+              /* fallback */
+            }
           }
-        }
-
-        // Fallback: PR-level
-        if (!data && issue.prNumber) {
-          try {
-            data = await analysisService.getPrFileSnippetByRange(
-              currentWorkspace.slug,
-              namespace,
-              issue.prNumber,
-              snippet.filePath,
-              newStart,
-              newEnd,
-            );
-          } catch {
-            /* all failed */
+          if (!data && issue.analysisId) {
+            try {
+              data = await analysisService.getFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.analysisId,
+                snippet.filePath,
+                newStart,
+                newEnd,
+              );
+            } catch {
+              /* fallback */
+            }
+          }
+          if (!data && issue.prNumber) {
+            try {
+              data = await analysisService.getPrFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.prNumber,
+                snippet.filePath,
+                newStart,
+                newEnd,
+              );
+            } catch {
+              /* all failed */
+            }
+          }
+        } else {
+          if (issue.analysisId) {
+            try {
+              data = await analysisService.getFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.analysisId,
+                snippet.filePath,
+                newStart,
+                newEnd,
+              );
+            } catch {
+              /* fallback */
+            }
+          }
+          if (!data && issue.branch) {
+            try {
+              data = await analysisService.getBranchFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.branch,
+                snippet.filePath,
+                newStart,
+                newEnd,
+              );
+            } catch {
+              /* fallback */
+            }
+          }
+          if (!data && issue.prNumber) {
+            try {
+              data = await analysisService.getPrFileSnippetByRange(
+                currentWorkspace.slug,
+                namespace,
+                issue.prNumber,
+                snippet.filePath,
+                newStart,
+                newEnd,
+              );
+            } catch {
+              /* all failed */
+            }
           }
         }
 
@@ -559,15 +671,29 @@ export default function IssueDetails() {
       // Use the issue's commit hash as context for the resolution
       const commitHash = issue?.commitHash || undefined;
 
-      const response = await analysisService.updateIssueStatus(
-        currentWorkspace.slug,
-        namespace,
-        issueId,
-        isResolved,
-        undefined, // comment
-        isResolved ? prNumber : undefined,
-        isResolved ? commitHash : undefined,
-      );
+      // When the issue detail was loaded via the branch endpoint the ID
+      // is a BranchIssue PK — use the branch-specific status endpoint
+      // so we update the correct entity without touching the immutable
+      // PR-level CodeAnalysisIssue.
+      const response = scopeBranch
+        ? await analysisService.updateBranchIssueStatus(
+            currentWorkspace.slug,
+            namespace,
+            issueId,
+            isResolved,
+            undefined, // comment
+            isResolved ? prNumber : undefined,
+            isResolved ? commitHash : undefined,
+          )
+        : await analysisService.updateIssueStatus(
+            currentWorkspace.slug,
+            namespace,
+            issueId,
+            isResolved,
+            undefined, // comment
+            isResolved ? prNumber : undefined,
+            isResolved ? commitHash : undefined,
+          );
 
       if (!response.success) {
         throw new Error(
@@ -1591,8 +1717,8 @@ interface IssueCodeSnippetProps {
   };
   theme: string;
   language: string;
-  onExpand?: (direction: "up" | "down") => void;
-  expanding?: "up" | "down" | null;
+  onExpand?: (direction: "up" | "down" | "all") => void;
+  expanding?: "up" | "down" | "all" | null;
 }
 
 function IssueCodeSnippet({
@@ -1661,7 +1787,7 @@ function IssueCodeSnippet({
       {canExpandUp && (
         <button
           onClick={() => onExpand?.("up")}
-          disabled={expanding === "up"}
+          disabled={expanding === "up" || expanding === "all"}
           className="w-full flex items-center justify-center gap-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-b border-border/30 disabled:opacity-50"
         >
           {expanding === "up" ? (
@@ -1678,7 +1804,7 @@ function IssueCodeSnippet({
                 <path d="M2 8L6 4L10 8" />
               </svg>
               <span>
-                Show {Math.min(20, snippet.startLine - 1)} more lines above
+                Show {Math.min(50, snippet.startLine - 1)} more lines above
               </span>
               <svg
                 className="h-3 w-3"
@@ -1833,7 +1959,7 @@ function IssueCodeSnippet({
       {canExpandDown && (
         <button
           onClick={() => onExpand?.("down")}
-          disabled={expanding === "down"}
+          disabled={expanding === "down" || expanding === "all"}
           className="w-full flex items-center justify-center gap-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-t border-border/30 disabled:opacity-50"
         >
           {expanding === "down" ? (
@@ -1850,7 +1976,7 @@ function IssueCodeSnippet({
                 <path d="M2 4L6 8L10 4" />
               </svg>
               <span>
-                Show {Math.min(20, snippet.totalLineCount - snippet.endLine)}{" "}
+                Show {Math.min(50, snippet.totalLineCount - snippet.endLine)}{" "}
                 more lines below
               </span>
               <svg
@@ -1863,6 +1989,21 @@ function IssueCodeSnippet({
                 <path d="M2 4L6 8L10 4" />
               </svg>
             </>
+          )}
+        </button>
+      )}
+
+      {/* Show full file button — visible when file is not fully loaded */}
+      {(canExpandUp || canExpandDown) && (
+        <button
+          onClick={() => onExpand?.("all")}
+          disabled={expanding === "all"}
+          className="w-full flex items-center justify-center gap-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-t border-border/30 disabled:opacity-50"
+        >
+          {expanding === "all" ? (
+            <span className="animate-pulse">Loading full file...</span>
+          ) : (
+            <span>Show full file ({snippet.totalLineCount} lines)</span>
           )}
         </button>
       )}

@@ -1395,7 +1395,11 @@ function SourceCodeRenderer({
                     </span>
                   )}
                   <Link
-                    to={routes.issueDetail(namespace, String(issue.issueId))}
+                    to={routes.issueDetail(
+                      namespace,
+                      String(issue.issueId),
+                      mode === "branch" ? { branch: decodedBranch } : undefined,
+                    )}
                     className="ml-auto shrink-0 text-[10px] text-primary hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
