@@ -444,6 +444,52 @@ class AnalysisService extends ApiService {
     );
   }
 
+  /**
+   * Fetch a single BranchIssue by its own primary key.
+   * Used when the issue detail page is entered from the branch issue listing,
+   * where the IDs are BranchIssue IDs (not CodeAnalysisIssue IDs).
+   */
+  async getBranchIssueById(
+    workspaceSlug: string,
+    namespace: string,
+    issueId: string | number,
+  ): Promise<AnalysisIssue> {
+    return this.request<AnalysisIssue>(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/${issueId}`,
+      {},
+      true,
+    );
+  }
+
+  /**
+   * Update the status (resolve/reopen) of a single BranchIssue.
+   * This is a branch-local operation — the origin CodeAnalysisIssue
+   * is intentionally NOT mutated so PR historical data stays immutable.
+   */
+  async updateBranchIssueStatus(
+    workspaceSlug: string,
+    namespace: string,
+    issueId: string | number,
+    isResolved: boolean,
+    comment?: string,
+    resolvedByPr?: number,
+    resolvedCommitHash?: string,
+  ): Promise<IssueStatusUpdateResponse> {
+    const body: IssueStatusUpdateRequest = { isResolved };
+    if (comment) body.comment = comment;
+    if (resolvedByPr) body.resolvedByPr = resolvedByPr;
+    if (resolvedCommitHash) body.resolvedCommitHash = resolvedCommitHash;
+
+    return this.request<IssueStatusUpdateResponse>(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/${issueId}/status`,
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      },
+      true,
+    );
+  }
+
   async getAnalysisIssues(
     workspaceSlug: string,
     namespace: string,
