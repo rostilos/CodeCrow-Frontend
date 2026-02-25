@@ -235,7 +235,9 @@ export default function BranchIssues() {
       const issueToUpdate = issues.find((i) => i.id === issueId);
       const commitHash = issueToUpdate?.commitHash || undefined;
 
-      const response = await analysisService.updateIssueStatus(
+      // IMPORTANT: use the branch-specific endpoint so only the BranchIssue
+      // is mutated — the origin CodeAnalysisIssue must stay immutable.
+      const response = await analysisService.updateBranchIssueStatus(
         currentWorkspace.slug,
         namespace,
         issueId,
@@ -295,7 +297,9 @@ export default function BranchIssues() {
     setBulkUpdating(true);
     try {
       const isResolved = newStatus === "resolved";
-      const result = await analysisService.bulkUpdateIssueStatus(
+      // IMPORTANT: use the branch-specific bulk endpoint so only BranchIssues
+      // are mutated — origin CodeAnalysisIssue records must stay immutable.
+      const result = await analysisService.bulkUpdateBranchIssueStatus(
         currentWorkspace.slug,
         namespace,
         Array.from(selectedIssues),

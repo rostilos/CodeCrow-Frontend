@@ -430,6 +430,18 @@ export default function IssueDetails() {
         }
 
         if (!cancelled) {
+          if (!data) {
+            console.warn(
+              "[IssueDetails] All snippet sources failed for",
+              issue.file,
+              {
+                branch: issue.branch,
+                analysisId: issue.analysisId,
+                prNumber: issue.prNumber,
+                scopeBranch,
+              },
+            );
+          }
           setSnippet(data);
           setSnippetLoading(false);
         }
@@ -451,6 +463,7 @@ export default function IssueDetails() {
     sameFileIssueKey,
     currentWorkspace,
     namespace,
+    scopeBranch,
   ]);
 
   // Expand snippet up or down by 50 lines
@@ -573,14 +586,27 @@ export default function IssueDetails() {
           }
         }
 
-        if (data) setSnippet(data);
+        if (data) {
+          setSnippet(data);
+        } else {
+          toast({
+            title: "Could not expand source context",
+            description:
+              "No source snapshot is available for this file. Try re-running the analysis.",
+            variant: "destructive",
+          });
+        }
       } catch {
-        // Silently fail — snippet stays as is
+        toast({
+          title: "Failed to expand source context",
+          description: "An unexpected error occurred while loading more lines.",
+          variant: "destructive",
+        });
       } finally {
         setSnippetExpanding(null);
       }
     },
-    [snippet, issue, currentWorkspace, namespace],
+    [snippet, issue, currentWorkspace, namespace, scopeBranch, toast],
   );
 
   // Detect language from file extension for syntax highlighting

@@ -490,6 +490,32 @@ class AnalysisService extends ApiService {
     );
   }
 
+  /**
+   * Bulk update the status (resolve/reopen) of multiple BranchIssues.
+   * This is a branch-local operation — origin CodeAnalysisIssue records
+   * are intentionally NOT mutated.
+   */
+  async bulkUpdateBranchIssueStatus(
+    workspaceSlug: string,
+    namespace: string,
+    issueIds: (string | number)[],
+    isResolved: boolean,
+    comment?: string,
+  ): Promise<BulkStatusUpdateResponse> {
+    return this.request<BulkStatusUpdateResponse>(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/bulk-status`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          issueIds: issueIds.map((id) => Number(id)),
+          isResolved,
+          comment,
+        }),
+      },
+      true,
+    );
+  }
+
   async getAnalysisIssues(
     workspaceSlug: string,
     namespace: string,
