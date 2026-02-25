@@ -353,27 +353,58 @@ export default function BranchIssues() {
 
     setReconciling(true);
     try {
-      const result = await analysisService.triggerFullReconcile(
+      const queued = await analysisService.triggerFullReconcile(
         currentWorkspace.slug,
         namespace,
         decodeURIComponent(branchName),
       );
 
       toast({
-        title: "Full reconciliation complete",
-        description: `${result.totalIssues} total issues, ${result.resolvedIssues} resolved across ${result.filesChecked} files`,
+        title: "Reconciliation task queued",
+        description:
+          queued.message || "The pipeline agent will process it shortly.",
       });
 
-      // Reload the issues list to reflect changes
-      loadBranchData(filters, 1, false);
+      // Poll for completion
+      const taskId = queued.taskId;
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await analysisService.getReconcileTaskStatus(
+            currentWorkspace.slug,
+            namespace,
+            taskId,
+          );
+
+          if (status.status === "COMPLETED") {
+            clearInterval(pollInterval);
+            setReconciling(false);
+            toast({
+              title: "Full reconciliation complete",
+              description: `${status.totalIssues ?? 0} total issues, ${status.resolvedIssues ?? 0} resolved across ${status.filesChecked ?? 0} files`,
+            });
+            loadBranchData(filters, 1, false);
+          } else if (status.status === "FAILED") {
+            clearInterval(pollInterval);
+            setReconciling(false);
+            toast({
+              title: "Reconciliation failed",
+              description: status.error || "The reconciliation task failed",
+              variant: "destructive",
+            });
+          }
+          // PENDING or IN_PROGRESS → keep polling
+        } catch {
+          clearInterval(pollInterval);
+          setReconciling(false);
+        }
+      }, 5000); // poll every 5 seconds
     } catch (error: any) {
+      setReconciling(false);
       toast({
         title: "Reconciliation failed",
-        description: error.message || "Could not complete full reconciliation",
+        description: error.message || "Could not queue full reconciliation",
         variant: "destructive",
       });
-    } finally {
-      setReconciling(false);
     }
   };
 

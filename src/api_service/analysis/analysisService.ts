@@ -669,22 +669,50 @@ class AnalysisService extends ApiService {
 
   // ── Full Reconciliation API ───────────────────────────────────────────
 
+  /**
+   * Queue a full reconciliation task. Returns immediately with a taskId.
+   */
   async triggerFullReconcile(
     workspaceSlug: string,
     namespace: string,
     branchName: string,
   ): Promise<{
     status: string;
-    branch: string;
-    totalIssues: number;
-    resolvedIssues: number;
-    filesChecked: number;
-    message?: string;
+    taskId: string;
+    message: string;
   }> {
     const params = new URLSearchParams({ branchName });
     return this.request(
       `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/full-reconcile?${params.toString()}`,
       { method: "POST" },
+      true,
+    );
+  }
+
+  /**
+   * Poll the status of a queued reconciliation task.
+   */
+  async getReconcileTaskStatus(
+    workspaceSlug: string,
+    namespace: string,
+    taskId: string,
+  ): Promise<{
+    status: string;
+    taskId: string;
+    branchName: string;
+    createdAt: string;
+    startedAt?: string;
+    completedAt?: string;
+    totalIssues?: number;
+    resolvedIssues?: number;
+    filesChecked?: number;
+    message?: string;
+    error?: string;
+  }> {
+    const params = new URLSearchParams({ taskId });
+    return this.request(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/full-reconcile/status?${params.toString()}`,
+      { method: "GET" },
       true,
     );
   }
