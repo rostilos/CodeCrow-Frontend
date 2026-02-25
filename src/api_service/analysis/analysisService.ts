@@ -666,6 +666,29 @@ class AnalysisService extends ApiService {
 
     return response;
   }
+
+  // ── Full Reconciliation API ───────────────────────────────────────────
+
+  async triggerFullReconcile(
+    workspaceSlug: string,
+    namespace: string,
+    branchName: string,
+  ): Promise<{
+    status: string;
+    branch: string;
+    totalIssues: number;
+    resolvedIssues: number;
+    filesChecked: number;
+    message?: string;
+  }> {
+    const params = new URLSearchParams({ branchName });
+    return this.request(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/full-reconcile?${params.toString()}`,
+      { method: "POST" },
+      true,
+    );
+  }
+
   // ── Source Code Viewer API ─────────────────────────────────────────────
 
   async getLatestBranchAnalysis(
