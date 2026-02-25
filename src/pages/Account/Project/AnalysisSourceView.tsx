@@ -1161,6 +1161,8 @@ export default function AnalysisSourceView({
                 theme={theme}
                 namespace={namespace!}
                 routes={routes}
+                mode={mode}
+                decodedBranch={decodedBranch}
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
@@ -1189,6 +1191,8 @@ interface SourceCodeRendererProps {
   theme: string;
   namespace: string;
   routes: ReturnType<typeof useWorkspaceRoutes>;
+  mode: "analysis" | "pr" | "branch";
+  decodedBranch: string;
 }
 
 function SourceCodeRenderer({
@@ -1201,6 +1205,8 @@ function SourceCodeRenderer({
   theme,
   namespace,
   routes,
+  mode,
+  decodedBranch,
 }: SourceCodeRendererProps) {
   const language = detectLanguage(fileView.filePath);
   const lines = fileView.content.split("\n");
