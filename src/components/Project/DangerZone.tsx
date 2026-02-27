@@ -1,7 +1,19 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Trash2, Unlink, Loader2, ShieldCheck } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertTriangle,
+  Trash2,
+  Unlink,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +35,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { projectService, ProjectDTO } from "@/api_service/project/projectService";
+import {
+  projectService,
+  ProjectDTO,
+} from "@/api_service/project/projectService";
 import { twoFactorService } from "@/api_service/auth/twoFactorService";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
@@ -34,21 +49,27 @@ interface DangerZoneProps {
   onProjectUpdate?: (project: ProjectDTO) => void;
 }
 
-export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: DangerZoneProps) {
+export default function DangerZone({
+  project,
+  workspaceSlug,
+  onProjectUpdate,
+}: DangerZoneProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const routes = useWorkspaceRoutes();
   const [loading, setLoading] = useState(false);
   const [has2FA, setHas2FA] = useState(false);
   const [twoFactorType, setTwoFactorType] = useState<string | null>(null);
-  
+
   // Delete project state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [show2FADialog, setShow2FADialog] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
-  const [pendingAction, setPendingAction] = useState<"delete" | "unbind" | null>(null);
-  
+  const [pendingAction, setPendingAction] = useState<
+    "delete" | "unbind" | null
+  >(null);
+
   // Unbind VCS state
   const [showUnbindConfirm, setShowUnbindConfirm] = useState(false);
 
@@ -86,7 +107,7 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
       setShowDeleteConfirm(false);
       setShow2FADialog(true);
       // Send email code if using email 2FA
-      if (twoFactorType === 'EMAIL') {
+      if (twoFactorType === "EMAIL") {
         try {
           await twoFactorService.resendEmailCode();
           toast({
@@ -130,7 +151,7 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
     if (has2FA) {
       setPendingAction("unbind");
       setShow2FADialog(true);
-      if (twoFactorType === 'EMAIL') {
+      if (twoFactorType === "EMAIL") {
         twoFactorService.resendEmailCode().catch(() => {});
       }
     } else {
@@ -141,7 +162,10 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
   const executeUnbind = async () => {
     setLoading(true);
     try {
-      const updated = await projectService.unbindRepository(workspaceSlug, project.namespace!);
+      const updated = await projectService.unbindRepository(
+        workspaceSlug,
+        project.namespace!,
+      );
       toast({
         title: "Success",
         description: "Repository unbound from project",
@@ -174,12 +198,12 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
       // For now, we'll pass the 2FA code to the action endpoints
       // In a full implementation, the backend should verify the 2FA code
       // before executing destructive actions
-      
+
       if (pendingAction === "delete") {
         await projectService.deleteProjectWithVerification(
           workspaceSlug,
           project.namespace!,
-          verificationCode
+          verificationCode,
         );
         toast({
           title: "Success",
@@ -190,7 +214,7 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
         const updated = await projectService.unbindRepositoryWithVerification(
           workspaceSlug,
           project.namespace!,
-          verificationCode
+          verificationCode,
         );
         toast({
           title: "Success",
@@ -199,14 +223,16 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
         onProjectUpdate?.(updated);
         setShowUnbindConfirm(false);
       }
-      
+
       setShow2FADialog(false);
       setVerificationCode("");
       setPendingAction(null);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Operation failed. Please check your verification code.",
+        description:
+          error.message ||
+          "Operation failed. Please check your verification code.",
         variant: "destructive",
       });
     } finally {
@@ -215,8 +241,8 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
   };
 
   const handleResendCode = async () => {
-    if (twoFactorType !== 'EMAIL') return;
-    
+    if (twoFactorType !== "EMAIL") return;
+
     try {
       await twoFactorService.resendEmailCode();
       toast({
@@ -251,11 +277,15 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
               <div className="flex-1">
                 <h4 className="font-medium">Disconnect Repository</h4>
                 <p className="text-sm text-muted-foreground">
-                  Remove the VCS connection from this project. Analysis history will be preserved.
+                  Remove the VCS connection from this project. Analysis history
+                  will be preserved.
                 </p>
-                {project.projectVcsWorkspace && project.projectRepoSlug && (
+                {project.projectVcsWorkspace && project.projectVcsRepoSlug && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Currently connected: <strong>{project.projectVcsWorkspace}/{project.projectRepoSlug}</strong>
+                    Currently connected:{" "}
+                    <strong>
+                      {project.projectVcsWorkspace}/{project.projectVcsRepoSlug}
+                    </strong>
                   </p>
                 )}
               </div>
@@ -276,8 +306,9 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
             <div className="flex-1">
               <h4 className="font-medium">Delete Project</h4>
               <p className="text-sm text-muted-foreground">
-                Permanently delete this project and all its data including analysis history, branches, and settings.
-                This action cannot be undone.
+                Permanently delete this project and all its data including
+                analysis history, branches, and settings. This action cannot be
+                undone.
               </p>
             </div>
             <Button
@@ -293,7 +324,10 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
           {has2FA && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
               <ShieldCheck className="h-4 w-4 text-green-600" />
-              <span>Two-factor authentication is enabled. You'll need to verify your identity for destructive actions.</span>
+              <span>
+                Two-factor authentication is enabled. You'll need to verify your
+                identity for destructive actions.
+              </span>
             </div>
           )}
         </CardContent>
@@ -309,7 +343,8 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                Are you sure you want to delete <strong>{project.name}</strong>? This action will permanently delete:
+                Are you sure you want to delete <strong>{project.name}</strong>?
+                This action will permanently delete:
               </p>
               <ul className="list-disc list-inside space-y-1 text-sm">
                 <li>All code analysis results and history</li>
@@ -318,7 +353,11 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
                 <li>All API tokens associated with this project</li>
               </ul>
               <p className="font-medium">
-                Type <code className="bg-muted px-1 py-0.5 rounded">{project.namespace}</code> to confirm:
+                Type{" "}
+                <code className="bg-muted px-1 py-0.5 rounded">
+                  {project.namespace}
+                </code>{" "}
+                to confirm:
               </p>
               <Input
                 value={deleteConfirmText}
@@ -354,8 +393,9 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect Repository</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to disconnect the repository from this project? 
-              Analysis history will be preserved, but you won't be able to run new analyses until you connect a repository again.
+              Are you sure you want to disconnect the repository from this
+              project? Analysis history will be preserved, but you won't be able
+              to run new analyses until you connect a repository again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -387,10 +427,9 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
               Verify Your Identity
             </DialogTitle>
             <DialogDescription>
-              {twoFactorType === 'EMAIL' 
+              {twoFactorType === "EMAIL"
                 ? "Enter the verification code sent to your email"
-                : "Enter the code from your authenticator app"
-              }
+                : "Enter the code from your authenticator app"}
             </DialogDescription>
           </DialogHeader>
 
@@ -407,7 +446,7 @@ export default function DangerZone({ project, workspaceSlug, onProjectUpdate }: 
               />
             </div>
 
-            {twoFactorType === 'EMAIL' && (
+            {twoFactorType === "EMAIL" && (
               <Button
                 variant="link"
                 className="px-0 h-auto"
