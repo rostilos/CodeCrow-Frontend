@@ -209,6 +209,8 @@ export interface AnalysisIssue {
   // VCS author info - who created the PR that introduced this issue
   vcsAuthorId?: string | null;
   vcsAuthorUsername?: string | null;
+  // Detection source - how this issue was originally detected
+  detectionSource?: "PR_ANALYSIS" | "DIRECT_PUSH_ANALYSIS" | null;
 }
 
 export interface AnalysisTrendData {
@@ -490,6 +492,32 @@ class AnalysisService extends ApiService {
     );
   }
 
+  /**
+   * Bulk update the status (resolve/reopen) of multiple BranchIssues.
+   * This is a branch-local operation — origin CodeAnalysisIssue records
+   * are intentionally NOT mutated.
+   */
+  async bulkUpdateBranchIssueStatus(
+    workspaceSlug: string,
+    namespace: string,
+    issueIds: (string | number)[],
+    isResolved: boolean,
+    comment?: string,
+  ): Promise<BulkStatusUpdateResponse> {
+    return this.request<BulkStatusUpdateResponse>(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/bulk-status`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          issueIds: issueIds.map((id) => Number(id)),
+          isResolved,
+          comment,
+        }),
+      },
+      true,
+    );
+  }
+
   async getAnalysisIssues(
     workspaceSlug: string,
     namespace: string,
@@ -640,6 +668,57 @@ class AnalysisService extends ApiService {
 
     return response;
   }
+
+  // ── Full Reconciliation API ───────────────────────────────────────────
+
+  /**
+   * Queue a full reconciliation task. Returns immediately with a taskId.
+   */
+  async triggerFullReconcile(
+    workspaceSlug: string,
+    namespace: string,
+    branchName: string,
+  ): Promise<{
+    status: string;
+    taskId: string;
+    message: string;
+  }> {
+    const params = new URLSearchParams({ branchName });
+    return this.request(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/full-reconcile?${params.toString()}`,
+      { method: "POST" },
+      true,
+    );
+  }
+
+  /**
+   * Poll the status of a queued reconciliation task.
+   */
+  async getReconcileTaskStatus(
+    workspaceSlug: string,
+    namespace: string,
+    taskId: string,
+  ): Promise<{
+    status: string;
+    taskId: string;
+    branchName: string;
+    createdAt: string;
+    startedAt?: string;
+    completedAt?: string;
+    totalIssues?: number;
+    resolvedIssues?: number;
+    filesChecked?: number;
+    message?: string;
+    error?: string;
+  }> {
+    const params = new URLSearchParams({ taskId });
+    return this.request(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/branches/issues/full-reconcile/status?${params.toString()}`,
+      { method: "GET" },
+      true,
+    );
+  }
+
   // ── Source Code Viewer API ─────────────────────────────────────────────
 
   async getLatestBranchAnalysis(

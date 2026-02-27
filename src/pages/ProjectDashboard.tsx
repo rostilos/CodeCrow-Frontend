@@ -1672,8 +1672,25 @@ export default function ProjectDashboard() {
                   onSeverityClick={handleSeverityClick}
                   onViewAllIssues={() => setBranchTab("issues")}
                   onViewResolvedIssues={() => {
-                    setFilters((prev) => ({ ...prev, status: "resolved" }));
+                    const resolvedFilters = { ...filters, status: "resolved" };
+                    setFilters(resolvedFilters);
                     setBranchTab("issues");
+                    // Update URL to reflect the resolved filter
+                    const newParams = new URLSearchParams(searchParams);
+                    newParams.set("status", "resolved");
+                    newParams.set("subTab", "issues");
+                    setSearchParams(newParams, { replace: true });
+                    // Trigger a reload with the new filter since branchIssuesLoaded
+                    // may already be true from a previous tab visit
+                    if (selectedBranch) {
+                      setBranchIssuesPage(1);
+                      loadBranchIssues(
+                        selectedBranch,
+                        1,
+                        false,
+                        resolvedFilters,
+                      );
+                    }
                   }}
                   onFileClick={handleFileClick}
                 />

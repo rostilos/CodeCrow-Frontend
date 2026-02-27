@@ -15,26 +15,17 @@ RUN npm run build
 # ---------------------
 # Production stage
 # ---------------------
-FROM node:20-slim
+FROM nginx:stable-alpine
 
-# Create non-root user
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+# Copy built files to nginx html directory
+COPY --from=build /app/dist /usr/share/nginx/html
 
-WORKDIR /app
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built files only
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/package*.json ./
-
-# Install only production dependencies (we'll add `serve`)
-RUN npm install -g serve && \
-    npm install --omit=dev && \
-    mkdir -p /app/logs && \
-    chown -R appuser:appgroup /app
-
-USER appuser
+# Create log directory
+RUN mkdir -p /app/logs && chown -R nginx:nginx /app/logs
 
 EXPOSE 8080
 
-# Serve production build
-CMD ["serve", "-s", "dist", "-l", "8080"]
+CMD ["nginx", "-g", "daemon off;"]

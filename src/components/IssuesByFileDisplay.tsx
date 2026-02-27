@@ -20,6 +20,7 @@ import {
   Clock,
   Code,
   User,
+  GitCommitVertical,
 } from "lucide-react";
 import type { AnalysisIssue } from "@/api_service/analysis/analysisService";
 import { getCategoryInfo } from "@/config/issueCategories";
@@ -65,18 +66,38 @@ export default function IssuesByFileDisplay({
   const { canManageWorkspace } = usePermissions();
   const routes = useWorkspaceRoutes();
 
-  // Group issues by filename
-  const issuesByFile = issues.reduce(
-    (acc, issue) => {
-      const file = issue.file || "Unknown File";
-      if (!acc[file]) {
-        acc[file] = [];
-      }
-      acc[file].push(issue);
-      return acc;
-    },
-    {} as Record<string, AnalysisIssue[]>,
-  );
+  // Group issues by filename, sort each group by date (newest first),
+  // and order file groups by their most recent issue date (newest first).
+  const issuesByFile = (() => {
+    const grouped = issues.reduce(
+      (acc, issue) => {
+        const file = issue.file || "Unknown File";
+        if (!acc[file]) {
+          acc[file] = [];
+        }
+        acc[file].push(issue);
+        return acc;
+      },
+      {} as Record<string, AnalysisIssue[]>,
+    );
+
+    // Sort issues within each file group by date (newest first)
+    for (const file of Object.keys(grouped)) {
+      grouped[file].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    }
+
+    // Return entries sorted by most recent issue in each file group
+    const sorted = Object.entries(grouped).sort(([, aIssues], [, bIssues]) => {
+      const aLatest = new Date(aIssues[0].createdAt).getTime();
+      const bLatest = new Date(bIssues[0].createdAt).getTime();
+      return bLatest - aLatest;
+    });
+
+    return Object.fromEntries(sorted);
+  })();
 
   const getIssueIcon = (type: string) => {
     switch (type) {
@@ -273,6 +294,15 @@ export default function IssuesByFileDisplay({
                               )}
                             >
                               {getCategoryInfo(issue.issueCategory).label}
+                            </Badge>
+                          )}
+                          {issue.detectionSource === "DIRECT_PUSH_ANALYSIS" && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                            >
+                              <GitCommitVertical className="h-3 w-3 mr-1" />
+                              Direct Push
                             </Badge>
                           )}
                         </div>

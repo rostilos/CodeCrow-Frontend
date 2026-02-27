@@ -11,6 +11,7 @@ import {
   Square,
   Code2,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -19,6 +20,17 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import {
@@ -47,6 +59,7 @@ export default function BranchIssues() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalIssues, setTotalIssues] = useState(0);
   const [pageSize] = useState(50);
@@ -235,7 +248,9 @@ export default function BranchIssues() {
       const issueToUpdate = issues.find((i) => i.id === issueId);
       const commitHash = issueToUpdate?.commitHash || undefined;
 
-      const response = await analysisService.updateIssueStatus(
+      // IMPORTANT: use the branch-specific endpoint so only the BranchIssue
+      // is mutated — the origin CodeAnalysisIssue must stay immutable.
+      const response = await analysisService.updateBranchIssueStatus(
         currentWorkspace.slug,
         namespace,
         issueId,
@@ -295,7 +310,9 @@ export default function BranchIssues() {
     setBulkUpdating(true);
     try {
       const isResolved = newStatus === "resolved";
-      const result = await analysisService.bulkUpdateIssueStatus(
+      // IMPORTANT: use the branch-specific bulk endpoint so only BranchIssues
+      // are mutated — origin CodeAnalysisIssue records must stay immutable.
+      const result = await analysisService.bulkUpdateBranchIssueStatus(
         currentWorkspace.slug,
         namespace,
         Array.from(selectedIssues),
@@ -328,6 +345,66 @@ export default function BranchIssues() {
       });
     } finally {
       setBulkUpdating(false);
+    }
+  };
+
+  const handleFullReconcile = async () => {
+    if (!currentWorkspace || !namespace || !branchName) return;
+
+    setReconciling(true);
+    try {
+      const queued = await analysisService.triggerFullReconcile(
+        currentWorkspace.slug,
+        namespace,
+        decodeURIComponent(branchName),
+      );
+
+      toast({
+        title: "Reconciliation task queued",
+        description:
+          queued.message || "The pipeline agent will process it shortly.",
+      });
+
+      // Poll for completion
+      const taskId = queued.taskId;
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await analysisService.getReconcileTaskStatus(
+            currentWorkspace.slug,
+            namespace,
+            taskId,
+          );
+
+          if (status.status === "COMPLETED") {
+            clearInterval(pollInterval);
+            setReconciling(false);
+            toast({
+              title: "Full reconciliation complete",
+              description: `${status.totalIssues ?? 0} total issues, ${status.resolvedIssues ?? 0} resolved across ${status.filesChecked ?? 0} files`,
+            });
+            loadBranchData(filters, 1, false);
+          } else if (status.status === "FAILED") {
+            clearInterval(pollInterval);
+            setReconciling(false);
+            toast({
+              title: "Reconciliation failed",
+              description: status.error || "The reconciliation task failed",
+              variant: "destructive",
+            });
+          }
+          // PENDING or IN_PROGRESS → keep polling
+        } catch {
+          clearInterval(pollInterval);
+          setReconciling(false);
+        }
+      }, 5000); // poll every 5 seconds
+    } catch (error: any) {
+      setReconciling(false);
+      toast({
+        title: "Reconciliation failed",
+        description: error.message || "Could not queue full reconciliation",
+        variant: "destructive",
+      });
     }
   };
 
@@ -386,21 +463,62 @@ export default function BranchIssues() {
         <h1 className="text-xl font-bold tracking-tight">
           Branch Issues: {decodeURIComponent(branchName || "")}
         </h1>
-        {namespace && branchName && (
-          <Button variant="outline" size="sm" asChild>
-            <Link
-              to={routes.branchSourceView(
-                namespace,
-                decodeURIComponent(branchName),
-              )}
-              className="flex items-center gap-1.5"
-            >
-              <Code2 className="h-4 w-4" />
-              View Source
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={reconciling}>
+                <RefreshCw
+                  className={`h-4 w-4 mr-1.5 ${reconciling ? "animate-spin" : ""}`}
+                />
+                {reconciling ? "Reconciling..." : "Full Reconcile"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Full Branch Reconciliation</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <span className="block">
+                    This will check <strong>every unresolved issue</strong> in
+                    this branch against the current source code. Issues whose
+                    code has been removed or changed will be automatically
+                    resolved.
+                  </span>
+                  <span className="block text-yellow-600 dark:text-yellow-400 font-medium">
+                    ⚠️ Warning: Issues without deterministic anchors will be
+                    sent to AI for analysis, which may consume a significant
+                    amount of LLM tokens. The cost depends on the number of
+                    ambiguous issues.
+                  </span>
+                  <span className="block">
+                    This operation may take a few minutes for branches with many
+                    issues.
+                  </span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleFullReconcile}>
+                  Run Full Reconcile
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {namespace && branchName && (
+            <Button variant="outline" size="sm" asChild>
+              <Link
+                to={routes.branchSourceView(
+                  namespace,
+                  decodeURIComponent(branchName),
+                )}
+                className="flex items-center gap-1.5"
+              >
+                <Code2 className="h-4 w-4" />
+                View Source
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-6">

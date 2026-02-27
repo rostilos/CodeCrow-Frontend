@@ -44,6 +44,7 @@ import {
   Clock,
   GitBranch,
   GitPullRequest,
+  GitCommitVertical,
   ChevronRight,
   ChevronLeft,
   Copy,
@@ -92,12 +93,17 @@ export default function IssueDetails() {
     (location.state as { scopeIssues?: AnalysisIssue[] })?.scopeIssues || [],
   );
   const [scopeLoading, setScopeLoading] = useState(false);
+  const [scopeTotal, setScopeTotal] = useState(0);
+  const [scopeLoadingMore, setScopeLoadingMore] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [snippet, setSnippet] = useState<FileSnippetResponse | null>(null);
   const [snippetLoading, setSnippetLoading] = useState(false);
   const [snippetExpanding, setSnippetExpanding] = useState<
     "up" | "down" | "all" | null
   >(null);
+
+  // Ref for auto-scrolling the active sidebar item into view
+  const activeSidebarItemRef = useRef<HTMLAnchorElement>(null);
 
   // Track current snippet coverage via ref (avoids stale closures in effects)
   const snippetRangeRef = useRef<{
@@ -232,10 +238,11 @@ export default function IssueDetails() {
           branch,
           statusFilter,
           1,
-          100, // Load more issues for sidebar navigation
+          200, // Load issues for sidebar navigation
           true, // excludeDiff to reduce payload size
         );
         issues = response.issues;
+        setScopeTotal(response.total);
       }
 
       // Apply additional filters if present
@@ -269,6 +276,57 @@ export default function IssueDetails() {
     }
   };
 
+  const loadMoreScopeIssues = async () => {
+    if (!currentWorkspace || !namespace || scopeLoadingMore) return;
+    const branch = scopeBranch || issue?.branch;
+    if (!branch) return;
+
+    setScopeLoadingMore(true);
+    try {
+      const statusFilter = filterStatus || "open";
+      const currentPage = Math.ceil(scopeIssues.length / 200);
+      const response = await analysisService.getBranchIssues(
+        currentWorkspace.slug,
+        namespace,
+        branch,
+        statusFilter,
+        currentPage + 1,
+        200,
+        true,
+      );
+
+      let newIssues = response.issues;
+
+      // Apply same client-side filters
+      if (filterSeverity && filterSeverity !== "ALL") {
+        newIssues = newIssues.filter(
+          (i) => i.severity.toLowerCase() === filterSeverity.toLowerCase(),
+        );
+      }
+      if (filterCategory && filterCategory !== "ALL") {
+        newIssues = newIssues.filter(
+          (i) =>
+            i.issueCategory?.toLowerCase() === filterCategory.toLowerCase(),
+        );
+      }
+      const effectiveStatusFilter = filterStatus || "open";
+      if (effectiveStatusFilter !== "all") {
+        if (effectiveStatusFilter === "open") {
+          newIssues = newIssues.filter((i) => i.status !== "resolved");
+        } else if (effectiveStatusFilter === "resolved") {
+          newIssues = newIssues.filter((i) => i.status === "resolved");
+        }
+      }
+
+      setScopeIssues((prev) => [...prev, ...newIssues]);
+      setScopeTotal(response.total);
+    } catch (error: any) {
+      console.error("Failed to load more scope issues:", error);
+    } finally {
+      setScopeLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     loadIssue();
   }, [currentWorkspace, namespace, issueId, scopeBranch]);
@@ -281,6 +339,18 @@ export default function IssueDetails() {
       loadScopeIssues();
     }
   }, [issue, scopeBranch, scopePrNumber, currentWorkspace, namespace]);
+
+  // Auto-scroll the active sidebar item into view when issueId changes
+  useEffect(() => {
+    if (!issueId || sidebarCollapsed) return;
+    const timer = setTimeout(() => {
+      activeSidebarItemRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [issueId, sidebarCollapsed]);
 
   // Load code snippet when issue is available and has a file + line.
   // Uses a range that covers ALL issues in the same file (from scopeIssues)
@@ -430,6 +500,18 @@ export default function IssueDetails() {
         }
 
         if (!cancelled) {
+          if (!data) {
+            console.warn(
+              "[IssueDetails] All snippet sources failed for",
+              issue.file,
+              {
+                branch: issue.branch,
+                analysisId: issue.analysisId,
+                prNumber: issue.prNumber,
+                scopeBranch,
+              },
+            );
+          }
           setSnippet(data);
           setSnippetLoading(false);
         }
@@ -451,6 +533,7 @@ export default function IssueDetails() {
     sameFileIssueKey,
     currentWorkspace,
     namespace,
+    scopeBranch,
   ]);
 
   // Expand snippet up or down by 50 lines
@@ -573,14 +656,27 @@ export default function IssueDetails() {
           }
         }
 
-        if (data) setSnippet(data);
+        if (data) {
+          setSnippet(data);
+        } else {
+          toast({
+            title: "Could not expand source context",
+            description:
+              "No source snapshot is available for this file. Try re-running the analysis.",
+            variant: "destructive",
+          });
+        }
       } catch {
-        // Silently fail — snippet stays as is
+        toast({
+          title: "Failed to expand source context",
+          description: "An unexpected error occurred while loading more lines.",
+          variant: "destructive",
+        });
       } finally {
         setSnippetExpanding(null);
       }
     },
-    [snippet, issue, currentWorkspace, namespace],
+    [snippet, issue, currentWorkspace, namespace, scopeBranch, toast],
   );
 
   // Detect language from file extension for syntax highlighting
@@ -1106,8 +1202,27 @@ export default function IssueDetails() {
                       if (!groups[file]) groups[file] = [];
                       groups[file].push(issue);
                     });
+
+                    // Sort issues within each group by date (newest first)
+                    for (const file of Object.keys(groups)) {
+                      groups[file].sort(
+                        (a, b) =>
+                          new Date(b.createdAt).getTime() -
+                          new Date(a.createdAt).getTime(),
+                      );
+                    }
+
+                    // Sort file groups by most recent issue date (newest first)
                     const groupedIssues = Object.keys(groups)
-                      .sort()
+                      .sort((a, b) => {
+                        const aLatest = new Date(
+                          groups[a][0].createdAt,
+                        ).getTime();
+                        const bLatest = new Date(
+                          groups[b][0].createdAt,
+                        ).getTime();
+                        return bLatest - aLatest;
+                      })
                       .map((file) => ({
                         file,
                         issues: groups[file],
@@ -1129,6 +1244,11 @@ export default function IssueDetails() {
                         {group.issues.map((scopeIssue) => (
                           <Link
                             key={scopeIssue.id}
+                            ref={
+                              scopeIssue.id === issueId
+                                ? activeSidebarItemRef
+                                : undefined
+                            }
                             to={getIssueUrl(scopeIssue.id)}
                             onClick={(e) => navigateToIssue(e, scopeIssue.id)}
                             onAuxClick={(e) => {
@@ -1174,6 +1294,22 @@ export default function IssueDetails() {
                       </div>
                     ));
                   })()}
+                  {/* Load More button for sidebar when there are more issues */}
+                  {scopeTotal > scopeIssues.length && !scopePrNumber && (
+                    <div className="pt-2 pb-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs text-muted-foreground hover:text-foreground"
+                        onClick={loadMoreScopeIssues}
+                        disabled={scopeLoadingMore}
+                      >
+                        {scopeLoadingMore
+                          ? "Loading..."
+                          : `Load more (${scopeIssues.length} of ${scopeTotal})`}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </ScrollArea>
@@ -1348,6 +1484,15 @@ export default function IssueDetails() {
                       {issue.commitHash.substring(0, 8)}
                     </span>
                   )}
+                  {issue.detectionSource === "DIRECT_PUSH_ANALYSIS" && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span className="text-xs flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 font-medium">
+                        <GitCommitVertical className="h-3 w-3" />
+                        Direct Push
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -1440,14 +1585,49 @@ export default function IssueDetails() {
 
               {/* Original Issue Detection Info */}
               {(issue.analysisId || issue.prNumber || issue.commitHash) && (
-                <Card className="mb-6 border-blue-500/30 bg-blue-500/5 basis-1/2 grow">
+                <Card
+                  className={cn(
+                    "mb-6 basis-1/2 grow",
+                    issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
+                      ? "border-amber-500/30 bg-amber-500/5"
+                      : "border-blue-500/30 bg-blue-500/5",
+                  )}
+                >
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                      <GitPullRequest className="h-4 w-4" />
+                    <CardTitle
+                      className={cn(
+                        "text-base flex items-center gap-2",
+                        issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-blue-600 dark:text-blue-400",
+                      )}
+                    >
+                      {issue.detectionSource === "DIRECT_PUSH_ANALYSIS" ? (
+                        <GitCommitVertical className="h-4 w-4" />
+                      ) : (
+                        <GitPullRequest className="h-4 w-4" />
+                      )}
                       Original Detection
+                      {issue.detectionSource && (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "ml-2 text-[10px] font-semibold",
+                            issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
+                              ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                              : "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+                          )}
+                        >
+                          {issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
+                            ? "Direct Push"
+                            : "PR Analysis"}
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Where this issue was first identified
+                      {issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
+                        ? "Detected via direct commit analysis (no PR)"
+                        : "Where this issue was first identified"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1635,6 +1815,20 @@ export default function IssueDetails() {
                       language={detectLanguageForFile(snippet.filePath)}
                       onExpand={handleSnippetExpand}
                       expanding={snippetExpanding}
+                      onIssueSelect={(inlineIssue) => {
+                        // Find the matching scope issue by title and navigate to it
+                        const match = scopeIssues.find(
+                          (si) =>
+                            si.title === inlineIssue.title &&
+                            si.file === issue.file,
+                        );
+                        if (match) {
+                          navigate(getIssueUrl(match.id), {
+                            state: { scopeIssues },
+                            replace: true,
+                          });
+                        }
+                      }}
                     />
                   ) : null}
                 </CardContent>
@@ -1719,6 +1913,8 @@ interface IssueCodeSnippetProps {
   language: string;
   onExpand?: (direction: "up" | "down" | "all") => void;
   expanding?: "up" | "down" | "all" | null;
+  /** Called when a non-active inline issue annotation is clicked */
+  onIssueSelect?: (issue: InlineIssue) => void;
 }
 
 function IssueCodeSnippet({
@@ -1729,6 +1925,7 @@ function IssueCodeSnippet({
   language,
   onExpand,
   expanding,
+  onIssueSelect,
 }: IssueCodeSnippetProps) {
   const activeLineRef = useRef<HTMLDivElement>(null);
 
@@ -1743,25 +1940,39 @@ function IssueCodeSnippet({
     return () => clearTimeout(timer);
   }, [issueLineNumber]);
 
-  // Build a set of lines that have issues for quick lookup
+  // Build a set of lines that have issues for quick lookup.
+  // Aggressively deduplicate to avoid showing the same issue twice
+  // (can happen when branch tracking creates copies without content_fingerprint,
+  // or when PR analysis + branch tracking both produce entries).
   const issuesByLine = new Map<number, InlineIssue[]>();
+  const seenIssueIds = new Set<number>();
+  const seenNormKeys = new Set<string>();
+
+  const normalizeTitle = (t: string | null | undefined) =>
+    (t ?? "").trim().toLowerCase();
+
   snippet.issues.forEach((issue) => {
+    // Skip exact duplicate issueIds
+    if (seenIssueIds.has(issue.issueId)) return;
+    // Skip same line + same normalized title (catches slightly differing whitespace / case)
+    const normKey = `${issue.lineNumber}:${normalizeTitle(issue.title)}`;
+    if (seenNormKeys.has(normKey)) return;
+    seenIssueIds.add(issue.issueId);
+    seenNormKeys.add(normKey);
     const existing = issuesByLine.get(issue.lineNumber) || [];
     existing.push(issue);
     issuesByLine.set(issue.lineNumber, existing);
   });
 
   // Ensure the active issue always has an annotation card on its line,
-  // even if snippet.issues (backend) didn't include it (e.g. different analysisId).
-  // Note: InlineIssue.issueId is a numeric DB key while activeIssue.issueId is
-  // a UUID string from the URL, so we match by title instead.
+  // but ONLY if the snippet has zero issues on that line already.
+  // The snippet endpoint returns all branch/analysis issues for the file,
+  // so if the line already has annotations the active issue is already covered
+  // (possibly with a slightly different title from a different analysis run).
   if (activeIssue && activeIssue.lineNumber > 0) {
-    const lineIssues = issuesByLine.get(activeIssue.lineNumber) || [];
-    const alreadyPresent = lineIssues.some(
-      (iss) => iss.title === activeIssue.title,
-    );
-    if (!alreadyPresent) {
-      lineIssues.push({
+    const lineIssues = issuesByLine.get(activeIssue.lineNumber);
+    if (!lineIssues || lineIssues.length === 0) {
+      const newEntry: InlineIssue = {
         issueId: Number(activeIssue.issueId) || 0,
         lineNumber: activeIssue.lineNumber,
         severity: activeIssue.severity,
@@ -1773,8 +1984,8 @@ function IssueCodeSnippet({
         suggestedFixDiff: null,
         trackedFromIssueId: null,
         trackingConfidence: null,
-      });
-      issuesByLine.set(activeIssue.lineNumber, lineIssues);
+      };
+      issuesByLine.set(activeIssue.lineNumber, [newEntry]);
     }
   }
 
@@ -1900,11 +2111,14 @@ function IssueCodeSnippet({
             {/* Inline issue annotation cards */}
             {lineIssues?.map((iss) => {
               // isIssueLine is the reliable indicator (line highlight works).
-              // For lines with multiple annotations, use title to pick the right one.
+              // For lines with multiple annotations, use normalized title to pick the right one.
               const isActive =
                 isIssueLine &&
                 activeIssue != null &&
-                (lineIssues!.length === 1 || iss.title === activeIssue.title);
+                (lineIssues!.length === 1 ||
+                  normalizeTitle(iss.title) ===
+                    normalizeTitle(activeIssue.title));
+              const isClickable = !isActive && onIssueSelect;
               return (
                 <div
                   key={iss.issueId}
@@ -1913,7 +2127,12 @@ function IssueCodeSnippet({
                     isActive
                       ? "border-primary/50 bg-primary/10 ring-1 ring-primary/30"
                       : "border-border/50 bg-muted/30",
+                    isClickable &&
+                      "cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors",
                   )}
+                  onClick={isClickable ? () => onIssueSelect(iss) : undefined}
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
                 >
                   <div className="flex items-center gap-2">
                     <SeverityIconSmall severity={iss.severity} />
