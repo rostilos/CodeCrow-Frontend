@@ -82,7 +82,7 @@ export default function BillingSettings() {
     return <BillingSettingsError error={error} onRetry={refetch} />;
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -1024,8 +1024,8 @@ function BillingAlerts({
       {tier === "TRIAL" &&
         trialEndsAt &&
         getDaysRemaining(trialEndsAt) <= 3 && (
-          <Alert variant="warning">
-            <Clock className="h-4 w-4" />
+          <Alert className="border-yellow-500/50 bg-yellow-50/50 text-yellow-900 dark:border-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-200">
+            <Clock className="h-4 w-4 stroke-yellow-600 dark:stroke-yellow-400" />
             <AlertTitle>Trial Ending Soon</AlertTitle>
             <AlertDescription>
               Your trial ends in {getDaysRemaining(trialEndsAt)} days. Upgrade

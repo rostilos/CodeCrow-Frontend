@@ -1,17 +1,54 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckSquare, Square } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useWorkspace } from '@/context/WorkspaceContext';
-import { analysisService, type AnalysisIssue } from '@/api_service/analysis/analysisService';
-import { useToast } from '@/hooks/use-toast';
-import IssuesByFileDisplay from '@/components/IssuesByFileDisplay';
-import IssueFilterPanel, { type IssueFilters } from '@/components/IssueFilterPanel';
-import { useWorkspaceRoutes } from '@/hooks/useWorkspaceRoutes';
+import { useState, useEffect } from "react";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
+import {
+  ArrowLeft,
+  CheckSquare,
+  Square,
+  Code2,
+  ExternalLink,
+  RefreshCw,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import {
+  analysisService,
+  type AnalysisIssue,
+} from "@/api_service/analysis/analysisService";
+import { useToast } from "@/hooks/use-toast";
+import IssuesByFileDisplay from "@/components/IssuesByFileDisplay";
+import IssueFilterPanel, {
+  type IssueFilters,
+} from "@/components/IssueFilterPanel";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 export default function BranchIssues() {
-  const { namespace, branchName } = useParams<{ namespace: string; branchName: string }>();
+  const { namespace, branchName } = useParams<{
+    namespace: string;
+    branchName: string;
+  }>();
   const navigate = useNavigate();
   const routes = useWorkspaceRoutes();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,15 +59,16 @@ export default function BranchIssues() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalIssues, setTotalIssues] = useState(0);
   const [pageSize] = useState(50);
   const [filters, setFilters] = useState<IssueFilters>({
-    severity: 'ALL',
-    status: 'open',
-    category: 'ALL',
-    filePath: '',
-    author: '',
+    severity: "ALL",
+    status: "open",
+    category: "ALL",
+    filePath: "",
+    author: "",
     dateFrom: undefined,
     dateTo: undefined,
   });
@@ -38,70 +76,81 @@ export default function BranchIssues() {
   useEffect(() => {
     // Read filters from URL first
     const newFilters: IssueFilters = {
-      severity: 'ALL',
-      status: 'open', // Default to showing only open issues
-      category: 'ALL',
-      filePath: '',
-      author: '',
+      severity: "ALL",
+      status: "open", // Default to showing only open issues
+      category: "ALL",
+      filePath: "",
+      author: "",
       dateFrom: undefined,
       dateTo: undefined,
     };
-    
-    const severityParam = searchParams.get('severity');
-    if (severityParam && ['HIGH', 'MEDIUM', 'LOW'].includes(severityParam.toUpperCase())) {
+
+    const severityParam = searchParams.get("severity");
+    if (
+      severityParam &&
+      ["HIGH", "MEDIUM", "LOW"].includes(severityParam.toUpperCase())
+    ) {
       newFilters.severity = severityParam.toUpperCase();
     }
-    
-    const statusParam = searchParams.get('status');
-    if (statusParam && ['open', 'resolved', 'ALL'].includes(statusParam.toLowerCase())) {
+
+    const statusParam = searchParams.get("status");
+    if (
+      statusParam &&
+      ["open", "resolved", "ALL"].includes(statusParam.toLowerCase())
+    ) {
       newFilters.status = statusParam.toLowerCase();
     }
-    
-    const categoryParam = searchParams.get('category');
+
+    const categoryParam = searchParams.get("category");
     if (categoryParam) {
       newFilters.category = categoryParam.toUpperCase();
     }
-    
-    const filePathParam = searchParams.get('filePath');
+
+    const filePathParam = searchParams.get("filePath");
     if (filePathParam) {
       newFilters.filePath = filePathParam;
     }
-    
-    const authorParam = searchParams.get('author');
+
+    const authorParam = searchParams.get("author");
     if (authorParam) {
       newFilters.author = authorParam;
     }
-    
-    const dateFromParam = searchParams.get('dateFrom');
+
+    const dateFromParam = searchParams.get("dateFrom");
     if (dateFromParam) {
       newFilters.dateFrom = new Date(dateFromParam);
     }
-    
-    const dateToParam = searchParams.get('dateTo');
+
+    const dateToParam = searchParams.get("dateTo");
     if (dateToParam) {
       newFilters.dateTo = new Date(dateToParam);
     }
-    
+
     setFilters(newFilters);
     // Load data with the parsed filters
     loadBranchData(newFilters, 1, false);
   }, [namespace, branchName, currentWorkspace]);
 
-  const loadBranchData = async (filterOverrides?: Partial<IssueFilters>, page: number = 1, append: boolean = false) => {
+  const loadBranchData = async (
+    filterOverrides?: Partial<IssueFilters>,
+    page: number = 1,
+    append: boolean = false,
+  ) => {
     if (!namespace || !branchName || !currentWorkspace) return;
-    
+
     // Use passed filters or current state
     const activeFilters = { ...filters, ...filterOverrides };
-    
+
     if (append) {
       setLoadingMore(true);
     } else {
       setLoading(true);
     }
-    
+
     try {
       // Map frontend status to API status parameter
-      const apiStatus = activeFilters.status === 'ALL' ? 'all' : activeFilters.status;
+      const apiStatus =
+        activeFilters.status === "ALL" ? "all" : activeFilters.status;
       const response = await analysisService.getBranchIssues(
         currentWorkspace.slug,
         namespace,
@@ -115,11 +164,11 @@ export default function BranchIssues() {
           category: activeFilters.category,
           filePath: activeFilters.filePath,
           author: activeFilters.author,
-        }
+        },
       );
-      
+
       if (append) {
-        setIssues(prev => [...prev, ...response.issues]);
+        setIssues((prev) => [...prev, ...response.issues]);
       } else {
         setIssues(response.issues);
       }
@@ -158,61 +207,70 @@ export default function BranchIssues() {
     // Reset pagination and reload data when any filter changes
     setCurrentPage(1);
     loadBranchData(newFilters, 1, false);
-    
+
     const newParams = new URLSearchParams();
-    
-    if (newFilters.severity !== 'ALL') {
-      newParams.set('severity', newFilters.severity);
+
+    if (newFilters.severity !== "ALL") {
+      newParams.set("severity", newFilters.severity);
     }
     // Only add status to URL if it's not the default 'open'
-    if (newFilters.status !== 'open') {
-      newParams.set('status', newFilters.status);
+    if (newFilters.status !== "open") {
+      newParams.set("status", newFilters.status);
     }
-    if (newFilters.category !== 'ALL') {
-      newParams.set('category', newFilters.category);
+    if (newFilters.category !== "ALL") {
+      newParams.set("category", newFilters.category);
     }
     if (newFilters.filePath) {
-      newParams.set('filePath', newFilters.filePath);
+      newParams.set("filePath", newFilters.filePath);
     }
     if (newFilters.author) {
-      newParams.set('author', newFilters.author);
+      newParams.set("author", newFilters.author);
     }
     if (newFilters.dateFrom) {
-      newParams.set('dateFrom', newFilters.dateFrom.toISOString());
+      newParams.set("dateFrom", newFilters.dateFrom.toISOString());
     }
     if (newFilters.dateTo) {
-      newParams.set('dateTo', newFilters.dateTo.toISOString());
+      newParams.set("dateTo", newFilters.dateTo.toISOString());
     }
-    
+
     setSearchParams(newParams);
   };
 
-  const handleUpdateIssueStatus = async (issueId: string, newStatus: 'open' | 'resolved') => {
+  const handleUpdateIssueStatus = async (
+    issueId: string,
+    newStatus: "open" | "resolved",
+  ) => {
     if (!currentWorkspace || !namespace) return;
-    
+
     try {
-      const isResolved = newStatus === 'resolved';
+      const isResolved = newStatus === "resolved";
       // Find the issue to get its commit hash for context
-      const issueToUpdate = issues.find(i => i.id === issueId);
+      const issueToUpdate = issues.find((i) => i.id === issueId);
       const commitHash = issueToUpdate?.commitHash || undefined;
-      
-      const response = await analysisService.updateIssueStatus(
-        currentWorkspace.slug, 
-        namespace, 
-        issueId, 
+
+      // IMPORTANT: use the branch-specific endpoint so only the BranchIssue
+      // is mutated — the origin CodeAnalysisIssue must stay immutable.
+      const response = await analysisService.updateBranchIssueStatus(
+        currentWorkspace.slug,
+        namespace,
+        issueId,
         isResolved,
         undefined, // comment
         undefined, // no PR context in branch view
-        isResolved ? commitHash : undefined
+        isResolved ? commitHash : undefined,
       );
-      
+
       if (!response.success) {
-        throw new Error(response.errorMessage || 'Failed to update issue status');
+        throw new Error(
+          response.errorMessage || "Failed to update issue status",
+        );
       }
-      
-      setIssues(prev => prev.map(issue => 
-        issue.id === issueId ? { ...issue, status: newStatus } : issue
-      ));
+
+      setIssues((prev) =>
+        prev.map((issue) =>
+          issue.id === issueId ? { ...issue, status: newStatus } : issue,
+        ),
+      );
       toast({
         title: "Success",
         description: "Issue status updated successfully",
@@ -227,7 +285,7 @@ export default function BranchIssues() {
   };
 
   const handleSelectionChange = (issueId: string, selected: boolean) => {
-    setSelectedIssues(prev => {
+    setSelectedIssues((prev) => {
       const next = new Set(prev);
       if (selected) {
         next.add(issueId);
@@ -242,36 +300,41 @@ export default function BranchIssues() {
     if (selectedIssues.size === filteredIssues.length) {
       setSelectedIssues(new Set());
     } else {
-      setSelectedIssues(new Set(filteredIssues.map(i => i.id)));
+      setSelectedIssues(new Set(filteredIssues.map((i) => i.id)));
     }
   };
 
-  const handleBulkStatusUpdate = async (newStatus: 'open' | 'resolved') => {
+  const handleBulkStatusUpdate = async (newStatus: "open" | "resolved") => {
     if (!currentWorkspace || !namespace || selectedIssues.size === 0) return;
-    
+
     setBulkUpdating(true);
     try {
-      const isResolved = newStatus === 'resolved';
-      const result = await analysisService.bulkUpdateIssueStatus(
-        currentWorkspace.slug, 
-        namespace, 
+      const isResolved = newStatus === "resolved";
+      // IMPORTANT: use the branch-specific bulk endpoint so only BranchIssues
+      // are mutated — origin CodeAnalysisIssue records must stay immutable.
+      const result = await analysisService.bulkUpdateBranchIssueStatus(
+        currentWorkspace.slug,
+        namespace,
         Array.from(selectedIssues),
-        isResolved
+        isResolved,
       );
-      
+
       // Update local state for successful updates
-      setIssues(prev => prev.map(issue => 
-        selectedIssues.has(issue.id) && !result.failedIds.includes(Number(issue.id))
-          ? { ...issue, status: newStatus } 
-          : issue
-      ));
-      
+      setIssues((prev) =>
+        prev.map((issue) =>
+          selectedIssues.has(issue.id) &&
+          !result.failedIds.includes(Number(issue.id))
+            ? { ...issue, status: newStatus }
+            : issue,
+        ),
+      );
+
       toast({
         title: "Bulk update complete",
-        description: `${result.successCount} issue(s) updated${result.failureCount > 0 ? `, ${result.failureCount} failed` : ''}`,
+        description: `${result.successCount} issue(s) updated${result.failureCount > 0 ? `, ${result.failureCount} failed` : ""}`,
         variant: result.failureCount > 0 ? "destructive" : "default",
       });
-      
+
       // Clear selection
       setSelectedIssues(new Set());
     } catch (error: any) {
@@ -285,25 +348,95 @@ export default function BranchIssues() {
     }
   };
 
+  const handleFullReconcile = async () => {
+    if (!currentWorkspace || !namespace || !branchName) return;
+
+    setReconciling(true);
+    try {
+      const queued = await analysisService.triggerFullReconcile(
+        currentWorkspace.slug,
+        namespace,
+        decodeURIComponent(branchName),
+      );
+
+      toast({
+        title: "Reconciliation task queued",
+        description:
+          queued.message || "The pipeline agent will process it shortly.",
+      });
+
+      // Poll for completion
+      const taskId = queued.taskId;
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await analysisService.getReconcileTaskStatus(
+            currentWorkspace.slug,
+            namespace,
+            taskId,
+          );
+
+          if (status.status === "COMPLETED") {
+            clearInterval(pollInterval);
+            setReconciling(false);
+            toast({
+              title: "Full reconciliation complete",
+              description: `${status.totalIssues ?? 0} total issues, ${status.resolvedIssues ?? 0} resolved across ${status.filesChecked ?? 0} files`,
+            });
+            loadBranchData(filters, 1, false);
+          } else if (status.status === "FAILED") {
+            clearInterval(pollInterval);
+            setReconciling(false);
+            toast({
+              title: "Reconciliation failed",
+              description: status.error || "The reconciliation task failed",
+              variant: "destructive",
+            });
+          }
+          // PENDING or IN_PROGRESS → keep polling
+        } catch {
+          clearInterval(pollInterval);
+          setReconciling(false);
+        }
+      }, 5000); // poll every 5 seconds
+    } catch (error: any) {
+      setReconciling(false);
+      toast({
+        title: "Reconciliation failed",
+        description: error.message || "Could not queue full reconciliation",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Server returns pre-filtered results for status/severity/category/filePath
   // We only apply date filters client-side (not yet supported on backend)
-  const filteredIssues = issues.filter(issue => {
+  const filteredIssues = issues.filter((issue) => {
     // Date range filter (client-side only)
     const issueDate = issue.createdAt ? new Date(issue.createdAt) : null;
-    const matchesDateFrom = !filters.dateFrom || !issueDate || issueDate >= filters.dateFrom;
-    const matchesDateTo = !filters.dateTo || !issueDate || issueDate <= filters.dateTo;
-    
+    const matchesDateFrom =
+      !filters.dateFrom || !issueDate || issueDate >= filters.dateFrom;
+    const matchesDateTo =
+      !filters.dateTo || !issueDate || issueDate <= filters.dateTo;
+
     return matchesDateFrom && matchesDateTo;
   });
 
-  const handleGoBack = () => {
-    // Navigate back to project dashboard with the branch selected and issues tab open
+  const handleGoBack = (e: React.MouseEvent) => {
+    // Allow ctrl+click and middle-click to open in new tab
+    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+    e.preventDefault();
+    navigate(-1);
+  };
+
+  // Fallback URL for ctrl+click / new tab — includes branch + issues tab
+  const backUrl = (() => {
     const params = new URLSearchParams();
     if (branchName) {
-      params.set('branch', decodeURIComponent(branchName));
+      params.set("branch", decodeURIComponent(branchName));
     }
-    navigate(`${routes.projectDetail(namespace!)}?${params.toString()}`);
-  };
+    params.set("subTab", "issues");
+    return `${routes.projectDetail(namespace!)}?${params.toString()}`;
+  })();
 
   if (loading) {
     return (
@@ -318,16 +451,74 @@ export default function BranchIssues() {
   }
 
   return (
-    <div className="p-6">
-      <Button variant="ghost" onClick={handleGoBack} size="sm" className="mb-6">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Project Dashboard
+    <div className="container p-6">
+      <Button variant="ghost" size="sm" className="mb-6" asChild>
+        <Link to={backUrl} onClick={handleGoBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Project Dashboard
+        </Link>
       </Button>
 
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight">
-          Branch Issues: {decodeURIComponent(branchName || '')}
+          Branch Issues: {decodeURIComponent(branchName || "")}
         </h1>
+        <div className="flex items-center gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={reconciling}>
+                <RefreshCw
+                  className={`h-4 w-4 mr-1.5 ${reconciling ? "animate-spin" : ""}`}
+                />
+                {reconciling ? "Reconciling..." : "Full Reconcile"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Full Branch Reconciliation</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <span className="block">
+                    This will check <strong>every unresolved issue</strong> in
+                    this branch against the current source code. Issues whose
+                    code has been removed or changed will be automatically
+                    resolved.
+                  </span>
+                  <span className="block text-yellow-600 dark:text-yellow-400 font-medium">
+                    ⚠️ Warning: Issues without deterministic anchors will be
+                    sent to AI for analysis, which may consume a significant
+                    amount of LLM tokens. The cost depends on the number of
+                    ambiguous issues.
+                  </span>
+                  <span className="block">
+                    This operation may take a few minutes for branches with many
+                    issues.
+                  </span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleFullReconcile}>
+                  Run Full Reconcile
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {namespace && branchName && (
+            <Button variant="outline" size="sm" asChild>
+              <Link
+                to={routes.branchSourceView(
+                  namespace,
+                  decodeURIComponent(branchName),
+                )}
+                className="flex items-center gap-1.5"
+              >
+                <Code2 className="h-4 w-4" />
+                View Source
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-6">
@@ -347,21 +538,18 @@ export default function BranchIssues() {
               <div className="flex flex-col gap-1">
                 <CardTitle>Issues</CardTitle>
                 <CardDescription>
-                  {totalIssues} total issue{totalIssues !== 1 ? 's' : ''} found
-                  {filteredIssues.length !== issues.length && ` (${filteredIssues.length} shown after filters)`}
+                  {totalIssues} total issue{totalIssues !== 1 ? "s" : ""} found
+                  {filteredIssues.length !== issues.length &&
+                    ` (${filteredIssues.length} shown after filters)`}
                 </CardDescription>
               </div>
             </CardHeader>
-            
+
             {/* Bulk Action Bar - shows when at least 1 issue is selected */}
             {selectedIssues.size > 0 && (
               <div className="px-6 py-3 bg-muted/50 border-b flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSelectAll}
-                  >
+                  <Button variant="ghost" size="sm" onClick={handleSelectAll}>
                     {selectedIssues.size === filteredIssues.length ? (
                       <>
                         <Square className="mr-2 h-4 w-4" />
@@ -375,7 +563,8 @@ export default function BranchIssues() {
                     )}
                   </Button>
                   <span className="text-sm text-muted-foreground">
-                    {selectedIssues.size} issue{selectedIssues.size !== 1 ? 's' : ''} selected
+                    {selectedIssues.size} issue
+                    {selectedIssues.size !== 1 ? "s" : ""} selected
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -383,7 +572,7 @@ export default function BranchIssues() {
                     variant="outline"
                     size="sm"
                     disabled={bulkUpdating}
-                    onClick={() => handleBulkStatusUpdate('resolved')}
+                    onClick={() => handleBulkStatusUpdate("resolved")}
                   >
                     Mark as Resolved
                   </Button>
@@ -391,21 +580,23 @@ export default function BranchIssues() {
                     variant="outline"
                     size="sm"
                     disabled={bulkUpdating}
-                    onClick={() => handleBulkStatusUpdate('open')}
+                    onClick={() => handleBulkStatusUpdate("open")}
                   >
                     Mark as Open
                   </Button>
                 </div>
               </div>
             )}
-            
+
             <CardContent className={selectedIssues.size > 0 ? "pt-4" : ""}>
               {filteredIssues.length > 0 ? (
                 <>
-                  <IssuesByFileDisplay 
+                  <IssuesByFileDisplay
                     issues={filteredIssues}
-                    projectNamespace={namespace || ''}
-                    branchName={branchName ? decodeURIComponent(branchName) : undefined}
+                    projectNamespace={namespace || ""}
+                    branchName={
+                      branchName ? decodeURIComponent(branchName) : undefined
+                    }
                     onUpdateIssueStatus={handleUpdateIssueStatus}
                     selectionEnabled={true}
                     selectedIssues={selectedIssues}
@@ -424,7 +615,9 @@ export default function BranchIssues() {
                         onClick={loadMoreIssues}
                         disabled={loadingMore}
                       >
-                        {loadingMore ? 'Loading...' : `Load More (${issues.length} of ${totalIssues})`}
+                        {loadingMore
+                          ? "Loading..."
+                          : `Load More (${issues.length} of ${totalIssues})`}
                       </Button>
                     </div>
                   )}
@@ -432,7 +625,9 @@ export default function BranchIssues() {
               ) : (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">
-                    {issues.length === 0 ? 'No issues found for this branch' : 'No issues match the current filters'}
+                    {issues.length === 0
+                      ? "No issues found for this branch"
+                      : "No issues match the current filters"}
                   </p>
                 </div>
               )}

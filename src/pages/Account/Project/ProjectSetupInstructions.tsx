@@ -344,7 +344,7 @@ jobs:
                   variant="outline"
                   className="text-base px-3 py-1 font-mono"
                 >
-                  {project.projectRepoSlug || "Not configured"}
+                  {project.projectVcsRepoSlug || "Not configured"}
                 </Badge>
               </div>
             </div>

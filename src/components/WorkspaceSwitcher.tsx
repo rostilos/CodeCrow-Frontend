@@ -16,12 +16,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ROUTES } from "@/lib/routes";
+import { CreateWorkspaceDialog } from "./CreateWorkspaceDialog";
 
 export function WorkspaceSwitcher() {
   const [open, setOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { currentWorkspace, workspaces, setCurrentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,76 +31,85 @@ export function WorkspaceSwitcher() {
   const handleWorkspaceSelect = (workspace: any) => {
     setCurrentWorkspace(workspace);
     setOpen(false);
-    
+
     // Navigate to the same relative path but with new workspace
     // Extract the path after /dashboard/{workspaceSlug}
     const pathMatch = location.pathname.match(/^\/dashboard\/[^/]+(.*)$/);
     const relativePath = pathMatch ? pathMatch[1] : '/projects';
-    
+
     // Navigate to the new workspace with the same path
     navigate(`/dashboard/${workspace.slug}${relativePath || '/projects'}`);
   };
 
   const handleCreateWorkspace = () => {
     setOpen(false);
-    navigate(ROUTES.WORKSPACE_SELECTION);
+    setDialogOpen(true);
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          aria-label="Select workspace"
-          className="w-[200px] justify-between"
-        >
-          <div className="flex items-center space-x-2 text-xs md:text-sm">
-            <Building className="h-4 w-4" />
-            <span className="truncate">
-              {currentWorkspace?.name || "Select workspace"}
-            </span>
-          </div>
-          <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command>
-          <CommandInput placeholder="Search workspace..." />
-          <CommandList>
-            <CommandEmpty>No workspace found.</CommandEmpty>
-            <CommandGroup heading="Workspaces">
-              {workspaces?.map((workspace) => (
-                <CommandItem
-                  key={workspace.id}
-                  value={workspace.name}
-                  onSelect={() => handleWorkspaceSelect(workspace)}
-                  className="text-sm"
-                >
-                  <Building className="mr-2 h-4 w-4" />
-                  <span className="truncate">{workspace.name}</span>
-                  <Check
-                    className={cn(
-                      "ml-auto h-4 w-4",
-                      currentWorkspace?.id === workspace.id
-                        ? "opacity-100"
-                        : "opacity-0"
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem onSelect={handleCreateWorkspace}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create workspace
-              </CommandItem>
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            aria-label="Select workspace"
+            className="w-[200px] justify-between"
+          >
+            <div className="flex items-center space-x-2 text-xs md:text-sm">
+              <Building className="h-4 w-4" />
+              <span className="truncate">
+                {currentWorkspace?.name || "Select workspace"}
+              </span>
+            </div>
+            <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-0" align="end">
+          <Command>
+            <CommandInput placeholder="Search workspace..." />
+            <CommandList>
+              <CommandEmpty>No workspace found.</CommandEmpty>
+              <CommandGroup heading="Workspaces">
+                {workspaces?.map((workspace) => (
+                  <CommandItem
+                    key={workspace.id}
+                    value={workspace.name}
+                    onSelect={() => handleWorkspaceSelect(workspace)}
+                    className="text-sm cursor-pointer"
+                  >
+                    <Building className="mr-2 h-4 w-4" />
+                    <span className="truncate">{workspace.name}</span>
+                    <Check
+                      className={cn(
+                        "ml-auto h-4 w-4",
+                        currentWorkspace?.id === workspace.id
+                          ? "opacity-100"
+                          : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandSeparator />
+              <CommandGroup>
+                <DialogTrigger asChild>
+                  <CommandItem onSelect={handleCreateWorkspace} className="cursor-pointer">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create workspace
+                  </CommandItem>
+                </DialogTrigger>
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      <CreateWorkspaceDialog
+        onCancel={() => setDialogOpen(false)}
+        onSuccess={() => setDialogOpen(false)}
+      />
+    </Dialog>
   );
 }

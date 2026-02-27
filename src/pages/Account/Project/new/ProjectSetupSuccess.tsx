@@ -1,22 +1,32 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { 
-  CheckCircle, 
-  ArrowRight, 
-  Settings, 
+import {
+  CheckCircle,
+  ArrowRight,
+  Settings,
   GitBranch,
   BookOpen,
   Database,
   Webhook,
   Copy,
-  ExternalLink
+  ExternalLink,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { projectService, ProjectDTO, InstallationMethod } from "@/api_service/project/projectService";
+import {
+  projectService,
+  ProjectDTO,
+  InstallationMethod,
+} from "@/api_service/project/projectService";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
@@ -27,46 +37,60 @@ export default function ProjectSetupSuccess() {
   const { toast } = useToast();
   const { currentWorkspace } = useWorkspace();
   const routes = useWorkspaceRoutes();
-  
+
   const [project, setProject] = useState<ProjectDTO | null>(
-    (location.state as any)?.project || null
+    (location.state as any)?.project || null,
   );
   const [loading, setLoading] = useState(!project);
-  
+
   // Get configuration from location state
-  const webhooksConfigured = (location.state as any)?.webhooksConfigured as boolean | undefined;
+  const webhooksConfigured = (location.state as any)?.webhooksConfigured as
+    | boolean
+    | undefined;
   // Support both new installationMethod and legacy webhooksConfigured
-  const installationMethod = ((location.state as any)?.installationMethod as InstallationMethod | null) 
-    ?? (webhooksConfigured === true ? 'WEBHOOK' : webhooksConfigured === false ? 'PIPELINE' : null);
+  const installationMethod =
+    ((location.state as any)
+      ?.installationMethod as InstallationMethod | null) ??
+    (webhooksConfigured === true
+      ? "WEBHOOK"
+      : webhooksConfigured === false
+        ? "PIPELINE"
+        : null);
   const prAnalysisEnabled = (location.state as any)?.prAnalysisEnabled ?? true;
-  const branchAnalysisEnabled = (location.state as any)?.branchAnalysisEnabled ?? true;
-  const prTargetPatterns = (location.state as any)?.prTargetPatterns as string[] || [];
-  const branchPushPatterns = (location.state as any)?.branchPushPatterns as string[] || [];
-  
+  const branchAnalysisEnabled =
+    (location.state as any)?.branchAnalysisEnabled ?? true;
+  const prTargetPatterns =
+    ((location.state as any)?.prTargetPatterns as string[]) || [];
+  const branchPushPatterns =
+    ((location.state as any)?.branchPushPatterns as string[]) || [];
+
   useEffect(() => {
     if (!project && namespace && currentWorkspace) {
       loadProject();
     }
   }, [namespace, currentWorkspace, project]);
-  
+
   const loadProject = async () => {
     if (!currentWorkspace || !namespace) return;
-    
+
     setLoading(true);
     try {
-      const proj = await projectService.getProjectByNamespace(currentWorkspace.slug, namespace);
+      const proj = await projectService.getProjectByNamespace(
+        currentWorkspace.slug,
+        namespace,
+      );
       setProject(proj);
     } catch (err: any) {
       toast({
         title: "Error",
         description: err?.message || "Failed to load project",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-  
+
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -78,13 +102,14 @@ export default function ProjectSetupSuccess() {
       toast({
         title: "Error",
         description: "Failed to copy to clipboard",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
-  
-  const showPipelineSetup = installationMethod === 'PIPELINE' || installationMethod === 'GITHUB_ACTION';
-  
+
+  const showPipelineSetup =
+    installationMethod === "PIPELINE" || installationMethod === "GITHUB_ACTION";
+
   if (loading) {
     return (
       <div className="p-6">
@@ -95,7 +120,7 @@ export default function ProjectSetupSuccess() {
       </div>
     );
   }
-  
+
   return (
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       {/* Success Header */}
@@ -110,7 +135,7 @@ export default function ProjectSetupSuccess() {
           {project?.name} is now ready for code analysis
         </p>
       </div>
-      
+
       {/* Project Info Card */}
       <Card>
         <CardHeader>
@@ -125,11 +150,15 @@ export default function ProjectSetupSuccess() {
             <div>
               <div className="text-sm text-muted-foreground">Project ID</div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-mono">{project?.id}</Badge>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => copyToClipboard(String(project?.id), "Project ID")}
+                <Badge variant="outline" className="font-mono">
+                  {project?.id}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    copyToClipboard(String(project?.id), "Project ID")
+                  }
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
@@ -138,55 +167,79 @@ export default function ProjectSetupSuccess() {
             {project?.projectVcsWorkspace && (
               <div>
                 <div className="text-sm text-muted-foreground">Repository</div>
-                <div className="font-medium">{project?.projectVcsWorkspace}/{project?.projectRepoSlug}</div>
+                <div className="font-medium">
+                  {project?.projectVcsWorkspace}/{project?.projectVcsRepoSlug}
+                </div>
               </div>
             )}
             <div>
-              <div className="text-sm text-muted-foreground">Installation Method</div>
+              <div className="text-sm text-muted-foreground">
+                Installation Method
+              </div>
               <Badge variant="secondary">
-                {installationMethod === 'WEBHOOK' ? 'Webhook (Automatic)' : 
-                 installationMethod === 'PIPELINE' ? 'Bitbucket Pipelines' :
-                 installationMethod === 'GITHUB_ACTION' ? 'GitHub Actions' : 'Not configured'}
+                {installationMethod === "WEBHOOK"
+                  ? "Webhook (Automatic)"
+                  : installationMethod === "PIPELINE"
+                    ? "Bitbucket Pipelines"
+                    : installationMethod === "GITHUB_ACTION"
+                      ? "GitHub Actions"
+                      : "Not configured"}
               </Badge>
             </div>
           </div>
-          
+
           <div className="flex gap-2 flex-wrap">
             {prAnalysisEnabled && (
-              <Badge variant="outline" className="text-green-600 border-green-600">
+              <Badge
+                variant="outline"
+                className="text-green-600 border-green-600"
+              >
                 <CheckCircle className="h-3 w-3 mr-1" />
                 PR Analysis Enabled
               </Badge>
             )}
             {branchAnalysisEnabled && (
-              <Badge variant="outline" className="text-green-600 border-green-600">
+              <Badge
+                variant="outline"
+                className="text-green-600 border-green-600"
+              >
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Branch Analysis Enabled
               </Badge>
             )}
           </div>
-          
+
           {/* Branch Patterns Info */}
           {(prTargetPatterns.length > 0 || branchPushPatterns.length > 0) && (
             <div className="pt-4 border-t space-y-2">
-              <div className="text-sm font-medium">Configured Branch Patterns</div>
+              <div className="text-sm font-medium">
+                Configured Branch Patterns
+              </div>
               {prTargetPatterns.length > 0 && (
                 <div className="text-sm">
-                  <span className="text-muted-foreground">PR Target Branches:</span>{' '}
-                  <code className="text-xs bg-muted px-1 rounded">{prTargetPatterns.join(', ')}</code>
+                  <span className="text-muted-foreground">
+                    PR Target Branches:
+                  </span>{" "}
+                  <code className="text-xs bg-muted px-1 rounded">
+                    {prTargetPatterns.join(", ")}
+                  </code>
                 </div>
               )}
               {branchPushPatterns.length > 0 && (
                 <div className="text-sm">
-                  <span className="text-muted-foreground">Branch Push Patterns:</span>{' '}
-                  <code className="text-xs bg-muted px-1 rounded">{branchPushPatterns.join(', ')}</code>
+                  <span className="text-muted-foreground">
+                    Branch Push Patterns:
+                  </span>{" "}
+                  <code className="text-xs bg-muted px-1 rounded">
+                    {branchPushPatterns.join(", ")}
+                  </code>
                 </div>
               )}
             </div>
           )}
         </CardContent>
       </Card>
-      
+
       {/* RAG Info Card */}
       <Card>
         <CardHeader>
@@ -202,38 +255,48 @@ export default function ProjectSetupSuccess() {
           <Alert>
             <BookOpen className="h-4 w-4" />
             <AlertDescription>
-              <strong>RAG (Retrieval-Augmented Generation)</strong> allows CodeCrow to understand your entire codebase 
-              and provide more accurate, context-aware code analysis and suggestions.
+              <strong>RAG (Retrieval-Augmented Generation)</strong> allows
+              CodeCrow to understand your entire codebase and provide more
+              accurate, context-aware code analysis and suggestions.
             </AlertDescription>
           </Alert>
-          
+
           <div className="p-4 bg-muted/50 rounded-lg space-y-2">
             <div className="font-medium">Benefits of RAG Indexing:</div>
             <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-              <li>Better understanding of your project structure and patterns</li>
-              <li>More relevant code suggestions based on your existing code</li>
-              <li>Improved detection of inconsistencies with your codebase standards</li>
+              <li>
+                Better understanding of your project structure and patterns
+              </li>
+              <li>
+                More relevant code suggestions based on your existing code
+              </li>
+              <li>
+                Improved detection of inconsistencies with your codebase
+                standards
+              </li>
               <li>Context-aware security vulnerability detection</li>
             </ul>
           </div>
-          
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(routes.projectSettings(namespace!, 'rag'))}
+
+          <Button
+            variant="outline"
+            onClick={() => navigate(routes.projectSettings(namespace!, "rag"))}
           >
             <Database className="h-4 w-4 mr-2" />
             Configure RAG Indexing
           </Button>
         </CardContent>
       </Card>
-      
+
       {/* Pipeline/Actions Setup (only for non-webhook installations) */}
       {showPipelineSetup && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <GitBranch className="h-5 w-5" />
-              {installationMethod === 'PIPELINE' ? 'Pipeline Setup Required' : 'GitHub Actions Setup Required'}
+              {installationMethod === "PIPELINE"
+                ? "Pipeline Setup Required"
+                : "GitHub Actions Setup Required"}
             </CardTitle>
             <CardDescription>
               Configure your CI/CD to trigger CodeCrow analysis
@@ -242,23 +305,25 @@ export default function ProjectSetupSuccess() {
           <CardContent className="space-y-4">
             <Alert>
               <AlertDescription>
-                Since you chose {installationMethod === 'PIPELINE' ? 'Bitbucket Pipelines' : 'GitHub Actions'}, 
-                you need to add configuration to your repository to trigger CodeCrow analysis.
+                Since you chose{" "}
+                {installationMethod === "PIPELINE"
+                  ? "Bitbucket Pipelines"
+                  : "GitHub Actions"}
+                , you need to add configuration to your repository to trigger
+                CodeCrow analysis.
               </AlertDescription>
             </Alert>
-            
-            <Button 
-              onClick={() => navigate(routes.projectSetup(namespace!))}
-            >
+
+            <Button onClick={() => navigate(routes.projectSetup(namespace!))}>
               <ExternalLink className="h-4 w-4 mr-2" />
               View Setup Instructions
             </Button>
           </CardContent>
         </Card>
       )}
-      
+
       {/* Webhook Success (for webhook installations) */}
-      {installationMethod === 'WEBHOOK' && (
+      {installationMethod === "WEBHOOK" && (
         <Card className="border-green-200 dark:border-green-900">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -268,31 +333,33 @@ export default function ProjectSetupSuccess() {
           </CardHeader>
           <CardContent>
             <div className="text-muted-foreground">
-              Your project is configured to use webhooks. CodeCrow will automatically analyze your code when:
+              Your project is configured to use webhooks. CodeCrow will
+              automatically analyze your code when:
             </div>
             <ul className="mt-2 list-disc list-inside text-sm space-y-1">
-              {prAnalysisEnabled && <li>Pull requests are created or updated</li>}
+              {prAnalysisEnabled && (
+                <li>Pull requests are created or updated</li>
+              )}
               {branchAnalysisEnabled && <li>Code is pushed to branches</li>}
             </ul>
             <p className="mt-4 text-sm text-muted-foreground">
-              No additional setup is required - webhooks are automatically configured through your GitHub App or Bitbucket connection.
+              No additional setup is required - webhooks are automatically
+              configured through your GitHub App or Bitbucket connection.
             </p>
           </CardContent>
         </Card>
       )}
-      
+
       {/* Next Steps */}
       <div className="flex flex-col sm:flex-row justify-center gap-4">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => navigate(routes.projectSettings(namespace!))}
         >
           <Settings className="h-4 w-4 mr-2" />
           Project Settings
         </Button>
-        <Button 
-          onClick={() => navigate(routes.projectDetail(namespace!))}
-        >
+        <Button onClick={() => navigate(routes.projectDetail(namespace!))}>
           Go to Project Dashboard
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>

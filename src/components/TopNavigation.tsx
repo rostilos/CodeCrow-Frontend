@@ -36,7 +36,7 @@ import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { useState } from "react";
-import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { useWorkspaceRoutes, ROUTES } from "@/hooks/useWorkspaceRoutes";
 import { CROSS_LINKS } from "@/lib/domains";
 import { FEATURES } from "@/config/features";
 import { useSiteAdmin } from "@/hooks/useSiteAdmin";
@@ -94,7 +94,7 @@ export function TopNavigation({
 
   return (
     <header className="sticky top-0 z-50 h-14 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center justify-between px-4 lg:px-6 h-full relative z-10">
+      <div className="flex items-center justify-between px-4 lg:px-6 h-full relative z-10 w-full">
         {/* Left side - Logo, Mobile Menu and Navigation */}
         <div className="flex items-center gap-4 lg:gap-8">
           {/* Mobile Menu — hidden in minimal mode */}
@@ -201,7 +201,16 @@ export function TopNavigation({
           )}
 
           <button
-            onClick={() => navigate("/")}
+            onClick={() => {
+              const savedWorkspaceSlug = localStorage.getItem(
+                "currentWorkspaceSlug",
+              );
+              if (savedWorkspaceSlug) {
+                navigate(ROUTES.PROJECTS(savedWorkspaceSlug));
+              } else {
+                navigate("/workspace");
+              }
+            }}
             className="flex items-center hover:opacity-80 transition-opacity gap-2"
           >
             <CodeCrowLogo size="sm" />

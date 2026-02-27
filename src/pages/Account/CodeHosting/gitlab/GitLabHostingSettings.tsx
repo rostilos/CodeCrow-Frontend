@@ -407,7 +407,7 @@ export default function GitLabHostingSettings({
             <Zap className="h-5 w-5 text-orange-500" />
             OAuth Connections
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {oauthConnections.map((connection) => (
               <Card
                 key={connection.id}
@@ -536,7 +536,7 @@ export default function GitLabHostingSettings({
             <Settings className="h-5 w-5 text-gray-500" />
             Personal Access Token Connections
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {patConnections.map((connection) => (
               <Card
                 key={connection.id}
@@ -634,7 +634,7 @@ export default function GitLabHostingSettings({
           <p className="text-sm text-muted-foreground">
             Single-repository connections using Project Access Tokens
           </p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {repoTokenConnections.map((connection) => (
               <Card
                 key={connection.id}

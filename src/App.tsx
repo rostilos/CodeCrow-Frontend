@@ -102,6 +102,15 @@ const IssueDetails = lazy(
 const BranchIssues = lazy(
   () => import("./pages/Account/Project/BranchIssues.tsx"),
 );
+const AnalysisSourceView = lazy(
+  () => import("./pages/Account/Project/AnalysisSourceView.tsx"),
+);
+const PrSourceView = lazy(
+  () => import("./pages/Account/Project/PrSourceView.tsx"),
+);
+const BranchSourceView = lazy(
+  () => import("./pages/Account/Project/BranchSourceView.tsx"),
+);
 const IntegrationSuccess = lazy(
   () => import("./pages/Account/Integrations/IntegrationSuccess.tsx"),
 );
@@ -234,8 +243,20 @@ const App = () => (
                               element={<BranchIssues />}
                             />
                             <Route
+                              path="projects/:namespace/branches/:branchName/source"
+                              element={<BranchSourceView />}
+                            />
+                            <Route
                               path="projects/:namespace/issues/:issueId"
                               element={<IssueDetails />}
+                            />
+                            <Route
+                              path="projects/:namespace/analysis/:analysisId/source"
+                              element={<AnalysisSourceView />}
+                            />
+                            <Route
+                              path="projects/:namespace/pr/:prNumber/source"
+                              element={<PrSourceView />}
                             />
                             <Route
                               path="projects/:namespace/settings"
