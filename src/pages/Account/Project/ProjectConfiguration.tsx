@@ -119,6 +119,7 @@ interface ProjectCodeHostingConfig {
   id: string | number;
   name: string;
   repository?: string;
+  repositoryId?: string;
   oauthKey?: string;
   workspace?: string;
   branch?: string;
@@ -688,7 +689,7 @@ export default function ProjectConfiguration() {
           : undefined,
       workspaceId: editingConfig.workspace || undefined,
       repositorySlug: editingConfig.repository || undefined,
-      repositoryId: undefined,
+      repositoryId: editingConfig.repositoryId || undefined,
       defaultBranch: editingConfig.branch || undefined,
       name: editingConfig.name || undefined,
     };
@@ -1174,6 +1175,7 @@ export default function ProjectConfiguration() {
                                       setEditingConfig({
                                         ...editingConfig,
                                         repository: repo.slug || repo.name,
+                                        repositoryId: repo.id || undefined,
                                         workspace:
                                           repo.namespace ||
                                           editingConfig.workspace,
