@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound, Shield, Wrench, ScrollText } from "lucide-react";
+import { ArrowLeft, Save, GitBranch, Key, Plus, Trash2, Edit, CheckCircle, FileCode, Target, Database, AlertTriangle, GitPullRequest, GitCommit, Webhook, RefreshCw, Info, Settings, Cpu, FolderGit2, ListTodo, KeyRound, Shield, Wrench, ScrollText, ShieldCheck, Loader2, Search } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -9,10 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast.ts";
 import { projectService, BindRepositoryRequest, ProjectDTO, WebhookInfoResponse } from "@/api_service/project/projectService.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import { aiConnectionService, AIConnectionDTO } from "@/api_service/ai/aiConnectionService.ts";
+import { integrationService } from "@/api_service/integration/integrationService";
+import { type VcsProvider as IntegrationVcsProvider, type VcsRepository } from "@/api_service/integration/integration.interface";
+import { twoFactorService } from "@/api_service/auth/twoFactorService";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -24,8 +35,27 @@ import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
 import CommentCommandsConfig from "@/components/CommentCommandsConfig";
 import CustomRulesConfig from "@/components/CustomRulesConfig";
+import { BranchSelector } from "@/components/BranchSelector";
 import { qualityGateService, QualityGate } from "@/api_service/qualitygate/qualityGateService";
 import { cn } from "@/lib/utils";
+
+/**
+ * Normalize VCS provider from project format (BITBUCKET_CLOUD) to integration format (bitbucket-cloud)
+ */
+function normalizeProvider(provider: string): IntegrationVcsProvider {
+  const mapping: Record<string, IntegrationVcsProvider> = {
+    'BITBUCKET_CLOUD': 'bitbucket-cloud',
+    'BITBUCKET_SERVER': 'bitbucket-server',
+    'GITHUB': 'github',
+    'GITLAB': 'gitlab',
+    'bitbucket-cloud': 'bitbucket-cloud',
+    'bitbucket-server': 'bitbucket-server',
+    'github': 'github',
+    'gitlab': 'gitlab',
+    'bitbucket': 'bitbucket-cloud',
+  };
+  return mapping[provider] || (provider.toLowerCase().replace('_', '-') as IntegrationVcsProvider);
+}
 
 interface ProjectCodeHostingConfig {
   id: string | number;
@@ -52,10 +82,28 @@ export default function ProjectConfiguration() {
   const [codeHostingConfigs, setCodeHostingConfigs] = useState<ProjectCodeHostingConfig[]>([]);
   const [editingConfig, setEditingConfig] = useState<ProjectCodeHostingConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [availableRepos, setAvailableRepos] = useState<any[]>([]);
+  const [availableRepos, setAvailableRepos] = useState<VcsRepository[]>([]);
+  const [repoSearchQuery, setRepoSearchQuery] = useState('');
+  const [repoSearchLoading, setRepoSearchLoading] = useState(false);
+  const [repoHasNext, setRepoHasNext] = useState(false);
+  const [repoPage, setRepoPage] = useState(1);
+  const repoSearchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>('');
+  const [allConnections, setAllConnections] = useState<any[]>([]);
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
   const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<number | null>(null);
+
+  // 2FA state for VCS connection change
+  const [has2FA, setHas2FA] = useState(false);
+  const [twoFactorType, setTwoFactorType] = useState<string | null>(null);
+  const [showVcsChangeConfirmDialog, setShowVcsChangeConfirmDialog] = useState(false);
+  const [showVcs2FADialog, setShowVcs2FADialog] = useState(false);
+  const [vcsVerificationCode, setVcsVerificationCode] = useState("");
+  const [savingVcsConnection, setSavingVcsConnection] = useState(false);
+
+  // Branch loading for VCS connection form
+  const [editBranches, setEditBranches] = useState<string[]>([]);
+  const [editBranchesLoading, setEditBranchesLoading] = useState(false);
 
   // Analysis settings state
   const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
@@ -90,27 +138,34 @@ export default function ProjectConfiguration() {
     if (!namespace || !currentWorkspace) return;
     setLoading(true);
     try {
-      const [proj, connections, aiConns, gates] = await Promise.all([
+      const [proj, connections, aiConns, gates, tfStatus] = await Promise.all([
         projectService.getProjectByNamespace(currentWorkspace.slug, namespace).catch(() => null),
-        bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []),
+        integrationService.getAllConnections(currentWorkspace.slug).catch(() => []),
         aiConnectionService.listWorkspaceConnections(currentWorkspace.slug).catch(() => []),
-        qualityGateService.getQualityGates(currentWorkspace.slug).catch(() => [])
+        qualityGateService.getQualityGates(currentWorkspace.slug).catch(() => []),
+        twoFactorService.getStatus().catch(() => ({ enabled: false, type: null }))
       ]);
 
       setProject(proj);
-      // Map bitbucket connections into UI-friendly objects
+      // Store all connections from integration service (supports all providers)
+      setAllConnections(connections || []);
+      // Map into UI-friendly objects for backward compat
       const mapped = (connections || []).map((c: any) => ({
         id: c.id,
-        name: c.name || `Connection ${c.id}`,
-        repository: c.repository || '',
-        oauthKey: c.oauthKey || '',
-        workspace: c.workspace || '',
-        branch: c.branch || 'main',
-        provider: 'bitbucket'
+        name: c.connectionName || c.name || `Connection ${c.id}`,
+        repository: '',
+        oauthKey: '',
+        workspace: c.externalWorkspaceSlug || '',
+        branch: 'main',
+        provider: c.provider || 'bitbucket-cloud'
       }));
       setCodeHostingConfigs(mapped);
       setAiConnections(aiConns || []);
       setQualityGates(gates || []);
+
+      // Set 2FA status
+      setHas2FA(tfStatus.enabled);
+      setTwoFactorType((tfStatus as any).type || null);
 
       // Set current AI connection if project has one bound
       if (proj?.aiConnectionId) {
@@ -293,43 +348,194 @@ export default function ProjectConfiguration() {
     setSelectedConnectionId(String(config.id));
   };
 
-  const loadReposForConnection = async (connectionId: string | number) => {
-    if (!connectionId) {
+  const loadReposForConnection = async (connectionId: string | number, search?: string, page: number = 1) => {
+    if (!connectionId || !currentWorkspace) {
       setAvailableRepos([]);
+      setRepoHasNext(false);
       return;
     }
     try {
-      const res = await bitbucketCloudService.getRepositories(currentWorkspace!.slug, Number(connectionId));
-      // res can be an array or an object containing items + hasNext
-      let items: any[] = [];
-      if (Array.isArray(res)) {
-        items = res;
-      } else if (res && (res as any).items) {
-        items = (res as any).items;
+      setRepoSearchLoading(true);
+      // Find the connection to determine its provider
+      const conn = allConnections.find((c: any) => String(c.id) === String(connectionId));
+      const provider = conn?.provider ? normalizeProvider(conn.provider) : 'bitbucket-cloud';
+      
+      const res = await integrationService.listRepositories(
+        currentWorkspace.slug,
+        provider,
+        Number(connectionId),
+        page,
+        search
+      );
+      
+      const items = res.items || [];
+      if (page === 1) {
+        setAvailableRepos(items);
       } else {
-        items = [];
+        setAvailableRepos(prev => [...prev, ...items]);
       }
-      setAvailableRepos(items);
+      setRepoHasNext(res.hasNext);
+      setRepoPage(page);
     } catch (err: any) {
       toast({
         title: "Error",
         description: err?.message || "Failed to load repositories",
         variant: "destructive"
       });
-      setAvailableRepos([]);
+      if (page === 1) {
+        setAvailableRepos([]);
+      }
+      setRepoHasNext(false);
+    } finally {
+      setRepoSearchLoading(false);
     }
   };
 
+  const handleRepoSearch = useCallback((query: string) => {
+    setRepoSearchQuery(query);
+    if (repoSearchDebounceRef.current) {
+      clearTimeout(repoSearchDebounceRef.current);
+    }
+    repoSearchDebounceRef.current = setTimeout(() => {
+      if (selectedConnectionId) {
+        loadReposForConnection(selectedConnectionId, query, 1);
+      }
+    }, 300);
+  }, [selectedConnectionId, currentWorkspace]);
+
+  const handleLoadMoreRepos = () => {
+    if (selectedConnectionId && repoHasNext && !repoSearchLoading) {
+      loadReposForConnection(selectedConnectionId, repoSearchQuery, repoPage + 1);
+    }
+  };
+
+  // Load branches for the selected repository in the edit form
+  const loadEditBranches = useCallback(async (search?: string): Promise<string[]> => {
+    if (!currentWorkspace || !editingConfig || !selectedConnectionId) {
+      return ['main', 'master', 'develop'];
+    }
+    
+    const conn = allConnections.find((c: any) => String(c.id) === String(selectedConnectionId));
+    const provider = conn?.provider ? normalizeProvider(conn.provider) : 'bitbucket-cloud';
+    
+    // Determine repo ID: use the selected repo's slug or UUID
+    const selectedRepo = availableRepos.find(r => r.name === editingConfig.repository || r.slug === editingConfig.repository);
+    const repoId = selectedRepo?.slug || selectedRepo?.id || editingConfig.repository;
+    if (!repoId) {
+      return ['main', 'master', 'develop'];
+    }
+    
+    if (!search) setEditBranchesLoading(true);
+    try {
+      const branches = await integrationService.listBranches(
+        currentWorkspace.slug,
+        provider,
+        Number(selectedConnectionId),
+        repoId,
+        search,
+        search ? 100 : 50
+      );
+      
+      const currentBranch = editingConfig.branch || 'main';
+      const allBranches = [currentBranch, ...branches.filter(b => b !== currentBranch)];
+      if (!search) setEditBranches(allBranches);
+      return allBranches;
+    } catch (error: any) {
+      console.warn('Failed to fetch branches:', error);
+      const fallback = [editingConfig.branch || 'main', 'main', 'master', 'develop'].filter((v, i, a) => a.indexOf(v) === i);
+      if (!search) setEditBranches(fallback);
+      return fallback;
+    } finally {
+      if (!search) setEditBranchesLoading(false);
+    }
+  }, [currentWorkspace, editingConfig, selectedConnectionId, allConnections, availableRepos]);
+
   useEffect(() => {
     if (selectedConnectionId) {
-      loadReposForConnection(selectedConnectionId);
+      setRepoSearchQuery('');
+      loadReposForConnection(selectedConnectionId, '', 1);
     } else {
       setAvailableRepos([]);
+      setRepoHasNext(false);
     }
   }, [selectedConnectionId]);
 
   const handleSaveConnection = async () => {
     if (!editingConfig || !namespace) return;
+
+    // If changing an existing VCS connection, show warning
+    if (project && project.vcsConnectionId) {
+      setShowVcsChangeConfirmDialog(true);
+      return;
+    }
+
+    // New connection - save directly
+    await executeSaveConnection();
+  };
+
+  const handleVcsChangeConfirm = async () => {
+    setShowVcsChangeConfirmDialog(false);
+
+    if (has2FA) {
+      setShowVcs2FADialog(true);
+      setVcsVerificationCode("");
+      // Send email code if using email 2FA
+      if (twoFactorType === 'EMAIL') {
+        try {
+          await twoFactorService.resendEmailCode();
+          toast({
+            title: "Verification code sent",
+            description: "Check your email for the verification code",
+          });
+        } catch (error: any) {
+          toast({
+            title: "Error",
+            description: error.message || "Failed to send verification code",
+            variant: "destructive",
+          });
+        }
+      }
+    } else {
+      await executeSaveConnection();
+    }
+  };
+
+  const handleVcs2FAVerify = async () => {
+    if (!vcsVerificationCode) {
+      toast({
+        title: "Error",
+        description: "Please enter your verification code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await executeSaveConnection();
+    setShowVcs2FADialog(false);
+    setVcsVerificationCode("");
+  };
+
+  const handleResendVcsCode = async () => {
+    if (twoFactorType !== 'EMAIL') return;
+    try {
+      await twoFactorService.resendEmailCode();
+      toast({
+        title: "Code sent",
+        description: "A new verification code has been sent to your email",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const executeSaveConnection = async () => {
+    if (!editingConfig || !namespace) return;
+
+    setSavingVcsConnection(true);
 
     // Prepare bind request according to backend DTO
     const bindRequest: BindRepositoryRequest = {
@@ -359,6 +565,8 @@ export default function ProjectConfiguration() {
         description: err?.message || "Failed to bind repository",
         variant: "destructive"
       });
+    } finally {
+      setSavingVcsConnection(false);
     }
   };
 
@@ -600,14 +808,20 @@ export default function ProjectConfiguration() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setEditingConfig({
-                              id: project.vcsConnectionId!,
-                              name: `Connection ${project.vcsConnectionId}`,
-                              repository: project.projectRepoSlug || '',
-                              workspace: project.projectVcsWorkspace || '',
-                              branch: 'main',
-                              provider: 'bitbucket'
-                            })}
+                            onClick={() => {
+                              setEditingConfig({
+                                id: project.vcsConnectionId!,
+                                name: `Connection ${project.vcsConnectionId}`,
+                                repository: project.projectRepoSlug || '',
+                                workspace: project.projectVcsWorkspace || '',
+                                branch: project.mainBranch || 'main',
+                                provider: project.vcsProvider || 'bitbucket'
+                              });
+                              // Pre-select the current connection
+                              if (project.vcsConnectionId) {
+                                setSelectedConnectionId(String(project.vcsConnectionId));
+                              }
+                            }}
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Change VCS Connection
@@ -649,6 +863,18 @@ export default function ProjectConfiguration() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {project.vcsConnectionId && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Warning: Dangerous Action</AlertTitle>
+                      <AlertDescription>
+                        Changing the VCS connection will rebind this project to a different repository. 
+                        This may break existing webhooks, analysis history continuity, and RAG indexing. 
+                        Make sure to reconfigure webhooks after the change.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   <div>
                     <Label htmlFor="vcs-connection">Available VCS Connections</Label>
                     <Select
@@ -662,8 +888,11 @@ export default function ProjectConfiguration() {
                             id: connection.id,
                             name: connection.name,
                             workspace: connection.workspace || '',
-                            provider: connection.provider || 'bitbucket'
+                            provider: connection.provider || 'bitbucket-cloud',
+                            repository: '',
+                            branch: 'main'
                           });
+                          setEditBranches([]);
                         }
                       }}
                     >
@@ -680,31 +909,100 @@ export default function ProjectConfiguration() {
                     </Select>
                   </div>
 
-                  {selectedConnectionId && availableRepos.length > 0 && (
+                  {selectedConnectionId && (
                     <div>
                       <Label htmlFor="repository">Select Repository</Label>
-                      <Select
-                        value={editingConfig.repository}
-                        onValueChange={(value) => {
-                          const repo = availableRepos.find(r => r.name === value);
-                          setEditingConfig({
-                            ...editingConfig,
-                            repository: value,
-                            workspace: repo?.workspace?.slug || editingConfig.workspace
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a repository" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableRepos.map((repo) => (
-                            <SelectItem key={repo.uuid || repo.name} value={repo.name}>
-                              {repo.workspace?.slug || 'Unknown'}/{repo.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-2">
+                        {/* Search input for repos */}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search repositories... (type to filter)"
+                            value={repoSearchQuery}
+                            onChange={(e) => handleRepoSearch(e.target.value)}
+                            className="pl-9"
+                          />
+                          {repoSearchLoading && (
+                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                        </div>
+                        
+                        {/* Repository list */}
+                        <div className="border rounded-lg max-h-[280px] overflow-y-auto">
+                          {availableRepos.length === 0 && !repoSearchLoading ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground">
+                              {repoSearchQuery ? 'No repositories match your search' : 'No repositories found for this connection'}
+                            </div>
+                          ) : (
+                            <div className="divide-y">
+                              {availableRepos.map((repo) => {
+                                const repoKey = repo.slug || repo.name || repo.id;
+                                const repoDisplay = repo.fullName || `${repo.namespace || 'Unknown'}/${repo.name}`;
+                                const isSelected = editingConfig.repository === repo.name || editingConfig.repository === repo.slug;
+                                return (
+                                  <button
+                                    key={repo.id || repoKey}
+                                    type="button"
+                                    className={cn(
+                                      "w-full flex items-center justify-between px-3 py-2.5 text-sm text-left hover:bg-muted/50 transition-colors",
+                                      isSelected && "bg-primary/10 border-l-2 border-primary"
+                                    )}
+                                    onClick={() => {
+                                      setEditingConfig({
+                                        ...editingConfig,
+                                        repository: repo.slug || repo.name,
+                                        workspace: repo.namespace || editingConfig.workspace,
+                                        branch: repo.defaultBranch || 'main'
+                                      });
+                                      // Reset branches for new repo
+                                      setEditBranches([]);
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <GitBranch className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                      <div className="min-w-0">
+                                        <div className="truncate font-medium">{repoDisplay}</div>
+                                        {repo.description && (
+                                          <div className="truncate text-xs text-muted-foreground">{repo.description}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {isSelected && <CheckCircle className="h-4 w-4 shrink-0 text-primary" />}
+                                  </button>
+                                );
+                              })}
+                              
+                              {/* Load More */}
+                              {repoHasNext && (
+                                <div className="p-2 text-center">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleLoadMoreRepos}
+                                    disabled={repoSearchLoading}
+                                  >
+                                    {repoSearchLoading ? (
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : null}
+                                    Load More Repositories
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {repoSearchLoading && availableRepos.length === 0 && (
+                            <div className="p-4 text-center">
+                              <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground mt-2">Loading repositories...</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <p className="text-xs text-muted-foreground">
+                          {availableRepos.length} repositories loaded{repoHasNext ? ' (more available)' : ''}
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -719,23 +1017,47 @@ export default function ProjectConfiguration() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="branch">Default Branch</Label>
-                      <Input
-                        id="branch"
-                        value={editingConfig.branch}
-                        onChange={(e) => setEditingConfig({ ...editingConfig, branch: e.target.value })}
-                        placeholder="main"
-                      />
+                      <Label>Main Branch</Label>
+                      {editingConfig.repository ? (
+                        <BranchSelector
+                          value={editingConfig.branch || 'main'}
+                          onValueChange={(value) => setEditingConfig({ ...editingConfig, branch: value })}
+                          onSearch={loadEditBranches}
+                          defaultBranches={editBranches.length > 0 ? editBranches.slice(0, 10) : [editingConfig.branch || 'main', 'main', 'master', 'develop']}
+                          placeholder={editBranchesLoading ? "Loading branches..." : "Select main branch"}
+                          disabled={savingVcsConnection || editBranchesLoading}
+                          allowCustom={true}
+                        />
+                      ) : (
+                        <Input
+                          value={editingConfig.branch || 'main'}
+                          onChange={(e) => setEditingConfig({ ...editingConfig, branch: e.target.value })}
+                          placeholder="main"
+                        />
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Primary branch used for RAG indexing and as analysis baseline
+                      </p>
                     </div>
                   </div>
 
                   <div className="flex space-x-2">
                     <Button
                       onClick={handleSaveConnection}
-                      disabled={!selectedConnectionId || !editingConfig.repository}
+                      disabled={!selectedConnectionId || !editingConfig.repository || savingVcsConnection}
+                      variant={project.vcsConnectionId ? "destructive" : "default"}
                     >
-                      <Save className="mr-2 h-4 w-4" />
-                      {project.vcsConnectionId ? 'Update Connection' : 'Bind Repository'}
+                      {savingVcsConnection ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          {project.vcsConnectionId ? 'Update Connection' : 'Bind Repository'}
+                        </>
+                      )}
                     </Button>
                     <Button variant="outline" onClick={handleCancelEdit}>
                       Cancel
@@ -1268,6 +1590,7 @@ export default function ProjectConfiguration() {
   };
 
   return (
+    <>
     <div className="container p-6">
       <Button variant="ghost" onClick={() => navigate(routes.projectDetail(namespace!))} size="sm" className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1315,5 +1638,109 @@ export default function ProjectConfiguration() {
         </main>
       </div>
     </div>
+
+    {/* VCS Change Confirmation Dialog */}
+    <Dialog open={showVcsChangeConfirmDialog} onOpenChange={setShowVcsChangeConfirmDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Change VCS Connection
+          </DialogTitle>
+          <DialogDescription className="space-y-3 pt-2">
+            <p>
+              You are about to change the VCS connection for project <strong>{project.name}</strong>.
+            </p>
+            {project.projectVcsWorkspace && project.projectRepoSlug && (
+              <p>
+                Currently connected to: <strong>{project.projectVcsWorkspace}/{project.projectRepoSlug}</strong>
+              </p>
+            )}
+            <p className="text-destructive">
+              This is a potentially destructive action that may:
+            </p>
+            <ul className="list-disc list-inside text-sm text-destructive space-y-1">
+              <li>Break existing webhook configurations</li>
+              <li>Disrupt analysis history continuity</li>
+              <li>Invalidate RAG indexing data</li>
+              <li>Require reconfiguration of pipeline integration</li>
+            </ul>
+            <p>
+              Are you sure you want to proceed?
+            </p>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setShowVcsChangeConfirmDialog(false)}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleVcsChangeConfirm}>
+            Yes, Change Connection
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* VCS Change 2FA Verification Dialog */}
+    <Dialog open={showVcs2FADialog} onOpenChange={setShowVcs2FADialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" />
+            Two-Factor Verification
+          </DialogTitle>
+          <DialogDescription>
+            {twoFactorType === 'EMAIL'
+              ? "Enter the verification code sent to your email to confirm this change."
+              : "Enter your authenticator code to confirm this change."
+            }
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="vcs-verification-code">Verification Code</Label>
+            <Input
+              id="vcs-verification-code"
+              value={vcsVerificationCode}
+              onChange={(e) => setVcsVerificationCode(e.target.value)}
+              placeholder="Enter 6-digit code"
+              maxLength={6}
+              autoComplete="one-time-code"
+            />
+          </div>
+          {twoFactorType === 'EMAIL' && (
+            <Button variant="link" className="px-0" onClick={handleResendVcsCode}>
+              Resend verification code
+            </Button>
+          )}
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowVcs2FADialog(false);
+              setVcsVerificationCode("");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleVcs2FAVerify}
+            disabled={savingVcsConnection || !vcsVerificationCode}
+          >
+            {savingVcsConnection ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Confirm Change"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

@@ -209,6 +209,8 @@ export interface AnalysisIssue {
   // VCS author info - who created the PR that introduced this issue
   vcsAuthorId?: string | null;
   vcsAuthorUsername?: string | null;
+  // Detection source - how this issue was originally detected
+  detectionSource?: "PR_ANALYSIS" | "DIRECT_PUSH_ANALYSIS" | null;
 }
 
 export interface AnalysisTrendData {
