@@ -976,11 +976,11 @@ export default function ProjectConfiguration() {
                               {project.vcsConnectionId}
                             </p>
                             {project.projectVcsWorkspace &&
-                              project.projectRepoSlug && (
+                              project.projectVcsRepoSlug && (
                                 <p>
                                   <strong>Repository:</strong>{" "}
                                   {project.projectVcsWorkspace}/
-                                  {project.projectRepoSlug}
+                                  {project.projectVcsRepoSlug}
                                 </p>
                               )}
                             {project.projectVcsWorkspace && (
@@ -989,10 +989,10 @@ export default function ProjectConfiguration() {
                                 {project.projectVcsWorkspace}
                               </p>
                             )}
-                            {project.projectRepoSlug && (
+                            {project.projectVcsRepoSlug && (
                               <p>
                                 <strong>Repository Slug:</strong>{" "}
-                                {project.projectRepoSlug}
+                                {project.projectVcsRepoSlug}
                               </p>
                             )}
                           </div>
@@ -1005,7 +1005,7 @@ export default function ProjectConfiguration() {
                               setEditingConfig({
                                 id: project.vcsConnectionId!,
                                 name: `Connection ${project.vcsConnectionId}`,
-                                repository: project.projectRepoSlug || "",
+                                repository: project.projectVcsRepoSlug || "",
                                 workspace: project.projectVcsWorkspace || "",
                                 branch: project.mainBranch || "main",
                                 provider: project.vcsProvider || "bitbucket",
@@ -2036,11 +2036,11 @@ export default function ProjectConfiguration() {
                 You are about to change the VCS connection for project{" "}
                 <strong>{project.name}</strong>.
               </p>
-              {project.projectVcsWorkspace && project.projectRepoSlug && (
+              {project.projectVcsWorkspace && project.projectVcsRepoSlug && (
                 <p>
                   Currently connected to:{" "}
                   <strong>
-                    {project.projectVcsWorkspace}/{project.projectRepoSlug}
+                    {project.projectVcsWorkspace}/{project.projectVcsRepoSlug}
                   </strong>
                 </p>
               )}
