@@ -1684,7 +1684,12 @@ export default function ProjectDashboard() {
                     // may already be true from a previous tab visit
                     if (selectedBranch) {
                       setBranchIssuesPage(1);
-                      loadBranchIssues(selectedBranch, 1, false, resolvedFilters);
+                      loadBranchIssues(
+                        selectedBranch,
+                        1,
+                        false,
+                        resolvedFilters,
+                      );
                     }
                   }}
                   onFileClick={handleFileClick}

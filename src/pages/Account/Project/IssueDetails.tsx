@@ -1244,7 +1244,11 @@ export default function IssueDetails() {
                         {group.issues.map((scopeIssue) => (
                           <Link
                             key={scopeIssue.id}
-                            ref={scopeIssue.id === issueId ? activeSidebarItemRef : undefined}
+                            ref={
+                              scopeIssue.id === issueId
+                                ? activeSidebarItemRef
+                                : undefined
+                            }
                             to={getIssueUrl(scopeIssue.id)}
                             onClick={(e) => navigateToIssue(e, scopeIssue.id)}
                             onAuxClick={(e) => {
@@ -1581,19 +1585,23 @@ export default function IssueDetails() {
 
               {/* Original Issue Detection Info */}
               {(issue.analysisId || issue.prNumber || issue.commitHash) && (
-                <Card className={cn(
-                  "mb-6 basis-1/2 grow",
-                  issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
-                    ? "border-amber-500/30 bg-amber-500/5"
-                    : "border-blue-500/30 bg-blue-500/5"
-                )}>
+                <Card
+                  className={cn(
+                    "mb-6 basis-1/2 grow",
+                    issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
+                      ? "border-amber-500/30 bg-amber-500/5"
+                      : "border-blue-500/30 bg-blue-500/5",
+                  )}
+                >
                   <CardHeader className="pb-3">
-                    <CardTitle className={cn(
-                      "text-base flex items-center gap-2",
-                      issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "text-blue-600 dark:text-blue-400"
-                    )}>
+                    <CardTitle
+                      className={cn(
+                        "text-base flex items-center gap-2",
+                        issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-blue-600 dark:text-blue-400",
+                      )}
+                    >
                       {issue.detectionSource === "DIRECT_PUSH_ANALYSIS" ? (
                         <GitCommitVertical className="h-4 w-4" />
                       ) : (
@@ -1607,7 +1615,7 @@ export default function IssueDetails() {
                             "ml-2 text-[10px] font-semibold",
                             issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
                               ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                              : "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                              : "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
                           )}
                         >
                           {issue.detectionSource === "DIRECT_PUSH_ANALYSIS"
@@ -1940,7 +1948,8 @@ function IssueCodeSnippet({
   const seenIssueIds = new Set<number>();
   const seenNormKeys = new Set<string>();
 
-  const normalizeTitle = (t: string | null | undefined) => (t ?? "").trim().toLowerCase();
+  const normalizeTitle = (t: string | null | undefined) =>
+    (t ?? "").trim().toLowerCase();
 
   snippet.issues.forEach((issue) => {
     // Skip exact duplicate issueIds
@@ -2107,7 +2116,8 @@ function IssueCodeSnippet({
                 isIssueLine &&
                 activeIssue != null &&
                 (lineIssues!.length === 1 ||
-                  normalizeTitle(iss.title) === normalizeTitle(activeIssue.title));
+                  normalizeTitle(iss.title) ===
+                    normalizeTitle(activeIssue.title));
               const isClickable = !isActive && onIssueSelect;
               return (
                 <div
@@ -2117,7 +2127,8 @@ function IssueCodeSnippet({
                     isActive
                       ? "border-primary/50 bg-primary/10 ring-1 ring-primary/30"
                       : "border-border/50 bg-muted/30",
-                    isClickable && "cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors",
+                    isClickable &&
+                      "cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors",
                   )}
                   onClick={isClickable ? () => onIssueSelect(iss) : undefined}
                   role={isClickable ? "button" : undefined}
