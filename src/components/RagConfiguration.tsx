@@ -368,7 +368,7 @@ export default function RagConfiguration({
         addLog(
           "complete",
           result.message ||
-            `Successfully indexed ${result.filesIndexed || 0} files`,
+          `Successfully indexed ${result.filesIndexed || 0} files`,
           "complete",
         );
         toast({
@@ -844,9 +844,10 @@ export default function RagConfiguration({
                 </span>
               </div>
               <div>
-                <span className="text-muted-foreground">Files:</span>
+                <span className="text-muted-foreground">Codebase:</span>
                 <span className="ml-2">
-                  {ragStatus.indexStatus.totalFilesIndexed ?? "—"}
+                  {ragStatus.indexStatus.totalFilesIndexed ?? "—"} files (
+                  {ragStatus.indexStatus.chunkCount ?? "—"} chunks)
                 </span>
               </div>
               <div>
@@ -927,103 +928,102 @@ export default function RagConfiguration({
         {/* Indexing Log Window */}
         {(logs.length > 0 ||
           (ragStatus?.indexStatus?.status === "INDEXING" && !sseConnected)) && (
-          <Collapsible open={isLogWindowOpen} onOpenChange={setIsLogWindowOpen}>
-            <div className="rounded-lg border bg-muted/20">
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/40 transition-colors">
-                <div className="flex items-center gap-2">
-                  <Terminal className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium text-sm">Indexing Logs</span>
-                  <Badge variant="outline" className="text-xs">
-                    {logs.length} entries
-                  </Badge>
-                  {sseConnected ? (
-                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                      <Wifi className="h-3 w-3" />
-                      <span className="text-xs">Connected</span>
-                    </div>
-                  ) : ragStatus?.indexStatus?.status === "INDEXING" ? (
-                    <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                      <WifiOff className="h-3 w-3" />
-                      <span className="text-xs">Disconnected</span>
-                    </div>
-                  ) : null}
-                </div>
-                {isLogWindowOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
-              </CollapsibleTrigger>
-
-              <CollapsibleContent>
-                {/* Warning when disconnected but indexing in progress */}
-                {!sseConnected &&
-                  ragStatus?.indexStatus?.status === "INDEXING" && (
-                    <Alert className="mx-3 mb-2 bg-amber-500/10 border-amber-500/30">
-                      <WifiOff className="h-4 w-4 text-amber-500" />
-                      <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
-                        <strong>Connection lost.</strong> Indexing is still
-                        running in the background. New logs cannot be displayed
-                        until you trigger a new indexing operation. The status
-                        will update automatically when indexing completes.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                <div
-                  ref={logScrollRef}
-                  className="max-h-64 overflow-y-auto p-3 pt-0 font-mono text-xs"
-                >
-                  {logs.length === 0 ? (
-                    <div className="text-muted-foreground text-center py-4">
-                      No logs yet. Trigger indexing to see progress.
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {logs.map((log) => (
-                        <div
-                          key={log.id}
-                          className={`flex gap-2 ${
-                            log.type === "error"
-                              ? "text-red-600 dark:text-red-400"
-                              : log.type === "complete"
-                                ? "text-green-600 dark:text-green-400"
-                                : log.type === "progress"
-                                  ? "text-blue-600 dark:text-blue-400"
-                                  : "text-muted-foreground"
-                          }`}
-                        >
-                          <span className="text-muted-foreground/70 shrink-0">
-                            [{log.timestamp.toLocaleTimeString()}]
-                          </span>
-                          <span className="text-primary/80 shrink-0 uppercase">
-                            [{log.stage}]
-                          </span>
-                          <span className="break-all">{log.message}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Clear logs button */}
-                {logs.length > 0 && !indexing && (
-                  <div className="px-3 pb-3 pt-1 border-t">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => setLogs([])}
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Clear Logs
-                    </Button>
+            <Collapsible open={isLogWindowOpen} onOpenChange={setIsLogWindowOpen}>
+              <div className="rounded-lg border bg-muted/20">
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/40 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Terminal className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Indexing Logs</span>
+                    <Badge variant="outline" className="text-xs">
+                      {logs.length} entries
+                    </Badge>
+                    {sseConnected ? (
+                      <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                        <Wifi className="h-3 w-3" />
+                        <span className="text-xs">Connected</span>
+                      </div>
+                    ) : ragStatus?.indexStatus?.status === "INDEXING" ? (
+                      <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                        <WifiOff className="h-3 w-3" />
+                        <span className="text-xs">Disconnected</span>
+                      </div>
+                    ) : null}
                   </div>
-                )}
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-        )}
+                  {isLogWindowOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </CollapsibleTrigger>
+
+                <CollapsibleContent>
+                  {/* Warning when disconnected but indexing in progress */}
+                  {!sseConnected &&
+                    ragStatus?.indexStatus?.status === "INDEXING" && (
+                      <Alert className="mx-3 mb-2 bg-amber-500/10 border-amber-500/30">
+                        <WifiOff className="h-4 w-4 text-amber-500" />
+                        <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
+                          <strong>Connection lost.</strong> Indexing is still
+                          running in the background. New logs cannot be displayed
+                          until you trigger a new indexing operation. The status
+                          will update automatically when indexing completes.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                  <div
+                    ref={logScrollRef}
+                    className="max-h-64 overflow-y-auto p-3 pt-0 font-mono text-xs"
+                  >
+                    {logs.length === 0 ? (
+                      <div className="text-muted-foreground text-center py-4">
+                        No logs yet. Trigger indexing to see progress.
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {logs.map((log) => (
+                          <div
+                            key={log.id}
+                            className={`flex gap-2 ${log.type === "error"
+                                ? "text-red-600 dark:text-red-400"
+                                : log.type === "complete"
+                                  ? "text-green-600 dark:text-green-400"
+                                  : log.type === "progress"
+                                    ? "text-blue-600 dark:text-blue-400"
+                                    : "text-muted-foreground"
+                              }`}
+                          >
+                            <span className="text-muted-foreground/70 shrink-0">
+                              [{log.timestamp.toLocaleTimeString()}]
+                            </span>
+                            <span className="text-primary/80 shrink-0 uppercase">
+                              [{log.stage}]
+                            </span>
+                            <span className="break-all">{log.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Clear logs button */}
+                  {logs.length > 0 && !indexing && (
+                    <div className="px-3 pb-3 pt-1 border-t">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setLogs([])}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Clear Logs
+                      </Button>
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          )}
 
         {/* Actions */}
         <div className="flex items-center gap-3 pt-2">
