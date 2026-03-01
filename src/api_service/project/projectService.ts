@@ -243,6 +243,7 @@ export interface RagIndexStatusDTO {
   indexedBranch: string | null;
   indexedCommitHash: string | null;
   totalFilesIndexed: number | null;
+  chunkCount: number | null;
   lastIndexedAt: string | null;
   errorMessage: string | null;
   collectionName: string | null;

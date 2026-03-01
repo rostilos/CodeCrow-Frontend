@@ -369,11 +369,19 @@ export default function IssuesByFileDisplay({
                                 </span>
                               </div>
                             )}
-                            <div className="flex items-center gap-1">
-                              <span className="text-muted-foreground/80">
-                                L:{issue.line}
-                              </span>
-                            </div>
+                            {issue.line > 0 ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-muted-foreground/80">
+                                  L:{issue.line}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <span className="text-muted-foreground/50 italic">
+                                  Unanchored
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               <span>
