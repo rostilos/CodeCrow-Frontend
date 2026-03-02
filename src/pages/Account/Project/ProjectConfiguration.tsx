@@ -1533,11 +1533,12 @@ export default function ProjectConfiguration() {
                     <Cpu className="h-5 w-5 text-primary" />
                     <div>
                       <div className="font-medium">
-                        Maximum Analysis Token Limit
+                        Analysis Batch Token Limit
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Maximum number of tokens allowed for PR analysis.
-                        Analysis will be skipped if the diff exceeds this limit.
+                        Maximum token count per analysis batch. When a PR diff
+                        exceeds this limit, files are split into multiple
+                        batches and analyzed sequentially.
                       </div>
                     </div>
                   </div>
