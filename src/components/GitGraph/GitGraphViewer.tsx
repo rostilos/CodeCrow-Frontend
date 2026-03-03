@@ -12,7 +12,6 @@ import {
   GitPullRequest,
   AlertCircle,
   CheckCircle2,
-  XCircle,
   Clock,
   Shield,
   RefreshCw,
@@ -40,7 +39,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 /* ══════════════════════════════════════════════════════════════
-   Types — matches the backend CommitNode-based API
+   Types — matches the backend GitGraphController API
    ══════════════════════════════════════════════════════════════ */
 
 interface CommitData {
@@ -49,7 +48,7 @@ interface CommitData {
   author: string | null;
   timestamp: string | null;
   parents: string[];
-  analysisStatus: "NOT_ANALYZED" | "ANALYZED" | "FAILED";
+  analysisStatus: "NOT_ANALYZED" | "ANALYZED";
   analysisId?: number | null;
   analysisResult?: string | null;
   analysisType?: string | null;
@@ -421,13 +420,6 @@ const AnalysisDot = ({
       />
     );
   }
-  if (status === "FAILED")
-    return (
-      <span
-        className="inline-block w-2 h-2 rounded-full bg-red-500 flex-shrink-0"
-        title="Analysis failed"
-      />
-    );
   return null;
 };
 
@@ -606,14 +598,6 @@ const CommitDetail = ({
         )}
       </div>
     )}
-    {commit.analysisStatus === "FAILED" && (
-      <div className="mt-1.5 pt-1.5 border-t">
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-600">
-          <XCircle className="w-2.5 h-2.5" />
-          Analysis Failed
-        </span>
-      </div>
-    )}
     {analysisUrl && commit.analysisStatus === "ANALYZED" && (
       <div className="mt-1.5 pt-1.5 border-t">
         <a
@@ -639,10 +623,12 @@ export const GitGraphViewer = ({
   projectId,
   workspaceSlug,
   namespace,
+  branchName,
 }: {
   projectId: number;
   workspaceSlug?: string;
   namespace?: string;
+  branchName?: string | null;
 }) => {
   const [data, setData] = useState<GraphApiData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -697,7 +683,10 @@ export const GitGraphViewer = ({
     try {
       setLoading(true);
       setError(null);
-      const url = getApiUrl(`/v1/projects/${projectId}/git-graph`);
+      let url = getApiUrl(`/v1/projects/${projectId}/git-graph`);
+      if (branchName) {
+        url += `?branch=${encodeURIComponent(branchName)}`;
+      }
       const token = localStorage.getItem("codecrow_token");
       const res = await fetch(url, {
         headers: {
@@ -714,7 +703,7 @@ export const GitGraphViewer = ({
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, branchName]);
 
   useEffect(() => {
     fetchGraph();
@@ -952,7 +941,6 @@ export const GitGraphViewer = ({
               const isAnalyzedBad =
                 commit.analysisStatus === "ANALYZED" &&
                 commit.analysisResult === "FAILED";
-              const isAnalysisFailed = commit.analysisStatus === "FAILED";
 
               const r = isMerge ? NODE_RADIUS + 2 : NODE_RADIUS;
 
@@ -967,18 +955,6 @@ export const GitGraphViewer = ({
                       stroke="#F59E0B"
                       strokeWidth={1.5}
                       strokeOpacity={isActive ? 1 : 0.5}
-                    />
-                  )}
-                  {isAnalysisFailed && (
-                    <circle
-                      cx={x}
-                      cy={y}
-                      r={r + 3}
-                      fill="none"
-                      stroke="#EF4444"
-                      strokeWidth={1.5}
-                      strokeOpacity={isActive ? 1 : 0.5}
-                      strokeDasharray="3 2"
                     />
                   )}
                   <circle

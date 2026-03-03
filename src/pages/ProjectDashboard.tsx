@@ -1878,6 +1878,7 @@ export default function ProjectDashboard() {
                       projectId={project.id}
                       workspaceSlug={currentWorkspace?.slug}
                       namespace={namespace}
+                      branchName={selectedBranch}
                     />
                   ) : (
                     <div className="text-center py-12 text-muted-foreground">
@@ -2511,6 +2512,7 @@ export default function ProjectDashboard() {
                       projectId={project.id}
                       workspaceSlug={currentWorkspace?.slug}
                       namespace={namespace}
+                      branchName={selectedPR?.sourceBranchName}
                     />
                   ) : (
                     <div className="text-center py-12 text-muted-foreground">
@@ -2616,6 +2618,11 @@ export default function ProjectDashboard() {
                       projectId={project.id}
                       workspaceSlug={currentWorkspace?.slug}
                       namespace={namespace}
+                      branchName={
+                        selectionType === "pr"
+                          ? selectedPR?.sourceBranchName
+                          : selectedBranch
+                      }
                     />
                   ) : (
                     <Alert>
