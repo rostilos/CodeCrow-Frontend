@@ -211,6 +211,11 @@ export interface AnalysisIssue {
   vcsAuthorUsername?: string | null;
   // Detection source - how this issue was originally detected
   detectionSource?: "PR_ANALYSIS" | "DIRECT_PUSH_ANALYSIS" | null;
+  // Issue scope and range
+  issueScope?: "LINE" | "BLOCK" | "FUNCTION" | "FILE" | null;
+  endLineNumber?: number | null;
+  // Origin issue – the CodeAnalysisIssue this branch issue was cloned from
+  originIssueId?: number | null;
 }
 
 export interface AnalysisTrendData {

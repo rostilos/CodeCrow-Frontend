@@ -54,6 +54,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Info,
+  Braces,
 } from "lucide-react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -1417,6 +1418,21 @@ export default function IssueDetails() {
                       {getCategoryInfo(issue.issueCategory).label}
                     </Badge>
                   )}
+                  {issue.issueScope && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                    >
+                      <Braces className="h-3 w-3 mr-1" />
+                      {issue.issueScope === "FUNCTION"
+                        ? "Function"
+                        : issue.issueScope === "FILE"
+                          ? "File"
+                          : issue.issueScope === "BLOCK"
+                            ? "Block"
+                            : "Line"}
+                    </Badge>
+                  )}
                   <Separator orientation="vertical" className="h-4" />
                   <TooltipProvider>
                     <Tooltip>
@@ -1732,7 +1748,62 @@ export default function IssueDetails() {
             </div>
 
             {/* Inline Source Code Snippet */}
-            {(snippet || snippetLoading) && issue && (
+            {/* For resolved branch issues the line numbers may have drifted,
+                so we hide the (possibly misleading) branch file snippet and
+                show a link to the original PR-level issue instead. */}
+            {scopeBranch &&
+              issue.status === "resolved" &&
+              (issue.originIssueId || issue.prNumber || issue.analysisId) ? (
+              <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <Code2 className="h-4 w-4" />
+                    Source Context Unavailable
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    This issue has been resolved and the file may have changed
+                    since detection. The source code snippet is hidden because
+                    line numbers may no longer match.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {issue.originIssueId ? (
+                    <Link
+                      to={routes.issueDetail(
+                        namespace!,
+                        String(issue.originIssueId),
+                        {
+                          ...(issue.prNumber
+                            ? { prNumber: String(issue.prNumber) }
+                            : {}),
+                        },
+                      )}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      <GitPullRequest className="h-4 w-4" />
+                      View original issue in PR context
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  ) : issue.analysisId ? (
+                    <Link
+                      to={routes.analysisSourceView(
+                        namespace!,
+                        issue.analysisId,
+                        {
+                          file: issue.file || "",
+                          issueId: String(issue.id),
+                        },
+                      )}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      <Code2 className="h-4 w-4" />
+                      View original source in analysis snapshot
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : (snippet || snippetLoading) && issue ? (
               <Card className="mb-6 overflow-hidden">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
@@ -1833,7 +1904,7 @@ export default function IssueDetails() {
                   ) : null}
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
             {/* Issue Content */}
             <div className="space-y-6">
