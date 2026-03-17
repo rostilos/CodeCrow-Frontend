@@ -71,6 +71,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { buildVcsPrUrl } from "@/components/IssueListWithFilters";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export default function IssueDetails() {
   const { namespace, issueId } = useParams<{
@@ -1917,9 +1918,11 @@ export default function IssueDetails() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-foreground leading-relaxed">
-                    {descriptionText}
-                  </p>
+                  {descriptionText ? (
+                    <MarkdownRenderer content={descriptionText} className="text-sm leading-relaxed" />
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No description available.</p>
+                  )}
                 </CardContent>
               </Card>
 

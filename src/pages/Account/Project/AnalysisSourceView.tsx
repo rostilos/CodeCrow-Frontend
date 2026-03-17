@@ -56,6 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 // ── Language detection ──────────────────────────────────────────────
 
@@ -1420,18 +1421,14 @@ function SourceCodeRenderer({
                       {issue.title}
                     </p>
                     {issue.reason && (
-                      <p className="text-muted-foreground leading-relaxed">
-                        {issue.reason}
-                      </p>
+                      <MarkdownRenderer content={issue.reason} className="text-xs leading-relaxed [&_p]:text-muted-foreground" />
                     )}
                     {issue.suggestedFixDescription && (
                       <div className="pt-1 border-t border-border/20">
                         <span className="text-muted-foreground/70 text-[10px] uppercase tracking-wider font-semibold">
                           Suggested Fix
                         </span>
-                        <p className="text-muted-foreground mt-1 leading-relaxed">
-                          {issue.suggestedFixDescription}
-                        </p>
+                        <MarkdownRenderer content={issue.suggestedFixDescription} className="mt-1 text-xs leading-relaxed [&_p]:text-muted-foreground" />
                       </div>
                     )}
                   </div>

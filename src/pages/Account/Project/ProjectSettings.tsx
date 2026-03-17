@@ -45,6 +45,7 @@ import {
 } from "@/api_service/analysis/analysisService";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 // Remove old interfaces since we're importing them from the service
 
@@ -792,9 +793,7 @@ export default function ProjectDashboard() {
                                           {issue.type}
                                         </Badge>
                                       </div>
-                                      <p className="text-sm text-muted-foreground mb-2">
-                                        {issue.description}
-                                      </p>
+                                      <MarkdownRenderer content={issue.description} className="text-sm mb-2 [&_p]:text-muted-foreground" />
                                       <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                                         <span>
                                           {issue.file}:{issue.line}
