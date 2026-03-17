@@ -1753,8 +1753,8 @@ export default function IssueDetails() {
                 so we hide the (possibly misleading) branch file snippet and
                 show a link to the original PR-level issue instead. */}
             {scopeBranch &&
-              issue.status === "resolved" &&
-              (issue.originIssueId || issue.prNumber || issue.analysisId) ? (
+            issue.status === "resolved" &&
+            (issue.originIssueId || issue.prNumber || issue.analysisId) ? (
               <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2 text-amber-600 dark:text-amber-400">
@@ -1919,9 +1919,14 @@ export default function IssueDetails() {
                 </CardHeader>
                 <CardContent>
                   {descriptionText ? (
-                    <MarkdownRenderer content={descriptionText} className="text-sm leading-relaxed" />
+                    <MarkdownRenderer
+                      content={descriptionText}
+                      className="text-sm leading-relaxed"
+                    />
                   ) : (
-                    <p className="text-sm text-muted-foreground italic">No description available.</p>
+                    <p className="text-sm text-muted-foreground italic">
+                      No description available.
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -1962,6 +1967,24 @@ function severityGutterBorder(severity: string): string {
   if (s === "medium") return "border-l-2 border-yellow-500";
   if (s === "low") return "border-l-2 border-green-500";
   return "border-l-2 border-blue-400";
+}
+
+/** Softer background for scope-range (non-anchor) lines */
+function severityScopeLineClass(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "high") return "bg-red-500/5 dark:bg-red-500/[0.03]";
+  if (s === "medium") return "bg-yellow-500/5 dark:bg-yellow-500/[0.03]";
+  if (s === "low") return "bg-green-500/5 dark:bg-green-500/[0.03]";
+  return "bg-blue-500/5 dark:bg-blue-500/[0.03]";
+}
+
+/** Dashed gutter for scope-range (non-anchor) lines */
+function severityScopeGutterBorder(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "high") return "border-l-2 border-dashed border-red-500/40";
+  if (s === "medium") return "border-l-2 border-dashed border-yellow-500/40";
+  if (s === "low") return "border-l-2 border-dashed border-green-500/40";
+  return "border-l-2 border-dashed border-blue-400/40";
 }
 
 function SeverityIconSmall({ severity }: { severity: string }) {
@@ -2033,9 +2056,30 @@ function IssueCodeSnippet({
     if (seenNormKeys.has(normKey)) return;
     seenIssueIds.add(issue.issueId);
     seenNormKeys.add(normKey);
-    const existing = issuesByLine.get(issue.lineNumber) || [];
-    existing.push(issue);
-    issuesByLine.set(issue.lineNumber, existing);
+
+    // For BLOCK/FUNCTION/FILE scopes with an endLineNumber, expand across the full range
+    const scope = issue.issueScope;
+    if (
+      scope &&
+      scope !== "LINE" &&
+      issue.endLineNumber != null &&
+      issue.endLineNumber > issue.lineNumber
+    ) {
+      const rangeStart = Math.min(
+        issue.scopeStartLine ?? issue.lineNumber,
+        issue.lineNumber,
+      );
+      const rangeEnd = issue.endLineNumber;
+      for (let ln = rangeStart; ln <= rangeEnd; ln++) {
+        const existing = issuesByLine.get(ln) || [];
+        existing.push(issue);
+        issuesByLine.set(ln, existing);
+      }
+    } else {
+      const existing = issuesByLine.get(issue.lineNumber) || [];
+      existing.push(issue);
+      issuesByLine.set(issue.lineNumber, existing);
+    }
   });
 
   // Ensure the active issue always has an annotation card on its line,
@@ -2058,6 +2102,9 @@ function IssueCodeSnippet({
         suggestedFixDiff: null,
         trackedFromIssueId: null,
         trackingConfidence: null,
+        issueScope: null,
+        endLineNumber: null,
+        scopeStartLine: null,
       };
       issuesByLine.set(activeIssue.lineNumber, [newEntry]);
     }
@@ -2110,6 +2157,12 @@ function IssueCodeSnippet({
         const hasIssue = !!lineIssues && lineIssues.length > 0;
         const isIssueLine = line.lineNumber === issueLineNumber;
 
+        // Determine if this is an anchor line (primary lineNumber) or
+        // just a scope-range line (included via scope expansion)
+        const isAnchorLine =
+          hasIssue &&
+          lineIssues!.some((iss) => iss.lineNumber === line.lineNumber);
+
         // Find highest severity for this line
         const highestSeverity = lineIssues
           ? lineIssues.reduce((prev, curr) => {
@@ -2135,7 +2188,9 @@ function IssueCodeSnippet({
               className={cn(
                 "flex group",
                 hasIssue && highestSeverity
-                  ? `${severityLineHighlightClass(highestSeverity)} ${severityGutterBorder(highestSeverity)}`
+                  ? isAnchorLine
+                    ? `${severityLineHighlightClass(highestSeverity)} ${severityGutterBorder(highestSeverity)}`
+                    : `${severityScopeLineClass(highestSeverity)} ${severityScopeGutterBorder(highestSeverity)}`
                   : "border-l-2 border-transparent",
                 isIssueLine &&
                   !hasIssue &&
@@ -2155,7 +2210,7 @@ function IssueCodeSnippet({
 
               {/* Issue severity icon */}
               <div className="w-5 shrink-0 flex items-center justify-center">
-                {hasIssue && highestSeverity && (
+                {isAnchorLine && highestSeverity && (
                   <SeverityIconSmall severity={highestSeverity} />
                 )}
               </div>
@@ -2182,68 +2237,73 @@ function IssueCodeSnippet({
               </div>
             </div>
 
-            {/* Inline issue annotation cards */}
-            {lineIssues?.map((iss) => {
-              // isIssueLine is the reliable indicator (line highlight works).
-              // For lines with multiple annotations, use normalized title to pick the right one.
-              const isActive =
-                isIssueLine &&
-                activeIssue != null &&
-                (lineIssues!.length === 1 ||
-                  normalizeTitle(iss.title) ===
-                    normalizeTitle(activeIssue.title));
-              const isClickable = !isActive && onIssueSelect;
-              return (
-                <div
-                  key={iss.issueId}
-                  className={cn(
-                    "ml-12 mr-3 my-1 rounded-md border px-3 py-1.5 text-xs",
-                    isActive
-                      ? "border-primary/50 bg-primary/10 ring-1 ring-primary/30"
-                      : "border-border/50 bg-muted/30",
-                    isClickable &&
-                      "cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors",
-                  )}
-                  onClick={isClickable ? () => onIssueSelect(iss) : undefined}
-                  role={isClickable ? "button" : undefined}
-                  tabIndex={isClickable ? 0 : undefined}
-                >
-                  <div className="flex items-center gap-2">
-                    <SeverityIconSmall severity={iss.severity} />
-                    <Badge
+            {/* Inline issue annotation cards — only on anchor lines */}
+            {isAnchorLine &&
+              lineIssues
+                ?.filter((iss) => iss.lineNumber === line.lineNumber)
+                .map((iss) => {
+                  // isIssueLine is the reliable indicator (line highlight works).
+                  // For lines with multiple annotations, use normalized title to pick the right one.
+                  const isActive =
+                    isIssueLine &&
+                    activeIssue != null &&
+                    (lineIssues!.length === 1 ||
+                      normalizeTitle(iss.title) ===
+                        normalizeTitle(activeIssue.title));
+                  const isClickable = !isActive && onIssueSelect;
+                  return (
+                    <div
+                      key={iss.issueId}
                       className={cn(
-                        "text-[10px] px-1.5 py-0",
-                        iss.severity.toLowerCase() === "high"
-                          ? "bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-300"
-                          : iss.severity.toLowerCase() === "medium"
-                            ? "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300"
-                            : iss.severity.toLowerCase() === "low"
-                              ? "bg-green-200 text-green-800 dark:bg-green-900/60 dark:text-green-300"
-                              : "bg-blue-200 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
+                        "ml-12 mr-3 my-1 rounded-md border px-3 py-1.5 text-xs",
+                        isActive
+                          ? "border-primary/50 bg-primary/10 ring-1 ring-primary/30"
+                          : "border-border/50 bg-muted/30",
+                        isClickable &&
+                          "cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors",
                       )}
+                      onClick={
+                        isClickable ? () => onIssueSelect(iss) : undefined
+                      }
+                      role={isClickable ? "button" : undefined}
+                      tabIndex={isClickable ? 0 : undefined}
                     >
-                      {iss.severity.toUpperCase()}
-                    </Badge>
-                    {iss.category && (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px] px-1.5 py-0",
-                          getCategoryInfo(iss.category).color,
-                          getCategoryInfo(iss.category).bgColor,
-                          getCategoryInfo(iss.category).borderColor,
+                      <div className="flex items-center gap-2">
+                        <SeverityIconSmall severity={iss.severity} />
+                        <Badge
+                          className={cn(
+                            "text-[10px] px-1.5 py-0",
+                            iss.severity.toLowerCase() === "high"
+                              ? "bg-red-200 text-red-800 dark:bg-red-900/60 dark:text-red-300"
+                              : iss.severity.toLowerCase() === "medium"
+                                ? "bg-yellow-200 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300"
+                                : iss.severity.toLowerCase() === "low"
+                                  ? "bg-green-200 text-green-800 dark:bg-green-900/60 dark:text-green-300"
+                                  : "bg-blue-200 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
+                          )}
+                        >
+                          {iss.severity.toUpperCase()}
+                        </Badge>
+                        {iss.category && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] px-1.5 py-0",
+                              getCategoryInfo(iss.category).color,
+                              getCategoryInfo(iss.category).bgColor,
+                              getCategoryInfo(iss.category).borderColor,
+                            )}
+                          >
+                            {getCategoryInfo(iss.category).label}
+                          </Badge>
                         )}
-                      >
-                        {getCategoryInfo(iss.category).label}
-                      </Badge>
-                    )}
-                    <span className="text-muted-foreground/70 ml-auto">
-                      {iss.title}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+                        <span className="text-muted-foreground/70 ml-auto">
+                          {iss.title}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
           </div>
         );
       })}

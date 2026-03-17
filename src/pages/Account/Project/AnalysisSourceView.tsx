@@ -160,6 +160,24 @@ function severityGutterClass(severity: string): string {
   return "border-l-2 border-blue-400";
 }
 
+/** Softer background for scope-range lines (not the anchor line itself). */
+function severityScopeLineClass(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "high") return "bg-red-500/5 dark:bg-red-500/[0.03]";
+  if (s === "medium") return "bg-yellow-500/5 dark:bg-yellow-500/[0.03]";
+  if (s === "low") return "bg-green-500/5 dark:bg-green-500/[0.03]";
+  return "bg-blue-500/5 dark:bg-blue-500/[0.03]";
+}
+
+/** Dashed left border for scope-range lines. */
+function severityScopeGutterClass(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "high") return "border-l-2 border-dashed border-red-500/40";
+  if (s === "medium") return "border-l-2 border-dashed border-yellow-500/40";
+  if (s === "low") return "border-l-2 border-dashed border-green-500/40";
+  return "border-l-2 border-dashed border-blue-400/40";
+}
+
 // ── File Tree Data Structures ───────────────────────────────────────
 
 interface FileTreeNode {
@@ -804,13 +822,38 @@ export default function AnalysisSourceView({
 
   // ── Build issue lookup by line ────────────────────────────────────
 
+  // Maps each line number → issues that affect it.
+  // For non-LINE scoped issues, the issue is registered on every line in its range
+  // (from scopeStartLine/lineNumber to endLineNumber) so that scope highlighting
+  // covers the entire block/function.
   const issuesByLine = useMemo(() => {
     if (!fileView) return new Map<number, InlineIssue[]>();
     const map = new Map<number, InlineIssue[]>();
     fileView.issues.forEach((issue) => {
-      const existing = map.get(issue.lineNumber) || [];
-      existing.push(issue);
-      map.set(issue.lineNumber, existing);
+      const scope = issue.issueScope;
+      const hasRange =
+        scope &&
+        scope !== "LINE" &&
+        issue.endLineNumber &&
+        issue.endLineNumber > issue.lineNumber;
+
+      if (hasRange) {
+        // Use scopeStartLine if available (more precise), else fall back to lineNumber
+        const rangeStart =
+          issue.scopeStartLine && issue.scopeStartLine > 0
+            ? Math.min(issue.scopeStartLine, issue.lineNumber)
+            : issue.lineNumber;
+        const rangeEnd = issue.endLineNumber!;
+        for (let ln = rangeStart; ln <= rangeEnd; ln++) {
+          const existing = map.get(ln) || [];
+          existing.push(issue);
+          map.set(ln, existing);
+        }
+      } else {
+        const existing = map.get(issue.lineNumber) || [];
+        existing.push(issue);
+        map.set(issue.lineNumber, existing);
+      }
     });
     return map;
   }, [fileView]);
@@ -1225,6 +1268,12 @@ function SourceCodeRenderer({
         const lineIssues = issuesByLine.get(lineNumber);
         const hasIssue = !!lineIssues && lineIssues.length > 0;
 
+        // Determine if this is an anchor line (the issue's primary line) or
+        // a scope-range line (part of the BLOCK/FUNCTION scope but not the anchor).
+        const isAnchorLine =
+          hasIssue &&
+          lineIssues!.some((issue) => issue.lineNumber === lineNumber);
+
         // Find the highest severity for this line
         const highestSeverity = lineIssues
           ? lineIssues.reduce((prev, curr) => {
@@ -1246,7 +1295,9 @@ function SourceCodeRenderer({
               className={cn(
                 "flex group",
                 hasIssue && highestSeverity
-                  ? `${severityLineClass(highestSeverity)} ${severityGutterClass(highestSeverity)}`
+                  ? isAnchorLine
+                    ? `${severityLineClass(highestSeverity)} ${severityGutterClass(highestSeverity)}`
+                    : `${severityScopeLineClass(highestSeverity)} ${severityScopeGutterClass(highestSeverity)}`
                   : "border-l-2 border-transparent",
               )}
             >
@@ -1421,14 +1472,20 @@ function SourceCodeRenderer({
                       {issue.title}
                     </p>
                     {issue.reason && (
-                      <MarkdownRenderer content={issue.reason} className="text-xs leading-relaxed [&_p]:text-muted-foreground" />
+                      <MarkdownRenderer
+                        content={issue.reason}
+                        className="text-xs leading-relaxed [&_p]:text-muted-foreground"
+                      />
                     )}
                     {issue.suggestedFixDescription && (
                       <div className="pt-1 border-t border-border/20">
                         <span className="text-muted-foreground/70 text-[10px] uppercase tracking-wider font-semibold">
                           Suggested Fix
                         </span>
-                        <MarkdownRenderer content={issue.suggestedFixDescription} className="mt-1 text-xs leading-relaxed [&_p]:text-muted-foreground" />
+                        <MarkdownRenderer
+                          content={issue.suggestedFixDescription}
+                          className="mt-1 text-xs leading-relaxed [&_p]:text-muted-foreground"
+                        />
                       </div>
                     )}
                   </div>
