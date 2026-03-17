@@ -273,6 +273,9 @@ export interface InlineIssue {
   suggestedFixDiff: string | null;
   trackedFromIssueId: number | null;
   trackingConfidence: string | null;
+  issueScope: "LINE" | "BLOCK" | "FUNCTION" | "FILE" | null;
+  endLineNumber: number | null;
+  scopeStartLine: number | null;
 }
 
 export interface FileSnippetResponse {
