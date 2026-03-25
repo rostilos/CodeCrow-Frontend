@@ -12,6 +12,7 @@ import {
   X,
   Shield,
   CreditCard,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -147,6 +148,14 @@ export function TopNavigation({
                         <Shield className="h-4 w-4" />
                         Quality Gates
                       </NavLink>
+                      <NavLink
+                        to={routes.taskSettings()}
+                        className={mobileNavLinkClass}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Zap className="h-4 w-4" />
+                        Task Management
+                      </NavLink>
 
                       <NavLink
                         to={routes.workspaceSettings()}
@@ -234,6 +243,9 @@ export function TopNavigation({
                   </NavLink>
                   <NavLink to={routes.qualityGates()} className={navLinkClass}>
                     Quality Gates
+                  </NavLink>
+                  <NavLink to={routes.taskSettings()} className={navLinkClass}>
+                    Task Management
                   </NavLink>
                 </>
               )}

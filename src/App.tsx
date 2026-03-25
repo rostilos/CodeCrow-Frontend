@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { WorkspaceProvider } from "./context/WorkspaceContext";
 import WorkspaceGuard from "./components/WorkspaceGuard";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { FlashlightOverlay } from "./components/FlashlightOverlay";
 import { FEATURES } from "./config/features";
 import { CROSS_LINKS } from "./lib/domains";
 import { SetupGuard } from "./components/SetupGuard";
@@ -132,6 +133,7 @@ const SetupWizard = lazy(() => import("./pages/Admin/SetupWizard.tsx"));
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="dark" storageKey="codecrow-ui-theme">
+      <FlashlightOverlay />
       <TooltipProvider>
         <Toaster />
         <Sonner />

@@ -11,6 +11,7 @@ import {
   Settings as SettingsIcon,
   Shield,
   CreditCard,
+  Zap,
 } from "lucide-react";
 import { authUtils } from "@/lib/auth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -84,6 +85,12 @@ export default function DashboardLayout() {
             title: "Quality Gates",
             url: routes.qualityGates(),
             icon: Shield,
+            group: "Navigation",
+          },
+          {
+            title: "Task Management",
+            url: routes.taskSettings(),
+            icon: Zap,
             group: "Navigation",
           },
           // Only show billing in search if feature is enabled
