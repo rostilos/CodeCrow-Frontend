@@ -1,5 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Check, ChevronsUpDown, Brain, Loader2, Search, Keyboard, Info } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Brain,
+  Loader2,
+  Search,
+  Keyboard,
+  Info,
+  RefreshCw,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +20,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { llmModelService, LlmModelDTO } from "@/api_service/ai/llmModelService";
 import { AIProviderKey } from "@/api_service/ai/aiConnectionService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ModelSelectorProps {
   /** Currently selected model ID */
@@ -27,10 +43,14 @@ interface ModelSelectorProps {
   className?: string;
   /** Whether to allow custom model input (fallback mode) */
   allowCustom?: boolean;
+  /** Base URL for OPENAI_COMPATIBLE provider (used for Fetch Models) */
+  baseUrl?: string;
+  /** API key for OPENAI_COMPATIBLE provider (used for Fetch Models) */
+  apiKey?: string;
 }
 
 function formatContextWindow(tokens: number | null): string {
-  if (tokens === null || tokens === undefined) return '';
+  if (tokens === null || tokens === undefined) return "";
   if (tokens >= 1000000) {
     return `${(tokens / 1000000).toFixed(1)}M`;
   }
@@ -40,7 +60,10 @@ function formatContextWindow(tokens: number | null): string {
   return String(tokens);
 }
 
-function formatPrice(inputPrice: string | null, outputPrice: string | null): string | null {
+function formatPrice(
+  inputPrice: string | null,
+  outputPrice: string | null,
+): string | null {
   if (!inputPrice && !outputPrice) return null;
   const input = inputPrice ? parseFloat(inputPrice) : 0;
   const output = outputPrice ? parseFloat(outputPrice) : 0;
@@ -57,6 +80,8 @@ export function ModelSelector({
   disabled = false,
   className,
   allowCustom = true,
+  baseUrl,
+  apiKey,
 }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,11 +89,13 @@ export function ModelSelector({
   const [isLoading, setIsLoading] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customModel, setCustomModel] = useState("");
-  const [hasModelsForProvider, setHasModelsForProvider] = useState<boolean | null>(null);
+  const [hasModelsForProvider, setHasModelsForProvider] = useState<
+    boolean | null
+  >(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  
+
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -98,7 +125,9 @@ export function ModelSelector({
           size: 20,
         });
 
-        setModels(prev => append ? [...prev, ...response.models] : response.models);
+        setModels((prev) =>
+          append ? [...prev, ...response.models] : response.models,
+        );
         setTotalPages(response.totalPages);
         setTotalElements(response.totalElements);
         setPage(pageNum);
@@ -108,7 +137,7 @@ export function ModelSelector({
         setIsLoading(false);
       }
     },
-    [provider]
+    [provider],
   );
 
   // Debounced search
@@ -122,7 +151,7 @@ export function ModelSelector({
         fetchModels(query, 0, false);
       }, 300);
     },
-    [fetchModels]
+    [fetchModels],
   );
 
   useEffect(() => {
@@ -149,7 +178,7 @@ export function ModelSelector({
   }, [provider]);
 
   const handleSelect = (model: LlmModelDTO | string) => {
-    const modelId = typeof model === 'string' ? model : model.modelId;
+    const modelId = typeof model === "string" ? model : model.modelId;
     onValueChange(modelId);
     setOpen(false);
     setSearchQuery("");
@@ -170,25 +199,22 @@ export function ModelSelector({
   };
 
   // Get display name for selected value
-  const selectedModel = models.find(m => m.modelId === value);
-  const displayValue = selectedModel?.displayName || selectedModel?.modelId || value;
+  const selectedModel = models.find((m) => m.modelId === value);
+  const displayValue =
+    selectedModel?.displayName || selectedModel?.modelId || value;
 
   // If no models are available, show custom input mode
   if (hasModelsForProvider === false) {
     return (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-          <Info className="h-3 w-3" />
-          <span>No cached models available. Enter model name manually.</span>
-        </div>
-        <Input
-          value={value}
-          onChange={(e) => onValueChange(e.target.value)}
-          placeholder={getPlaceholderForProvider(provider)}
-          disabled={disabled}
-          className={className}
-        />
-      </div>
+      <CustomModelInput
+        value={value}
+        onValueChange={onValueChange}
+        provider={provider}
+        disabled={disabled}
+        className={className}
+        baseUrl={baseUrl}
+        apiKey={apiKey}
+      />
     );
   }
 
@@ -214,7 +240,10 @@ export function ModelSelector({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+      >
         <div className="flex items-center border-b px-3">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           <input
@@ -226,9 +255,9 @@ export function ModelSelector({
           />
           {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
         </div>
-        <div 
-          className="max-h-[300px] overflow-y-scroll overscroll-contain" 
-          style={{ overflowY: 'scroll' }}
+        <div
+          className="max-h-[300px] overflow-y-scroll overscroll-contain"
+          style={{ overflowY: "scroll" }}
           onWheel={(e) => {
             e.stopPropagation();
             const target = e.currentTarget;
@@ -288,8 +317,10 @@ export function ModelSelector({
                   </div>
                 </div>
               )}
-              
-              {allowCustom && models.length > 0 && <div className="h-px bg-border" />}
+
+              {allowCustom && models.length > 0 && (
+                <div className="h-px bg-border" />
+              )}
 
               {!isLoading && models.length === 0 && (
                 <div className="py-6 text-center text-sm">
@@ -301,7 +332,7 @@ export function ModelSelector({
                   )}
                 </div>
               )}
-              
+
               {models.length > 0 && (
                 <div className="p-1">
                   {models.map((model) => (
@@ -313,17 +344,30 @@ export function ModelSelector({
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4 shrink-0",
-                          value === model.modelId ? "opacity-100" : "opacity-0"
+                          value === model.modelId ? "opacity-100" : "opacity-0",
                         )}
                       />
                       <div className="flex flex-col flex-1 min-w-0">
-                        <span className="truncate font-medium">{model.displayName || model.modelId}</span>
-                        <span className="text-xs text-muted-foreground truncate">{model.modelId}</span>
+                        <span className="truncate font-medium">
+                          {model.displayName || model.modelId}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {model.modelId}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 ml-2 shrink-0">
-                        {formatPrice(model.inputPricePerMillion, model.outputPricePerMillion) && (
-                          <Badge variant="secondary" className="text-xs font-mono">
-                            {formatPrice(model.inputPricePerMillion, model.outputPricePerMillion)}
+                        {formatPrice(
+                          model.inputPricePerMillion,
+                          model.outputPricePerMillion,
+                        ) && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs font-mono"
+                          >
+                            {formatPrice(
+                              model.inputPricePerMillion,
+                              model.outputPricePerMillion,
+                            )}
                           </Badge>
                         )}
                         {model.contextWindow && (
@@ -368,17 +412,146 @@ export function ModelSelector({
 
 function getPlaceholderForProvider(provider: AIProviderKey): string {
   switch (provider) {
-    case 'OPENAI':
-      return 'e.g., gpt-4o, gpt-4o-mini';
-    case 'ANTHROPIC':
-      return 'e.g., claude-sonnet-4-20250514';
-    case 'GOOGLE':
-      return 'e.g., gemini-2.5-flash';
-    case 'OPENROUTER':
-      return 'e.g., anthropic/claude-sonnet-4';
+    case "OPENAI":
+      return "e.g., gpt-4o, gpt-4o-mini";
+    case "ANTHROPIC":
+      return "e.g., claude-sonnet-4-20250514";
+    case "GOOGLE":
+      return "e.g., gemini-2.5-flash";
+    case "OPENROUTER":
+      return "e.g., anthropic/claude-sonnet-4";
+    case "OPENAI_COMPATIBLE":
+      return "e.g., @cf/meta/llama-3-8b-instruct";
     default:
-      return 'Enter model name';
+      return "Enter model name";
   }
+}
+
+/**
+ * Custom model input component with optional "Fetch Models" for OPENAI_COMPATIBLE.
+ */
+function CustomModelInput({
+  value,
+  onValueChange,
+  provider,
+  disabled,
+  className,
+  baseUrl,
+  apiKey,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  provider: AIProviderKey;
+  disabled?: boolean;
+  className?: string;
+  baseUrl?: string;
+  apiKey?: string;
+}) {
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const handleFetchModels = async () => {
+    if (!baseUrl?.trim()) return;
+    setIsFetching(true);
+    setFetchError(null);
+    try {
+      const models = await llmModelService.fetchCustomModels(baseUrl, apiKey);
+      setFetchedModels(models);
+      if (models.length === 0) {
+        setFetchError("No models found at this endpoint.");
+      }
+    } catch (error: any) {
+      setFetchError(error.message || "Failed to fetch models from endpoint");
+      setFetchedModels([]);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // If models were fetched, show a select dropdown
+  if (fetchedModels.length > 0) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+          <Info className="h-3 w-3" />
+          <span>
+            {fetchedModels.length} model(s) found. Select or type manually.
+          </span>
+        </div>
+        <Select value={value} onValueChange={onValueChange}>
+          <SelectTrigger className={className}>
+            <SelectValue placeholder={getPlaceholderForProvider(provider)} />
+          </SelectTrigger>
+          <SelectContent>
+            {fetchedModels.map((m) => (
+              <SelectItem key={m} value={m}>
+                {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex gap-2">
+          <Input
+            value={value}
+            onChange={(e) => onValueChange(e.target.value)}
+            placeholder="Or type model name manually..."
+            disabled={disabled}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setFetchedModels([])}
+            className="shrink-0"
+          >
+            Clear
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+        <Info className="h-3 w-3" />
+        <span>
+          {provider === "OPENAI_COMPATIBLE"
+            ? "Enter model name manually or fetch available models from your endpoint."
+            : "No cached models available. Enter model name manually."}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          placeholder={getPlaceholderForProvider(provider)}
+          disabled={disabled}
+          className={cn("flex-1", className)}
+        />
+        {provider === "OPENAI_COMPATIBLE" && baseUrl?.trim() && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleFetchModels}
+            disabled={isFetching || disabled}
+            className="shrink-0"
+          >
+            {isFetching ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-1" />
+            )}
+            Fetch Models
+          </Button>
+        )}
+      </div>
+      {fetchError && <p className="text-xs text-destructive">{fetchError}</p>}
+    </div>
+  );
 }
 
 export default ModelSelector;

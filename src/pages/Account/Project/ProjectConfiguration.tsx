@@ -87,6 +87,7 @@ import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
 import CommentCommandsConfig from "@/components/CommentCommandsConfig";
 import CustomRulesConfig from "@/components/CustomRulesConfig";
+import QaAutoDocConfiguration from "@/components/QaAutoDocConfiguration";
 import { BranchSelector } from "@/components/BranchSelector";
 import {
   qualityGateService,
@@ -1931,23 +1932,12 @@ export default function ProjectConfiguration() {
         ) : null;
 
       case "tasks":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle>Task Management Configuration</CardTitle>
-              <CardDescription>
-                Configure task management integration for this project
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Task management configuration coming soon...
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        );
+        return currentWorkspace && project ? (
+          <QaAutoDocConfiguration
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        ) : null;
 
       case "tokens":
         return canGenerateTokens() && namespace ? (
