@@ -50,6 +50,7 @@ import {
   TASK_ID_SOURCES,
   DEFAULT_TASK_ID_PATTERN,
   MAX_CUSTOM_TEMPLATE_LENGTH,
+  OUTPUT_LANGUAGES,
 } from "@/api_service/taskManagement/taskManagement.interface";
 
 interface QaAutoDocConfigurationProps {
@@ -79,6 +80,7 @@ export default function QaAutoDocConfiguration({
   const [templateMode, setTemplateMode] =
     useState<QaAutoDocTemplateMode>("BASE");
   const [customTemplate, setCustomTemplate] = useState("");
+  const [outputLanguage, setOutputLanguage] = useState("English");
 
   // ── UI state ──
   const [saving, setSaving] = useState(false);
@@ -126,6 +128,7 @@ export default function QaAutoDocConfiguration({
       setTaskIdSource(config.taskIdSource || "BRANCH_NAME");
       setTemplateMode(config.templateMode || "BASE");
       setCustomTemplate(config.customTemplate || "");
+      setOutputLanguage(config.outputLanguage || "English");
     }
   }, [project]);
 
@@ -187,6 +190,7 @@ export default function QaAutoDocConfiguration({
         taskIdSource,
         templateMode,
         customTemplate: templateMode === "CUSTOM" ? customTemplate : null,
+        outputLanguage: outputLanguage || "English",
       };
       await taskManagementService.updateQaAutoDocConfig(
         currentWorkspace.slug,
@@ -442,6 +446,45 @@ export default function QaAutoDocConfiguration({
                 </p>
               </div>
             )}
+          </div>
+
+          <Separator />
+
+          {/* Output Language */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-base font-medium">Output Language</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <p>
+                      Choose the language for the generated QA documentation.
+                      The AI will write all test scenarios, descriptions, and
+                      instructions in the selected language.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Select value={outputLanguage} onValueChange={setOutputLanguage}>
+              <SelectTrigger className="w-full md:w-64">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                {OUTPUT_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              The generated QA documentation will be written entirely in the
+              selected language.
+            </p>
           </div>
 
           <Separator />

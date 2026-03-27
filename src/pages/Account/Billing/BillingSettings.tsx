@@ -483,7 +483,7 @@ function PlanCard({
 
     if (isEnterprise) {
       window.location.href =
-        "mailto:sales@codecrow.dev?subject=Enterprise%20Plan%20Inquiry";
+        "mailto:sales@codecrow.app?subject=Enterprise%20Plan%20Inquiry";
       return;
     }
 

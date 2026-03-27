@@ -1,5 +1,5 @@
-import { ApiService } from '@/api_service/api.ts';
-import { AIProviderKey } from './aiConnectionService';
+import { ApiService } from "@/api_service/api.ts";
+import { AIProviderKey } from "./aiConnectionService";
 
 export interface LlmModelDTO {
   id: number;
@@ -38,22 +38,22 @@ class LlmModelService extends ApiService {
     size?: number;
   }): Promise<LlmModelListResponse> {
     const searchParams = new URLSearchParams();
-    
+
     if (params.provider) {
-      searchParams.append('provider', params.provider);
+      searchParams.append("provider", params.provider);
     }
     if (params.search) {
-      searchParams.append('search', params.search);
+      searchParams.append("search", params.search);
     }
     if (params.page !== undefined) {
-      searchParams.append('page', String(params.page));
+      searchParams.append("page", String(params.page));
     }
     if (params.size !== undefined) {
-      searchParams.append('size', String(params.size));
+      searchParams.append("size", String(params.size));
     }
 
     const queryString = searchParams.toString();
-    const url = queryString ? `/llm-models?${queryString}` : '/llm-models';
+    const url = queryString ? `/llm-models?${queryString}` : "/llm-models";
 
     return this.request<LlmModelListResponse>(url, {});
   }
@@ -62,7 +62,21 @@ class LlmModelService extends ApiService {
    * Get status of model availability for each provider.
    */
   async getStatus(): Promise<LlmModelStatusResponse> {
-    return this.request<LlmModelStatusResponse>('/llm-models/status', {});
+    return this.request<LlmModelStatusResponse>("/llm-models/status", {});
+  }
+
+  /**
+   * Fetch models from an OpenAI-compatible custom endpoint (proxied through Java backend).
+   */
+  async fetchCustomModels(baseUrl: string, apiKey?: string): Promise<string[]> {
+    const response = await this.request<{ models: string[] }>(
+      "/llm-models/fetch-custom",
+      {
+        method: "POST",
+        body: JSON.stringify({ baseUrl, apiKey }),
+      },
+    );
+    return response.models;
   }
 }
 

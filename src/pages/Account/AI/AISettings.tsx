@@ -108,6 +108,19 @@ export default function AISettings() {
       return;
     }
 
+    if (
+      newConnection.providerKey === "OPENAI_COMPATIBLE" &&
+      !newConnection.baseUrl?.trim()
+    ) {
+      toast({
+        title: "Validation Error",
+        description:
+          "Endpoint Base URL is required for OpenAI-Compatible provider",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setCreating(true);
       await aiConnectionService.createConnection(
@@ -124,6 +137,7 @@ export default function AISettings() {
         providerKey: "OPENROUTER",
         aiModel: "",
         apiKey: "",
+        baseUrl: "",
       });
       await loadConnections();
     } catch (error: any) {
@@ -182,6 +196,10 @@ export default function AISettings() {
           providerKey: editingConnection.providerKey,
           aiModel: editingConnection.aiModel,
           apiKey: editingConnection.apiKey || undefined,
+          baseUrl:
+            editingConnection.providerKey === "OPENAI_COMPATIBLE"
+              ? (editingConnection as any).baseUrl || undefined
+              : undefined,
         },
       );
       toast({
@@ -216,6 +234,8 @@ export default function AISettings() {
         "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
       GOOGLE:
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+      OPENAI_COMPATIBLE:
+        "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
     };
 
     return (
@@ -433,9 +453,34 @@ export default function AISettings() {
                             <SelectItem value="OPENROUTER">
                               OpenRouter
                             </SelectItem>
+                            <SelectItem value="OPENAI_COMPATIBLE">
+                              OpenAI-Compatible (Custom Endpoint)
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
+                      {newConnection.providerKey === "OPENAI_COMPATIBLE" && (
+                        <div>
+                          <Label htmlFor="baseUrl">Endpoint Base URL</Label>
+                          <Input
+                            id="baseUrl"
+                            autoComplete="off"
+                            value={newConnection.baseUrl || ""}
+                            onChange={(e) =>
+                              setNewConnection({
+                                ...newConnection,
+                                baseUrl: e.target.value,
+                              })
+                            }
+                            placeholder="https://my-model.example.com"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            The base URL of your OpenAI-compatible API endpoint
+                            (e.g. vLLM, Ollama, Cloudflare Workers AI). HTTPS is
+                            required for non-private endpoints.
+                          </p>
+                        </div>
+                      )}
                       <div>
                         <Label htmlFor="model">AI Model</Label>
                         <ModelSelector
@@ -449,6 +494,8 @@ export default function AISettings() {
                           provider={newConnection.providerKey}
                           placeholder="Select a model..."
                           allowCustom={true}
+                          baseUrl={newConnection.baseUrl}
+                          apiKey={newConnection.apiKey}
                         />
                       </div>
                       <div>
@@ -534,9 +581,37 @@ export default function AISettings() {
                               <SelectItem value="OPENROUTER">
                                 OpenRouter
                               </SelectItem>
+                              <SelectItem value="OPENAI_COMPATIBLE">
+                                OpenAI-Compatible (Custom Endpoint)
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
+                        {editingConnection.providerKey ===
+                          "OPENAI_COMPATIBLE" && (
+                          <div>
+                            <Label htmlFor="edit-baseUrl">
+                              Endpoint Base URL
+                            </Label>
+                            <Input
+                              id="edit-baseUrl"
+                              autoComplete="off"
+                              value={(editingConnection as any).baseUrl || ""}
+                              onChange={(e) =>
+                                setEditingConnection({
+                                  ...editingConnection,
+                                  baseUrl: e.target.value,
+                                } as any)
+                              }
+                              placeholder="https://my-model.example.com"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              The base URL of your OpenAI-compatible API
+                              endpoint. HTTPS is required for non-private
+                              endpoints.
+                            </p>
+                          </div>
+                        )}
                         <div>
                           <Label htmlFor="edit-model">AI Model</Label>
                           <ModelSelector
@@ -550,6 +625,8 @@ export default function AISettings() {
                             provider={editingConnection.providerKey}
                             placeholder="Select a model..."
                             allowCustom={true}
+                            baseUrl={(editingConnection as any).baseUrl}
+                            apiKey={editingConnection.apiKey}
                           />
                         </div>
                         <div>
@@ -687,6 +764,19 @@ export default function AISettings() {
                               {connection.aiModel}
                             </span>
                           </div>
+                          {connection.baseUrl && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground font-medium">
+                                Endpoint
+                              </span>
+                              <span
+                                className="font-semibold truncate max-w-[200px]"
+                                title={connection.baseUrl}
+                              >
+                                {connection.baseUrl}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="mt-auto pt-2 flex space-x-2">

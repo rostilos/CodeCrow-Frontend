@@ -57,6 +57,7 @@ export interface QaAutoDocConfigResponse {
   taskIdSource: QaAutoDocTaskIdSource | null;
   templateMode: QaAutoDocTemplateMode | null;
   customTemplate: string | null;
+  outputLanguage: string | null;
 }
 
 export interface QaAutoDocConfigRequest {
@@ -66,6 +67,7 @@ export interface QaAutoDocConfigRequest {
   taskIdSource: QaAutoDocTaskIdSource | null;
   templateMode: QaAutoDocTemplateMode | null;
   customTemplate: string | null;
+  outputLanguage: string | null;
 }
 
 // --- Constants ---
@@ -124,3 +126,38 @@ export const TASK_ID_SOURCES: {
 export const DEFAULT_TASK_ID_PATTERN = "[A-Z][A-Z0-9]+-\\d+";
 
 export const MAX_CUSTOM_TEMPLATE_LENGTH = 5000;
+
+export const OUTPUT_LANGUAGES: { value: string; label: string }[] = [
+  { value: "English", label: "English" },
+  { value: "Ukrainian", label: "Українська (Ukrainian)" },
+  { value: "Spanish", label: "Español (Spanish)" },
+  { value: "French", label: "Français (French)" },
+  { value: "German", label: "Deutsch (German)" },
+  { value: "Portuguese", label: "Português (Portuguese)" },
+  { value: "Italian", label: "Italiano (Italian)" },
+  { value: "Polish", label: "Polski (Polish)" },
+  { value: "Dutch", label: "Nederlands (Dutch)" },
+  { value: "Czech", label: "Čeština (Czech)" },
+  { value: "Turkish", label: "Türkçe (Turkish)" },
+  { value: "Japanese", label: "日本語 (Japanese)" },
+  { value: "Korean", label: "한국어 (Korean)" },
+  { value: "Chinese", label: "中文 (Chinese)" },
+  { value: "Arabic", label: "العربية (Arabic)" },
+  { value: "Hebrew", label: "עברית (Hebrew)" },
+  { value: "Hindi", label: "हिन्दी (Hindi)" },
+  { value: "Swedish", label: "Svenska (Swedish)" },
+  { value: "Norwegian", label: "Norsk (Norwegian)" },
+  { value: "Danish", label: "Dansk (Danish)" },
+  { value: "Finnish", label: "Suomi (Finnish)" },
+  { value: "Romanian", label: "Română (Romanian)" },
+  { value: "Bulgarian", label: "Български (Bulgarian)" },
+  { value: "Croatian", label: "Hrvatski (Croatian)" },
+  { value: "Serbian", label: "Српски (Serbian)" },
+  { value: "Slovak", label: "Slovenčina (Slovak)" },
+  { value: "Slovenian", label: "Slovenščina (Slovenian)" },
+  { value: "Greek", label: "Ελληνικά (Greek)" },
+  { value: "Thai", label: "ไทย (Thai)" },
+  { value: "Vietnamese", label: "Tiếng Việt (Vietnamese)" },
+  { value: "Indonesian", label: "Bahasa Indonesia (Indonesian)" },
+  { value: "Malay", label: "Bahasa Melayu (Malay)" },
+];
