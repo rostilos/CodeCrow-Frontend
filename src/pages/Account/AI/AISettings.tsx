@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Settings,
@@ -7,10 +6,9 @@ import {
   Trash2,
   Edit,
   CheckCircle,
-  XCircle,
-  AlertCircle,
   Info,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { ModelSelector } from "@/components/ModelSelector";
 import {
@@ -44,6 +42,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   aiConnectionService,
   AIConnectionDTO,
@@ -51,8 +50,8 @@ import {
 } from "@/api_service/ai/aiConnectionService";
 
 export default function AISettings() {
-  const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
+  const { canManageWorkspace } = usePermissions();
   const { toast } = useToast();
   const [connections, setConnections] = useState<AIConnectionDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +59,9 @@ export default function AISettings() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [testingConnectionIds, setTestingConnectionIds] = useState<Set<number>>(
+    () => new Set(),
+  );
   const [editingConnection, setEditingConnection] = useState<
     (AIConnectionDTO & { apiKey?: string }) | null
   >(null);
@@ -167,6 +169,40 @@ export default function AISettings() {
         title: "Failed to delete AI connection",
         description: error.message || "Could not delete AI connection",
         variant: "destructive",
+      });
+    }
+  };
+
+  const handleTestConnection = async (connection: AIConnectionDTO) => {
+    if (!currentWorkspace) return;
+
+    setTestingConnectionIds((prev) => new Set(prev).add(connection.id));
+    try {
+      const result = await aiConnectionService.testConnection(
+        currentWorkspace.slug,
+        connection.id,
+      );
+
+      toast({
+        title: result.success
+          ? "Connection test succeeded"
+          : "Connection test failed",
+        description: `${result.message}${
+          result.latencyMs ? ` (${result.latencyMs}ms)` : ""
+        }`,
+        variant: result.success ? "default" : "destructive",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Connection test failed",
+        description: error.message || "Could not test AI connection",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingConnectionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(connection.id);
+        return next;
       });
     }
   };
@@ -345,12 +381,14 @@ export default function AISettings() {
                   open={showCreateDialog}
                   onOpenChange={setShowCreateDialog}
                 >
-                  <DialogTrigger asChild>
-                    <Button className="flex items-center space-x-2">
-                      <Plus className="h-4 w-4" />
-                      <span>Add AI Connection</span>
-                    </Button>
-                  </DialogTrigger>
+                  {canManageWorkspace() && (
+                    <DialogTrigger asChild>
+                      <Button className="flex items-center space-x-2">
+                        <Plus className="h-4 w-4" />
+                        <span>Add AI Connection</span>
+                      </Button>
+                    </DialogTrigger>
+                  )}
                   <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create AI Connection</DialogTitle>
@@ -685,13 +723,15 @@ export default function AISettings() {
                       Get started by creating your first AI connection to enable
                       code analysis and review features.
                     </p>
-                    <Button
-                      onClick={() => setShowCreateDialog(true)}
-                      className="flex items-center space-x-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Create AI Connection</span>
-                    </Button>
+                    {canManageWorkspace() && (
+                      <Button
+                        onClick={() => setShowCreateDialog(true)}
+                        className="flex items-center space-x-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Create AI Connection</span>
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
@@ -779,27 +819,45 @@ export default function AISettings() {
                           )}
                         </div>
 
-                        <div className="mt-auto pt-2 flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 shrink-0 h-9 font-semibold hover:bg-primary/10 hover:text-primary transition-colors hover:border-primary/40"
-                            onClick={() => handleEditConnection(connection)}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() =>
-                              handleDeleteConnection(connection.id)
-                            }
-                            className="h-9 w-9 shrink-0 text-destructive border-border/60 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        {canManageWorkspace() && (
+                          <div className="mt-auto pt-2 flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 shrink-0 h-9 font-semibold hover:bg-primary/10 hover:text-primary transition-colors hover:border-primary/40"
+                              disabled={testingConnectionIds.has(
+                                connection.id,
+                              )}
+                              onClick={() => handleTestConnection(connection)}
+                            >
+                              {testingConnectionIds.has(connection.id) ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                              )}
+                              Test
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 shrink-0 h-9 font-semibold hover:bg-primary/10 hover:text-primary transition-colors hover:border-primary/40"
+                              onClick={() => handleEditConnection(connection)}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() =>
+                                handleDeleteConnection(connection.id)
+                              }
+                              className="h-9 w-9 shrink-0 text-destructive border-border/60 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
