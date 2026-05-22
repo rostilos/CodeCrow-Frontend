@@ -34,6 +34,13 @@ export interface AIConnectionDTO {
   updatedAt: string;
 }
 
+export interface AIConnectionTestResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  latencyMs: number;
+}
+
 export interface BindAiConnectionRequest {
   aiConnectionId: number;
 }
@@ -77,6 +84,18 @@ class AIConnectionService extends ApiService {
       `/${workspaceSlug}/ai/connections/${connectionId}`,
       {
         method: "DELETE",
+      },
+    );
+  }
+
+  async testConnection(
+    workspaceSlug: string,
+    connectionId: number,
+  ): Promise<AIConnectionTestResponse> {
+    return this.request<AIConnectionTestResponse>(
+      `/${workspaceSlug}/ai/connections/${connectionId}/test`,
+      {
+        method: "POST",
       },
     );
   }
