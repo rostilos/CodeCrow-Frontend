@@ -418,6 +418,8 @@ function getPlaceholderForProvider(provider: AIProviderKey): string {
       return "e.g., claude-sonnet-4-20250514";
     case "GOOGLE":
       return "e.g., gemini-2.5-flash";
+    case "GOOGLE_VERTEX":
+      return "e.g., gemini-3-flash-preview";
     case "OPENROUTER":
       return "e.g., anthropic/claude-sonnet-4";
     case "OPENAI_COMPATIBLE":

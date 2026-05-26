@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Plus, 
-  GitBranch, 
-  FileText, 
-  Brain, 
-  Loader2, 
+import {
+  ArrowLeft,
+  ArrowRight,
+  Plus,
+  GitBranch,
+  FileText,
+  Brain,
+  Loader2,
   Zap,
   CheckCircle,
   Settings,
@@ -15,22 +15,42 @@ import {
   GitPullRequest,
   GitCommit,
   X,
-  Info
+  Info,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
-import { projectService, InstallationMethod } from "@/api_service/project/projectService.ts";
-import { aiConnectionService, AIConnectionDTO, CreateAIConnectionRequest } from "@/api_service/ai/aiConnectionService.ts";
+import {
+  projectService,
+  InstallationMethod,
+} from "@/api_service/project/projectService.ts";
+import {
+  aiConnectionService,
+  AIConnectionDTO,
+  AIProviderKey,
+  CreateAIConnectionRequest,
+} from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
@@ -47,31 +67,38 @@ export default function NewProjectPage() {
   const [connections, setConnections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  
+
   // Project details
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
-  const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(null);
-  const [selectedConnectionProvider, setSelectedConnectionProvider] = useState<string>("BITBUCKET_CLOUD");
+  const [selectedConnectionId, setSelectedConnectionId] = useState<
+    number | null
+  >(null);
+  const [selectedConnectionProvider, setSelectedConnectionProvider] =
+    useState<string>("BITBUCKET_CLOUD");
   const [selectedRepo, setSelectedRepo] = useState<any | null>(null);
-  
+
   // AI Connection state
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
-  const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<number | null>(null);
+  const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<
+    number | null
+  >(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [showCreateAi, setShowCreateAi] = useState(false);
-  const [newAiConnection, setNewAiConnection] = useState<CreateAIConnectionRequest>({
-    name: '',
-    providerKey: 'OPENROUTER',
-    aiModel: '',
-    apiKey: ''
-  });
-  
+  const [newAiConnection, setNewAiConnection] =
+    useState<CreateAIConnectionRequest>({
+      name: "",
+      providerKey: "OPENROUTER",
+      aiModel: "",
+      apiKey: "",
+    });
+
   // Analysis settings state
   const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
   const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
-  const [installationMethod, setInstallationMethod] = useState<InstallationMethod | null>(null);
-  
+  const [installationMethod, setInstallationMethod] =
+    useState<InstallationMethod | null>(null);
+
   // Branch pattern state
   const [prTargetPatterns, setPrTargetPatterns] = useState<string[]>([]);
   const [branchPushPatterns, setBranchPushPatterns] = useState<string[]>([]);
@@ -85,7 +112,7 @@ export default function NewProjectPage() {
       // Auto-set project name from repo name
       const repo = (location.state as any).selectedRepo;
       if (!projectName) {
-        setProjectName(repo.name || repo.slug || '');
+        setProjectName(repo.name || repo.slug || "");
       }
       // Move to step 2 if we have a repo selected
       setCurrentStep(2);
@@ -107,20 +134,25 @@ export default function NewProjectPage() {
     setLoading(true);
     try {
       const [bbConns, ghConns] = await Promise.all([
-        bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []),
-        githubService.getUserConnections(currentWorkspace.slug).catch(() => [])
+        bitbucketCloudService
+          .getUserConnections(currentWorkspace.slug)
+          .catch(() => []),
+        githubService.getUserConnections(currentWorkspace.slug).catch(() => []),
       ]);
       // Merge connections with provider info
       const allConns = [
-        ...(bbConns || []).map((c: any) => ({ ...c, provider: 'BITBUCKET_CLOUD' })),
-        ...(ghConns || []).map((c: any) => ({ ...c, provider: 'GITHUB' }))
+        ...(bbConns || []).map((c: any) => ({
+          ...c,
+          provider: "BITBUCKET_CLOUD",
+        })),
+        ...(ghConns || []).map((c: any) => ({ ...c, provider: "GITHUB" })),
       ];
       setConnections(allConns);
     } catch (err: any) {
       toast({
         title: "Error",
         description: err?.message || "Failed to load connections",
-        variant: "destructive"
+        variant: "destructive",
       });
       setConnections([]);
     } finally {
@@ -129,15 +161,19 @@ export default function NewProjectPage() {
   };
 
   const handleOpenRepoSelector = (connectionId: number, provider: string) => {
-    navigate(routes.projectSelectRepo(connectionId), { state: { projectName, provider } });
+    navigate(routes.projectSelectRepo(connectionId), {
+      state: { projectName, provider },
+    });
   };
-  
+
   const loadAiConnections = async () => {
     if (!currentWorkspace) return;
-    
+
     try {
       setIsLoadingAi(true);
-      const connections = await aiConnectionService.listWorkspaceConnections(currentWorkspace.slug);
+      const connections = await aiConnectionService.listWorkspaceConnections(
+        currentWorkspace.slug,
+      );
       setAiConnections(connections);
       if (connections.length > 0 && !selectedAiConnectionId) {
         setSelectedAiConnectionId(connections[0].id);
@@ -148,10 +184,10 @@ export default function NewProjectPage() {
       setIsLoadingAi(false);
     }
   };
-  
+
   const handleCreateAiConnection = async () => {
     if (!currentWorkspace) return;
-    
+
     if (!newAiConnection.aiModel || !newAiConnection.apiKey) {
       toast({
         title: "Validation Error",
@@ -160,18 +196,29 @@ export default function NewProjectPage() {
       });
       return;
     }
-    
+
     try {
       setIsLoadingAi(true);
-      const created = await aiConnectionService.createConnection(currentWorkspace.slug, newAiConnection);
-      setAiConnections(prev => [...prev, created]);
+      const payload: CreateAIConnectionRequest = {
+        ...newAiConnection,
+        baseUrl:
+          newAiConnection.providerKey === "GOOGLE_VERTEX"
+            ? newAiConnection.baseUrl?.trim() || undefined
+            : undefined,
+      };
+      const created = await aiConnectionService.createConnection(
+        currentWorkspace.slug,
+        payload,
+      );
+      setAiConnections((prev) => [...prev, created]);
       setSelectedAiConnectionId(created.id);
       setShowCreateAi(false);
       setNewAiConnection({
-        name: '',
-        providerKey: 'OPENROUTER',
-        aiModel: '',
-        apiKey: ''
+        name: "",
+        providerKey: "OPENROUTER",
+        aiModel: "",
+        apiKey: "",
+        baseUrl: "",
       });
       toast({
         title: "AI Connection Created",
@@ -187,7 +234,7 @@ export default function NewProjectPage() {
       setIsLoadingAi(false);
     }
   };
-  
+
   const handleNextStep = () => {
     if (currentStep === 1) {
       // For step 1, user should select a repo first
@@ -215,7 +262,7 @@ export default function NewProjectPage() {
       setCurrentStep(4);
     }
   };
-  
+
   const handlePreviousStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
@@ -227,7 +274,7 @@ export default function NewProjectPage() {
       toast({
         title: "Name required",
         description: "Please provide a project name",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -236,56 +283,74 @@ export default function NewProjectPage() {
       setCreating(true);
 
       // Generate namespace from project name (lowercase, replace spaces/special chars with dashes)
-      const namespace = projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      const namespace = projectName
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
 
       const payload: any = {
         name: projectName,
         namespace: namespace,
         description: projectDescription,
-        creationMode: selectedRepo ? "IMPORT" : "MANUAL"
+        creationMode: selectedRepo ? "IMPORT" : "MANUAL",
       };
 
       if (selectedConnectionId) {
         payload.vcsConnectionId = selectedConnectionId;
         payload.vcsProvider = selectedConnectionProvider;
       }
-      
+
       if (selectedAiConnectionId) {
         payload.aiConnectionId = selectedAiConnectionId;
       }
 
       if (selectedRepo) {
         // Clean UUID by removing braces if present
-        const cleanUUID = selectedRepo.uuid ? selectedRepo.uuid.replace(/[{}]/g, '') : 
-                          (selectedRepo.id ? String(selectedRepo.id).replace(/[{}]/g, '') : undefined);
+        const cleanUUID = selectedRepo.uuid
+          ? selectedRepo.uuid.replace(/[{}]/g, "")
+          : selectedRepo.id
+            ? String(selectedRepo.id).replace(/[{}]/g, "")
+            : undefined;
         payload.repositorySlug = selectedRepo.slug || selectedRepo.name;
         payload.repositoryUUID = cleanUUID;
       }
 
-      const createdProject = await projectService.createProject(currentWorkspace!.slug, payload);
-      
+      const createdProject = await projectService.createProject(
+        currentWorkspace!.slug,
+        payload,
+      );
+
       // Update analysis settings
       if (createdProject.namespace) {
-        await projectService.updateAnalysisSettings(currentWorkspace!.slug, createdProject.namespace, {
-          prAnalysisEnabled,
-          branchAnalysisEnabled,
-          installationMethod
-        });
-        
+        await projectService.updateAnalysisSettings(
+          currentWorkspace!.slug,
+          createdProject.namespace,
+          {
+            prAnalysisEnabled,
+            branchAnalysisEnabled,
+            installationMethod,
+          },
+        );
+
         // Update branch patterns if any are set
         if (prTargetPatterns.length > 0 || branchPushPatterns.length > 0) {
-          await projectService.updateBranchAnalysisConfig(currentWorkspace!.slug, createdProject.namespace, {
-            prTargetBranches: prTargetPatterns,
-            branchPushPatterns: branchPushPatterns
-          });
+          await projectService.updateBranchAnalysisConfig(
+            currentWorkspace!.slug,
+            createdProject.namespace,
+            {
+              prTargetBranches: prTargetPatterns,
+              branchPushPatterns: branchPushPatterns,
+            },
+          );
         }
       }
-      
+
       toast({
         title: "Project created",
-        description: "Project was created successfully"
+        description: "Project was created successfully",
       });
-      
+
       // Navigate to success page with project info
       navigate(routes.projectSetupSuccess(createdProject.namespace), {
         state: {
@@ -294,14 +359,14 @@ export default function NewProjectPage() {
           prAnalysisEnabled,
           branchAnalysisEnabled,
           prTargetPatterns,
-          branchPushPatterns
-        }
+          branchPushPatterns,
+        },
       });
     } catch (err: any) {
       toast({
         title: "Error",
         description: err?.message || "Failed to create project",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setCreating(false);
@@ -312,7 +377,11 @@ export default function NewProjectPage() {
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(routes.projects())}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(routes.projects())}
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -323,32 +392,54 @@ export default function NewProjectPage() {
           </p>
         </div>
       </div>
-      
+
       {/* Step indicator */}
       <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
-        <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : '1'}
+        <div
+          className={`flex items-center gap-2 ${currentStep >= 1 ? "text-primary" : "text-muted-foreground"}`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            {currentStep > 1 ? <CheckCircle className="h-4 w-4" /> : "1"}
           </div>
           <span className="hidden sm:inline font-medium">Repository</span>
         </div>
-        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : '2'}
+        <div
+          className={`w-8 sm:w-12 h-0.5 ${currentStep >= 2 ? "bg-primary" : "bg-muted"}`}
+        />
+        <div
+          className={`flex items-center gap-2 ${currentStep >= 2 ? "text-primary" : "text-muted-foreground"}`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 2 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            {currentStep > 2 ? <CheckCircle className="h-4 w-4" /> : "2"}
           </div>
           <span className="hidden sm:inline font-medium">Details</span>
         </div>
-        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            {currentStep > 3 ? <CheckCircle className="h-4 w-4" /> : '3'}
+        <div
+          className={`w-8 sm:w-12 h-0.5 ${currentStep >= 3 ? "bg-primary" : "bg-muted"}`}
+        />
+        <div
+          className={`flex items-center gap-2 ${currentStep >= 3 ? "text-primary" : "text-muted-foreground"}`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            {currentStep > 3 ? <CheckCircle className="h-4 w-4" /> : "3"}
           </div>
           <span className="hidden sm:inline font-medium">AI</span>
         </div>
-        <div className={`w-8 sm:w-12 h-0.5 ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'text-primary' : 'text-muted-foreground'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+        <div
+          className={`w-8 sm:w-12 h-0.5 ${currentStep >= 4 ? "bg-primary" : "bg-muted"}`}
+        />
+        <div
+          className={`flex items-center gap-2 ${currentStep >= 4 ? "text-primary" : "text-muted-foreground"}`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 4 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
             4
           </div>
           <span className="hidden sm:inline font-medium">Analysis</span>
@@ -366,11 +457,21 @@ export default function NewProjectPage() {
                   <div className="flex items-center gap-3">
                     <GitBranch className="h-5 w-5 text-primary" />
                     <div>
-                      <div className="font-medium">{selectedRepo.full_name || selectedRepo.name || selectedRepo.slug}</div>
-                      <div className="text-sm text-muted-foreground">Selected repository</div>
+                      <div className="font-medium">
+                        {selectedRepo.full_name ||
+                          selectedRepo.name ||
+                          selectedRepo.slug}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Selected repository
+                      </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedRepo(null)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedRepo(null)}
+                  >
                     Change
                   </Button>
                 </div>
@@ -384,7 +485,9 @@ export default function NewProjectPage() {
                 <GitBranch className="h-5 w-5" />
                 Available Connections
               </CardTitle>
-              <CardDescription>Select a connection to browse its repositories</CardDescription>
+              <CardDescription>
+                Select a connection to browse its repositories
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -394,7 +497,9 @@ export default function NewProjectPage() {
                 </div>
               ) : connections.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">No connections found</p>
+                  <p className="text-muted-foreground mb-4">
+                    No connections found
+                  </p>
                   <Button onClick={() => navigate(routes.hostingSettings())}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add VCS Connection
@@ -403,16 +508,31 @@ export default function NewProjectPage() {
               ) : (
                 <div className="space-y-3">
                   {connections.map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                    >
                       <div>
-                        <div className="font-medium">{c.connectionName || c.name || `Connection ${c.id}`}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {c.provider === 'GITHUB' ? 'GitHub' : 'Bitbucket Cloud'} • {c.workspaceId || c.workspace || ""}
+                        <div className="font-medium">
+                          {c.connectionName || c.name || `Connection ${c.id}`}
                         </div>
-                        <div className="text-sm text-muted-foreground">Repos: {c.repoCount ?? "-"}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {c.provider === "GITHUB"
+                            ? "GitHub"
+                            : "Bitbucket Cloud"}{" "}
+                          • {c.workspaceId || c.workspace || ""}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Repos: {c.repoCount ?? "-"}
+                        </div>
                       </div>
                       <Button
-                        onClick={() => handleOpenRepoSelector(Number(c.id), c.provider || 'BITBUCKET_CLOUD')}
+                        onClick={() =>
+                          handleOpenRepoSelector(
+                            Number(c.id),
+                            c.provider || "BITBUCKET_CLOUD",
+                          )
+                        }
                         variant="outline"
                       >
                         <Plus className="mr-2 h-4 w-4" />
@@ -427,7 +547,10 @@ export default function NewProjectPage() {
 
           {/* Step 1 Actions */}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => navigate(routes.projects())}>
+            <Button
+              variant="outline"
+              onClick={() => navigate(routes.projects())}
+            >
               Cancel
             </Button>
             <Button onClick={handleNextStep} disabled={!selectedRepo}>
@@ -437,7 +560,7 @@ export default function NewProjectPage() {
           </div>
         </>
       )}
-      
+
       {/* Step 2: Project Details */}
       {currentStep === 2 && (
         <>
@@ -455,11 +578,17 @@ export default function NewProjectPage() {
               {/* Selected repo info */}
               {selectedRepo && (
                 <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="text-sm text-muted-foreground">Selected repository</div>
-                  <div className="font-medium">{selectedRepo.full_name || selectedRepo.name || selectedRepo.slug}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Selected repository
+                  </div>
+                  <div className="font-medium">
+                    {selectedRepo.full_name ||
+                      selectedRepo.name ||
+                      selectedRepo.slug}
+                  </div>
                 </div>
               )}
-              
+
               <div className="space-y-2">
                 <Label htmlFor="project-name">Project Name *</Label>
                 <Input
@@ -469,9 +598,11 @@ export default function NewProjectPage() {
                   placeholder="Enter project name"
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="project-description">Description (optional)</Label>
+                <Label htmlFor="project-description">
+                  Description (optional)
+                </Label>
                 <Textarea
                   id="project-description"
                   value={projectDescription}
@@ -482,7 +613,7 @@ export default function NewProjectPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Step 2 Actions */}
           <div className="flex justify-between">
             <Button variant="outline" onClick={handlePreviousStep}>
@@ -496,7 +627,7 @@ export default function NewProjectPage() {
           </div>
         </>
       )}
-      
+
       {/* Step 3: AI Connection */}
       {currentStep === 3 && (
         <>
@@ -527,13 +658,19 @@ export default function NewProjectPage() {
                           <div
                             key={conn.id}
                             className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                              selectedAiConnectionId === conn.id ? 'border-primary bg-primary/5' : ''
+                              selectedAiConnectionId === conn.id
+                                ? "border-primary bg-primary/5"
+                                : ""
                             }`}
                             onClick={() => setSelectedAiConnectionId(conn.id)}
                           >
-                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                              selectedAiConnectionId === conn.id ? 'border-primary' : 'border-muted-foreground'
-                            }`}>
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                selectedAiConnectionId === conn.id
+                                  ? "border-primary"
+                                  : "border-muted-foreground"
+                              }`}
+                            >
                               {selectedAiConnectionId === conn.id && (
                                 <div className="w-2 h-2 rounded-full bg-primary" />
                               )}
@@ -541,8 +678,12 @@ export default function NewProjectPage() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <Zap className="h-4 w-4 text-primary" />
-                                <span className="font-medium">{conn.name || conn.providerKey}</span>
-                                <span className="text-sm text-muted-foreground">- {conn.aiModel}</span>
+                                <span className="font-medium">
+                                  {conn.name || conn.providerKey}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  - {conn.aiModel}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -558,71 +699,147 @@ export default function NewProjectPage() {
                       </Button>
                     </div>
                   )}
-                  
+
                   {/* Create new connection form */}
                   {(showCreateAi || aiConnections.length === 0) && (
                     <div className="space-y-4">
                       {aiConnections.length > 0 && (
                         <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Create New AI Connection</Label>
-                          <Button variant="ghost" size="sm" onClick={() => setShowCreateAi(false)}>
+                          <Label className="text-base font-semibold">
+                            Create New AI Connection
+                          </Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowCreateAi(false)}
+                          >
                             Cancel
                           </Button>
                         </div>
                       )}
                       {aiConnections.length === 0 && (
-                        <Label className="text-base font-semibold">Create Your First AI Connection</Label>
+                        <Label className="text-base font-semibold">
+                          Create Your First AI Connection
+                        </Label>
                       )}
-                      
+
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="ai-name">Connection Name (Optional)</Label>
+                          <Label htmlFor="ai-name">
+                            Connection Name (Optional)
+                          </Label>
                           <Input
                             id="ai-name"
-                            value={newAiConnection.name || ''}
-                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, name: e.target.value }))}
+                            value={newAiConnection.name || ""}
+                            onChange={(e) =>
+                              setNewAiConnection((prev) => ({
+                                ...prev,
+                                name: e.target.value,
+                              }))
+                            }
                             placeholder="e.g., Production Claude, Dev GPT-4"
                           />
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label htmlFor="ai-provider">AI Provider</Label>
                           <Select
                             value={newAiConnection.providerKey}
-                            onValueChange={(value) => setNewAiConnection(prev => ({ ...prev, providerKey: value as 'OPENAI' | 'OPENROUTER' | 'ANTHROPIC' }))}
+                            onValueChange={(value) =>
+                              setNewAiConnection((prev) => ({
+                                ...prev,
+                                providerKey: value as AIProviderKey,
+                              }))
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select provider" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="OPENROUTER">OpenRouter</SelectItem>
+                              <SelectItem value="OPENROUTER">
+                                OpenRouter
+                              </SelectItem>
                               <SelectItem value="OPENAI">OpenAI</SelectItem>
-                              <SelectItem value="ANTHROPIC">Anthropic</SelectItem>
+                              <SelectItem value="ANTHROPIC">
+                                Anthropic
+                              </SelectItem>
+                              <SelectItem value="GOOGLE">Google AI</SelectItem>
+                              <SelectItem value="GOOGLE_VERTEX">
+                                Google Vertex AI
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        
+
+                        {newAiConnection.providerKey === "GOOGLE_VERTEX" && (
+                          <div className="space-y-2">
+                            <Label htmlFor="ai-base-url">
+                              Vertex Project / Location
+                            </Label>
+                            <Input
+                              id="ai-base-url"
+                              value={newAiConnection.baseUrl || ""}
+                              onChange={(e) =>
+                                setNewAiConnection((prev) => ({
+                                  ...prev,
+                                  baseUrl: e.target.value,
+                                }))
+                              }
+                              placeholder="my-gcp-project/global"
+                            />
+                          </div>
+                        )}
+
                         <div className="space-y-2">
                           <Label htmlFor="ai-model">Model Name</Label>
                           <Input
                             id="ai-model"
                             value={newAiConnection.aiModel}
-                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, aiModel: e.target.value }))}
-                            placeholder={newAiConnection.providerKey === 'OPENROUTER' ? 'anthropic/claude-sonnet-4' : 'gpt-4o'}
+                            onChange={(e) =>
+                              setNewAiConnection((prev) => ({
+                                ...prev,
+                                aiModel: e.target.value,
+                              }))
+                            }
+                            placeholder={
+                              newAiConnection.providerKey === "OPENROUTER"
+                                ? "anthropic/claude-sonnet-4"
+                                : newAiConnection.providerKey === "ANTHROPIC"
+                                  ? "claude-3-opus-20240229"
+                                  : newAiConnection.providerKey === "GOOGLE"
+                                    ? "gemini-2.5-flash"
+                                    : newAiConnection.providerKey ===
+                                        "GOOGLE_VERTEX"
+                                      ? "gemini-3-flash-preview"
+                                      : "gpt-4o"
+                            }
                           />
                         </div>
-                        
+
                         <div className="space-y-2">
-                          <Label htmlFor="ai-api-key">API Key</Label>
+                          <Label htmlFor="ai-api-key">
+                            {newAiConnection.providerKey === "GOOGLE_VERTEX"
+                              ? "Google Credential"
+                              : "API Key"}
+                          </Label>
                           <Input
                             id="ai-api-key"
                             type="password"
                             value={newAiConnection.apiKey}
-                            onChange={(e) => setNewAiConnection(prev => ({ ...prev, apiKey: e.target.value }))}
-                            placeholder="Enter your API key"
+                            onChange={(e) =>
+                              setNewAiConnection((prev) => ({
+                                ...prev,
+                                apiKey: e.target.value,
+                              }))
+                            }
+                            placeholder={
+                              newAiConnection.providerKey === "GOOGLE_VERTEX"
+                                ? "Vertex API key, ADC, or service-account JSON"
+                                : "Enter your API key"
+                            }
                           />
                         </div>
-                        
+
                         <Button
                           onClick={handleCreateAiConnection}
                           disabled={isLoadingAi}
@@ -642,7 +859,7 @@ export default function NewProjectPage() {
               )}
             </CardContent>
           </Card>
-          
+
           {/* Step 3 Actions */}
           <div className="flex justify-between">
             <Button variant="outline" onClick={handlePreviousStep}>
@@ -650,15 +867,10 @@ export default function NewProjectPage() {
               Back
             </Button>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleNextStep}
-              >
+              <Button variant="outline" onClick={handleNextStep}>
                 Skip AI Setup
               </Button>
-              <Button
-                onClick={handleNextStep}
-              >
+              <Button onClick={handleNextStep}>
                 Continue
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
@@ -666,7 +878,7 @@ export default function NewProjectPage() {
           </div>
         </>
       )}
-      
+
       {/* Step 4: Analysis Configuration */}
       {currentStep === 4 && (
         <>
@@ -683,8 +895,10 @@ export default function NewProjectPage() {
             <CardContent className="space-y-6">
               {/* Analysis Scope */}
               <div className="space-y-4">
-                <Label className="text-base font-semibold">Analysis Scope</Label>
-                
+                <Label className="text-base font-semibold">
+                  Analysis Scope
+                </Label>
+
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <GitPullRequest className="h-5 w-5 text-primary" />
@@ -695,12 +909,12 @@ export default function NewProjectPage() {
                       </div>
                     </div>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={prAnalysisEnabled}
                     onCheckedChange={setPrAnalysisEnabled}
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <GitCommit className="h-5 w-5 text-primary" />
@@ -711,31 +925,39 @@ export default function NewProjectPage() {
                       </div>
                     </div>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={branchAnalysisEnabled}
                     onCheckedChange={setBranchAnalysisEnabled}
                   />
                 </div>
               </div>
-              
+
               {/* Installation Method */}
               <div className="space-y-4">
-                <Label className="text-base font-semibold">Installation Method</Label>
+                <Label className="text-base font-semibold">
+                  Installation Method
+                </Label>
                 <p className="text-sm text-muted-foreground">
                   Choose how CodeCrow will be triggered for analysis
                 </p>
-                
+
                 <div className="grid gap-3">
-                  <div 
+                  <div
                     className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                      installationMethod === 'WEBHOOK' ? 'border-primary bg-primary/5' : ''
+                      installationMethod === "WEBHOOK"
+                        ? "border-primary bg-primary/5"
+                        : ""
                     }`}
-                    onClick={() => setInstallationMethod('WEBHOOK')}
+                    onClick={() => setInstallationMethod("WEBHOOK")}
                   >
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      installationMethod === 'WEBHOOK' ? 'border-primary' : 'border-muted-foreground'
-                    }`}>
-                      {installationMethod === 'WEBHOOK' && (
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        installationMethod === "WEBHOOK"
+                          ? "border-primary"
+                          : "border-muted-foreground"
+                      }`}
+                    >
+                      {installationMethod === "WEBHOOK" && (
                         <div className="w-2 h-2 rounded-full bg-primary" />
                       )}
                     </div>
@@ -743,23 +965,33 @@ export default function NewProjectPage() {
                     <div className="flex-1">
                       <div className="font-medium">Webhook (Recommended)</div>
                       <div className="text-sm text-muted-foreground">
-                        Automatic triggers via {selectedConnectionProvider === 'GITHUB' ? 'GitHub App' : 'Bitbucket webhooks'}. No setup required.
+                        Automatic triggers via{" "}
+                        {selectedConnectionProvider === "GITHUB"
+                          ? "GitHub App"
+                          : "Bitbucket webhooks"}
+                        . No setup required.
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Show Bitbucket Pipelines only for Bitbucket connections */}
-                  {selectedConnectionProvider !== 'GITHUB' && (
-                    <div 
+                  {selectedConnectionProvider !== "GITHUB" && (
+                    <div
                       className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                        installationMethod === 'PIPELINE' ? 'border-primary bg-primary/5' : ''
+                        installationMethod === "PIPELINE"
+                          ? "border-primary bg-primary/5"
+                          : ""
                       }`}
-                      onClick={() => setInstallationMethod('PIPELINE')}
+                      onClick={() => setInstallationMethod("PIPELINE")}
                     >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        installationMethod === 'PIPELINE' ? 'border-primary' : 'border-muted-foreground'
-                      }`}>
-                        {installationMethod === 'PIPELINE' && (
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          installationMethod === "PIPELINE"
+                            ? "border-primary"
+                            : "border-muted-foreground"
+                        }`}
+                      >
+                        {installationMethod === "PIPELINE" && (
                           <div className="w-2 h-2 rounded-full bg-primary" />
                         )}
                       </div>
@@ -767,24 +999,31 @@ export default function NewProjectPage() {
                       <div className="flex-1">
                         <div className="font-medium">Bitbucket Pipelines</div>
                         <div className="text-sm text-muted-foreground">
-                          Integrate with your existing CI/CD pipeline. Requires pipeline configuration.
+                          Integrate with your existing CI/CD pipeline. Requires
+                          pipeline configuration.
                         </div>
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Show GitHub Actions only for GitHub connections */}
-                  {selectedConnectionProvider === 'GITHUB' && (
-                    <div 
+                  {selectedConnectionProvider === "GITHUB" && (
+                    <div
                       className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                        installationMethod === 'GITHUB_ACTION' ? 'border-primary bg-primary/5' : ''
+                        installationMethod === "GITHUB_ACTION"
+                          ? "border-primary bg-primary/5"
+                          : ""
                       }`}
-                      onClick={() => setInstallationMethod('GITHUB_ACTION')}
+                      onClick={() => setInstallationMethod("GITHUB_ACTION")}
                     >
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        installationMethod === 'GITHUB_ACTION' ? 'border-primary' : 'border-muted-foreground'
-                      }`}>
-                        {installationMethod === 'GITHUB_ACTION' && (
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          installationMethod === "GITHUB_ACTION"
+                            ? "border-primary"
+                            : "border-muted-foreground"
+                        }`}
+                      >
+                        {installationMethod === "GITHUB_ACTION" && (
                           <div className="w-2 h-2 rounded-full bg-primary" />
                         )}
                       </div>
@@ -792,25 +1031,31 @@ export default function NewProjectPage() {
                       <div className="flex-1">
                         <div className="font-medium">GitHub Actions</div>
                         <div className="text-sm text-muted-foreground">
-                          Use GitHub Actions workflow. Requires workflow configuration.
+                          Use GitHub Actions workflow. Requires workflow
+                          configuration.
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-              
+
               {/* Branch Pattern Configuration */}
               <div className="space-y-4">
-                <Label className="text-base font-semibold">Branch Pattern Filters (Optional)</Label>
+                <Label className="text-base font-semibold">
+                  Branch Pattern Filters (Optional)
+                </Label>
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Define which branches trigger automated analysis. If no patterns are configured, 
-                    all branches will be analyzed. Supports wildcards: <code className="px-1 bg-muted rounded">*</code> and <code className="px-1 bg-muted rounded">**</code>
+                    Define which branches trigger automated analysis. If no
+                    patterns are configured, all branches will be analyzed.
+                    Supports wildcards:{" "}
+                    <code className="px-1 bg-muted rounded">*</code> and{" "}
+                    <code className="px-1 bg-muted rounded">**</code>
                   </AlertDescription>
                 </Alert>
-                
+
                 {/* PR Target Patterns */}
                 {prAnalysisEnabled && (
                   <div className="p-4 border rounded-lg space-y-3">
@@ -820,7 +1065,8 @@ export default function NewProjectPage() {
                         PR Target Branches
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Only analyze PRs targeting these branches (e.g., main, develop, release/*)
+                        Only analyze PRs targeting these branches (e.g., main,
+                        develop, release/*)
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -829,11 +1075,17 @@ export default function NewProjectPage() {
                         value={newPrPattern}
                         onChange={(e) => setNewPrPattern(e.target.value)}
                         onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
+                          if (e.key === "Enter") {
                             e.preventDefault();
                             const pattern = newPrPattern.trim();
-                            if (pattern && !prTargetPatterns.includes(pattern)) {
-                              setPrTargetPatterns([...prTargetPatterns, pattern]);
+                            if (
+                              pattern &&
+                              !prTargetPatterns.includes(pattern)
+                            ) {
+                              setPrTargetPatterns([
+                                ...prTargetPatterns,
+                                pattern,
+                              ]);
                               setNewPrPattern("");
                             }
                           }
@@ -857,13 +1109,21 @@ export default function NewProjectPage() {
                     {prTargetPatterns.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {prTargetPatterns.map((pattern) => (
-                          <Badge key={pattern} variant="secondary" className="pl-3 pr-1 py-1.5">
+                          <Badge
+                            key={pattern}
+                            variant="secondary"
+                            className="pl-3 pr-1 py-1.5"
+                          >
                             <code className="text-xs">{pattern}</code>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
-                              onClick={() => setPrTargetPatterns(prTargetPatterns.filter(p => p !== pattern))}
+                              onClick={() =>
+                                setPrTargetPatterns(
+                                  prTargetPatterns.filter((p) => p !== pattern),
+                                )
+                              }
                             >
                               <X className="h-3 w-3" />
                             </Button>
@@ -872,12 +1132,13 @@ export default function NewProjectPage() {
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">
-                        No patterns configured - all PR target branches will be analyzed
+                        No patterns configured - all PR target branches will be
+                        analyzed
                       </div>
                     )}
                   </div>
                 )}
-                
+
                 {/* Branch Push Patterns */}
                 {branchAnalysisEnabled && (
                   <div className="p-4 border rounded-lg space-y-3">
@@ -896,11 +1157,17 @@ export default function NewProjectPage() {
                         value={newBranchPattern}
                         onChange={(e) => setNewBranchPattern(e.target.value)}
                         onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
+                          if (e.key === "Enter") {
                             e.preventDefault();
                             const pattern = newBranchPattern.trim();
-                            if (pattern && !branchPushPatterns.includes(pattern)) {
-                              setBranchPushPatterns([...branchPushPatterns, pattern]);
+                            if (
+                              pattern &&
+                              !branchPushPatterns.includes(pattern)
+                            ) {
+                              setBranchPushPatterns([
+                                ...branchPushPatterns,
+                                pattern,
+                              ]);
                               setNewBranchPattern("");
                             }
                           }
@@ -911,8 +1178,14 @@ export default function NewProjectPage() {
                         variant="outline"
                         onClick={() => {
                           const pattern = newBranchPattern.trim();
-                          if (pattern && !branchPushPatterns.includes(pattern)) {
-                            setBranchPushPatterns([...branchPushPatterns, pattern]);
+                          if (
+                            pattern &&
+                            !branchPushPatterns.includes(pattern)
+                          ) {
+                            setBranchPushPatterns([
+                              ...branchPushPatterns,
+                              pattern,
+                            ]);
                             setNewBranchPattern("");
                           }
                         }}
@@ -924,13 +1197,23 @@ export default function NewProjectPage() {
                     {branchPushPatterns.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {branchPushPatterns.map((pattern) => (
-                          <Badge key={pattern} variant="secondary" className="pl-3 pr-1 py-1.5">
+                          <Badge
+                            key={pattern}
+                            variant="secondary"
+                            className="pl-3 pr-1 py-1.5"
+                          >
                             <code className="text-xs">{pattern}</code>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-5 w-5 p-0 ml-1 hover:bg-destructive/20"
-                              onClick={() => setBranchPushPatterns(branchPushPatterns.filter(p => p !== pattern))}
+                              onClick={() =>
+                                setBranchPushPatterns(
+                                  branchPushPatterns.filter(
+                                    (p) => p !== pattern,
+                                  ),
+                                )
+                              }
                             >
                               <X className="h-3 w-3" />
                             </Button>
@@ -939,7 +1222,8 @@ export default function NewProjectPage() {
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground">
-                        No patterns configured - all branch pushes will be analyzed
+                        No patterns configured - all branch pushes will be
+                        analyzed
                       </div>
                     )}
                   </div>
@@ -947,17 +1231,14 @@ export default function NewProjectPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Step 4 Actions */}
           <div className="flex justify-between">
             <Button variant="outline" onClick={handlePreviousStep}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={creating}
-            >
+            <Button onClick={handleCreate} disabled={creating}>
               {creating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
@@ -971,4 +1252,3 @@ export default function NewProjectPage() {
     </div>
   );
 }
-

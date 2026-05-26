@@ -6,6 +6,7 @@ export type AIProviderKey =
   | "OPENROUTER"
   | "ANTHROPIC"
   | "GOOGLE"
+  | "GOOGLE_VERTEX"
   | "OPENAI_COMPATIBLE";
 
 export interface CreateAIConnectionRequest {
