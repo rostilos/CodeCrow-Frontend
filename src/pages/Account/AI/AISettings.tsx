@@ -46,8 +46,30 @@ import { usePermissions } from "@/hooks/usePermissions";
 import {
   aiConnectionService,
   AIConnectionDTO,
+  AIProviderKey,
   CreateAIConnectionRequest,
 } from "@/api_service/ai/aiConnectionService";
+
+const providerUsesMetadata = (provider: AIProviderKey) =>
+  provider === "OPENAI_COMPATIBLE" || provider === "GOOGLE_VERTEX";
+
+const getProviderMetadataLabel = (provider: AIProviderKey) =>
+  provider === "GOOGLE_VERTEX"
+    ? "Vertex Project / Location"
+    : "Endpoint Base URL";
+
+const getProviderMetadataPlaceholder = (provider: AIProviderKey) =>
+  provider === "GOOGLE_VERTEX"
+    ? "my-gcp-project/global"
+    : "https://my-model.example.com";
+
+const getCredentialLabel = (provider: AIProviderKey) =>
+  provider === "GOOGLE_VERTEX" ? "Google Credential" : "API Key";
+
+const getCredentialPlaceholder = (provider: AIProviderKey) =>
+  provider === "GOOGLE_VERTEX"
+    ? "Vertex API key, ADC, or service-account JSON"
+    : "Enter your API key";
 
 export default function AISettings() {
   const { currentWorkspace } = useWorkspace();
@@ -125,9 +147,15 @@ export default function AISettings() {
 
     try {
       setCreating(true);
+      const payload: CreateAIConnectionRequest = {
+        ...newConnection,
+        baseUrl: providerUsesMetadata(newConnection.providerKey)
+          ? newConnection.baseUrl?.trim() || undefined
+          : undefined,
+      };
       await aiConnectionService.createConnection(
         currentWorkspace!.slug,
-        newConnection,
+        payload,
       );
       toast({
         title: "Success",
@@ -232,10 +260,9 @@ export default function AISettings() {
           providerKey: editingConnection.providerKey,
           aiModel: editingConnection.aiModel,
           apiKey: editingConnection.apiKey || undefined,
-          baseUrl:
-            editingConnection.providerKey === "OPENAI_COMPATIBLE"
-              ? (editingConnection as any).baseUrl || undefined
-              : undefined,
+          baseUrl: providerUsesMetadata(editingConnection.providerKey)
+            ? editingConnection.baseUrl?.trim() || undefined
+            : undefined,
         },
       );
       toast({
@@ -270,6 +297,8 @@ export default function AISettings() {
         "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
       GOOGLE:
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+      GOOGLE_VERTEX:
+        "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300",
       OPENAI_COMPATIBLE:
         "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
     };
@@ -488,6 +517,9 @@ export default function AISettings() {
                             <SelectItem value="OPENAI">OpenAI</SelectItem>
                             <SelectItem value="ANTHROPIC">Anthropic</SelectItem>
                             <SelectItem value="GOOGLE">Google AI</SelectItem>
+                            <SelectItem value="GOOGLE_VERTEX">
+                              Google Vertex AI
+                            </SelectItem>
                             <SelectItem value="OPENROUTER">
                               OpenRouter
                             </SelectItem>
@@ -497,9 +529,13 @@ export default function AISettings() {
                           </SelectContent>
                         </Select>
                       </div>
-                      {newConnection.providerKey === "OPENAI_COMPATIBLE" && (
+                      {providerUsesMetadata(newConnection.providerKey) && (
                         <div>
-                          <Label htmlFor="baseUrl">Endpoint Base URL</Label>
+                          <Label htmlFor="baseUrl">
+                            {getProviderMetadataLabel(
+                              newConnection.providerKey,
+                            )}
+                          </Label>
                           <Input
                             id="baseUrl"
                             autoComplete="off"
@@ -510,12 +546,14 @@ export default function AISettings() {
                                 baseUrl: e.target.value,
                               })
                             }
-                            placeholder="https://my-model.example.com"
+                            placeholder={getProviderMetadataPlaceholder(
+                              newConnection.providerKey,
+                            )}
                           />
                           <p className="text-xs text-muted-foreground mt-1">
-                            The base URL of your OpenAI-compatible API endpoint
-                            (e.g. vLLM, Ollama, Cloudflare Workers AI). HTTPS is
-                            required for non-private endpoints.
+                            {newConnection.providerKey === "GOOGLE_VERTEX"
+                              ? "Optional for Vertex API-key express mode or service-account JSON with project_id. Use project/location for ADC or regional Vertex calls."
+                              : "The base URL of your OpenAI-compatible API endpoint (e.g. vLLM, Ollama, Cloudflare Workers AI). HTTPS is required for non-private endpoints."}
                           </p>
                         </div>
                       )}
@@ -537,7 +575,9 @@ export default function AISettings() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="apiKey">API Key</Label>
+                        <Label htmlFor="apiKey">
+                          {getCredentialLabel(newConnection.providerKey)}
+                        </Label>
                         <PasswordInput
                           id="apiKey"
                           autoComplete="off"
@@ -548,7 +588,9 @@ export default function AISettings() {
                               apiKey: e.target.value,
                             })
                           }
-                          placeholder="Enter your API key"
+                          placeholder={getCredentialPlaceholder(
+                            newConnection.providerKey,
+                          )}
                         />
                       </div>
                       <div className="flex space-x-2">
@@ -616,6 +658,9 @@ export default function AISettings() {
                                 Anthropic
                               </SelectItem>
                               <SelectItem value="GOOGLE">Google AI</SelectItem>
+                              <SelectItem value="GOOGLE_VERTEX">
+                                Google Vertex AI
+                              </SelectItem>
                               <SelectItem value="OPENROUTER">
                                 OpenRouter
                               </SelectItem>
@@ -625,11 +670,14 @@ export default function AISettings() {
                             </SelectContent>
                           </Select>
                         </div>
-                        {editingConnection.providerKey ===
-                          "OPENAI_COMPATIBLE" && (
+                        {providerUsesMetadata(
+                          editingConnection.providerKey,
+                        ) && (
                           <div>
                             <Label htmlFor="edit-baseUrl">
-                              Endpoint Base URL
+                              {getProviderMetadataLabel(
+                                editingConnection.providerKey,
+                              )}
                             </Label>
                             <Input
                               id="edit-baseUrl"
@@ -641,12 +689,14 @@ export default function AISettings() {
                                   baseUrl: e.target.value,
                                 } as any)
                               }
-                              placeholder="https://my-model.example.com"
+                              placeholder={getProviderMetadataPlaceholder(
+                                editingConnection.providerKey,
+                              )}
                             />
                             <p className="text-xs text-muted-foreground mt-1">
-                              The base URL of your OpenAI-compatible API
-                              endpoint. HTTPS is required for non-private
-                              endpoints.
+                              {editingConnection.providerKey === "GOOGLE_VERTEX"
+                                ? "Optional for Vertex API-key express mode or service-account JSON with project_id. Use project/location for ADC or regional Vertex calls."
+                                : "The base URL of your OpenAI-compatible API endpoint. HTTPS is required for non-private endpoints."}
                             </p>
                           </div>
                         )}
@@ -669,7 +719,8 @@ export default function AISettings() {
                         </div>
                         <div>
                           <Label htmlFor="edit-apiKey">
-                            API Key (leave empty to keep current)
+                            {getCredentialLabel(editingConnection.providerKey)}{" "}
+                            (leave empty to keep current)
                           </Label>
                           <PasswordInput
                             id="edit-apiKey"
@@ -681,7 +732,9 @@ export default function AISettings() {
                                 apiKey: e.target.value,
                               })
                             }
-                            placeholder="Enter new API key or leave empty"
+                            placeholder={getCredentialPlaceholder(
+                              editingConnection.providerKey,
+                            )}
                           />
                         </div>
                         <div className="flex space-x-2">
@@ -807,7 +860,9 @@ export default function AISettings() {
                           {connection.baseUrl && (
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">
-                                Endpoint
+                                {connection.providerKey === "GOOGLE_VERTEX"
+                                  ? "Project / Location"
+                                  : "Endpoint"}
                               </span>
                               <span
                                 className="font-semibold truncate max-w-[200px]"
@@ -825,9 +880,7 @@ export default function AISettings() {
                               variant="outline"
                               size="sm"
                               className="flex-1 shrink-0 h-9 font-semibold hover:bg-primary/10 hover:text-primary transition-colors hover:border-primary/40"
-                              disabled={testingConnectionIds.has(
-                                connection.id,
-                              )}
+                              disabled={testingConnectionIds.has(connection.id)}
                               onClick={() => handleTestConnection(connection)}
                             >
                               {testingConnectionIds.has(connection.id) ? (

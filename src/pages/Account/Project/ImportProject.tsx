@@ -56,6 +56,7 @@ import { projectService } from "@/api_service/project/projectService";
 import {
   aiConnectionService,
   AIConnectionDTO,
+  AIProviderKey,
   CreateAIConnectionRequest,
 } from "@/api_service/ai/aiConnectionService";
 import { GitLabRepositoryTokenForm } from "@/components/gitlab/GitLabRepositoryTokenForm";
@@ -629,9 +630,16 @@ export default function ImportProject() {
 
     try {
       setIsLoadingAi(true);
+      const payload: CreateAIConnectionRequest = {
+        ...newAiConnection,
+        baseUrl:
+          newAiConnection.providerKey === "GOOGLE_VERTEX"
+            ? newAiConnection.baseUrl?.trim() || undefined
+            : undefined,
+      };
       const created = await aiConnectionService.createConnection(
         currentWorkspace.slug,
-        newAiConnection,
+        payload,
       );
       setAiConnections((prev) => [...prev, created]);
       setSelectedAiConnectionId(created.id);
@@ -641,6 +649,7 @@ export default function ImportProject() {
         providerKey: "OPENROUTER",
         aiModel: "",
         apiKey: "",
+        baseUrl: "",
       });
       toast({
         title: "AI Connection Created",
@@ -1645,11 +1654,7 @@ export default function ImportProject() {
                             onValueChange={(value) =>
                               setNewAiConnection((prev) => ({
                                 ...prev,
-                                providerKey: value as
-                                  | "OPENAI"
-                                  | "OPENROUTER"
-                                  | "ANTHROPIC"
-                                  | "GOOGLE",
+                                providerKey: value as AIProviderKey,
                               }))
                             }
                           >
@@ -1665,6 +1670,9 @@ export default function ImportProject() {
                                 Anthropic
                               </SelectItem>
                               <SelectItem value="GOOGLE">Google AI</SelectItem>
+                              <SelectItem value="GOOGLE_VERTEX">
+                                Google Vertex AI
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">
@@ -1676,8 +1684,29 @@ export default function ImportProject() {
                               "Direct Anthropic API - Claude 3 models"}
                             {newAiConnection.providerKey === "GOOGLE" &&
                               "Direct Google AI API - Gemini models"}
+                            {newAiConnection.providerKey === "GOOGLE_VERTEX" &&
+                              "Google Vertex AI - Gemini models through Google Cloud"}
                           </p>
                         </div>
+
+                        {newAiConnection.providerKey === "GOOGLE_VERTEX" && (
+                          <div className="space-y-2">
+                            <Label htmlFor="ai-base-url">
+                              Vertex Project / Location
+                            </Label>
+                            <Input
+                              id="ai-base-url"
+                              value={newAiConnection.baseUrl || ""}
+                              onChange={(e) =>
+                                setNewAiConnection((prev) => ({
+                                  ...prev,
+                                  baseUrl: e.target.value,
+                                }))
+                              }
+                              placeholder="my-gcp-project/global"
+                            />
+                          </div>
+                        )}
 
                         <div className="space-y-2">
                           <Label htmlFor="ai-model">Model Name</Label>
@@ -1699,13 +1728,20 @@ export default function ImportProject() {
                                     ? "claude-3-opus-20240229"
                                     : newAiConnection.providerKey === "GOOGLE"
                                       ? "gemini-1.5-pro"
-                                      : "model-name"
+                                      : newAiConnection.providerKey ===
+                                          "GOOGLE_VERTEX"
+                                        ? "gemini-3-flash-preview"
+                                        : "model-name"
                             }
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="ai-api-key">API Key</Label>
+                          <Label htmlFor="ai-api-key">
+                            {newAiConnection.providerKey === "GOOGLE_VERTEX"
+                              ? "Google Credential"
+                              : "API Key"}
+                          </Label>
                           <Input
                             id="ai-api-key"
                             type="password"
@@ -1716,7 +1752,11 @@ export default function ImportProject() {
                                 apiKey: e.target.value,
                               }))
                             }
-                            placeholder="Enter your API key"
+                            placeholder={
+                              newAiConnection.providerKey === "GOOGLE_VERTEX"
+                                ? "Vertex API key, ADC, or service-account JSON"
+                                : "Enter your API key"
+                            }
                           />
                         </div>
 
