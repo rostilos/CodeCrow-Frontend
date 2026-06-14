@@ -427,9 +427,10 @@ export default function ProjectDashboard() {
 
       // Auto-select default branch or first branch if no selection
       const urlPrId = searchParams.get("prId");
+      const urlPrNumber = searchParams.get("prNumber");
       const urlBranch = searchParams.get("branch");
 
-      if (!urlPrId && !urlBranch && branchList.length > 0) {
+      if (!urlPrId && !urlPrNumber && !urlBranch && branchList.length > 0) {
         const branchToSelect =
           defaultBranch && branchList.includes(defaultBranch)
             ? defaultBranch
@@ -510,12 +511,15 @@ export default function ProjectDashboard() {
 
       // Check if there's a PR ID in the URL params
       const urlPrId = searchParams.get("prId");
+      const urlPrNumber = searchParams.get("prNumber");
       const urlVersion = searchParams.get("version");
       let prToSelect: PullRequestSummary | null = null;
 
-      if (urlPrId && sortedPullRequests.length > 0) {
-        const foundPR = sortedPullRequests.find(
-          (p) => String(p.id) === urlPrId,
+      if ((urlPrId || urlPrNumber) && sortedPullRequests.length > 0) {
+        const foundPR = sortedPullRequests.find((p) =>
+          urlPrId
+            ? String(p.id) === urlPrId
+            : String(p.prNumber) === urlPrNumber,
         );
         if (foundPR) {
           prToSelect = foundPR;

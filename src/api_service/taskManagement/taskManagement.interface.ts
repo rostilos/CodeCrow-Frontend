@@ -58,6 +58,7 @@ export interface QaAutoDocConfigResponse {
   templateMode: QaAutoDocTemplateMode | null;
   customTemplate: string | null;
   outputLanguage: string | null;
+  commentVisibility: TaskCommentVisibility | null;
 }
 
 export interface QaAutoDocConfigRequest {
@@ -68,6 +69,14 @@ export interface QaAutoDocConfigRequest {
   templateMode: QaAutoDocTemplateMode | null;
   customTemplate: string | null;
   outputLanguage: string | null;
+  commentVisibility: TaskCommentVisibility | null;
+}
+
+export interface TaskCommentVisibility {
+  type: "group";
+  identifier: string;
+  value: string;
+  displayName?: string | null;
 }
 
 // --- Constants ---

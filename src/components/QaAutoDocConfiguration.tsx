@@ -34,6 +34,7 @@ import {
   CheckCircle,
   Info,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +45,7 @@ import type {
   QaAutoDocConfigRequest,
   QaAutoDocTemplateMode,
   QaAutoDocTaskIdSource,
+  TaskCommentVisibility,
 } from "@/api_service/taskManagement/taskManagement.interface";
 import {
   TEMPLATE_MODES,
@@ -56,6 +58,21 @@ import {
 interface QaAutoDocConfigurationProps {
   project: ProjectDTO;
   onUpdate: (updatedProject: ProjectDTO) => void;
+}
+
+function visibilityKey(visibility: TaskCommentVisibility) {
+  return `${visibility.type}:${visibility.identifier || visibility.value}`;
+}
+
+function upsertVisibility(
+  options: TaskCommentVisibility[],
+  visibility: TaskCommentVisibility,
+) {
+  const key = visibilityKey(visibility);
+  if (options.some((option) => visibilityKey(option) === key)) {
+    return options;
+  }
+  return [visibility, ...options];
 }
 
 export default function QaAutoDocConfiguration({
@@ -81,11 +98,17 @@ export default function QaAutoDocConfiguration({
     useState<QaAutoDocTemplateMode>("BASE");
   const [customTemplate, setCustomTemplate] = useState("");
   const [outputLanguage, setOutputLanguage] = useState("English");
+  const [commentVisibilityKey, setCommentVisibilityKey] = useState("none");
 
   // ── UI state ──
   const [saving, setSaving] = useState(false);
   const [patternValid, setPatternValid] = useState(true);
   const [patternPreview, setPatternPreview] = useState("");
+  const [visibilityOptions, setVisibilityOptions] = useState<
+    TaskCommentVisibility[]
+  >([]);
+  const [visibilityLoading, setVisibilityLoading] = useState(false);
+  const [visibilityLoaded, setVisibilityLoaded] = useState(false);
 
   // ── Load connections ──
   const loadConnections = useCallback(async () => {
@@ -129,8 +152,60 @@ export default function QaAutoDocConfiguration({
       setTemplateMode(config.templateMode || "BASE");
       setCustomTemplate(config.customTemplate || "");
       setOutputLanguage(config.outputLanguage || "English");
+      const savedVisibility = config.commentVisibility || null;
+      setCommentVisibilityKey(
+        savedVisibility ? visibilityKey(savedVisibility) : "none",
+      );
+      if (savedVisibility) {
+        setVisibilityOptions((current) =>
+          upsertVisibility(current, savedVisibility),
+        );
+      } else {
+        setVisibilityOptions([]);
+      }
+      setVisibilityLoaded(false);
     }
   }, [project]);
+
+  const loadVisibilityOptions = async () => {
+    if (!currentWorkspace || !connectionId) {
+      toast({
+        title: "Missing connection",
+        description: "Select a Jira connection before fetching groups.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setVisibilityLoading(true);
+      const data = await taskManagementService.listCommentVisibilityOptions(
+        currentWorkspace.slug,
+        Number(connectionId),
+      );
+      setVisibilityOptions(data || []);
+      setVisibilityLoaded(true);
+      toast({
+        title: "Jira groups loaded",
+        description: `${data?.length ?? 0} groups are available for comment visibility.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to load Jira groups",
+        description: error.message || "Check that the Jira token can browse users and groups.",
+        variant: "destructive",
+      });
+    } finally {
+      setVisibilityLoading(false);
+    }
+  };
+
+  const handleConnectionChange = (value: string) => {
+    setConnectionId(value);
+    setCommentVisibilityKey("none");
+    setVisibilityOptions([]);
+    setVisibilityLoaded(false);
+  };
 
   // ── Validate regex pattern ──
   useEffect(() => {
@@ -160,38 +235,43 @@ export default function QaAutoDocConfiguration({
     }
   }, [taskIdPattern]);
 
-  // ── Save handler ──
-  const handleSave = async () => {
+  const buildConfigRequest = (nextEnabled: boolean): QaAutoDocConfigRequest => ({
+    enabled: nextEnabled,
+    taskManagementConnectionId: connectionId ? Number(connectionId) : null,
+    taskIdPattern:
+      taskIdPattern !== DEFAULT_TASK_ID_PATTERN ? taskIdPattern : null,
+    taskIdSource,
+    templateMode,
+    customTemplate: templateMode === "CUSTOM" ? customTemplate : null,
+    outputLanguage: outputLanguage || "English",
+    commentVisibility: selectedVisibility(),
+  });
+
+  const saveConfig = async (
+    nextEnabled: boolean,
+    successMessage = "QA auto-documentation settings have been updated.",
+  ) => {
     if (!currentWorkspace || !project.id) return;
-    if (enabled && !connectionId) {
+    if (nextEnabled && !connectionId) {
       toast({
         title: "Missing connection",
         description: "Please select a task management connection.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
-    if (!patternValid) {
+    if (nextEnabled && !patternValid) {
       toast({
         title: "Invalid pattern",
         description: "The task ID regex pattern is invalid.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
     try {
       setSaving(true);
-      const request: QaAutoDocConfigRequest = {
-        enabled,
-        taskManagementConnectionId: connectionId ? Number(connectionId) : null,
-        taskIdPattern:
-          taskIdPattern !== DEFAULT_TASK_ID_PATTERN ? taskIdPattern : null,
-        taskIdSource,
-        templateMode,
-        customTemplate: templateMode === "CUSTOM" ? customTemplate : null,
-        outputLanguage: outputLanguage || "English",
-      };
+      const request = buildConfigRequest(nextEnabled);
       await taskManagementService.updateQaAutoDocConfig(
         currentWorkspace.slug,
         project.id,
@@ -199,27 +279,58 @@ export default function QaAutoDocConfiguration({
       );
       toast({
         title: "Configuration saved",
-        description: "QA auto-documentation settings have been updated.",
+        description: successMessage,
       });
       // Optimistically update the project with the new config
       onUpdate({
         ...project,
         qaAutoDocConfig: request,
       } as any);
+      return true;
     } catch (error: any) {
       toast({
         title: "Failed to save",
         description: error.message || "An error occurred",
         variant: "destructive",
       });
+      return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Save handler ──
+  const handleSave = async () => {
+    await saveConfig(enabled);
+  };
+
+  const handleEnabledChange = async (checked: boolean) => {
+    if (checked) {
+      setEnabled(true);
+      return;
+    }
+
+    setEnabled(false);
+    const saved = await saveConfig(
+      false,
+      "QA auto-documentation has been disabled.",
+    );
+    if (!saved) {
+      setEnabled(true);
     }
   };
 
   const connectedConnections = connections.filter(
     (c) => c.status === "CONNECTED" || c.status === "PENDING",
   );
+
+  const selectedVisibility = (): TaskCommentVisibility | null => {
+    if (commentVisibilityKey === "none") return null;
+    return (
+      visibilityOptions.find((option) => visibilityKey(option) === commentVisibilityKey) ||
+      null
+    );
+  };
 
   return (
     <Card>
@@ -235,7 +346,11 @@ export default function QaAutoDocConfiguration({
               comments on linked Jira tickets after each code review.
             </CardDescription>
           </div>
-          <Switch checked={enabled} onCheckedChange={setEnabled} />
+          <Switch
+            checked={enabled}
+            onCheckedChange={handleEnabledChange}
+            disabled={saving}
+          />
         </div>
       </CardHeader>
 
@@ -264,7 +379,7 @@ export default function QaAutoDocConfiguration({
                 </AlertDescription>
               </Alert>
             ) : (
-              <Select value={connectionId} onValueChange={setConnectionId}>
+              <Select value={connectionId} onValueChange={handleConnectionChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a connection" />
                 </SelectTrigger>
@@ -287,6 +402,54 @@ export default function QaAutoDocConfiguration({
                   ))}
                 </SelectContent>
               </Select>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-2 md:flex-1">
+                <Label>Jira Comment Visibility</Label>
+                <Select
+                  value={commentVisibilityKey}
+                  onValueChange={setCommentVisibilityKey}
+                  disabled={!connectionId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Jira group visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No restriction</SelectItem>
+                    {visibilityOptions.map((option) => (
+                      <SelectItem key={visibilityKey(option)} value={visibilityKey(option)}>
+                        {option.displayName || option.value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Restrict QA documentation comments to a Jira group when the
+                  ticket is visible to a broader audience.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={loadVisibilityOptions}
+                disabled={!connectionId || visibilityLoading}
+              >
+                {visibilityLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                {visibilityLoading ? "Fetching…" : "Fetch Jira Groups"}
+              </Button>
+            </div>
+            {visibilityLoaded && (
+              <p className="text-xs text-muted-foreground">
+                {visibilityOptions.length} groups loaded from the selected Jira
+                connection.
+              </p>
             )}
           </div>
 
@@ -504,12 +667,22 @@ export default function QaAutoDocConfiguration({
       )}
 
       {!enabled && (
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Enable QA auto-documentation to automatically generate testing notes
             and post them as comments on your Jira tickets when code reviews
             complete.
           </p>
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {saving ? "Saving…" : "Save Configuration"}
+            </Button>
+          </div>
         </CardContent>
       )}
     </Card>
