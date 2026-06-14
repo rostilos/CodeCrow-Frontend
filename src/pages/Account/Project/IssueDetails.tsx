@@ -758,6 +758,63 @@ export default function IssueDetails() {
     });
   };
 
+  const withQueryParam = (url: string, key: string, value: string) => {
+    const [path, query = ""] = url.split("?");
+    const params = new URLSearchParams(query);
+    if (!params.has(key)) {
+      params.set(key, value);
+    }
+    const queryString = params.toString();
+    return queryString ? `${path}?${queryString}` : path;
+  };
+
+  const buildProjectIssueBackUrl = () => {
+    if (returnPath) {
+      return returnTab
+        ? withQueryParam(returnPath, "returnTab", returnTab)
+        : returnPath;
+    }
+
+    if (scopeBranch) {
+      return routes.branchIssues(namespace!, scopeBranch, {
+        severity: filterSeverity || undefined,
+        status: filterStatus || undefined,
+        category: filterCategory || undefined,
+      });
+    }
+
+    const params = new URLSearchParams();
+    params.set("subTab", returnTab || "issues");
+    if (scopePrNumber) params.set("prNumber", scopePrNumber);
+    if (scopePrVersion) params.set("version", scopePrVersion);
+    if (filterSeverity) params.set("severity", filterSeverity);
+    if (filterStatus) params.set("status", filterStatus);
+    if (filterCategory) params.set("category", filterCategory);
+
+    const queryString = params.toString();
+    return `${routes.projectDetail(namespace!)}${
+      queryString ? `?${queryString}` : ""
+    }`;
+  };
+
+  const canUseBrowserBack = () => {
+    const historyState = window.history.state as { idx?: number } | null;
+    if (typeof historyState?.idx === "number") {
+      return historyState.idx > 0;
+    }
+    return location.key !== "default";
+  };
+
+  const handleBackClick = (e: React.MouseEvent, fallbackUrl: string) => {
+    if (e.ctrlKey || e.metaKey || e.button === 1) return;
+    e.preventDefault();
+    if (canUseBrowserBack()) {
+      navigate(-1);
+      return;
+    }
+    navigate(fallbackUrl, { replace: true });
+  };
+
   const handleUpdateIssueStatus = async (newStatus: "open" | "resolved") => {
     if (!currentWorkspace || !namespace || !issueId) return;
 
@@ -1070,32 +1127,12 @@ export default function IssueDetails() {
   }
 
   if (!issue) {
-    // Determine fallback URL - if we have branch scope, go back to branch issues
-    let backUrl = returnPath;
-    if (!backUrl) {
-      if (scopeBranch) {
-        backUrl = routes.branchIssues(namespace!, scopeBranch);
-      } else {
-        backUrl = routes.projectDetail(namespace!);
-      }
-    }
-    // Append returnTab to backUrl if we have it
-    if (returnTab && backUrl) {
-      const separator = backUrl.includes("?") ? "&" : "?";
-      backUrl = `${backUrl}${separator}returnTab=${returnTab}`;
-    }
+    const backUrl = buildProjectIssueBackUrl();
 
     return (
       <div className="mx-auto p-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link
-            to={backUrl}
-            onClick={(e) => {
-              if (e.ctrlKey || e.metaKey || e.button === 1) return;
-              e.preventDefault();
-              navigate(-1);
-            }}
-          >
+          <Link to={backUrl} onClick={(e) => handleBackClick(e, backUrl)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Analysis
           </Link>
@@ -1118,21 +1155,7 @@ export default function IssueDetails() {
   const descriptionText = issue.description || issue.suggestedFixDescription;
   const diffContent = issue.suggestedFixDiff;
 
-  // Determine back URL - if we have branch scope, go back to branch issues
-  // Also append returnTab to ensure correct tab is restored
-  let backUrl = returnPath;
-  if (!backUrl) {
-    if (scopeBranch) {
-      backUrl = routes.branchIssues(namespace!, scopeBranch);
-    } else {
-      backUrl = routes.projectDetail(namespace!);
-    }
-  }
-  // Append returnTab to backUrl if we have it
-  if (returnTab && backUrl) {
-    const separator = backUrl.includes("?") ? "&" : "?";
-    backUrl = `${backUrl}${separator}returnTab=${returnTab}`;
-  }
+  const backUrl = buildProjectIssueBackUrl();
 
   // Find current issue index in scope list
   const currentIndex = scopeIssues.findIndex((i) => i.id === issueId);
@@ -1326,11 +1349,7 @@ export default function IssueDetails() {
               <Button variant="ghost" size="sm" asChild>
                 <Link
                   to={backUrl}
-                  onClick={(e) => {
-                    if (e.ctrlKey || e.metaKey || e.button === 1) return;
-                    e.preventDefault();
-                    navigate(-1);
-                  }}
+                  onClick={(e) => handleBackClick(e, backUrl)}
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back

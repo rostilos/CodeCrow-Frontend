@@ -4,6 +4,7 @@ import {
   TaskManagementConnectionResponse,
   TaskManagementProviderInfo,
   QaAutoDocConfigRequest,
+  TaskCommentVisibility,
 } from "./taskManagement.interface";
 
 /**
@@ -94,6 +95,20 @@ class TaskManagementService extends ApiService {
     return this.request<TaskManagementConnectionResponse>(
       `/${workspaceSlug}/task-management/connections/${connectionId}/validate`,
       { method: "POST" },
+    );
+  }
+
+  /**
+   * Fetch selectable comment visibility options for a task-management connection.
+   * For Jira Cloud, this returns Jira groups that can restrict QA doc comments.
+   */
+  async listCommentVisibilityOptions(
+    workspaceSlug: string,
+    connectionId: number,
+  ): Promise<TaskCommentVisibility[]> {
+    return this.request<TaskCommentVisibility[]>(
+      `/${workspaceSlug}/task-management/connections/${connectionId}/comment-visibility-options`,
+      { method: "GET" },
     );
   }
 
