@@ -342,8 +342,9 @@ export default function QaAutoDocConfiguration({
               QA Auto-Documentation
             </CardTitle>
             <CardDescription className="mt-1">
-              Automatically generate QA testing documentation and post it as
-              comments on linked Jira tickets after each code review.
+              Automatically generate QA testing documentation, store the latest
+              doc per PR in CodeCrow, and post it as a comment on the linked
+              Jira ticket after each code review.
             </CardDescription>
           </div>
           <Switch
@@ -671,8 +672,8 @@ export default function QaAutoDocConfiguration({
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Enable QA auto-documentation to automatically generate testing notes
-            and post them as comments on your Jira tickets when code reviews
-            complete.
+            for reviewed PRs, keep the latest QA Doc in the project dashboard,
+            and post it as a comment on the linked Jira ticket.
           </p>
           <div className="flex justify-end">
             <Button onClick={handleSave} disabled={saving}>

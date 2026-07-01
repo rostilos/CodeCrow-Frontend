@@ -98,6 +98,7 @@ import type {
   PullRequestDTO,
   AnalysisIssueSummary,
   SourceAvailabilityResponse,
+  QaDocDocumentResponse,
 } from "@/api_service/analysis/analysisService";
 
 // Helper function to build VCS PR URL
@@ -145,6 +146,22 @@ function buildCommitUrl(
 // Helper to get repo slug from project (handles both field names)
 function getRepoSlug(project: ProjectDTO | null): string | undefined {
   return project?.projectVcsRepoSlug || project?.projectRepoSlug;
+}
+
+const DASHBOARD_SUB_TABS = [
+  "preview",
+  "issues",
+  "activity",
+  "qa-doc",
+  "graph",
+  "source",
+  "vector",
+] as const;
+
+type DashboardSubTab = (typeof DASHBOARD_SUB_TABS)[number];
+
+function isDashboardSubTab(value: string | null): value is DashboardSubTab {
+  return !!value && DASHBOARD_SUB_TABS.includes(value as DashboardSubTab);
 }
 
 export default function ProjectDashboard() {
@@ -206,16 +223,39 @@ export default function ProjectDashboard() {
     useState<DetailedProjectStatsData | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
-  const [prTab, setPrTab] = useState<
-    "preview" | "issues" | "activity" | "graph" | "source" | "vector"
-  >("preview");
-  const [branchTab, setBranchTab] = useState<
-    "preview" | "issues" | "activity" | "graph" | "source" | "vector"
-  >("preview");
+  const [prTab, setPrTab] = useState<DashboardSubTab>("preview");
+  const [branchTab, setBranchTab] = useState<DashboardSubTab>("preview");
   const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
   const [sourceAvailability, setSourceAvailability] =
     useState<SourceAvailabilityResponse | null>(null);
+  const [qaDoc, setQaDoc] = useState<QaDocDocumentResponse | null>(null);
+  const [qaDocLoading, setQaDocLoading] = useState(false);
+  const [qaDocError, setQaDocError] = useState<string | null>(null);
+
+  const loadQaDocForPR = useCallback(
+    async (prNumber: number) => {
+      if (!currentWorkspace || !namespace) return;
+
+      setQaDocLoading(true);
+      setQaDocError(null);
+      try {
+        const response = await analysisService.getLatestQaDoc(
+          currentWorkspace.slug,
+          namespace,
+          prNumber,
+        );
+        setQaDoc(response);
+      } catch (error: any) {
+        console.error("Failed to load QA doc:", error);
+        setQaDoc(null);
+        setQaDocError(error.message || "Could not load QA documentation");
+      } finally {
+        setQaDocLoading(false);
+      }
+    },
+    [currentWorkspace, namespace],
+  );
 
   useEffect(() => {
     loadProject();
@@ -284,30 +324,9 @@ export default function ProjectDashboard() {
     // Check if returnTab is set (coming back from issue detail page) or subTab (persisted tab)
     const returnTab =
       searchParams.get("returnTab") || searchParams.get("subTab");
-    if (
-      returnTab &&
-      ["preview", "issues", "activity", "graph", "source", "vector"].includes(
-        returnTab,
-      )
-    ) {
-      setBranchTab(
-        returnTab as
-          | "preview"
-          | "issues"
-          | "activity"
-          | "graph"
-          | "source"
-          | "vector",
-      );
-      setPrTab(
-        returnTab as
-          | "preview"
-          | "issues"
-          | "activity"
-          | "graph"
-          | "source"
-          | "vector",
-      );
+    if (isDashboardSubTab(returnTab)) {
+      setBranchTab(returnTab);
+      setPrTab(returnTab);
       // Clean up one-time returnTab param, persist as subTab for browser back
       if (searchParams.has("returnTab")) {
         const cleanParams = new URLSearchParams(searchParams);
@@ -336,6 +355,19 @@ export default function ProjectDashboard() {
       loadBranchData(urlBranch);
     }
   }, [namespace, currentWorkspace]);
+
+  useEffect(() => {
+    if (selectionType === "pr" && selectedPR && prTab === "qa-doc") {
+      loadQaDocForPR(selectedPR.prNumber);
+      return;
+    }
+
+    if (selectionType !== "pr") {
+      setQaDoc(null);
+      setQaDocError(null);
+      setQaDocLoading(false);
+    }
+  }, [selectionType, selectedPR?.prNumber, prTab, loadQaDocForPR]);
 
   // Lazy load branch issues when switching to Issues tab
   useEffect(() => {
@@ -680,6 +712,9 @@ export default function ProjectDashboard() {
         refreshPromises.push(
           loadAnalysisIssuesForPR(selectedPR, selectedVersion),
         );
+        if (prTab === "qa-doc") {
+          refreshPromises.push(loadQaDocForPR(selectedPR.prNumber));
+        }
       }
 
       await Promise.all(refreshPromises);
@@ -1595,6 +1630,26 @@ export default function ProjectDashboard() {
               <button
                 onClick={() =>
                   selectionType === "branch"
+                    ? setBranchTab("qa-doc")
+                    : setPrTab("qa-doc")
+                }
+                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                  (selectionType === "branch" ? branchTab : prTab) ===
+                  "qa-doc"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                QA Doc
+                {(selectionType === "branch" ? branchTab : prTab) ===
+                  "qa-doc" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>
+              <button
+                onClick={() =>
+                  selectionType === "branch"
                     ? setBranchTab("graph")
                     : setPrTab("graph")
                 }
@@ -1745,6 +1800,28 @@ export default function ProjectDashboard() {
                   </AlertDescription>
                 </Alert>
               )
+            ) : branchTab === "qa-doc" ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    QA Doc
+                  </CardTitle>
+                  <CardDescription>
+                    Latest generated QA documentation for a pull request
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">Select a pull request</p>
+                    <p className="text-sm mt-1">
+                      QA Doc is stored per PR. Pick a pull request instead of a
+                      branch to see its latest generated QA Doc.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             ) : branchTab === "issues" ? (
               <div className="flex gap-6">
                 {/* Filter Sidebar - Left */}
@@ -2407,6 +2484,71 @@ export default function ProjectDashboard() {
               </Card>
             )}
 
+            {prTab === "qa-doc" && (
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        QA Doc
+                      </CardTitle>
+                      <CardDescription>
+                        Latest generated QA documentation for PR #
+                        {selectedPR.prNumber}
+                      </CardDescription>
+                    </div>
+                    {qaDoc?.available && qaDoc.generatedAt && (
+                      <Badge variant="secondary" className="w-fit">
+                        {new Date(qaDoc.generatedAt).toLocaleString()}
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {qaDocLoading ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
+                      Loading QA Doc...
+                    </div>
+                  ) : qaDocError ? (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>QA Doc could not be loaded</AlertTitle>
+                      <AlertDescription>{qaDocError}</AlertDescription>
+                    </Alert>
+                  ) : qaDoc?.available && qaDoc.markdownContent ? (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {qaDoc.taskId && (
+                          <Badge variant="outline">{qaDoc.taskId}</Badge>
+                        )}
+                        {qaDoc.commitHash && (
+                          <Badge variant="outline">
+                            {qaDoc.commitHash.slice(0, 7)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="rounded-md border bg-background p-4">
+                        <MarkdownRenderer content={qaDoc.markdownContent} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="font-medium">
+                        QA Doc wasn't generated for this PR yet
+                      </p>
+                      <p className="text-sm mt-1">
+                        The latest generated QA Doc will appear here when it is
+                        available.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {prTab === "issues" && (
               <div className="flex gap-6">
                 {/* Filter Sidebar - Left */}
@@ -2625,6 +2767,17 @@ export default function ProjectDashboard() {
                 <AlertDescription>
                   Please select a branch or pull request to view analysis
                   results.
+                </AlertDescription>
+              </Alert>
+            )}
+            {(selectionType === "branch" ? branchTab : prTab) ===
+              "qa-doc" && (
+              <Alert className="mx-auto">
+                <Info className="h-4 w-4" />
+                <AlertTitle>No QA Doc</AlertTitle>
+                <AlertDescription>
+                  QA Doc is stored per PR. Select a pull request to see its
+                  latest generated QA Doc.
                 </AlertDescription>
               </Alert>
             )}

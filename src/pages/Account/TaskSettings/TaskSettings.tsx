@@ -371,7 +371,8 @@ export default function TaskSettings() {
                     Task Management
                   </h1>
                   <p className="text-base text-muted-foreground font-medium mt-1">
-                    Connect your task tracking systems for QA auto-documentation
+                    Connect task tracking systems for QA auto-documentation and
+                    Jira comment publishing
                   </p>
                 </div>
               </div>
@@ -428,8 +429,9 @@ export default function TaskSettings() {
                     </h3>
                     <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                       Connect your Jira Cloud instance to enable QA
-                      auto-documentation. CodeCrow will automatically post test
-                      documentation to your Jira tickets.
+                      auto-documentation. CodeCrow keeps the latest QA Doc per
+                      PR in the project dashboard and posts test documentation
+                      to linked Jira tickets.
                     </p>
                     <Button
                       onClick={() => setShowCreateDialog(true)}
@@ -572,7 +574,7 @@ export default function TaskSettings() {
                   <p className="text-muted-foreground max-w-md mx-auto">
                     Support for Jira Data Center (self-hosted) is on our
                     roadmap. It will support the same QA auto-documentation
-                    features as Jira Cloud.
+                    and dashboard QA Doc features as Jira Cloud.
                   </p>
                 </CardContent>
               </Card>
@@ -588,7 +590,7 @@ export default function TaskSettings() {
             <DialogTitle>Add Jira Cloud Connection</DialogTitle>
             <DialogDescription>
               Connect your Jira Cloud instance to enable QA auto-documentation
-              on your tickets.
+              and Jira comment publishing for linked tickets.
             </DialogDescription>
           </DialogHeader>
           <ConnectionForm
