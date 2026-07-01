@@ -15,6 +15,7 @@ export interface CreateAIConnectionRequest {
   aiModel: string;
   apiKey: string;
   baseUrl?: string;
+  customParameters?: string;
 }
 
 export interface UpdateAiConnectionRequest {
@@ -23,6 +24,7 @@ export interface UpdateAiConnectionRequest {
   aiModel?: string;
   apiKey?: string;
   baseUrl?: string;
+  customParameters?: string;
 }
 
 export interface AIConnectionDTO {
@@ -31,6 +33,7 @@ export interface AIConnectionDTO {
   providerKey: AIProviderKey;
   aiModel: string;
   baseUrl: string | null;
+  customParameters: string | null;
   createdAt: string;
   updatedAt: string;
 }

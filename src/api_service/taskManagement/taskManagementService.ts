@@ -100,7 +100,7 @@ class TaskManagementService extends ApiService {
 
   /**
    * Fetch selectable comment visibility options for a task-management connection.
-   * For Jira Cloud, this returns Jira groups that can restrict QA doc comments.
+   * For Jira Cloud, this returns Jira groups and project roles that can restrict QA doc comments.
    */
   async listCommentVisibilityOptions(
     workspaceSlug: string,

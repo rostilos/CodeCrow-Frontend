@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   ExternalLink,
   FileCode,
+  Database,
 } from "lucide-react";
 import {
   Card,
@@ -90,6 +91,7 @@ import {
 } from "@/components/AnalysisResultBadge";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { GitGraphViewer } from "@/components/GitGraph/GitGraphViewer";
+import { VectorStorageExplorer } from "@/components/VectorStorage/VectorStorageExplorer";
 import type {
   AnalysisIssue,
   PullRequestSummary,
@@ -205,10 +207,10 @@ export default function ProjectDashboard() {
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [prTab, setPrTab] = useState<
-    "preview" | "issues" | "activity" | "graph" | "source"
+    "preview" | "issues" | "activity" | "graph" | "source" | "vector"
   >("preview");
   const [branchTab, setBranchTab] = useState<
-    "preview" | "issues" | "activity" | "graph" | "source"
+    "preview" | "issues" | "activity" | "graph" | "source" | "vector"
   >("preview");
   const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
@@ -284,13 +286,27 @@ export default function ProjectDashboard() {
       searchParams.get("returnTab") || searchParams.get("subTab");
     if (
       returnTab &&
-      ["preview", "issues", "activity", "graph", "source"].includes(returnTab)
+      ["preview", "issues", "activity", "graph", "source", "vector"].includes(
+        returnTab,
+      )
     ) {
       setBranchTab(
-        returnTab as "preview" | "issues" | "activity" | "graph" | "source",
+        returnTab as
+          | "preview"
+          | "issues"
+          | "activity"
+          | "graph"
+          | "source"
+          | "vector",
       );
       setPrTab(
-        returnTab as "preview" | "issues" | "activity" | "graph" | "source",
+        returnTab as
+          | "preview"
+          | "issues"
+          | "activity"
+          | "graph"
+          | "source"
+          | "vector",
       );
       // Clean up one-time returnTab param, persist as subTab for browser back
       if (searchParams.has("returnTab")) {
@@ -1628,6 +1644,27 @@ export default function ProjectDashboard() {
                     )}
                   </button>
                 )}
+              <button
+                onClick={() => {
+                  if (selectionType === "branch") {
+                    setBranchTab("vector");
+                  } else {
+                    setPrTab("vector");
+                  }
+                }}
+                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                  (selectionType === "branch" ? branchTab : prTab) === "vector"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Database className="h-3.5 w-3.5" />
+                Vector Storage
+                {(selectionType === "branch" ? branchTab : prTab) ===
+                  "vector" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>
             </div>
             {selectionType === "pr" && selectedPR && maxVersion > 1 && (
               <div className="-mt-4">
@@ -1923,6 +1960,12 @@ export default function ProjectDashboard() {
                   </div>
                 </CardContent>
               </Card>
+            ) : branchTab === "vector" ? (
+              <VectorStorageExplorer
+                workspaceSlug={currentWorkspace!.slug}
+                namespace={namespace!}
+                initialBranch={selectedBranch}
+              />
             ) : null}
           </div>
         ) : selectionType === "pr" && selectedPR ? (
@@ -2560,6 +2603,17 @@ export default function ProjectDashboard() {
                 </CardContent>
               </Card>
             )}
+
+            {prTab === "vector" && (
+              <VectorStorageExplorer
+                workspaceSlug={currentWorkspace!.slug}
+                namespace={namespace!}
+                initialBranch={
+                  selectedPR.sourceBranchName || selectedPR.targetBranchName
+                }
+                initialPrNumber={selectedPR.prNumber}
+              />
+            )}
           </div>
         ) : (
           /* No branch or PR selected - show content based on active tab */
@@ -2648,6 +2702,12 @@ export default function ProjectDashboard() {
                   Please select a branch or pull request to view source code.
                 </AlertDescription>
               </Alert>
+            )}
+            {(selectionType === "branch" ? branchTab : prTab) === "vector" && (
+              <VectorStorageExplorer
+                workspaceSlug={currentWorkspace!.slug}
+                namespace={namespace!}
+              />
             )}
           </div>
         )}

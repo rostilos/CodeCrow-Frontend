@@ -171,7 +171,7 @@ export default function QaAutoDocConfiguration({
     if (!currentWorkspace || !connectionId) {
       toast({
         title: "Missing connection",
-        description: "Select a Jira connection before fetching groups.",
+        description: "Select a Jira connection before fetching visibility options.",
         variant: "destructive",
       });
       return;
@@ -186,13 +186,13 @@ export default function QaAutoDocConfiguration({
       setVisibilityOptions(data || []);
       setVisibilityLoaded(true);
       toast({
-        title: "Jira groups loaded",
-        description: `${data?.length ?? 0} groups are available for comment visibility.`,
+        title: "Jira visibility options loaded",
+        description: `${data?.length ?? 0} options are available for comment visibility.`,
       });
     } catch (error: any) {
       toast({
-        title: "Failed to load Jira groups",
-        description: error.message || "Check that the Jira token can browse users and groups.",
+        title: "Failed to load Jira visibility options",
+        description: error.message || "Check that the Jira token can browse users, groups, and project roles.",
         variant: "destructive",
       });
     } finally {
@@ -415,20 +415,21 @@ export default function QaAutoDocConfiguration({
                   disabled={!connectionId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Jira group visibility" />
+                    <SelectValue placeholder="Select Jira visibility" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No restriction</SelectItem>
                     {visibilityOptions.map((option) => (
                       <SelectItem key={visibilityKey(option)} value={visibilityKey(option)}>
-                        {option.displayName || option.value}
+                        {option.type === "role" ? "Project role: " : "Group: "}
+                        {option.displayName || option.value || option.identifier}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Restrict QA documentation comments to a Jira group when the
-                  ticket is visible to a broader audience.
+                  Restrict QA documentation comments to a Jira group or project
+                  role when the ticket is visible to a broader audience.
                 </p>
               </div>
               <Button
@@ -442,13 +443,13 @@ export default function QaAutoDocConfiguration({
                 ) : (
                   <RefreshCw className="mr-2 h-4 w-4" />
                 )}
-                {visibilityLoading ? "Fetching…" : "Fetch Jira Groups"}
+                {visibilityLoading ? "Fetching…" : "Fetch Jira Visibility"}
               </Button>
             </div>
             {visibilityLoaded && (
               <p className="text-xs text-muted-foreground">
-                {visibilityOptions.length} groups loaded from the selected Jira
-                connection.
+                {visibilityOptions.length} options loaded from the selected
+                Jira connection.
               </p>
             )}
           </div>
