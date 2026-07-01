@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph from "graphology";
 import Sigma from "sigma";
+import type { NodeHoverDrawingFunction } from "sigma/rendering";
 import forceAtlas2 from "graphology-layout-forceatlas2";
 import {
   Code2,
@@ -133,9 +134,9 @@ const EDGE_STYLE: Record<string, { color: string; label: string; size: number }>
     size: 0.9,
   },
   imports: {
-    color: "rgba(245, 158, 11, 0.78)",
+    color: "rgba(245, 158, 11, 0.42)",
     label: "imports",
-    size: 1.2,
+    size: 0.78,
   },
   calls: {
     color: "rgba(34, 197, 94, 0.72)",
@@ -171,7 +172,17 @@ const DEFAULT_GRAPH_LIMIT = 160;
 const MAX_GRAPH_PAGE_SIZE = 5000;
 const DENSE_GRAPH_THRESHOLD = 1500;
 const HUGE_GRAPH_THRESHOLD = 12000;
-const MAX_SYNC_LAYOUT_NODES = 1200;
+const MAX_SYNC_LAYOUT_NODES = 2200;
+const MAX_LAYOUT_EDGE_COUNT = 80000;
+const STRONG_LAYOUT_EDGE_KINDS = new Set([
+  "extends",
+  "implements",
+  "calls",
+  "referenced_type",
+  "same_symbol",
+  "same_parent",
+  "metadata_reference",
+]);
 
 type ResolvedGraphTheme = {
   isDark: boolean;
@@ -204,6 +215,56 @@ function getResolvedGraphTheme(): ResolvedGraphTheme {
       };
 }
 
+const drawVectorNodeHover: NodeHoverDrawingFunction<SigmaNodeAttributes, SigmaEdgeAttributes> = (
+  context,
+  data,
+  settings,
+) => {
+  const label = typeof data.label === "string" ? data.label : "";
+  const size = settings.labelSize;
+  const font = settings.labelFont;
+  const weight = settings.labelWeight;
+  const padding = 3;
+
+  context.save();
+  context.font = `${weight} ${size}px ${font}`;
+  context.shadowOffsetX = 0;
+  context.shadowOffsetY = 0;
+  context.shadowBlur = 8;
+  context.shadowColor = "rgba(15, 23, 42, 0.28)";
+  context.fillStyle = "#ffffff";
+
+  if (label) {
+    const textWidth = context.measureText(label).width;
+    const boxWidth = Math.round(textWidth + 8);
+    const boxHeight = Math.round(size + padding * 2);
+    const radius = Math.max(data.size, size / 2) + padding;
+    const angle = Math.asin(Math.min(0.98, boxHeight / 2 / radius));
+    const xDelta = Math.sqrt(Math.max(0, radius ** 2 - (boxHeight / 2) ** 2));
+
+    context.beginPath();
+    context.moveTo(data.x + xDelta, data.y + boxHeight / 2);
+    context.lineTo(data.x + radius + boxWidth, data.y + boxHeight / 2);
+    context.lineTo(data.x + radius + boxWidth, data.y - boxHeight / 2);
+    context.lineTo(data.x + xDelta, data.y - boxHeight / 2);
+    context.arc(data.x, data.y, radius, angle, -angle);
+    context.closePath();
+    context.fill();
+  } else {
+    context.beginPath();
+    context.arc(data.x, data.y, data.size + padding, 0, Math.PI * 2);
+    context.closePath();
+    context.fill();
+  }
+
+  context.shadowBlur = 0;
+  context.fillStyle = "#0f172a";
+  if (label) {
+    context.fillText(label, data.x + data.size + 6, data.y + size / 3);
+  }
+  context.restore();
+};
+
 function hashIndex(value: string, modulo: number) {
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {
@@ -224,6 +285,380 @@ function graphClusterKey(node: VectorStorageNode) {
     return `${node.kind}:${node.title}`;
   }
   return node.group || node.language || node.kind || "default";
+}
+
+function layoutEdgeWeight(kind?: string) {
+  switch (kind) {
+    case "extends":
+      return 3.4;
+    case "implements":
+      return 3.1;
+    case "calls":
+      return 3;
+    case "referenced_type":
+      return 2.7;
+    case "same_symbol":
+      return 2.4;
+    case "same_parent":
+      return 2.1;
+    case "metadata_reference":
+      return 1.9;
+    case "imports":
+      return 1.25;
+    case "file_contains":
+      return 0.85;
+    case "file_sequence":
+      return 0.18;
+    default:
+      return 0.65;
+  }
+}
+
+class LayoutUnionFind {
+  private parent = new Map<string, string>();
+  private sizes = new Map<string, number>();
+
+  constructor(ids: string[]) {
+    ids.forEach((id) => {
+      this.parent.set(id, id);
+      this.sizes.set(id, 1);
+    });
+  }
+
+  find(id: string): string {
+    const parent = this.parent.get(id);
+    if (!parent || parent === id) return id;
+    const root = this.find(parent);
+    this.parent.set(id, root);
+    return root;
+  }
+
+  union(left: string, right: string, maxSize: number) {
+    let leftRoot = this.find(left);
+    let rightRoot = this.find(right);
+    if (leftRoot === rightRoot) return;
+
+    let leftSize = this.sizes.get(leftRoot) || 1;
+    let rightSize = this.sizes.get(rightRoot) || 1;
+    if (leftSize + rightSize > maxSize) return;
+
+    if (leftSize < rightSize) {
+      [leftRoot, rightRoot] = [rightRoot, leftRoot];
+      [leftSize, rightSize] = [rightSize, leftSize];
+    }
+
+    this.parent.set(rightRoot, leftRoot);
+    this.sizes.set(leftRoot, leftSize + rightSize);
+    this.sizes.delete(rightRoot);
+  }
+}
+
+type LayoutCircle = {
+  x: number;
+  y: number;
+  radius: number;
+  anchorX?: number;
+  anchorY?: number;
+};
+
+function layoutGroupKeyForPath(path?: string | null) {
+  if (!path) return "unknown";
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length === 0) return "unknown";
+  if (
+    parts[0] === "java-ecosystem" &&
+    (parts[1] === "services" || parts[1] === "libs") &&
+    parts[2]
+  ) {
+    return parts.slice(0, 3).join("/");
+  }
+  if (parts[0] === "python-ecosystem" && parts[1]) {
+    return parts.slice(0, 2).join("/");
+  }
+  if (parts[0] === "frontend") {
+    return parts[1] ? parts.slice(0, 2).join("/") : parts[0];
+  }
+  if (parts[0] === "deployment") return "deployment";
+  return parts.slice(0, Math.min(2, parts.length)).join("/");
+}
+
+function componentLayoutGroupKey(component: VectorStorageNode[]) {
+  const counts = new Map<string, number>();
+  component.forEach((node) => {
+    const key = node.path
+      ? layoutGroupKeyForPath(node.path)
+      : node.language || node.group || node.kind || "unknown";
+    counts.set(key, (counts.get(key) || 0) + (node.kind === "file" ? 2 : 1));
+  });
+  return Array.from(counts.entries()).sort((left, right) => right[1] - left[1])[0]?.[0] || "unknown";
+}
+
+function relaxLayoutCircles<T extends LayoutCircle>(
+  circles: T[],
+  iterations: number,
+  padding: number,
+  anchorStrength = 0,
+) {
+  if (circles.length < 2) return;
+  const maxRadius = circles.reduce((max, circle) => Math.max(max, circle.radius), 1);
+  const cellSize = Math.max(96, maxRadius * 2 + padding);
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    const grid = new Map<string, number[]>();
+    circles.forEach((circle, index) => {
+      const key = `${Math.floor(circle.x / cellSize)}:${Math.floor(circle.y / cellSize)}`;
+      const bucket = grid.get(key);
+      if (bucket) bucket.push(index);
+      else grid.set(key, [index]);
+    });
+
+    circles.forEach((circle, index) => {
+      const gridX = Math.floor(circle.x / cellSize);
+      const gridY = Math.floor(circle.y / cellSize);
+      for (let deltaX = -1; deltaX <= 1; deltaX += 1) {
+        for (let deltaY = -1; deltaY <= 1; deltaY += 1) {
+          const bucket = grid.get(`${gridX + deltaX}:${gridY + deltaY}`);
+          if (!bucket) continue;
+          bucket.forEach((otherIndex) => {
+            if (otherIndex <= index) return;
+            const other = circles[otherIndex];
+            let diffX = other.x - circle.x;
+            let diffY = other.y - circle.y;
+            let distance = Math.sqrt(diffX * diffX + diffY * diffY);
+            if (!Number.isFinite(distance) || distance < 0.001) {
+              const angle = (index + otherIndex + 1) * goldenAngle;
+              diffX = Math.cos(angle);
+              diffY = Math.sin(angle);
+              distance = 1;
+            }
+            const minDistance = circle.radius + other.radius + padding;
+            if (distance >= minDistance) return;
+
+            const overlap = (minDistance - distance) / distance;
+            const circleShare = other.radius / (circle.radius + other.radius);
+            const otherShare = circle.radius / (circle.radius + other.radius);
+            const moveX = diffX * overlap;
+            const moveY = diffY * overlap;
+            circle.x -= moveX * circleShare;
+            circle.y -= moveY * circleShare;
+            other.x += moveX * otherShare;
+            other.y += moveY * otherShare;
+          });
+        }
+      }
+    });
+
+    if (anchorStrength > 0) {
+      circles.forEach((circle) => {
+        if (!Number.isFinite(circle.anchorX) || !Number.isFinite(circle.anchorY)) return;
+        circle.x += ((circle.anchorX as number) - circle.x) * anchorStrength;
+        circle.y += ((circle.anchorY as number) - circle.y) * anchorStrength;
+      });
+    }
+  }
+}
+
+function computeRelationLayoutPositions(
+  nodes: VectorStorageNode[],
+  edges: VectorStorageEdge[],
+) {
+  const positions = new Map<string, { x: number; y: number }>();
+  if (nodes.length === 0) return positions;
+
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const graphEdges = edges
+    .filter((edge) =>
+      nodeIds.has(edge.source) &&
+      nodeIds.has(edge.target) &&
+      edge.source !== edge.target,
+    )
+    .slice(0, MAX_LAYOUT_EDGE_COUNT);
+
+  const unionFind = new LayoutUnionFind(nodes.map((node) => node.id));
+  const clusterLimit = Math.min(180, Math.max(28, Math.floor(Math.sqrt(nodes.length) * 5)));
+  const strongClusterLimit = clusterLimit;
+  const importClusterLimit = Math.max(24, Math.floor(clusterLimit * 0.72));
+  const fileClusterLimit = Math.max(18, Math.floor(clusterLimit * 0.55));
+
+  graphEdges.forEach((edge) => {
+    if (STRONG_LAYOUT_EDGE_KINDS.has(edge.kind)) {
+      unionFind.union(edge.source, edge.target, strongClusterLimit);
+    }
+  });
+  graphEdges.forEach((edge) => {
+    if (edge.kind === "imports") {
+      unionFind.union(edge.source, edge.target, importClusterLimit);
+    }
+  });
+  graphEdges.forEach((edge) => {
+    if (edge.kind === "file_contains") {
+      unionFind.union(edge.source, edge.target, fileClusterLimit);
+    }
+  });
+
+  const relationDegree = new Map<string, number>();
+  graphEdges.forEach((edge) => {
+    const weight = layoutEdgeWeight(edge.kind);
+    relationDegree.set(edge.source, (relationDegree.get(edge.source) || 0) + weight);
+    relationDegree.set(edge.target, (relationDegree.get(edge.target) || 0) + weight);
+  });
+
+  const components = new Map<string, VectorStorageNode[]>();
+  nodes.forEach((node) => {
+    const root = unionFind.find(node.id);
+    const component = components.get(root);
+    if (component) component.push(node);
+    else components.set(root, [node]);
+  });
+
+  const localGap = nodes.length >= 12000 ? 14.5 : nodes.length >= 6000 ? 15.5 : nodes.length >= 2500 ? 12.5 : 9.8;
+  const componentPadding = nodes.length >= 12000 ? 76 : nodes.length >= 6000 ? 72 : nodes.length >= 2500 ? 58 : 44;
+  const componentEntries = Array.from(components.values())
+    .map((component) => {
+      const weight = component.reduce((sum, node) => sum + (relationDegree.get(node.id) || 0), 0);
+      const radius = Math.max(
+        30,
+        18 + Math.sqrt(component.length) * localGap + Math.log2(weight + 2) * 2.4,
+      );
+      return {
+        component,
+        groupKey: componentLayoutGroupKey(component),
+        weight,
+        radius,
+        x: 0,
+        y: 0,
+        anchorX: 0,
+        anchorY: 0,
+      };
+    })
+    .sort((left, right) => {
+      if (right.component.length !== left.component.length) {
+        return right.component.length - left.component.length;
+      }
+      return right.weight - left.weight;
+    });
+
+  const groups = new Map<string, typeof componentEntries>();
+  componentEntries.forEach((entry) => {
+    const group = groups.get(entry.groupKey);
+    if (group) group.push(entry);
+    else groups.set(entry.groupKey, [entry]);
+  });
+
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  const groupEntries = Array.from(groups.entries())
+    .map(([key, groupComponents]) => {
+      const area = groupComponents.reduce(
+        (sum, entry) => sum + (entry.radius + componentPadding * 0.7) ** 2,
+        0,
+      );
+      return {
+        key,
+        components: groupComponents,
+        weight: groupComponents.reduce((sum, entry) => sum + entry.weight, 0),
+        radius: Math.max(150, Math.sqrt(area) * 1.18 + Math.log2(groupComponents.length + 2) * 16),
+        x: 0,
+        y: 0,
+      };
+    })
+    .sort((left, right) => {
+      if (right.components.length !== left.components.length) {
+        return right.components.length - left.components.length;
+      }
+      return right.weight - left.weight;
+    });
+
+  const groupArea = groupEntries.reduce((sum, entry) => sum + entry.radius ** 2, 0);
+  const groupStep = Math.max(280, Math.sqrt(groupArea / Math.max(groupEntries.length, 1)) * 1.15);
+  const groupAspect = nodes.length >= 6000 ? 1.68 : 1.42;
+  groupEntries.forEach((entry, index) => {
+    const rotation = (hashIndex(`${entry.key}:macro`, 4096) / 4096) * Math.PI * 2;
+    const angle = index === 0 ? rotation * 0.12 : rotation + index * goldenAngle;
+    const ring = index === 0 ? 0 : Math.sqrt(index) * groupStep + entry.radius * 0.16;
+    entry.x = Math.cos(angle) * ring * groupAspect;
+    entry.y = Math.sin(angle) * ring;
+  });
+  relaxLayoutCircles(groupEntries, nodes.length >= 6000 ? 7 : 5, componentPadding * 1.2);
+
+  groupEntries.forEach((groupEntry, groupIndex) => {
+    const orderedComponents = [...groupEntry.components].sort((left, right) => {
+      if (right.component.length !== left.component.length) {
+        return right.component.length - left.component.length;
+      }
+      return right.weight - left.weight;
+    });
+    const localArea = orderedComponents.reduce(
+      (sum, entry) => sum + (entry.radius + componentPadding * 0.5) ** 2,
+      0,
+    );
+    const localStep = Math.max(
+      52,
+      Math.sqrt(localArea / Math.max(orderedComponents.length, 1)) * 0.72,
+    );
+    const localAspect = 1.05 + hashIndex(`${groupEntry.key}:aspect`, 512) / 2048;
+    const rotation = (hashIndex(`${groupEntry.key}:components`, 4096) / 4096) * Math.PI * 2;
+    orderedComponents.forEach((entry, componentIndex) => {
+      const angle = rotation + (componentIndex + groupIndex * 0.37) * goldenAngle;
+      const ring = componentIndex === 0
+        ? 0
+        : Math.sqrt(componentIndex) * localStep + entry.radius * 0.18;
+      entry.anchorX = groupEntry.x;
+      entry.anchorY = groupEntry.y;
+      entry.x = groupEntry.x + Math.cos(angle) * ring * localAspect;
+      entry.y = groupEntry.y + Math.sin(angle) * ring / localAspect;
+    });
+  });
+
+  relaxLayoutCircles(
+    componentEntries,
+    nodes.length >= 12000 ? 6 : nodes.length >= 6000 ? 5 : 4,
+    componentPadding * 0.42,
+    nodes.length >= 6000 ? 0.018 : 0.03,
+  );
+
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  componentEntries.forEach((entry) => {
+    minX = Math.min(minX, entry.x - entry.radius);
+    maxX = Math.max(maxX, entry.x + entry.radius);
+    minY = Math.min(minY, entry.y - entry.radius);
+    maxY = Math.max(maxY, entry.y + entry.radius);
+  });
+  const offsetX = Number.isFinite(minX) && Number.isFinite(maxX) ? (minX + maxX) / 2 : 0;
+  const offsetY = Number.isFinite(minY) && Number.isFinite(maxY) ? (minY + maxY) / 2 : 0;
+  const layoutStretchX = nodes.length >= 12000 ? 1.85 : nodes.length >= 6000 ? 1.65 : 1.2;
+
+  componentEntries.forEach((entry, componentIndex) => {
+    const component = entry.component;
+    const centerX = entry.x - offsetX;
+    const centerY = entry.y - offsetY;
+    const rotation =
+      (hashIndex(`${component[0]?.id || componentIndex}:nodes`, 4096) / 4096) *
+      Math.PI *
+      2;
+    const ordered = [...component].sort((left, right) => {
+      const degreeDelta = (relationDegree.get(right.id) || 0) - (relationDegree.get(left.id) || 0);
+      if (Math.abs(degreeDelta) > 0.001) return degreeDelta;
+      if (left.virtual !== right.virtual) return left.virtual ? 1 : -1;
+      return (left.title || left.id).localeCompare(right.title || right.id);
+    });
+
+    ordered.forEach((node, localIndex) => {
+      const localAngle = rotation + localIndex * goldenAngle;
+      const localRadius = localIndex === 0
+        ? 0
+        : 18 + Math.sqrt(localIndex) * (node.virtual ? localGap * 0.78 : localGap);
+      positions.set(node.id, {
+        x: (centerX + Math.cos(localAngle) * localRadius) * layoutStretchX,
+        y: centerY + Math.sin(localAngle) * localRadius,
+      });
+    });
+  });
+
+  return positions;
 }
 
 function formatNumber(value?: number | null) {
@@ -292,9 +727,13 @@ function initialPosition(
   index: number,
   total: number,
   cached?: { x: number; y: number },
+  seeded?: { x: number; y: number },
 ) {
   if (cached && Number.isFinite(cached.x) && Number.isFinite(cached.y)) {
     return cached;
+  }
+  if (seeded && Number.isFinite(seeded.x) && Number.isFinite(seeded.y)) {
+    return seeded;
   }
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
   const clusterSeed = graphClusterKey(node);
@@ -326,6 +765,30 @@ function sizeForNode(node: VectorStorageNode, degree: number) {
   return Math.min(8.5, 3.2 + degreeBoost * 0.5 + (node.primaryName ? 0.8 : 0));
 }
 
+function cappedDenseNodeSize(node: VectorStorageNode, baseSize: number, graphOrder: number) {
+  if (graphOrder >= HUGE_GRAPH_THRESHOLD) {
+    if (node.kind === "file") return Math.min(baseSize, 1.7);
+    if (node.virtual) return Math.min(baseSize, 1.35);
+    return Math.min(baseSize, 1.25);
+  }
+  if (graphOrder >= 6000) {
+    if (node.kind === "file") return Math.min(baseSize, 2.75);
+    if (node.virtual) return Math.min(baseSize, 2.55);
+    return Math.min(baseSize, 2.45);
+  }
+  if (graphOrder >= 3000) {
+    if (node.kind === "file") return Math.min(baseSize, 3.5);
+    if (node.virtual) return Math.min(baseSize, 3.15);
+    return Math.min(baseSize, 3);
+  }
+  if (graphOrder >= DENSE_GRAPH_THRESHOLD) {
+    if (node.kind === "file") return Math.min(baseSize, 4.5);
+    if (node.virtual) return Math.min(baseSize, 4);
+    return Math.min(baseSize, 3.8);
+  }
+  return baseSize;
+}
+
 function buildSigmaGraph(
   nodes: VectorStorageNode[],
   edges: VectorStorageEdge[],
@@ -338,6 +801,7 @@ function buildSigmaGraph(
   });
   const nodeIds = new Set(nodes.map((node) => node.id));
   const degreeById = new Map<string, number>();
+  const layoutPositions = computeRelationLayoutPositions(nodes, edges);
 
   edges.forEach((edge) => {
     if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target) || edge.source === edge.target) {
@@ -348,7 +812,13 @@ function buildSigmaGraph(
   });
 
   nodes.forEach((node, index) => {
-    const position = initialPosition(node, index, nodes.length, positions.get(node.id));
+    const position = initialPosition(
+      node,
+      index,
+      nodes.length,
+      positions.get(node.id),
+      layoutPositions.get(node.id),
+    );
     const degree = degreeById.get(node.id) || 0;
     graph.addNode(node.id, {
       label: node.title || "Vector point",
@@ -376,7 +846,7 @@ function buildSigmaGraph(
     graph.addUndirectedEdgeWithKey(edge.id, edge.source, edge.target, {
       label: style.label,
       size: style.size,
-      weight: Math.max(0.1, edge.weight || 1),
+      weight: Math.max(0.1, (edge.weight || 1) * layoutEdgeWeight(edge.kind)),
       color: style.color,
       kind: edge.kind,
       raw: edge,
@@ -393,9 +863,9 @@ function buildSigmaGraph(
           ...forceAtlas2.inferSettings(graph.order),
           barnesHutOptimize: graph.order > 180,
           adjustSizes: true,
-          edgeWeightInfluence: 0.65,
-          gravity: 0.18,
-          scalingRatio: graph.order > 280 ? 22 : 15,
+          edgeWeightInfluence: 0.95,
+          gravity: 0.12,
+          scalingRatio: graph.order > 1200 ? 30 : graph.order > 280 ? 22 : 15,
           slowDown: 14,
         },
       });
@@ -496,6 +966,10 @@ export function VectorStorageExplorer({
 
   const selectedBranch = filters.branches?.[0] || "__all__";
   const selectedLanguage = filters.languages?.[0] || "__all__";
+  const nodeById = useMemo(
+    () => new Map(nodes.map((node) => [node.id, node])),
+    [nodes],
+  );
   const realNodeCount = useMemo(
     () => nodes.filter((node) => !node.virtual).length,
     [nodes],
@@ -559,6 +1033,9 @@ export function VectorStorageExplorer({
           return;
         }
 
+        if (!append) {
+          positionsRef.current.clear();
+        }
         setNodes((prev) =>
           append ? mergeNodes(prev, response.nodes || []) : response.nodes || [],
         );
@@ -737,15 +1214,15 @@ export function VectorStorageExplorer({
       layoutTimerRef.current = null;
       try {
         forceAtlas2.assign(graph, {
-          iterations: graph.order > 420 ? 10 : graph.order > 260 ? 14 : 20,
+          iterations: graph.order > 1600 ? 5 : graph.order > 900 ? 7 : graph.order > 420 ? 10 : graph.order > 260 ? 14 : 20,
           getEdgeWeight: "weight",
           settings: {
             ...forceAtlas2.inferSettings(graph.order),
             adjustSizes: true,
             barnesHutOptimize: graph.order > 180,
-            edgeWeightInfluence: 0.65,
-            gravity: 0.18,
-            scalingRatio: graph.order > 300 ? 22 : 15,
+            edgeWeightInfluence: 0.95,
+            gravity: 0.12,
+            scalingRatio: graph.order > 1200 ? 30 : graph.order > 300 ? 22 : 15,
             slowDown: 14,
           },
         });
@@ -813,6 +1290,7 @@ export function VectorStorageExplorer({
         defaultEdgeType: "line",
         defaultNodeColor: "#6ee7b7",
         defaultEdgeColor: graphTheme.defaultEdgeColor,
+        defaultDrawNodeHover: drawVectorNodeHover,
         enableEdgeEvents: false,
         hideEdgesOnMove: graph.order > 700,
         hideLabelsOnMove: true,
@@ -914,11 +1392,14 @@ export function VectorStorageExplorer({
         const graphAttributes = graph.getNodeAttributes(node);
         const baseSize =
           Number.isFinite(data.size) && data.size > 0 ? data.size : graphAttributes.size || 5;
+        const displaySize = cappedDenseNodeSize(graphAttributes.raw, baseSize, graph.order);
         const reduced: SigmaNodeAttributes = {
           ...data,
           x: Number.isFinite(data.x) ? data.x : graphAttributes.x,
           y: Number.isFinite(data.y) ? data.y : graphAttributes.y,
-          size: hugeGraph ? Math.min(baseSize, graphAttributes.raw.virtual ? 4.2 : 2.8) : baseSize,
+          size: hugeGraph
+            ? Math.min(displaySize, graphAttributes.raw.virtual ? 3.4 : 2.8)
+            : displaySize,
           labelColor: graphTheme.labelColor,
         };
 
@@ -962,6 +1443,16 @@ export function VectorStorageExplorer({
             reduced.hidden = true;
           } else if (denseGraph && data.kind === "file_sequence") {
             reduced.hidden = true;
+          } else if (denseGraph && data.kind === "imports") {
+            reduced.color = graphTheme.isDark
+              ? "rgba(245, 158, 11, 0.1)"
+              : "rgba(180, 83, 9, 0.09)";
+            reduced.size = Math.min(reduced.size, graph.order >= 6000 ? 0.22 : 0.36);
+          } else if (denseGraph && data.kind === "file_contains") {
+            reduced.color = graphTheme.isDark
+              ? "rgba(100, 116, 139, 0.1)"
+              : "rgba(71, 85, 105, 0.09)";
+            reduced.size = Math.min(reduced.size, 0.22);
           }
           return reduced;
         }
@@ -987,7 +1478,7 @@ export function VectorStorageExplorer({
       },
     });
     renderer.refresh();
-  }, [denseGraph, edges.length, graphTheme.activeLabelColor, graphTheme.inactiveEdgeColor, graphTheme.inactiveNodeColor, graphTheme.labelColor, hoveredNodeId, hugeGraph, nodes.length, selectedNode?.id]);
+  }, [denseGraph, edges.length, graphTheme.activeLabelColor, graphTheme.inactiveEdgeColor, graphTheme.inactiveNodeColor, graphTheme.isDark, graphTheme.labelColor, hoveredNodeId, hugeGraph, nodes.length, selectedNode?.id]);
 
   const metricItems = [
     {
@@ -1015,6 +1506,20 @@ export function VectorStorageExplorer({
   const selectedMetadata = selectedNode?.metadata
     ? Object.entries(selectedNode.metadata).filter(([, value]) => value !== null && value !== "")
     : [];
+  const selectedRelations = useMemo(
+    () =>
+      selectedNode
+        ? edges
+            .filter((edge) => edge.source === selectedNode.id || edge.target === selectedNode.id)
+            .sort((left, right) => {
+              const leftWeight = left.weight || 0;
+              const rightWeight = right.weight || 0;
+              return rightWeight - leftWeight;
+            })
+            .slice(0, 36)
+        : [],
+    [edges, selectedNode],
+  );
 
   const activeFilterCount = [
     filters.branches?.length,
@@ -1584,17 +2089,17 @@ export function VectorStorageExplorer({
               </div>
 
               {selectedNode && (
-                <aside className="absolute bottom-4 right-4 top-4 z-30 flex w-[min(480px,calc(100%-2rem))] min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white/95 text-slate-900 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[rgba(17,24,39,0.94)] dark:text-slate-100">
+                <aside className="absolute bottom-4 right-4 top-4 z-30 flex w-[min(520px,calc(100%-2rem))] min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white/95 text-slate-900 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[rgba(17,24,39,0.94)] dark:text-slate-100">
                   <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <Split className="h-4 w-4 text-primary" />
                         <div className="text-sm font-medium">Point Inspector</div>
                       </div>
-                      <h3 className="mt-3 truncate text-base font-semibold">
+                      <h3 className="mt-3 break-words text-base font-semibold [overflow-wrap:anywhere]">
                         {selectedNode.title}
                       </h3>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-1 break-words text-xs text-slate-500 [overflow-wrap:anywhere] dark:text-slate-400">
                         {nodeSubtitle(selectedNode)}
                       </p>
                     </div>
@@ -1627,45 +2132,45 @@ export function VectorStorageExplorer({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
+                      <div className="grid min-w-0 grid-cols-2 gap-2 text-xs">
+                        <div className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
                           <div className="text-slate-500 dark:text-slate-400">Branch</div>
-                          <div className="mt-1 truncate font-medium">
+                          <div className="mt-1 break-words font-medium [overflow-wrap:anywhere]">
                             {selectedNode.branch || "-"}
                           </div>
                         </div>
-                        <div className="rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
+                        <div className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
                           <div className="text-slate-500 dark:text-slate-400">Language</div>
-                          <div className="mt-1 truncate font-medium">
+                          <div className="mt-1 break-words font-medium [overflow-wrap:anywhere]">
                             {selectedNode.language || selectedNode.filetype || "-"}
                           </div>
                         </div>
-                        <div className="col-span-2 rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
+                        <div className="col-span-2 min-w-0 rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
                           <div className="text-slate-500 dark:text-slate-400">File</div>
-                          <div className="mt-1 break-all font-medium">
+                          <div className="mt-1 max-w-full break-words font-medium [overflow-wrap:anywhere]">
                             {selectedNode.path || "-"}
                           </div>
                         </div>
-                        <div className="rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
+                        <div className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
                           <div className="text-slate-500 dark:text-slate-400">Lines</div>
-                          <div className="mt-1 font-medium">
+                          <div className="mt-1 break-words font-medium [overflow-wrap:anywhere]">
                             {selectedNode.startLine || "-"}
                             {selectedNode.endLine ? `-${selectedNode.endLine}` : ""}
                           </div>
                         </div>
-                        <div className="rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
+                        <div className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-white/10 dark:bg-white/[0.04]">
                           <div className="text-slate-500 dark:text-slate-400">Chunk</div>
-                          <div className="mt-1 font-medium">
+                          <div className="mt-1 break-words font-medium [overflow-wrap:anywhere]">
                             {selectedNode.chunkIndex ?? selectedNode.subChunkIndex ?? "-"}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/10"
+                          className="min-w-[120px] flex-1 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/10"
                           onClick={() => focusNode(selectedNode.id)}
                         >
                           <MousePointer2 className="h-4 w-4" />
@@ -1677,7 +2182,7 @@ export function VectorStorageExplorer({
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/10"
+                            className="min-w-[120px] flex-1 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/10"
                             onClick={filterToNode}
                           >
                             <Filter className="h-4 w-4" />
@@ -1688,7 +2193,7 @@ export function VectorStorageExplorer({
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/10"
+                            className="min-w-[120px] flex-1 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/10"
                             onClick={() => loadPoint(selectedNode, true)}
                             disabled={loadingNode}
                           >
@@ -1719,7 +2224,7 @@ export function VectorStorageExplorer({
                               <Badge
                                 key={name}
                                 variant="secondary"
-                                className="cursor-pointer"
+                                className="max-w-full cursor-pointer break-words [overflow-wrap:anywhere]"
                                 onClick={() =>
                                   applyFilters({
                                     ...filtersRef.current,
@@ -1730,6 +2235,47 @@ export function VectorStorageExplorer({
                                 {name}
                               </Badge>
                             ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedRelations.length > 0 && (
+                        <div>
+                          <div className="mb-2 text-sm font-medium">Relations</div>
+                          <div className="space-y-1.5">
+                            {selectedRelations.map((edge) => {
+                              const outgoing = edge.source === selectedNode.id;
+                              const otherNode = nodeById.get(outgoing ? edge.target : edge.source);
+                              const style = EDGE_STYLE[edge.kind] || {
+                                color: "rgba(148, 163, 184, 0.5)",
+                                label: edgeLabel(edge.kind),
+                                size: 1,
+                              };
+                              return (
+                                <div
+                                  key={edge.id}
+                                  className="min-w-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs dark:border-white/10 dark:bg-white/[0.04]"
+                                >
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span
+                                      className="h-2 w-5 shrink-0 rounded-full"
+                                      style={{ backgroundColor: style.color }}
+                                    />
+                                    <Badge variant="outline" className="shrink-0 border-slate-300 text-[10px] dark:border-white/20">
+                                      {style.label}
+                                    </Badge>
+                                    <span className="min-w-0 break-words text-slate-600 [overflow-wrap:anywhere] dark:text-slate-300">
+                                      {outgoing ? "to" : "from"} {compactNodeTitle(otherNode)}
+                                    </span>
+                                  </div>
+                                  {(edge.tokens || []).length > 0 && (
+                                    <div className="mt-1 min-w-0 break-words pl-7 text-slate-500 [overflow-wrap:anywhere] dark:text-slate-400">
+                                      {(edge.tokens || []).slice(0, 4).join(", ")}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -1748,9 +2294,9 @@ export function VectorStorageExplorer({
                             {selectedMetadata.slice(0, 42).map(([key, value]) => (
                               <div
                                 key={key}
-                                className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs dark:border-white/10 dark:bg-white/[0.04]"
+                                className="min-w-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs dark:border-white/10 dark:bg-white/[0.04]"
                               >
-                                <div className="font-medium text-slate-500 dark:text-slate-400">{key}</div>
+                                <div className="break-words font-medium text-slate-500 [overflow-wrap:anywhere] dark:text-slate-400">{key}</div>
                                 <div className="mt-1 whitespace-pre-wrap break-words text-slate-800 [overflow-wrap:anywhere] dark:text-slate-200">
                                   {metricValue(value)}
                                 </div>
