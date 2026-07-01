@@ -73,9 +73,9 @@ export interface QaAutoDocConfigRequest {
 }
 
 export interface TaskCommentVisibility {
-  type: "group";
+  type: "group" | "role";
   identifier: string;
-  value: string;
+  value?: string | null;
   displayName?: string | null;
 }
 

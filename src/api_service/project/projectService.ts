@@ -282,6 +282,93 @@ export interface RagStatusResponse {
   canStartIndexing: boolean;
 }
 
+export interface VectorStorageMetric {
+  value: string | number;
+  count: number;
+}
+
+export interface VectorStorageOverview {
+  available: boolean;
+  reason?: string;
+  workspace?: string;
+  project?: string;
+  collection?: string;
+  totalPoints?: number;
+  sampledPoints?: number;
+  scannedPoints?: number;
+  sampled?: boolean;
+  branches?: VectorStorageMetric[];
+  languages?: VectorStorageMetric[];
+  files?: VectorStorageMetric[];
+  prNumbers?: VectorStorageMetric[];
+  semanticNames?: VectorStorageMetric[];
+}
+
+export interface VectorStorageFilters {
+  branches?: string[];
+  languages?: string[];
+  path?: string;
+  fileQuery?: string;
+  semanticQuery?: string;
+  prNumber?: number | null;
+  includePr?: boolean;
+}
+
+export interface VectorStorageNode {
+  id: string;
+  title: string;
+  kind: string;
+  group: string;
+  branch?: string | null;
+  path?: string | null;
+  language?: string | null;
+  filetype?: string | null;
+  prNumber?: number | null;
+  startLine?: number | null;
+  endLine?: number | null;
+  chunkIndex?: number | null;
+  subChunkIndex?: number | null;
+  primaryName?: string | null;
+  semanticNames?: string[];
+  parentClass?: string | null;
+  fullPath?: string | null;
+  namespace?: string | null;
+  signature?: string | null;
+  indexedAt?: string | null;
+  preview?: string;
+  text?: string;
+  virtual?: boolean;
+  metricCount?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface VectorStorageEdge {
+  id: string;
+  source: string;
+  target: string;
+  kind: string;
+  weight?: number;
+  tokens?: string[];
+}
+
+export interface VectorStorageGraphResponse {
+  available: boolean;
+  reason?: string;
+  nodes: VectorStorageNode[];
+  edges: VectorStorageEdge[];
+  nextCursor?: string | null;
+  scannedPoints?: number;
+  limit?: number;
+}
+
+export interface VectorStoragePointResponse {
+  node?: VectorStorageNode;
+  neighbors?: VectorStorageNode[];
+  edges?: VectorStorageEdge[];
+  available?: boolean;
+  reason?: string;
+}
+
 export interface ProjectListResponse {
   projects: ProjectDTO[];
   page: number;
@@ -609,6 +696,56 @@ class ProjectService extends ApiService {
     return this.request<RagStatusResponse>(
       `/${workspaceSlug}/project/${namespace}/rag/status`,
       {},
+      true,
+    );
+  }
+
+  async getVectorStorageOverview(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<VectorStorageOverview> {
+    return this.request<VectorStorageOverview>(
+      `/${workspaceSlug}/project/${namespace}/rag/vector-storage/overview`,
+      {},
+      true,
+    );
+  }
+
+  async getVectorStorageGraph(
+    workspaceSlug: string,
+    namespace: string,
+    request: {
+      filters?: VectorStorageFilters;
+      limit?: number;
+      cursor?: string | null;
+      scanLimit?: number;
+    },
+  ): Promise<VectorStorageGraphResponse> {
+    return this.request<VectorStorageGraphResponse>(
+      `/${workspaceSlug}/project/${namespace}/rag/vector-storage/graph`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      },
+      true,
+    );
+  }
+
+  async getVectorStoragePoint(
+    workspaceSlug: string,
+    namespace: string,
+    pointId: string,
+    request: {
+      filters?: VectorStorageFilters;
+      neighborLimit?: number;
+    },
+  ): Promise<VectorStoragePointResponse> {
+    return this.request<VectorStoragePointResponse>(
+      `/${workspaceSlug}/project/${namespace}/rag/vector-storage/points/${encodeURIComponent(pointId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify(request),
+      },
       true,
     );
   }

@@ -838,7 +838,7 @@ export default function ProjectConfiguration() {
     { id: "quality-gate", label: "Quality Gate", icon: Shield },
     { id: "ai", label: "AI Connections", icon: Cpu },
     { id: "rag", label: "RAG Indexing", icon: Database },
-    { id: "tasks", label: "Task Management", icon: ListTodo },
+    { id: "tasks", label: "QA Auto-Documentation", icon: ListTodo },
     ...(canGenerateTokens()
       ? [{ id: "tokens", label: "API Tokens", icon: KeyRound }]
       : []),
@@ -1990,7 +1990,7 @@ export default function ProjectConfiguration() {
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
+                      "w-full flex items-start gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors text-left",
                       isActive
                         ? item.danger
                           ? "bg-destructive/10 text-destructive"
@@ -2000,8 +2000,10 @@ export default function ProjectConfiguration() {
                           : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{item.label}</span>
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="min-w-0 whitespace-normal break-words leading-snug">
+                      {item.label}
+                    </span>
                   </button>
                 );
               })}

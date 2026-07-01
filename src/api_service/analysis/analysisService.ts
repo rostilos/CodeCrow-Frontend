@@ -298,6 +298,16 @@ export interface SourceAvailabilityResponse {
   prNumbers: number[];
 }
 
+export interface QaDocDocumentResponse {
+  available: boolean;
+  prNumber: number;
+  taskId?: string | null;
+  lastAnalysisId?: number | null;
+  commitHash?: string | null;
+  markdownContent?: string | null;
+  generatedAt?: string | null;
+}
+
 class AnalysisService extends ApiService {
   async updateIssueStatus(
     workspaceSlug: string,
@@ -962,6 +972,18 @@ class AnalysisService extends ApiService {
   ): Promise<SourceAvailabilityResponse> {
     return this.request<SourceAvailabilityResponse>(
       `/${workspaceSlug}/project/${namespace}/analysis/source-availability`,
+      {},
+      true,
+    );
+  }
+
+  async getLatestQaDoc(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+  ): Promise<QaDocDocumentResponse> {
+    return this.request<QaDocDocumentResponse>(
+      `/${workspaceSlug}/project/${namespace}/pull-requests/${prNumber}/qa-doc`,
       {},
       true,
     );

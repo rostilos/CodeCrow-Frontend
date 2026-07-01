@@ -31,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -53,6 +54,9 @@ import {
 const providerUsesMetadata = (provider: AIProviderKey) =>
   provider === "OPENAI_COMPATIBLE" || provider === "GOOGLE_VERTEX";
 
+const providerSupportsCustomParameters = (provider: AIProviderKey) =>
+  provider === "OPENAI_COMPATIBLE";
+
 const getProviderMetadataLabel = (provider: AIProviderKey) =>
   provider === "GOOGLE_VERTEX"
     ? "Vertex Project / Location"
@@ -70,6 +74,27 @@ const getCredentialPlaceholder = (provider: AIProviderKey) =>
   provider === "GOOGLE_VERTEX"
     ? "Vertex API key, ADC, or service-account JSON"
     : "Enter your API key";
+
+const normalizeCustomParameters = (
+  provider: AIProviderKey,
+  value?: string | null,
+) => {
+  if (!providerSupportsCustomParameters(provider)) {
+    return undefined;
+  }
+
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(trimmed);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Custom parameters must be a JSON object");
+  }
+
+  return JSON.stringify(parsed);
+};
 
 export default function AISettings() {
   const { currentWorkspace } = useWorkspace();
@@ -145,6 +170,22 @@ export default function AISettings() {
       return;
     }
 
+    let customParameters: string | undefined;
+    try {
+      customParameters = normalizeCustomParameters(
+        newConnection.providerKey,
+        newConnection.customParameters,
+      );
+    } catch (error: any) {
+      toast({
+        title: "Validation Error",
+        description:
+          error.message || "Custom parameters must be a valid JSON object",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setCreating(true);
       const payload: CreateAIConnectionRequest = {
@@ -152,6 +193,7 @@ export default function AISettings() {
         baseUrl: providerUsesMetadata(newConnection.providerKey)
           ? newConnection.baseUrl?.trim() || undefined
           : undefined,
+        customParameters,
       };
       await aiConnectionService.createConnection(
         currentWorkspace!.slug,
@@ -168,6 +210,7 @@ export default function AISettings() {
         aiModel: "",
         apiKey: "",
         baseUrl: "",
+        customParameters: "",
       });
       await loadConnections();
     } catch (error: any) {
@@ -250,6 +293,22 @@ export default function AISettings() {
       return;
     }
 
+    let customParameters: string | undefined;
+    try {
+      customParameters = normalizeCustomParameters(
+        editingConnection.providerKey,
+        editingConnection.customParameters,
+      );
+    } catch (error: any) {
+      toast({
+        title: "Validation Error",
+        description:
+          error.message || "Custom parameters must be a valid JSON object",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setEditing(true);
       await aiConnectionService.updateConnection(
@@ -263,6 +322,7 @@ export default function AISettings() {
           baseUrl: providerUsesMetadata(editingConnection.providerKey)
             ? editingConnection.baseUrl?.trim() || undefined
             : undefined,
+          customParameters,
         },
       );
       toast({
@@ -503,12 +563,17 @@ export default function AISettings() {
                         <Label htmlFor="provider">AI Provider</Label>
                         <Select
                           value={newConnection.providerKey}
-                          onValueChange={(value: any) =>
+                          onValueChange={(value) => {
+                            const provider = value as AIProviderKey;
                             setNewConnection({
                               ...newConnection,
-                              providerKey: value,
-                            })
-                          }
+                              providerKey: provider,
+                              customParameters:
+                                provider === "OPENAI_COMPATIBLE"
+                                  ? newConnection.customParameters
+                                  : "",
+                            });
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -554,6 +619,34 @@ export default function AISettings() {
                             {newConnection.providerKey === "GOOGLE_VERTEX"
                               ? "Optional for Vertex API-key express mode or service-account JSON with project_id. Use project/location for ADC or regional Vertex calls."
                               : "The base URL of your OpenAI-compatible API endpoint (e.g. vLLM, Ollama, Cloudflare Workers AI). HTTPS is required for non-private endpoints."}
+                          </p>
+                        </div>
+                      )}
+                      {providerSupportsCustomParameters(
+                        newConnection.providerKey,
+                      ) && (
+                        <div>
+                          <Label htmlFor="customParameters">
+                            Custom Parameters JSON
+                          </Label>
+                          <Textarea
+                            id="customParameters"
+                            autoComplete="off"
+                            value={newConnection.customParameters || ""}
+                            onChange={(e) =>
+                              setNewConnection({
+                                ...newConnection,
+                                customParameters: e.target.value,
+                              })
+                            }
+                            placeholder='{"top_p":0.9,"extra_body":{"reasoning":{"effort":"low"}}}'
+                            className="min-h-28 font-mono text-xs"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Optional JSON object for provider-specific
+                            OpenAI-compatible request parameters. Supports
+                            direct keys plus model_kwargs, extra_body,
+                            default_headers, and constructor_kwargs.
                           </p>
                         </div>
                       )}
@@ -642,12 +735,17 @@ export default function AISettings() {
                           <Label htmlFor="edit-provider">AI Provider</Label>
                           <Select
                             value={editingConnection.providerKey}
-                            onValueChange={(value: any) =>
+                            onValueChange={(value) => {
+                              const provider = value as AIProviderKey;
                               setEditingConnection({
                                 ...editingConnection,
-                                providerKey: value,
-                              })
-                            }
+                                providerKey: provider,
+                                customParameters:
+                                  provider === "OPENAI_COMPATIBLE"
+                                    ? editingConnection.customParameters
+                                    : "",
+                              });
+                            }}
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -697,6 +795,34 @@ export default function AISettings() {
                               {editingConnection.providerKey === "GOOGLE_VERTEX"
                                 ? "Optional for Vertex API-key express mode or service-account JSON with project_id. Use project/location for ADC or regional Vertex calls."
                                 : "The base URL of your OpenAI-compatible API endpoint. HTTPS is required for non-private endpoints."}
+                            </p>
+                          </div>
+                        )}
+                        {providerSupportsCustomParameters(
+                          editingConnection.providerKey,
+                        ) && (
+                          <div>
+                            <Label htmlFor="edit-customParameters">
+                              Custom Parameters JSON
+                            </Label>
+                            <Textarea
+                              id="edit-customParameters"
+                              autoComplete="off"
+                              value={editingConnection.customParameters || ""}
+                              onChange={(e) =>
+                                setEditingConnection({
+                                  ...editingConnection,
+                                  customParameters: e.target.value,
+                                })
+                              }
+                              placeholder='{"top_p":0.9,"extra_body":{"reasoning":{"effort":"low"}}}'
+                              className="min-h-28 font-mono text-xs"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Optional JSON object for provider-specific
+                              OpenAI-compatible request parameters. Supports
+                              direct keys plus model_kwargs, extra_body,
+                              default_headers, and constructor_kwargs.
                             </p>
                           </div>
                         )}
@@ -872,6 +998,15 @@ export default function AISettings() {
                               </span>
                             </div>
                           )}
+                          {connection.providerKey === "OPENAI_COMPATIBLE" &&
+                            connection.customParameters && (
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground font-medium">
+                                  Custom params
+                                </span>
+                                <span className="font-semibold">Configured</span>
+                              </div>
+                            )}
                         </div>
 
                         {canManageWorkspace() && (
