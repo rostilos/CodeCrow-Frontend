@@ -573,8 +573,8 @@ export default function TaskSettings() {
                   </h3>
                   <p className="text-muted-foreground max-w-md mx-auto">
                     Support for Jira Data Center (self-hosted) is on our
-                    roadmap. It will support the same QA auto-documentation
-                    and dashboard QA Doc features as Jira Cloud.
+                    roadmap. It will support the same QA auto-documentation and
+                    dashboard QA Doc features as Jira Cloud.
                   </p>
                 </CardContent>
               </Card>
