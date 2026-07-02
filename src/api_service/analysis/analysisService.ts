@@ -562,10 +562,14 @@ class AnalysisService extends ApiService {
     workspaceSlug: string,
     namespace: string,
     timeframeDays?: number,
+    branch?: string,
   ): Promise<AnalysisTrendData[]> {
     const params = new URLSearchParams();
     if (timeframeDays !== undefined) {
       params.append("timeframeDays", timeframeDays.toString());
+    }
+    if (branch) {
+      params.append("branch", branch);
     }
     const queryString = params.toString();
     return this.request<AnalysisTrendData[]>(
