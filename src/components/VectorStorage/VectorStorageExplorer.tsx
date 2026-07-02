@@ -174,6 +174,7 @@ const DENSE_GRAPH_THRESHOLD = 1500;
 const HUGE_GRAPH_THRESHOLD = 12000;
 const MAX_SYNC_LAYOUT_NODES = 2200;
 const MAX_LAYOUT_EDGE_COUNT = 80000;
+const INACTIVE_NODE_OPACITY = 0.45;
 const STRONG_LAYOUT_EDGE_KINDS = new Set([
   "extends",
   "implements",
@@ -188,7 +189,6 @@ type ResolvedGraphTheme = {
   isDark: boolean;
   labelColor: string;
   activeLabelColor: string;
-  inactiveNodeColor: string;
   inactiveEdgeColor: string;
   defaultEdgeColor: string;
 };
@@ -201,7 +201,6 @@ function getResolvedGraphTheme(): ResolvedGraphTheme {
         isDark: true,
         labelColor: "#e5e7eb",
         activeLabelColor: "#0f172a",
-        inactiveNodeColor: "rgba(148, 163, 184, 0.5)",
         inactiveEdgeColor: "rgba(94, 121, 150, 0.24)",
         defaultEdgeColor: "rgba(148, 163, 184, 0.3)",
       }
@@ -209,7 +208,6 @@ function getResolvedGraphTheme(): ResolvedGraphTheme {
         isDark: false,
         labelColor: "#0f172a",
         activeLabelColor: "#0f172a",
-        inactiveNodeColor: "rgba(71, 85, 105, 0.46)",
         inactiveEdgeColor: "rgba(71, 85, 105, 0.2)",
         defaultEdgeColor: "rgba(71, 85, 105, 0.32)",
       };
@@ -277,6 +275,41 @@ function colorForNode(node: VectorStorageNode) {
   const style = NODE_KIND_STYLE[node.kind];
   if (style) return style.color;
   return NODE_PALETTE[hashIndex(node.group || node.language || node.id, NODE_PALETTE.length)];
+}
+
+function colorWithOpacity(color: string | undefined, opacity: number) {
+  if (!color) return `rgba(148, 163, 184, ${opacity})`;
+
+  const value = color.trim();
+  if (value.startsWith("#")) {
+    const rawHex = value.slice(1);
+    const hex =
+      rawHex.length === 3
+        ? rawHex
+            .split("")
+            .map((part) => `${part}${part}`)
+            .join("")
+        : rawHex.slice(0, 6);
+
+    if (hex.length === 6) {
+      const red = Number.parseInt(hex.slice(0, 2), 16);
+      const green = Number.parseInt(hex.slice(2, 4), 16);
+      const blue = Number.parseInt(hex.slice(4, 6), 16);
+      if ([red, green, blue].every(Number.isFinite)) {
+        return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+      }
+    }
+  }
+
+  const rgbMatch = value.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgbMatch) {
+    const [red, green, blue] = rgbMatch[1].split(",").map((part) => part.trim());
+    if (red && green && blue) {
+      return `rgba(${red}, ${green}, ${blue}, ${opacity})`;
+    }
+  }
+
+  return value;
 }
 
 function graphClusterKey(node: VectorStorageNode) {
@@ -1410,7 +1443,10 @@ export function VectorStorageExplorer({
         }
 
         if (active && !isActive && !isNeighbor) {
-          reduced.color = graphTheme.inactiveNodeColor;
+          reduced.color = colorWithOpacity(
+            data.color || graphAttributes.color || colorForNode(graphAttributes.raw),
+            INACTIVE_NODE_OPACITY,
+          );
           reduced.size = Math.max(2.2, reduced.size * 0.82);
           reduced.label = "";
           reduced.zIndex = 0;
@@ -1478,7 +1514,7 @@ export function VectorStorageExplorer({
       },
     });
     renderer.refresh();
-  }, [denseGraph, edges.length, graphTheme.activeLabelColor, graphTheme.inactiveEdgeColor, graphTheme.inactiveNodeColor, graphTheme.isDark, graphTheme.labelColor, hoveredNodeId, hugeGraph, nodes.length, selectedNode?.id]);
+  }, [denseGraph, edges.length, graphTheme.activeLabelColor, graphTheme.inactiveEdgeColor, graphTheme.isDark, graphTheme.labelColor, hoveredNodeId, hugeGraph, nodes.length, selectedNode?.id]);
 
   const metricItems = [
     {
