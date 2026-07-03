@@ -114,7 +114,7 @@ export default function DetailedProjectStats({
             try {
                 setIsLoadingTrend(true);
                 if (chartType === 'resolved') {
-                    const data = await analysisService.getAnalysisTrends(workspaceSlug, projectNamespace, timeframe);
+                    const data = await analysisService.getAnalysisTrends(workspaceSlug, projectNamespace, timeframe, branchName);
                     setTrendData(data);
                     trendDataCache.set(cacheKey, { data, timestamp: Date.now() });
                 } else {
@@ -122,6 +122,8 @@ export default function DetailedProjectStats({
                         const data = await analysisService.getBranchIssuesTrend(workspaceSlug, projectNamespace, branchName, undefined, timeframe);
                         setIssuesTrendData(data);
                         trendDataCache.set(cacheKey, { data, timestamp: Date.now() });
+                    } else {
+                        setIssuesTrendData([]);
                     }
                 }
             } catch (error) {
@@ -536,12 +538,16 @@ export default function DetailedProjectStats({
                                 <div>
                                     <CardTitle className="text-base flex items-center gap-2">
                                         <BarChart3 className="h-4 w-4" />
-                                        Analysis Trend (PRs to {branchName || 'all branches'})
+                                        Analysis Trend ({branchName || 'all branches'})
                                     </CardTitle>
                                     <CardDescription className="text-xs mt-1">
                                         {chartType === 'resolved'
-                                            ? 'Issue resolution rates from PR analyses'
-                                            : 'Issues found in PR analyses over time'}
+                                            ? branchName
+                                                ? 'Branch issue resolution rate over time'
+                                                : 'Issue resolution rates from analyses'
+                                            : branchName
+                                                ? 'Open branch issues over time'
+                                                : 'Issues found in analyses over time'}
                                     </CardDescription>
                                 </div>
                                 <div className="flex items-center gap-2">
