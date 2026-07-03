@@ -48,6 +48,7 @@ import {
   RefreshCw,
   Edit,
   Server,
+  Star,
 } from "lucide-react";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useToast } from "@/hooks/use-toast";
@@ -222,6 +223,7 @@ export default function TaskSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState<number | null>(null);
+  const [settingDefault, setSettingDefault] = useState<number | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingConnection, setEditingConnection] =
     useState<TaskManagementConnectionResponse | null>(null);
@@ -352,6 +354,35 @@ export default function TaskSettings() {
     }
   };
 
+  const handleSetDefault = async (conn: TaskManagementConnectionResponse) => {
+    if (!currentWorkspace) return;
+    try {
+      setSettingDefault(conn.id);
+      const updated = await taskManagementService.setDefaultConnection(
+        currentWorkspace.slug,
+        conn.id,
+      );
+      setConnections((prev) =>
+        prev.map((connection) => ({
+          ...connection,
+          defaultConnection: connection.id === updated.id,
+        })),
+      );
+      toast({
+        title: "Default connection updated",
+        description: `"${conn.connectionName}" is now the workspace default.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to set default connection",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSettingDefault(null);
+    }
+  };
+
   return (
     <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
@@ -453,6 +484,12 @@ export default function TaskSettings() {
                             <CardTitle className="flex items-center gap-2 text-lg">
                               <Server className="h-5 w-5 text-primary" />
                               {conn.connectionName}
+                              {conn.defaultConnection && (
+                                <Badge variant="outline" className="gap-1">
+                                  <Star className="h-3 w-3" />
+                                  Default
+                                </Badge>
+                              )}
                             </CardTitle>
                             {statusBadge(conn.status)}
                           </div>
@@ -507,6 +544,23 @@ export default function TaskSettings() {
                                 className={`h-3.5 w-3.5 ${validating === conn.id ? "animate-spin" : ""}`}
                               />
                               {validating === conn.id ? "Testing…" : "Test"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5"
+                              onClick={() => handleSetDefault(conn)}
+                              disabled={
+                                conn.defaultConnection ||
+                                settingDefault === conn.id
+                              }
+                            >
+                              <Star className="h-3.5 w-3.5" />
+                              {settingDefault === conn.id
+                                ? "Saving..."
+                                : conn.defaultConnection
+                                  ? "Default"
+                                  : "Set Default"}
                             </Button>
                             <Button
                               variant="outline"

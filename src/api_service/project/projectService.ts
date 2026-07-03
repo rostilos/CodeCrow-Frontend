@@ -96,6 +96,23 @@ export interface ProjectDTO {
   maxAnalysisTokenLimit?: number | null;
   useMcpTools?: boolean | null;
   taskContextAnalysisEnabled?: boolean | null;
+  taskManagementConfig?: {
+    taskManagementConnectionId: number | null;
+    taskIdPattern: string | null;
+    taskIdSource: "BRANCH_NAME" | "PR_TITLE" | "PR_DESCRIPTION" | null;
+  } | null;
+  qaAutoDocConfig?: {
+    enabled: boolean;
+    templateMode: "RAW" | "BASE" | "CUSTOM" | null;
+    customTemplate: string | null;
+    outputLanguage: string | null;
+    commentVisibility: {
+      type: "group" | "role";
+      identifier: string;
+      value?: string | null;
+      displayName?: string | null;
+    } | null;
+  } | null;
   // other fields from ProjectDTO are allowed
   [key: string]: any;
 }

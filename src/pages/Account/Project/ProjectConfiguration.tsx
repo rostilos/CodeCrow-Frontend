@@ -87,6 +87,7 @@ import RagConfiguration from "@/components/RagConfiguration";
 import DangerZone from "@/components/Project/DangerZone";
 import CommentCommandsConfig from "@/components/CommentCommandsConfig";
 import CustomRulesConfig from "@/components/CustomRulesConfig";
+import ProjectTaskManagementConfiguration from "@/components/ProjectTaskManagementConfiguration";
 import QaAutoDocConfiguration from "@/components/QaAutoDocConfiguration";
 import { BranchSelector } from "@/components/BranchSelector";
 import {
@@ -359,6 +360,11 @@ export default function ProjectConfiguration() {
     const effectiveBranchAnalysisEnabled = project?.ragConfig?.enabled
       ? true
       : branchAnalysisEnabled;
+    const hasTaskManagementBinding =
+      project?.taskManagementConfig?.taskManagementConnectionId != null;
+    const effectiveTaskContextAnalysisEnabled = hasTaskManagementBinding
+      ? taskContextAnalysisEnabled
+      : false;
 
     setSavingAnalysisSettings(true);
     try {
@@ -371,7 +377,7 @@ export default function ProjectConfiguration() {
           installationMethod: project?.installationMethod || null,
           maxAnalysisTokenLimit,
           useMcpTools,
-          taskContextAnalysisEnabled,
+          taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
         },
       );
 
@@ -383,7 +389,7 @@ export default function ProjectConfiguration() {
           branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
           maxAnalysisTokenLimit,
           useMcpTools,
-          taskContextAnalysisEnabled,
+          taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
         });
       }
 
@@ -1479,7 +1485,9 @@ export default function ProjectConfiguration() {
           </div>
         );
 
-      case "analysis-scope":
+      case "analysis-scope": {
+        const hasTaskManagementBinding =
+          project?.taskManagementConfig?.taskManagementConnectionId != null;
         return (
           <div className="space-y-4">
             <Card>
@@ -1598,10 +1606,22 @@ export default function ProjectConfiguration() {
                     </div>
                   </div>
                   <Switch
-                    checked={taskContextAnalysisEnabled}
+                    checked={
+                      hasTaskManagementBinding && taskContextAnalysisEnabled
+                    }
                     onCheckedChange={setTaskContextAnalysisEnabled}
+                    disabled={!hasTaskManagementBinding}
                   />
                 </div>
+                {!hasTaskManagementBinding && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Bind a Jira connection in Project Settings → Task
+                      Management before enabling Jira Task Context.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <Button
                   onClick={handleSaveAnalysisSettings}
@@ -1628,6 +1648,7 @@ export default function ProjectConfiguration() {
             )}
           </div>
         );
+      }
 
       case "quality-gate":
         return (
@@ -1955,10 +1976,16 @@ export default function ProjectConfiguration() {
 
       case "tasks":
         return currentWorkspace && project ? (
-          <QaAutoDocConfiguration
-            project={project}
-            onUpdate={(updatedProject) => setProject(updatedProject)}
-          />
+          <div className="space-y-4">
+            <ProjectTaskManagementConfiguration
+              project={project}
+              onUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+            <QaAutoDocConfiguration
+              project={project}
+              onUpdate={(updatedProject) => setProject(updatedProject)}
+            />
+          </div>
         ) : null;
 
       case "tokens":
