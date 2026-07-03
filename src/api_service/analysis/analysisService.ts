@@ -729,6 +729,10 @@ class AnalysisService extends ApiService {
     completedAt?: string;
     totalIssues?: number;
     resolvedIssues?: number;
+    resolvedIssuesBefore?: number;
+    resolvedIssuesAfter?: number;
+    openIssuesBefore?: number;
+    openIssuesAfter?: number;
     filesChecked?: number;
     message?: string;
     error?: string;

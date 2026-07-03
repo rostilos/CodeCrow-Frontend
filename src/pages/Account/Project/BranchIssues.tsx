@@ -380,7 +380,9 @@ export default function BranchIssues() {
             setReconciling(false);
             toast({
               title: "Full reconciliation complete",
-              description: `${status.totalIssues ?? 0} total issues, ${status.resolvedIssues ?? 0} resolved across ${status.filesChecked ?? 0} files`,
+              description:
+                status.message ||
+                `${status.totalIssues ?? 0} open issues remaining, ${status.resolvedIssues ?? 0} newly resolved across ${status.filesChecked ?? 0} files`,
             });
             loadBranchData(filters, 1, false);
           } else if (status.status === "FAILED") {
