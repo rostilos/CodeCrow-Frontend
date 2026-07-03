@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -7,11 +7,9 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import {
   Select,
@@ -31,7 +29,6 @@ import {
   Save,
   FileText,
   AlertCircle,
-  CheckCircle,
   Info,
   Loader2,
   RefreshCw,
@@ -41,16 +38,12 @@ import { useToast } from "@/hooks/use-toast";
 import { taskManagementService } from "@/api_service/taskManagement/taskManagementService";
 import type { ProjectDTO } from "@/api_service/project/projectService";
 import type {
-  TaskManagementConnectionResponse,
   QaAutoDocConfigRequest,
   QaAutoDocTemplateMode,
-  QaAutoDocTaskIdSource,
   TaskCommentVisibility,
 } from "@/api_service/taskManagement/taskManagement.interface";
 import {
   TEMPLATE_MODES,
-  TASK_ID_SOURCES,
-  DEFAULT_TASK_ID_PATTERN,
   MAX_CUSTOM_TEMPLATE_LENGTH,
   OUTPUT_LANGUAGES,
 } from "@/api_service/taskManagement/taskManagement.interface";
@@ -81,19 +74,12 @@ export default function QaAutoDocConfiguration({
 }: QaAutoDocConfigurationProps) {
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
-
-  // ── Connections state ──
-  const [connections, setConnections] = useState<
-    TaskManagementConnectionResponse[]
-  >([]);
-  const [connectionsLoading, setConnectionsLoading] = useState(true);
+  const boundConnectionId =
+    project.taskManagementConfig?.taskManagementConnectionId ?? null;
+  const hasTaskManagementBinding = boundConnectionId != null;
 
   // ── Form state ──
   const [enabled, setEnabled] = useState(false);
-  const [connectionId, setConnectionId] = useState<string>("");
-  const [taskIdPattern, setTaskIdPattern] = useState(DEFAULT_TASK_ID_PATTERN);
-  const [taskIdSource, setTaskIdSource] =
-    useState<QaAutoDocTaskIdSource>("BRANCH_NAME");
   const [templateMode, setTemplateMode] =
     useState<QaAutoDocTemplateMode>("BASE");
   const [customTemplate, setCustomTemplate] = useState("");
@@ -102,37 +88,11 @@ export default function QaAutoDocConfiguration({
 
   // ── UI state ──
   const [saving, setSaving] = useState(false);
-  const [patternValid, setPatternValid] = useState(true);
-  const [patternPreview, setPatternPreview] = useState("");
   const [visibilityOptions, setVisibilityOptions] = useState<
     TaskCommentVisibility[]
   >([]);
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [visibilityLoaded, setVisibilityLoaded] = useState(false);
-
-  // ── Load connections ──
-  const loadConnections = useCallback(async () => {
-    if (!currentWorkspace) return;
-    try {
-      setConnectionsLoading(true);
-      const data = await taskManagementService.listConnections(
-        currentWorkspace.slug,
-      );
-      setConnections(
-        (data || []).filter(
-          (c) => c.status === "CONNECTED" || c.status === "PENDING",
-        ),
-      );
-    } catch {
-      // Silently fail — user may not have any connections
-    } finally {
-      setConnectionsLoading(false);
-    }
-  }, [currentWorkspace]);
-
-  useEffect(() => {
-    loadConnections();
-  }, [loadConnections]);
 
   // ── Sync form state from project prop ──
   useEffect(() => {
@@ -142,13 +102,6 @@ export default function QaAutoDocConfiguration({
       (project as any).config?.qaAutoDoc;
     if (config) {
       setEnabled(config.enabled ?? false);
-      setConnectionId(
-        config.taskManagementConnectionId
-          ? String(config.taskManagementConnectionId)
-          : "",
-      );
-      setTaskIdPattern(config.taskIdPattern || DEFAULT_TASK_ID_PATTERN);
-      setTaskIdSource(config.taskIdSource || "BRANCH_NAME");
       setTemplateMode(config.templateMode || "BASE");
       setCustomTemplate(config.customTemplate || "");
       setOutputLanguage(config.outputLanguage || "English");
@@ -168,10 +121,11 @@ export default function QaAutoDocConfiguration({
   }, [project]);
 
   const loadVisibilityOptions = async () => {
-    if (!currentWorkspace || !connectionId) {
+    if (!currentWorkspace || !boundConnectionId) {
       toast({
-        title: "Missing connection",
-        description: "Select a Jira connection before fetching visibility options.",
+        title: "Missing project task connection",
+        description:
+          "Bind a Jira connection in this project's Task Management settings before fetching visibility options.",
         variant: "destructive",
       });
       return;
@@ -181,7 +135,7 @@ export default function QaAutoDocConfiguration({
       setVisibilityLoading(true);
       const data = await taskManagementService.listCommentVisibilityOptions(
         currentWorkspace.slug,
-        Number(connectionId),
+        boundConnectionId,
       );
       setVisibilityOptions(data || []);
       setVisibilityLoaded(true);
@@ -200,47 +154,8 @@ export default function QaAutoDocConfiguration({
     }
   };
 
-  const handleConnectionChange = (value: string) => {
-    setConnectionId(value);
-    setCommentVisibilityKey("none");
-    setVisibilityOptions([]);
-    setVisibilityLoaded(false);
-  };
-
-  // ── Validate regex pattern ──
-  useEffect(() => {
-    try {
-      const re = new RegExp(taskIdPattern);
-      setPatternValid(true);
-      // Generate preview
-      const examples = [
-        "feature/WS-123-add-login",
-        "bugfix/GR-2499-fix-crash",
-        "PROJ-42",
-      ];
-      const matches = examples
-        .map((ex) => {
-          const m = ex.match(re);
-          return m ? `"${ex}" → ${m[0]}` : null;
-        })
-        .filter(Boolean);
-      setPatternPreview(
-        matches.length > 0
-          ? matches.join("\n")
-          : "No matches for sample branches",
-      );
-    } catch {
-      setPatternValid(false);
-      setPatternPreview("Invalid regex pattern");
-    }
-  }, [taskIdPattern]);
-
   const buildConfigRequest = (nextEnabled: boolean): QaAutoDocConfigRequest => ({
     enabled: nextEnabled,
-    taskManagementConnectionId: connectionId ? Number(connectionId) : null,
-    taskIdPattern:
-      taskIdPattern !== DEFAULT_TASK_ID_PATTERN ? taskIdPattern : null,
-    taskIdSource,
     templateMode,
     customTemplate: templateMode === "CUSTOM" ? customTemplate : null,
     outputLanguage: outputLanguage || "English",
@@ -252,18 +167,11 @@ export default function QaAutoDocConfiguration({
     successMessage = "QA auto-documentation settings have been updated.",
   ) => {
     if (!currentWorkspace || !project.id) return;
-    if (nextEnabled && !connectionId) {
+    if (nextEnabled && !hasTaskManagementBinding) {
       toast({
-        title: "Missing connection",
-        description: "Please select a task management connection.",
-        variant: "destructive",
-      });
-      return false;
-    }
-    if (nextEnabled && !patternValid) {
-      toast({
-        title: "Invalid pattern",
-        description: "The task ID regex pattern is invalid.",
+        title: "Missing project task connection",
+        description:
+          "Bind a task management connection to this project before enabling QA auto-documentation.",
         variant: "destructive",
       });
       return false;
@@ -320,10 +228,6 @@ export default function QaAutoDocConfiguration({
     }
   };
 
-  const connectedConnections = connections.filter(
-    (c) => c.status === "CONNECTED" || c.status === "PENDING",
-  );
-
   const selectedVisibility = (): TaskCommentVisibility | null => {
     if (commentVisibilityKey === "none") return null;
     return (
@@ -350,62 +254,13 @@ export default function QaAutoDocConfiguration({
           <Switch
             checked={enabled}
             onCheckedChange={handleEnabledChange}
-            disabled={saving}
+            disabled={saving || !hasTaskManagementBinding}
           />
         </div>
       </CardHeader>
 
       {enabled && (
         <CardContent className="space-y-6">
-          {/* Connection selector */}
-          <div className="space-y-2">
-            <Label>Task Management Connection</Label>
-            {connectionsLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading connections…
-              </div>
-            ) : connectedConnections.length === 0 ? (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  No active task management connections found. Please add one in{" "}
-                  <a
-                    href="?tab=tasks"
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Task Management Settings
-                  </a>{" "}
-                  first.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Select value={connectionId} onValueChange={handleConnectionChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a connection" />
-                </SelectTrigger>
-                <SelectContent>
-                  {connectedConnections.map((conn) => (
-                    <SelectItem key={conn.id} value={String(conn.id)}>
-                      <div className="flex items-center gap-2">
-                        {conn.status === "CONNECTED" ? (
-                          <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                        ) : (
-                          <AlertCircle className="h-3.5 w-3.5 text-yellow-500" />
-                        )}
-                        {conn.connectionName}
-                        <span className="text-muted-foreground text-xs">
-                          ({conn.baseUrl})
-                          {conn.status === "PENDING" && " — pending validation"}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
           <div className="space-y-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="space-y-2 md:flex-1">
@@ -413,7 +268,7 @@ export default function QaAutoDocConfiguration({
                 <Select
                   value={commentVisibilityKey}
                   onValueChange={setCommentVisibilityKey}
-                  disabled={!connectionId}
+                  disabled={!hasTaskManagementBinding}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Jira visibility" />
@@ -437,7 +292,7 @@ export default function QaAutoDocConfiguration({
                 type="button"
                 variant="outline"
                 onClick={loadVisibilityOptions}
-                disabled={!connectionId || visibilityLoading}
+                disabled={!hasTaskManagementBinding || visibilityLoading}
               >
                 {visibilityLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -452,106 +307,6 @@ export default function QaAutoDocConfiguration({
                 {visibilityOptions.length} options loaded from the selected
                 Jira connection.
               </p>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Task ID Extraction */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Label className="text-base font-medium">
-                Task ID Extraction
-              </Label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="max-w-xs">
-                    <p>
-                      CodeCrow extracts the task key (e.g., WS-123) from your PR
-                      metadata using a regex pattern. This key is used to find
-                      the matching Jira ticket.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="taskIdSource">Extract From</Label>
-                <Select
-                  value={taskIdSource}
-                  onValueChange={(v) =>
-                    setTaskIdSource(v as QaAutoDocTaskIdSource)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TASK_ID_SOURCES.map((src) => (
-                      <SelectItem key={src.value} value={src.value}>
-                        {src.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {
-                    TASK_ID_SOURCES.find((s) => s.value === taskIdSource)
-                      ?.description
-                  }
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="taskIdPattern">
-                  Regex Pattern
-                  {!patternValid && (
-                    <Badge variant="destructive" className="ml-2 text-[10px]">
-                      Invalid
-                    </Badge>
-                  )}
-                </Label>
-                <Input
-                  id="taskIdPattern"
-                  value={taskIdPattern}
-                  onChange={(e) => setTaskIdPattern(e.target.value)}
-                  className={!patternValid ? "border-destructive" : ""}
-                  placeholder={DEFAULT_TASK_ID_PATTERN}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Default:{" "}
-                  <code className="bg-muted px-1 rounded">
-                    {DEFAULT_TASK_ID_PATTERN}
-                  </code>{" "}
-                  matches keys like WS-123, GR-2499
-                </p>
-              </div>
-            </div>
-
-            {/* Pattern preview */}
-            {taskIdPattern && (
-              <div className="bg-muted/50 rounded-lg p-3 text-xs font-mono space-y-1">
-                <span className="text-muted-foreground font-sans text-xs font-medium">
-                  Pattern Preview:
-                </span>
-                {patternPreview.split("\n").map((line, i) => (
-                  <div
-                    key={i}
-                    className={
-                      patternValid
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-destructive"
-                    }
-                  >
-                    {line}
-                  </div>
-                ))}
-              </div>
             )}
           </div>
 
@@ -656,7 +411,10 @@ export default function QaAutoDocConfiguration({
 
           {/* Save button */}
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saving || !patternValid}>
+            <Button
+              onClick={handleSave}
+              disabled={saving || (enabled && !hasTaskManagementBinding)}
+            >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -670,13 +428,25 @@ export default function QaAutoDocConfiguration({
 
       {!enabled && (
         <CardContent className="space-y-4">
+          {!hasTaskManagementBinding && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Bind a Jira connection in this project's Task Management
+                settings before enabling QA auto-documentation.
+              </AlertDescription>
+            </Alert>
+          )}
           <p className="text-sm text-muted-foreground">
             Enable QA auto-documentation to automatically generate testing notes
             for reviewed PRs, keep the latest QA Doc in the project dashboard,
             and post it as a comment on the linked Jira ticket.
           </p>
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saving}>
+            <Button
+              onClick={handleSave}
+              disabled={saving || (enabled && !hasTaskManagementBinding)}
+            >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (

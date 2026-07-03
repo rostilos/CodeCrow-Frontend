@@ -4,6 +4,8 @@ import {
   TaskManagementConnectionResponse,
   TaskManagementProviderInfo,
   QaAutoDocConfigRequest,
+  TaskManagementProjectConfig,
+  TaskManagementProjectConfigRequest,
   TaskCommentVisibility,
 } from "./taskManagement.interface";
 
@@ -99,6 +101,19 @@ class TaskManagementService extends ApiService {
   }
 
   /**
+   * Mark a workspace task-management connection as the default.
+   */
+  async setDefaultConnection(
+    workspaceSlug: string,
+    connectionId: number,
+  ): Promise<TaskManagementConnectionResponse> {
+    return this.request<TaskManagementConnectionResponse>(
+      `/${workspaceSlug}/task-management/connections/${connectionId}/default`,
+      { method: "PUT" },
+    );
+  }
+
+  /**
    * Fetch selectable comment visibility options for a task-management connection.
    * For Jira Cloud, this returns Jira groups and project roles that can restrict QA doc comments.
    */
@@ -113,6 +128,23 @@ class TaskManagementService extends ApiService {
   }
 
   // ─── QA Auto-Documentation Config ──────────────────────────
+
+  /**
+   * Update project task-management binding and task key extraction.
+   */
+  async updateProjectTaskManagementConfig(
+    workspaceSlug: string,
+    projectId: number,
+    config: TaskManagementProjectConfigRequest,
+  ): Promise<TaskManagementProjectConfig> {
+    return this.request<TaskManagementProjectConfig>(
+      `/${workspaceSlug}/task-management/projects/${projectId}/task-config`,
+      {
+        method: "PUT",
+        body: JSON.stringify(config),
+      },
+    );
+  }
 
   /**
    * Update QA auto-documentation configuration for a project.

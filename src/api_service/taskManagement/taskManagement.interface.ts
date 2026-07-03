@@ -35,6 +35,7 @@ export interface TaskManagementConnectionResponse {
   providerType: TaskManagementProvider;
   status: TaskManagementConnectionStatus;
   baseUrl: string;
+  defaultConnection: boolean;
   maskedEmail: string;
   createdAt: string;
   updatedAt: string;
@@ -48,13 +49,24 @@ export interface TaskManagementConnectionRequest {
   apiToken: string;
 }
 
+// --- Project Task Management Config DTOs ---
+
+export interface TaskManagementProjectConfig {
+  taskManagementConnectionId: number | null;
+  taskIdPattern: string | null;
+  taskIdSource: QaAutoDocTaskIdSource | null;
+}
+
+export interface TaskManagementProjectConfigRequest {
+  taskManagementConnectionId: number | null;
+  taskIdPattern: string | null;
+  taskIdSource: QaAutoDocTaskIdSource | null;
+}
+
 // --- QA Auto-Documentation Config DTOs ---
 
 export interface QaAutoDocConfigResponse {
   enabled: boolean;
-  taskManagementConnectionId: number | null;
-  taskIdPattern: string | null;
-  taskIdSource: QaAutoDocTaskIdSource | null;
   templateMode: QaAutoDocTemplateMode | null;
   customTemplate: string | null;
   outputLanguage: string | null;
@@ -63,9 +75,6 @@ export interface QaAutoDocConfigResponse {
 
 export interface QaAutoDocConfigRequest {
   enabled: boolean;
-  taskManagementConnectionId: number | null;
-  taskIdPattern: string | null;
-  taskIdSource: QaAutoDocTaskIdSource | null;
   templateMode: QaAutoDocTemplateMode | null;
   customTemplate: string | null;
   outputLanguage: string | null;
