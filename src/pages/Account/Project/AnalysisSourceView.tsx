@@ -1267,12 +1267,13 @@ function SourceCodeRenderer({
         const lineNumber = idx + 1;
         const lineIssues = issuesByLine.get(lineNumber);
         const hasIssue = !!lineIssues && lineIssues.length > 0;
+        const anchorLineIssues = lineIssues?.filter(
+          (issue) => issue.lineNumber === lineNumber,
+        );
 
         // Determine if this is an anchor line (the issue's primary line) or
         // a scope-range line (part of the BLOCK/FUNCTION scope but not the anchor).
-        const isAnchorLine =
-          hasIssue &&
-          lineIssues!.some((issue) => issue.lineNumber === lineNumber);
+        const isAnchorLine = !!anchorLineIssues?.length;
 
         // Find the highest severity for this line
         const highestSeverity = lineIssues
@@ -1379,7 +1380,7 @@ function SourceCodeRenderer({
             </div>
 
             {/* Inline issue annotations (SonarQube-style cards below the line) */}
-            {lineIssues?.map((issue) => (
+            {anchorLineIssues?.map((issue) => (
               <div
                 key={issue.issueId}
                 ref={(el) => {

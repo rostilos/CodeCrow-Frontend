@@ -181,6 +181,8 @@ export default function ProjectConfiguration() {
   const [maxAnalysisTokenLimit, setMaxAnalysisTokenLimit] =
     useState<number>(200000);
   const [useMcpTools, setUseMcpTools] = useState(false);
+  const [taskContextAnalysisEnabled, setTaskContextAnalysisEnabled] =
+    useState(true);
   const [savingAnalysisSettings, setSavingAnalysisSettings] = useState(false);
 
   // Webhook management state
@@ -270,6 +272,7 @@ export default function ProjectConfiguration() {
         );
         setMaxAnalysisTokenLimit(proj.maxAnalysisTokenLimit ?? 200000);
         setUseMcpTools(proj.useMcpTools ?? false);
+        setTaskContextAnalysisEnabled(proj.taskContextAnalysisEnabled ?? true);
       }
     } catch (err: any) {
       toast({
@@ -368,6 +371,7 @@ export default function ProjectConfiguration() {
           installationMethod: project?.installationMethod || null,
           maxAnalysisTokenLimit,
           useMcpTools,
+          taskContextAnalysisEnabled,
         },
       );
 
@@ -379,6 +383,7 @@ export default function ProjectConfiguration() {
           branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
           maxAnalysisTokenLimit,
           useMcpTools,
+          taskContextAnalysisEnabled,
         });
       }
 
@@ -1578,6 +1583,23 @@ export default function ProjectConfiguration() {
                   <Switch
                     checked={useMcpTools}
                     onCheckedChange={setUseMcpTools}
+                  />
+                </div>
+
+                <div className="w-full flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <ListTodo className="h-5 w-5 text-primary" />
+                    <div>
+                      <div className="font-medium">Jira Task Context</div>
+                      <div className="text-sm text-muted-foreground">
+                        Include linked Jira task details in PR analysis so
+                        CodeCrow can compare the full PR against task intent.
+                      </div>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={taskContextAnalysisEnabled}
+                    onCheckedChange={setTaskContextAnalysisEnabled}
                   />
                 </div>
 
