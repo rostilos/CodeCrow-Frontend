@@ -13,6 +13,7 @@ import {
   Target,
   Database,
   AlertTriangle,
+  AlertCircle,
   GitPullRequest,
   GitCommit,
   Webhook,
@@ -849,7 +850,8 @@ export default function ProjectConfiguration() {
     { id: "quality-gate", label: "Quality Gate", icon: Shield },
     { id: "ai", label: "AI Connections", icon: Cpu },
     { id: "rag", label: "RAG Indexing", icon: Database },
-    { id: "tasks", label: "QA Auto-Documentation", icon: ListTodo },
+    { id: "task-management", label: "Task Management", icon: ListTodo },
+    { id: "tasks", label: "QA Auto-Documentation", icon: FileCode },
     ...(canGenerateTokens()
       ? [{ id: "tokens", label: "API Tokens", icon: KeyRound }]
       : []),
@@ -1974,18 +1976,20 @@ export default function ProjectConfiguration() {
           />
         ) : null;
 
+      case "task-management":
+        return currentWorkspace && project ? (
+          <ProjectTaskManagementConfiguration
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
+        ) : null;
+
       case "tasks":
         return currentWorkspace && project ? (
-          <div className="space-y-4">
-            <ProjectTaskManagementConfiguration
-              project={project}
-              onUpdate={(updatedProject) => setProject(updatedProject)}
-            />
-            <QaAutoDocConfiguration
-              project={project}
-              onUpdate={(updatedProject) => setProject(updatedProject)}
-            />
-          </div>
+          <QaAutoDocConfiguration
+            project={project}
+            onUpdate={(updatedProject) => setProject(updatedProject)}
+          />
         ) : null;
 
       case "tokens":
