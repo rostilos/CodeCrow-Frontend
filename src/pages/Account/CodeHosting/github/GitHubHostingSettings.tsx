@@ -123,6 +123,31 @@ export default function GitHubHostingSettings({
     fetchConnections();
   }, [toast, currentWorkspace]);
 
+  useEffect(() => {
+    if (!currentWorkspace || !appConnections.some((c) => c.status === "PENDING")) {
+      return;
+    }
+
+    const intervalId = window.setInterval(async () => {
+      const pendingConnections = appConnections.filter(
+        (connection) => connection.status === "PENDING",
+      );
+
+      await Promise.allSettled(
+        pendingConnections.map((connection) =>
+          integrationService.syncConnection(
+            currentWorkspace.slug,
+            "github",
+            connection.id,
+          ),
+        ),
+      );
+      await fetchConnections();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [appConnections, currentWorkspace]);
+
   // Handle redirect from GitHub App request flow (org owner approval pending)
   useEffect(() => {
     if (searchParams.get("pending") === "true") {
@@ -159,15 +184,28 @@ export default function GitHubHostingSettings({
     if (!currentWorkspace) return;
     try {
       setSyncingConnectionId(connectionId);
-      await integrationService.syncConnection(
+      const connection = await integrationService.syncConnection(
         currentWorkspace.slug,
         "github",
         connectionId,
       );
-      toast({
-        title: "Connection synced",
-        description: "Connection status and repository count updated.",
-      });
+      if (connection.status === "PENDING") {
+        toast({
+          title: "Still waiting for approval",
+          description:
+            "No approved GitHub App installation was found for this request yet.",
+        });
+      } else if (connection.status === "CONNECTED") {
+        toast({
+          title: "Connection activated",
+          description: "GitHub App installation is connected.",
+        });
+      } else {
+        toast({
+          title: "Connection synced",
+          description: "Connection status and repository count updated.",
+        });
+      }
       await fetchConnections();
     } catch (error: any) {
       toast({
@@ -535,11 +573,12 @@ export default function GitHubHostingSettings({
                       variant="ghost"
                       size="sm"
                       onClick={() => handleSyncConnection(connection.id)}
-                      disabled={
-                        syncingConnectionId === connection.id ||
+                      disabled={syncingConnectionId === connection.id}
+                      title={
                         connection.status === "PENDING"
+                          ? "Check approval status"
+                          : "Refresh connection status"
                       }
-                      title="Refresh connection status"
                     >
                       {syncingConnectionId === connection.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
