@@ -192,6 +192,23 @@ export interface UpdateAnalysisSettingsRequest {
   taskContextAnalysisEnabled?: boolean | null;
 }
 
+export interface AnalysisLimitsConfig {
+  maxFiles: number | null;
+  maxFileSizeBytes: number | null;
+  maxTotalDiffSizeBytes: number | null;
+  maxTotalTokens: number | null;
+}
+
+export interface AnalysisScopeConfig {
+  includePatterns: string[];
+  excludePatterns: string[];
+}
+
+export interface AnalysisScopeSyncResponse {
+  analysisScope: AnalysisScopeConfig;
+  ragConfig: RagConfigDTO | null;
+}
+
 // Authorization modes for comment commands
 export type CommandAuthorizationMode =
   | "ANYONE"
@@ -797,6 +814,60 @@ class ProjectService extends ApiService {
         body: JSON.stringify(request),
       },
       true,
+    );
+  }
+
+  async getAnalysisLimits(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<AnalysisLimitsConfig> {
+    return this.request<AnalysisLimitsConfig>(
+      `/${workspaceSlug}/project/${namespace}/analysis-limits`,
+      {},
+      true,
+    );
+  }
+
+  async updateAnalysisLimits(
+    workspaceSlug: string,
+    namespace: string,
+    limits: AnalysisLimitsConfig,
+  ): Promise<AnalysisLimitsConfig> {
+    return this.request<AnalysisLimitsConfig>(
+      `/${workspaceSlug}/project/${namespace}/analysis-limits`,
+      { method: "PUT", body: JSON.stringify(limits) },
+      true,
+    );
+  }
+
+  async getAnalysisScope(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<AnalysisScopeConfig> {
+    return this.request<AnalysisScopeConfig>(
+      `/${workspaceSlug}/project/${namespace}/analysis-scope`, {}, true,
+    );
+  }
+
+  async updateAnalysisScope(
+    workspaceSlug: string,
+    namespace: string,
+    scope: AnalysisScopeConfig,
+  ): Promise<AnalysisScopeConfig> {
+    return this.request<AnalysisScopeConfig>(
+      `/${workspaceSlug}/project/${namespace}/analysis-scope`,
+      { method: "PUT", body: JSON.stringify(scope) }, true,
+    );
+  }
+
+  async syncAnalysisScope(
+    workspaceSlug: string,
+    namespace: string,
+    direction: "FROM_RAG" | "TO_RAG",
+  ): Promise<AnalysisScopeSyncResponse> {
+    return this.request<AnalysisScopeSyncResponse>(
+      `/${workspaceSlug}/project/${namespace}/analysis-scope/sync`,
+      { method: "POST", body: JSON.stringify({ direction }) }, true,
     );
   }
 

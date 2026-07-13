@@ -1,148 +1,90 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Settings, Mail, Shield, Bell, Construction } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { useEffect, useState } from "react";
+import { AlertTriangle, Save } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { useToast } from "@/hooks/use-toast";
+import { AnalysisLimitsConfig, workspaceService } from "@/api_service/workspace/workspaceService";
+
+const emptyLimits: AnalysisLimitsConfig = {
+  maxFiles: null,
+  maxFileSizeBytes: null,
+  maxTotalDiffSizeBytes: null,
+  maxTotalTokens: null,
+};
+
+const fields: Array<{ key: keyof AnalysisLimitsConfig; label: string; help: string; placeholder: string }> = [
+  { key: "maxFiles", label: "Maximum changed files", help: "Skip the entire analysis when the PR contains more files.", placeholder: "150" },
+  { key: "maxFileSizeBytes", label: "Maximum single-file diff (bytes)", help: "Skip before analysis if any one file diff exceeds this size.", placeholder: "5242880" },
+  { key: "maxTotalDiffSizeBytes", label: "Maximum total diff (bytes)", help: "Hard cap for the complete diff payload.", placeholder: "20971520" },
+  { key: "maxTotalTokens", label: "Maximum total estimated tokens", help: "PR-wide input budget; unlike the batch limit, this stops analysis.", placeholder: "1000000" },
+];
 
 export default function WorkspaceConfiguration() {
+  const { currentWorkspace } = useWorkspace();
+  const { toast } = useToast();
+  const [limits, setLimits] = useState<AnalysisLimitsConfig>(emptyLimits);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!currentWorkspace) return;
+    workspaceService.getAnalysisLimits(currentWorkspace.slug)
+      .then(setLimits)
+      .catch(() => setLimits(emptyLimits));
+  }, [currentWorkspace]);
+
+  const save = async () => {
+    if (!currentWorkspace) return;
+    setSaving(true);
+    try {
+      const updated = await workspaceService.updateAnalysisLimits(currentWorkspace.slug, limits);
+      setLimits(updated);
+      toast({ title: "Analysis limits saved", description: "These limits now apply to projects without their own overrides." });
+    } catch (error: unknown) {
+      toast({
+        title: "Unable to save limits",
+        description: error instanceof Error ? error.message : "Please check the values.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Coming Soon Banner */}
-      <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
-        <CardContent className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <Construction className="h-12 w-12 mx-auto text-primary mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Configuration Options Coming Soon</h3>
-            <p className="text-muted-foreground max-w-md">
-              Advanced workspace configuration options are currently in development. 
-              Check back soon for new features!
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Email Notifications - Placeholder */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Mail className="mr-2 h-5 w-5" />
-              <div>
-                <CardTitle>Email Notifications</CardTitle>
-                <CardDescription>
-                  Configure email notifications for workspace events
-                </CardDescription>
-              </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5" />Hard Analysis Limits</CardTitle>
+        <CardDescription>
+          Spending guards enforced before file enrichment, RAG parsing, or AI calls. Blank values inherit deployment defaults; project overrides take priority.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          {fields.map((field) => (
+            <div className="space-y-2" key={field.key}>
+              <Label htmlFor={`workspace-${field.key}`}>{field.label}</Label>
+              <Input
+                id={`workspace-${field.key}`}
+                type="number"
+                min={1}
+                placeholder={`Deployment default: ${field.placeholder}`}
+                value={limits[field.key] ?? ""}
+                onChange={(event) => setLimits({
+                  ...limits,
+                  [field.key]: event.target.value === "" ? null : Number(event.target.value),
+                })}
+              />
+              <p className="text-xs text-muted-foreground">{field.help}</p>
             </div>
-            <Badge variant="outline">Coming Soon</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 opacity-50 pointer-events-none">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Analysis Completion</Label>
-              <p className="text-sm text-muted-foreground">
-                Notify members when code analysis completes
-              </p>
-            </div>
-            <Switch disabled />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>New Member Joined</Label>
-              <p className="text-sm text-muted-foreground">
-                Notify admins when new members join the workspace
-              </p>
-            </div>
-            <Switch disabled />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Weekly Summary</Label>
-              <p className="text-sm text-muted-foreground">
-                Send weekly summary of workspace activity
-              </p>
-            </div>
-            <Switch disabled />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Security Settings - Placeholder */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Shield className="mr-2 h-5 w-5" />
-              <div>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>
-                  Configure security requirements for workspace members
-                </CardDescription>
-              </div>
-            </div>
-            <Badge variant="outline">Coming Soon</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 opacity-50 pointer-events-none">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Require 2FA</Label>
-              <p className="text-sm text-muted-foreground">
-                Force all workspace members to enable two-factor authentication
-              </p>
-            </div>
-            <Switch disabled />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Session Timeout</Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically log out inactive users after specified time
-              </p>
-            </div>
-            <Switch disabled />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Default Project Settings - Placeholder */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Settings className="mr-2 h-5 w-5" />
-              <div>
-                <CardTitle>Default Project Settings</CardTitle>
-                <CardDescription>
-                  Set defaults for new projects in this workspace
-                </CardDescription>
-              </div>
-            </div>
-            <Badge variant="outline">Coming Soon</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 opacity-50 pointer-events-none">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Auto-enable RAG</Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically enable RAG analysis for new projects
-              </p>
-            </div>
-            <Switch disabled />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Default AI Provider</Label>
-              <p className="text-sm text-muted-foreground">
-                Set the default AI provider for new projects
-              </p>
-            </div>
-            <Switch disabled />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          ))}
+        </div>
+        <Button onClick={save} disabled={saving}>
+          <Save className="mr-2 h-4 w-4" />{saving ? "Saving..." : "Save Workspace Limits"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

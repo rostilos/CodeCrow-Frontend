@@ -104,11 +104,12 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
     icon: "Github",
     instructions:
       "1. GitHub → Settings → Developer settings → GitHub Apps → New GitHub App\n" +
-      "2. Webhook URL: {backend-url}/api/github/webhook\n" +
-      "3. Permissions: Contents (Read), Pull requests (Read & Write), Webhooks (Read & Write), Metadata (Read)\n" +
-      "4. Subscribe to events: Pull request, Push\n" +
-      "5. Generate a private key (.pem) and upload it below\n" +
-      "6. Fill in all fields: App ID, Webhook Secret, and App Slug.",
+      "2. Callback URL: {backend-url}/api/integrations/github/app/callback\n" +
+      "3. Webhook URL: {backend-url}/api/integrations/github/app/webhook\n" +
+      "4. Permissions: Contents (Read), Pull requests (Read & Write), Webhooks (Read & Write), Metadata (Read)\n" +
+      "5. Subscribe to events: Pull request, Push\n" +
+      "6. Generate a private key (.pem) and a client secret\n" +
+      "7. Fill in App ID, Client ID, Client Secret, Webhook Secret, and App Slug.",
     fields: [
       {
         key: "app-id",
@@ -142,6 +143,24 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
         placeholder: "your-github-app-name",
         helpText:
           "The URL-friendly name of your GitHub App (from the app URL: github.com/apps/<slug>).",
+        required: false,
+      },
+      {
+        key: "oauth-client-id",
+        label: "Client ID",
+        type: "text",
+        placeholder: "GitHub App Client ID",
+        helpText:
+          "Used to bind an installation request to the GitHub user who initiated it.",
+        required: false,
+      },
+      {
+        key: "oauth-client-secret",
+        label: "Client Secret",
+        type: "password",
+        placeholder: "GitHub App client secret",
+        helpText:
+          "Required for secure GitHub user authorization during installation linking.",
         required: false,
       },
     ],
