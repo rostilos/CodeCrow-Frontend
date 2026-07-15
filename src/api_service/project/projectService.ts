@@ -79,6 +79,8 @@ export interface ProjectDTO {
   qualityGateId?: number | null;
   // Main branch - primary branch used for RAG and analysis baseline
   mainBranch?: string;
+  /** @deprecated Use mainBranch instead. Still returned for older projects. */
+  defaultBranch?: string;
   defaultBranchStats?: {
     branchName: string;
     totalIssues: number;

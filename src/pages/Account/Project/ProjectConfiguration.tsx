@@ -162,9 +162,20 @@ export default function ProjectConfiguration() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
   const [allConnections, setAllConnections] = useState<any[]>([]);
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
+  const [aiConnectionSearchQuery, setAiConnectionSearchQuery] = useState("");
   const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<
     number | null
   >(null);
+
+  const normalizedAiConnectionSearch = aiConnectionSearchQuery
+    .trim()
+    .toLowerCase();
+  const filteredAiConnections = aiConnections.filter((connection) => {
+    if (!normalizedAiConnectionSearch) return true;
+    return [connection.name, connection.providerKey, connection.aiModel].some(
+      (value) => value?.toLowerCase().includes(normalizedAiConnectionSearch),
+    );
+  });
 
   // 2FA state for VCS connection change
   const [has2FA, setHas2FA] = useState(false);
@@ -2044,7 +2055,31 @@ export default function ProjectConfiguration() {
                     </p>
                   </div>
 
-                  {aiConnections.map((connection) => (
+                  <div className="relative max-w-xl">
+                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      aria-label="Search available AI connections"
+                      placeholder="Search by name, provider, or model..."
+                      value={aiConnectionSearchQuery}
+                      onChange={(event) =>
+                        setAiConnectionSearchQuery(event.target.value)
+                      }
+                      className="h-11 pl-10"
+                    />
+                  </div>
+
+                  {filteredAiConnections.length === 0 && (
+                    <div className="rounded-lg border border-dashed p-8 text-center">
+                      <Search className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
+                      <p className="font-medium">No matching AI connections</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Try a different connection name, provider, or model.
+                      </p>
+                    </div>
+                  )}
+
+                  {filteredAiConnections.map((connection) => (
                     <div key={connection.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">

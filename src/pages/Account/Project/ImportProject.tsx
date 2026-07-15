@@ -161,6 +161,7 @@ export default function ImportProject() {
 
   // AI Connection state
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
+  const [aiConnectionSearchQuery, setAiConnectionSearchQuery] = useState("");
   const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<
     number | null
   >(null);
@@ -173,6 +174,16 @@ export default function ImportProject() {
       aiModel: "",
       apiKey: "",
     });
+
+  const normalizedAiConnectionSearch = aiConnectionSearchQuery
+    .trim()
+    .toLowerCase();
+  const filteredAiConnections = aiConnections.filter((connection) => {
+    if (!normalizedAiConnectionSearch) return true;
+    return [connection.name, connection.providerKey, connection.aiModel].some(
+      (value) => value?.toLowerCase().includes(normalizedAiConnectionSearch),
+    );
+  });
 
   // Analysis settings state
   const [prAnalysisEnabled, setPrAnalysisEnabled] = useState(true);
@@ -1475,8 +1486,26 @@ export default function ImportProject() {
                   {aiConnections.length > 0 && !showCreateAi && (
                     <div className="space-y-3">
                       <Label>Select an existing AI connection</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="search"
+                          aria-label="Search AI connections"
+                          placeholder="Search by name, provider, or model..."
+                          value={aiConnectionSearchQuery}
+                          onChange={(event) =>
+                            setAiConnectionSearchQuery(event.target.value)
+                          }
+                          className="pl-10"
+                        />
+                      </div>
+                      {filteredAiConnections.length === 0 && (
+                        <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                          No AI connections match your search.
+                        </div>
+                      )}
                       <div className="space-y-2">
-                        {aiConnections.map((conn) => (
+                        {filteredAiConnections.map((conn) => (
                           <div
                             key={conn.id}
                             className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${

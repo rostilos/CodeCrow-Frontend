@@ -9,6 +9,7 @@ import {
   Info,
   AlertTriangle,
   Loader2,
+  Search,
 } from "lucide-react";
 import { ModelSelector } from "@/components/ModelSelector";
 import {
@@ -101,6 +102,7 @@ export default function AISettings() {
   const { canManageWorkspace } = usePermissions();
   const { toast } = useToast();
   const [connections, setConnections] = useState<AIConnectionDTO[]>([]);
+  const [connectionSearchQuery, setConnectionSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -120,6 +122,17 @@ export default function AISettings() {
       apiKey: "",
     },
   );
+
+  const normalizedConnectionSearch = connectionSearchQuery.trim().toLowerCase();
+  const filteredConnections = connections.filter((connection) => {
+    if (!normalizedConnectionSearch) return true;
+    return [
+      connection.name,
+      connection.providerKey,
+      connection.aiModel,
+      connection.baseUrl,
+    ].some((value) => value?.toLowerCase().includes(normalizedConnectionSearch));
+  });
 
   const loadConnections = async () => {
     if (!currentWorkspace) return;
@@ -891,6 +904,29 @@ export default function AISettings() {
         <div className="container mx-auto px-4 lg:px-8 py-8 space-y-10">
           <div className="space-y-6">
             <div className="space-y-6">
+              {connections.length > 0 && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/50 p-4 shadow-sm backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+                  <div className="relative w-full sm:max-w-md">
+                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      aria-label="Search AI connections"
+                      placeholder="Search by name, provider, or model..."
+                      value={connectionSearchQuery}
+                      onChange={(event) =>
+                        setConnectionSearchQuery(event.target.value)
+                      }
+                      className="h-11 rounded-xl bg-background/80 pl-10"
+                    />
+                  </div>
+                  <p className="whitespace-nowrap text-sm font-medium text-muted-foreground">
+                    {normalizedConnectionSearch
+                      ? `${filteredConnections.length} of ${connections.length} connections`
+                      : `${connections.length} connection${connections.length === 1 ? "" : "s"}`}
+                  </p>
+                </div>
+              )}
+
               {connections.length === 0 ? (
                 <Card>
                   <CardContent className="p-12 text-center">
@@ -913,9 +949,21 @@ export default function AISettings() {
                     )}
                   </CardContent>
                 </Card>
+              ) : filteredConnections.length === 0 ? (
+                <Card className="border-dashed bg-card/40">
+                  <CardContent className="p-12 text-center">
+                    <Search className="mx-auto mb-4 h-12 w-12 text-muted-foreground/60" />
+                    <h3 className="mb-2 text-lg font-semibold">
+                      No matching connections
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Try a different name, provider, model, or endpoint.
+                    </p>
+                  </CardContent>
+                </Card>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {connections.map((connection, index) => (
+                  {filteredConnections.map((connection, index) => (
                     <Card
                       key={connection.id}
                       className="group cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1.5 border-border/50 hover:border-primary/40 flex flex-col bg-card/60 backdrop-blur-xl overflow-hidden relative animate-in fade-in slide-in-from-bottom-8"
