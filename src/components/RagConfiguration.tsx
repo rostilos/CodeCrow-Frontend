@@ -70,6 +70,7 @@ export default function RagConfiguration({
   const [ragStatus, setRagStatus] = useState<RagStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [syncingScopes, setSyncingScopes] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [indexingProgress, setIndexingProgress] = useState<string | null>(null);
   const [indexingError, setIndexingError] = useState<string | null>(null);
@@ -280,6 +281,45 @@ export default function RagConfiguration({
       });
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleScopeSync = async (direction: "FROM_RAG" | "TO_RAG") => {
+    if (!project.namespace) return;
+    setSyncingScopes(true);
+    try {
+      if (direction === "FROM_RAG") {
+        await projectService.updateRagConfig(workspaceSlug, project.namespace, {
+          enabled,
+          branch: branch.trim() || null,
+          includePatterns: includePatterns.length > 0 ? includePatterns : null,
+          excludePatterns: excludePatterns.length > 0 ? excludePatterns : null,
+          multiBranchEnabled: multiBranchEnabled || null,
+          branchRetentionDays: branchRetentionDays || null,
+        });
+      }
+      const result = await projectService.syncAnalysisScope(
+        workspaceSlug, project.namespace, direction,
+      );
+      if (result.ragConfig) {
+        setIncludePatterns(result.ragConfig.includePatterns ?? []);
+        setExcludePatterns(result.ragConfig.excludePatterns ?? []);
+        onProjectUpdate?.({ ...project, ragConfig: result.ragConfig });
+      }
+      toast({
+        title: "Scopes synchronized",
+        description: direction === "FROM_RAG"
+          ? "RAG patterns were copied to PR and branch analysis."
+          : "Analysis patterns were copied to RAG indexing.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Scope synchronization failed",
+        description: error?.message || "Unable to synchronize scopes.",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingScopes(false);
     }
   };
 
@@ -607,6 +647,23 @@ export default function RagConfiguration({
             RAG indexing uses the project's main branch. To change this, go to
             the <strong>Branches</strong> tab.
           </p>
+        </div>
+
+        <div className="rounded-lg border p-4 space-y-3">
+          <div>
+            <Label>Synchronize with PR and Branch Analysis</Label>
+            <p className="text-sm text-muted-foreground">
+              Copy include and exclude patterns in either direction. Other RAG settings remain unchanged.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => handleScopeSync("FROM_RAG")} disabled={syncingScopes}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncingScopes ? "animate-spin" : ""}`} />RAG → Analysis
+            </Button>
+            <Button type="button" variant="outline" onClick={() => handleScopeSync("TO_RAG")} disabled={syncingScopes}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${syncingScopes ? "animate-spin" : ""}`} />Analysis → RAG
+            </Button>
+          </div>
         </div>
 
         {/* Include Patterns Configuration */}

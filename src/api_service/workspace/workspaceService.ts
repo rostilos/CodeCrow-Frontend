@@ -65,6 +65,13 @@ export interface DeletionStatusDTO {
   deletionRequestedBy: number | null;
 }
 
+export interface AnalysisLimitsConfig {
+  maxFiles: number | null;
+  maxFileSizeBytes: number | null;
+  maxTotalDiffSizeBytes: number | null;
+  maxTotalTokens: number | null;
+}
+
 export interface OwnershipTransferDTO {
   id: string;
   workspaceId: number;
@@ -114,6 +121,20 @@ class WorkspaceService extends ApiService {
 
   async getUserRole(workspaceSlug: string): Promise<UserRole> {
     return this.request<UserRole>(`/workspace/${workspaceSlug}/role`, {}, true);
+  }
+
+  async getAnalysisLimits(workspaceSlug: string): Promise<AnalysisLimitsConfig> {
+    return this.request<AnalysisLimitsConfig>(`/workspace/${workspaceSlug}/analysis-limits`, {}, true);
+  }
+
+  async updateAnalysisLimits(
+    workspaceSlug: string,
+    limits: AnalysisLimitsConfig,
+  ): Promise<AnalysisLimitsConfig> {
+    return this.request<AnalysisLimitsConfig>(`/workspace/${workspaceSlug}/analysis-limits`, {
+      method: 'PUT',
+      body: JSON.stringify(limits),
+    }, true);
   }
 
   async changeRole(workspaceSlug: string, data: ChangeRoleRequest): Promise<{ message: string }> {

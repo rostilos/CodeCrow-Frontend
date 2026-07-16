@@ -12,8 +12,8 @@ import { CheckCircle, Github } from "lucide-react";
  * Public success page shown to org owners after approving a GitHub App installation.
  * This page does NOT require authentication — the org owner may not have a CodeCrow account.
  *
- * The actual connection is completed via the webhook (installation.created event),
- * so this page is purely informational.
+ * The webhook can complete only an exact request-bound CodeCrow connection;
+ * otherwise the installation remains unlinked. This page is informational.
  */
 export default function GitHubAppInstalled() {
   return (
@@ -31,8 +31,8 @@ export default function GitHubAppInstalled() {
           </CardTitle>
           <CardDescription className="text-base mt-2">
             The CodeCrow GitHub App has been installed on your organization. The
-            team member who requested the installation will now have access to
-            the organization's repositories in CodeCrow.
+            team member who requested the installation can return to the
+            intended CodeCrow workspace and check the approval status.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-4">

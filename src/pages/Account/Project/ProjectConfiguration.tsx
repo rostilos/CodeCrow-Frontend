@@ -65,6 +65,8 @@ import {
   BindRepositoryRequest,
   ProjectDTO,
   WebhookInfoResponse,
+  AnalysisLimitsConfig,
+  AnalysisScopeConfig,
 } from "@/api_service/project/projectService.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import {
@@ -160,9 +162,20 @@ export default function ProjectConfiguration() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
   const [allConnections, setAllConnections] = useState<any[]>([]);
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
+  const [aiConnectionSearchQuery, setAiConnectionSearchQuery] = useState("");
   const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<
     number | null
   >(null);
+
+  const normalizedAiConnectionSearch = aiConnectionSearchQuery
+    .trim()
+    .toLowerCase();
+  const filteredAiConnections = aiConnections.filter((connection) => {
+    if (!normalizedAiConnectionSearch) return true;
+    return [connection.name, connection.providerKey, connection.aiModel].some(
+      (value) => value?.toLowerCase().includes(normalizedAiConnectionSearch),
+    );
+  });
 
   // 2FA state for VCS connection change
   const [has2FA, setHas2FA] = useState(false);
@@ -186,6 +199,17 @@ export default function ProjectConfiguration() {
   const [taskContextAnalysisEnabled, setTaskContextAnalysisEnabled] =
     useState(true);
   const [savingAnalysisSettings, setSavingAnalysisSettings] = useState(false);
+  const [analysisLimits, setAnalysisLimits] = useState<AnalysisLimitsConfig>({
+    maxFiles: null,
+    maxFileSizeBytes: null,
+    maxTotalDiffSizeBytes: null,
+    maxTotalTokens: null,
+  });
+  const [analysisScope, setAnalysisScope] = useState<AnalysisScopeConfig>({
+    includePatterns: [],
+    excludePatterns: [],
+  });
+  const [syncingAnalysisScope, setSyncingAnalysisScope] = useState(false);
 
   // Webhook management state
   const [webhookInfo, setWebhookInfo] = useState<WebhookInfoResponse | null>(
@@ -217,7 +241,7 @@ export default function ProjectConfiguration() {
     if (!namespace || !currentWorkspace) return;
     setLoading(true);
     try {
-      const [proj, connections, aiConns, gates, tfStatus] = await Promise.all([
+      const [proj, connections, aiConns, gates, tfStatus, loadedAnalysisLimits, loadedAnalysisScope] = await Promise.all([
         projectService
           .getProjectByNamespace(currentWorkspace.slug, namespace)
           .catch(() => null),
@@ -233,6 +257,10 @@ export default function ProjectConfiguration() {
         twoFactorService
           .getStatus()
           .catch(() => ({ enabled: false, type: null })),
+        projectService.getAnalysisLimits(currentWorkspace.slug, namespace)
+          .catch(() => ({ maxFiles: null, maxFileSizeBytes: null, maxTotalDiffSizeBytes: null, maxTotalTokens: null })),
+        projectService.getAnalysisScope(currentWorkspace.slug, namespace)
+          .catch(() => ({ includePatterns: [], excludePatterns: [] })),
       ]);
 
       setProject(proj);
@@ -251,6 +279,8 @@ export default function ProjectConfiguration() {
       setCodeHostingConfigs(mapped);
       setAiConnections(aiConns || []);
       setQualityGates(gates || []);
+      setAnalysisLimits(loadedAnalysisLimits);
+      setAnalysisScope(loadedAnalysisScope);
 
       // Set 2FA status
       setHas2FA(tfStatus.enabled);
@@ -369,18 +399,22 @@ export default function ProjectConfiguration() {
 
     setSavingAnalysisSettings(true);
     try {
-      await projectService.updateAnalysisSettings(
-        currentWorkspace.slug,
-        namespace,
-        {
-          prAnalysisEnabled,
-          branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
-          installationMethod: project?.installationMethod || null,
-          maxAnalysisTokenLimit,
-          useMcpTools,
-          taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
-        },
-      );
+      await Promise.all([
+        projectService.updateAnalysisSettings(
+          currentWorkspace.slug,
+          namespace,
+          {
+            prAnalysisEnabled,
+            branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
+            installationMethod: project?.installationMethod || null,
+            maxAnalysisTokenLimit,
+            useMcpTools,
+            taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
+          },
+        ),
+        projectService.updateAnalysisLimits(currentWorkspace.slug, namespace, analysisLimits),
+        projectService.updateAnalysisScope(currentWorkspace.slug, namespace, analysisScope),
+      ]);
 
       // Update local project state
       if (project) {
@@ -406,6 +440,39 @@ export default function ProjectConfiguration() {
       });
     } finally {
       setSavingAnalysisSettings(false);
+    }
+  };
+
+  const handleScopeSync = async (direction: "FROM_RAG" | "TO_RAG") => {
+    if (!namespace || !currentWorkspace) return;
+    setSyncingAnalysisScope(true);
+    try {
+      if (direction === "TO_RAG") {
+        await projectService.updateAnalysisScope(
+          currentWorkspace.slug, namespace, analysisScope,
+        );
+      }
+      const result = await projectService.syncAnalysisScope(
+        currentWorkspace.slug, namespace, direction,
+      );
+      setAnalysisScope(result.analysisScope);
+      if (project && result.ragConfig) {
+        setProject({ ...project, ragConfig: result.ragConfig });
+      }
+      toast({
+        title: "Scopes synchronized",
+        description: direction === "FROM_RAG"
+          ? "RAG patterns were copied to PR and branch analysis."
+          : "Analysis patterns were copied to RAG indexing.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Scope synchronization failed",
+        description: error?.message || "Unable to synchronize scopes.",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingAnalysisScope(false);
     }
   };
 
@@ -1578,6 +1645,89 @@ export default function ProjectConfiguration() {
                   </div>
                 </div>
 
+                <div className="p-4 border border-amber-500/40 rounded-lg space-y-4">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    <div>
+                      <div className="font-medium">Hard Analysis Limits</div>
+                      <div className="text-sm text-muted-foreground">
+                        These PR-wide spending guards stop analysis before enrichment or any AI call. Blank values inherit workspace, then deployment defaults.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {([
+                      ["maxFiles", "Maximum changed files", "Workspace default"],
+                      ["maxFileSizeBytes", "Maximum single-file diff (bytes)", "Workspace default"],
+                      ["maxTotalDiffSizeBytes", "Maximum total diff (bytes)", "Workspace default"],
+                      ["maxTotalTokens", "Maximum total estimated tokens", "Workspace default"],
+                    ] as Array<[keyof AnalysisLimitsConfig, string, string]>).map(([key, label, placeholder]) => (
+                      <div className="space-y-2" key={key}>
+                        <Label htmlFor={`analysis-limit-${key}`}>{label}</Label>
+                        <Input
+                          id={`analysis-limit-${key}`}
+                          type="number"
+                          min={1}
+                          placeholder={placeholder}
+                          value={analysisLimits[key] ?? ""}
+                          onChange={(event) => setAnalysisLimits({
+                            ...analysisLimits,
+                            [key]: event.target.value === "" ? null : Number(event.target.value),
+                          })}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-4 border rounded-lg space-y-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <div className="font-medium">PR and Branch File Scope</div>
+                      <div className="text-sm text-muted-foreground">
+                        Glob patterns applied before PR AI review and branch reconciliation. Include patterns restrict analysis; exclusions always win.
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" disabled={syncingAnalysisScope} onClick={() => handleScopeSync("FROM_RAG")}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${syncingAnalysisScope ? "animate-spin" : ""}`} />RAG → Analysis
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" disabled={syncingAnalysisScope} onClick={() => handleScopeSync("TO_RAG")}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${syncingAnalysisScope ? "animate-spin" : ""}`} />Analysis → RAG
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="analysis-include-patterns">Include patterns</Label>
+                      <Textarea
+                        id="analysis-include-patterns"
+                        rows={6}
+                        placeholder={"src/**\napp/**\n*.java"}
+                        value={analysisScope.includePatterns.join("\n")}
+                        onChange={(event) => setAnalysisScope({
+                          ...analysisScope,
+                          includePatterns: event.target.value.split("\n").map((value) => value.trim()).filter(Boolean),
+                        })}
+                      />
+                      <p className="text-xs text-muted-foreground">Leave blank to include every path not excluded.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="analysis-exclude-patterns">Exclude patterns</Label>
+                      <Textarea
+                        id="analysis-exclude-patterns"
+                        rows={6}
+                        placeholder={"vendor/**\ndist/**\n**/*.generated.ts"}
+                        value={analysisScope.excludePatterns.join("\n")}
+                        onChange={(event) => setAnalysisScope({
+                          ...analysisScope,
+                          excludePatterns: event.target.value.split("\n").map((value) => value.trim()).filter(Boolean),
+                        })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="w-full flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <Wrench className="h-5 w-5 text-primary" />
@@ -1905,7 +2055,31 @@ export default function ProjectConfiguration() {
                     </p>
                   </div>
 
-                  {aiConnections.map((connection) => (
+                  <div className="relative max-w-xl">
+                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      aria-label="Search available AI connections"
+                      placeholder="Search by name, provider, or model..."
+                      value={aiConnectionSearchQuery}
+                      onChange={(event) =>
+                        setAiConnectionSearchQuery(event.target.value)
+                      }
+                      className="h-11 pl-10"
+                    />
+                  </div>
+
+                  {filteredAiConnections.length === 0 && (
+                    <div className="rounded-lg border border-dashed p-8 text-center">
+                      <Search className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
+                      <p className="font-medium">No matching AI connections</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Try a different connection name, provider, or model.
+                      </p>
+                    </div>
+                  )}
+
+                  {filteredAiConnections.map((connection) => (
                     <div key={connection.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">

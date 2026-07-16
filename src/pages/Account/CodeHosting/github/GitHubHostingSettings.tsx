@@ -123,18 +123,21 @@ export default function GitHubHostingSettings({
     fetchConnections();
   }, [toast, currentWorkspace]);
 
+  // Poll only request-bound pending rows. This never scans or re-syncs current
+  // installations; the backend can resolve these rows by exact GitHub request
+  // and target-account IDs.
   useEffect(() => {
-    if (!currentWorkspace || !appConnections.some((c) => c.status === "PENDING")) {
-      return;
-    }
+    if (!currentWorkspace) return;
+    const pendingRequests = appConnections.filter(
+      (connection) =>
+        connection.status === "PENDING" &&
+        connection.installationRequestPending,
+    );
+    if (pendingRequests.length === 0) return;
 
     const intervalId = window.setInterval(async () => {
-      const pendingConnections = appConnections.filter(
-        (connection) => connection.status === "PENDING",
-      );
-
       await Promise.allSettled(
-        pendingConnections.map((connection) =>
+        pendingRequests.map((connection) =>
           integrationService.syncConnection(
             currentWorkspace.slug,
             "github",
@@ -155,7 +158,7 @@ export default function GitHubHostingSettings({
         title: "Installation request sent",
         description:
           "Your request has been sent to the organization owner. " +
-          "The connection will activate automatically once the owner approves the GitHub App installation.",
+          "CodeCrow will connect only the exact requested organization after approval; Check Approval refreshes it immediately.",
         duration: 10000,
       });
       // Clean up the URL param
@@ -191,9 +194,12 @@ export default function GitHubHostingSettings({
       );
       if (connection.status === "PENDING") {
         toast({
-          title: "Still waiting for approval",
-          description:
-            "No approved GitHub App installation was found for this request yet.",
+          title: connection.installationRequestPending
+            ? "Still waiting for approval"
+            : "Verification required",
+          description: connection.installationRequestPending
+            ? "The exact GitHub installation request is still pending organization-owner approval."
+            : "Complete the GitHub flow to verify the selected installation.",
         });
       } else if (connection.status === "CONNECTED") {
         toast({
@@ -223,10 +229,20 @@ export default function GitHubHostingSettings({
     try {
       setReconnectingConnectionId(connectionId);
 
-      // Check if this is a GitHub App connection (APP type)
-      // GitHub App connections can refresh tokens server-side without redirect
+      // Connected GitHub App installations refresh server-side. Request-bound
+      // pending rows check their exact approval; other pending rows continue
+      // through GitHub requester verification.
       const connection = appConnections.find((c) => c.id === connectionId);
-      if (connection && connection.connectionType === "APP") {
+      if (connection?.installationRequestPending) {
+        await handleSyncConnection(connectionId);
+        setReconnectingConnectionId(null);
+        return;
+      }
+      if (
+        connection &&
+        connection.connectionType === "APP" &&
+        connection.status === "CONNECTED"
+      ) {
         // Server-side token refresh for GitHub App connections
         await integrationService.refreshConnectionToken(
           currentWorkspace.slug,
@@ -535,9 +551,9 @@ export default function GitHubHostingSettings({
                     <div className="flex items-start gap-2 p-3 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 text-sm">
                       <Clock className="h-4 w-4 mt-0.5 flex-shrink-0" />
                       <span>
-                        Waiting for the organization owner to approve the GitHub
-                        App installation. The connection will activate
-                        automatically once approved.
+                        {connection.installationRequestPending
+                          ? "This exact GitHub installation request is awaiting organization-owner approval. CodeCrow will only accept an installation for the requested organization."
+                          : "Complete the GitHub verification flow for the selected installation."}
                       </span>
                     </div>
                   )}
@@ -557,16 +573,28 @@ export default function GitHubHostingSettings({
                       variant="ghost"
                       size="sm"
                       onClick={() => handleReconnect(connection.id)}
-                      disabled={
-                        reconnectingConnectionId === connection.id ||
+                      disabled={reconnectingConnectionId === connection.id}
+                      title={
                         connection.status === "PENDING"
+                          ? connection.installationRequestPending
+                            ? "Check Approval"
+                            : "Verify & Connect"
+                          : "Re-authorize connection"
                       }
-                      title="Re-authorize connection"
                     >
                       {reconnectingConnectionId === connection.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Link2 className="h-4 w-4" />
+                        <>
+                          <Link2 className="h-4 w-4" />
+                          {connection.status === "PENDING" && (
+                            <span className="ml-1">
+                              {connection.installationRequestPending
+                                ? "Check Approval"
+                                : "Verify & Connect"}
+                            </span>
+                          )}
+                        </>
                       )}
                     </Button>
                     <Button
@@ -576,7 +604,7 @@ export default function GitHubHostingSettings({
                       disabled={syncingConnectionId === connection.id}
                       title={
                         connection.status === "PENDING"
-                          ? "Check approval status"
+                          ? "Show verification status"
                           : "Refresh connection status"
                       }
                     >
