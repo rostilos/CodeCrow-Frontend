@@ -308,6 +308,113 @@ export interface QaDocDocumentResponse {
   generatedAt?: string | null;
 }
 
+// ── Review lifecycle v1 types ───────────────────────────────────────────
+
+export type ReviewLifecycleAnalysisState =
+  | "PENDING"
+  | "EMPTY"
+  | "PARTIAL"
+  | "FAILED"
+  | "COMPLETE"
+  | "SUPERSEDED";
+
+export type ReviewLifecycleDeliveryState =
+  | "NOT_REQUESTED"
+  | "PENDING"
+  | "IN_FLIGHT"
+  | "RETRYABLE_FAILED"
+  | "DELIVERED"
+  | "STALE";
+
+export type ReviewPreviousIssueState =
+  | "REVERIFIED"
+  | "REFUTED_FIXED"
+  | "AMBIGUOUS"
+  | "UNSUPPORTED"
+  | "FAILED";
+
+export type ReviewLifecycleGapComponent =
+  | "analysis"
+  | "verification"
+  | "previousIssues";
+
+export type ReviewLifecycleGapCode =
+  | "missing"
+  | "artifact_missing"
+  | "artifact_identity_mismatch"
+  | "artifact_schema_mismatch"
+  | "artifact_payload_unavailable"
+  | "artifact_integrity_failed"
+  | "artifact_invalid";
+
+export interface ReviewLifecycleV1Response {
+  schemaVersion: "review-lifecycle-v1";
+  execution: {
+    executionId: string;
+    repositoryId: string;
+    pullRequestId: number;
+    headSha: string;
+    createdAt: string;
+  };
+  analysis: {
+    state: ReviewLifecycleAnalysisState;
+    revision: number;
+    coverage: {
+      total: number;
+      analyzed: number;
+      pending: number;
+      ownerPending: number;
+      incomplete: number;
+      unsupported: number;
+      failed: number;
+      policyExcluded: number;
+      deletedRecorded: number;
+    };
+    reasonCounts: Record<string, number>;
+    updatedAt: string | null;
+  };
+  delivery: {
+    state: ReviewLifecycleDeliveryState;
+    attempts: number;
+    failureCode: "vcs_delivery_failed" | "stale_head" | null;
+    updatedAt: string | null;
+  };
+  verification: {
+    available: boolean;
+    total: number;
+    supported: number;
+    refuted: number;
+    insufficientEvidence: number;
+    toolFailed: number;
+    intakeRejected: number;
+    unresolved: number;
+    producerRejected: number;
+  };
+  previousIssues: Array<{
+    predecessorExecutionId: string;
+    predecessorFindingId: string;
+    state: ReviewPreviousIssueState;
+    currentPath: string | null;
+    currentStartLine: number | null;
+    reasonCode: string;
+  }>;
+  gaps: Array<{
+    component: ReviewLifecycleGapComponent;
+    code: ReviewLifecycleGapCode;
+  }>;
+  events: Array<{
+    schemaVersion: "review-lifecycle-event-v1";
+    component: "analysis" | "delivery" | "previousIssues" | "verification";
+    revision: number;
+    state:
+      | ReviewLifecycleAnalysisState
+      | ReviewLifecycleDeliveryState
+      | "AVAILABLE"
+      | "UNAVAILABLE";
+    occurredAt: string | null;
+  }>;
+}
+
 class AnalysisService extends ApiService {
   async updateIssueStatus(
     workspaceSlug: string,
@@ -992,6 +1099,27 @@ class AnalysisService extends ApiService {
   ): Promise<QaDocDocumentResponse> {
     return this.request<QaDocDocumentResponse>(
       `/${workspaceSlug}/project/${namespace}/pull-requests/${prNumber}/qa-doc`,
+      {},
+      true,
+    );
+  }
+
+  async getReviewLifecycle(
+    workspaceSlug: string,
+    namespace: string,
+    prNumber: number | string,
+    executionId?: string,
+  ): Promise<ReviewLifecycleV1Response> {
+    const resource =
+      `/v1/workspaces/${encodeURIComponent(workspaceSlug)}` +
+      `/projects/${encodeURIComponent(namespace)}` +
+      `/pull-requests/${encodeURIComponent(String(prNumber))}/lifecycle`;
+    const query = executionId
+      ? `?${new URLSearchParams({ executionId }).toString()}`
+      : "";
+
+    return this.request<ReviewLifecycleV1Response>(
+      `${resource}${query}`,
       {},
       true,
     );

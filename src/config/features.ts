@@ -48,6 +48,13 @@ export const FEATURES = {
    * When enabled, site admins can configure VCS credentials, LLM API keys, SMTP, etc. via UI.
    */
   INSTANCE_ADMIN: import.meta.env.VITE_FEATURE_INSTANCE_ADMIN !== "false",
+
+  /**
+   * Truthful review lifecycle projection and UI.
+   * Default-off until the v1 API and frontend rollout are enabled together.
+   */
+  REVIEW_LIFECYCLE_V1:
+    import.meta.env.VITE_FEATURE_REVIEW_LIFECYCLE_V1 === "true",
 } as const;
 
 /**
