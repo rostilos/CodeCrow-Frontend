@@ -1,65 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  BookOpenCheck,
-  Database,
-  Eye,
-  FolderKanban,
-  GitBranch,
-  ListFilter,
-  ListTodo,
-  Plus,
-  RotateCcw,
-  Search,
-  Settings,
-  SlidersHorizontal,
-  Zap,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge.tsx";
+import { Plus, Settings, GitBranch, Zap, Trash2, Info, Search, FolderKanban, ArrowRight, Download, Calendar, AlertTriangle, CheckCircle, Clock, Activity, ExternalLink } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Card, CardContent } from "@/components/ui/card.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Label } from "@/components/ui/label.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx";
-import { Separator } from "@/components/ui/separator.tsx";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet.tsx";
-import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
-import { githubService } from "@/api_service/codeHosting/github/githubService.ts";
-import { gitlabService } from "@/api_service/codeHosting/gitlab/gitlabService.ts";
-import {
-  projectService,
-  type ProjectDTO,
-  type RagStatusResponse,
-} from "@/api_service/project/projectService.ts";
-import { taskManagementService } from "@/api_service/taskManagement/taskManagementService";
-import { usePermissions } from "@/hooks/usePermissions";
+import { Badge } from "@/components/ui/badge.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
-import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { projectService } from "@/api_service/project/projectService.ts";
+import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
-
-type QualityScore = "A+" | "A" | "B" | "C" | "D" | "F";
-type IssueCountFilter =
-  | "all"
-  | "not-analyzed"
-  | "none"
-  | "1-10"
-  | "11-50"
-  | "51-plus";
-type ConfigurationFilter = "all" | "configured" | "needs-setup";
-type ProjectStatusFilter = "all" | "active" | "inactive";
+import ProjectStats, { ProjectStatsData } from "@/components/ProjectStats";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 
 interface Project {
   id: string;
@@ -71,711 +23,224 @@ interface Project {
   projectVcsWorkspace?: string;
   projectVcsRepoSlug?: string;
   isActive?: boolean;
-  mainBranch: string | null;
-  vcsProvider?: ProjectDTO["vcsProvider"];
-  vcsConnectionName?: string;
-  ragConfig?: ProjectDTO["ragConfig"];
-  ragStatus?: RagStatusResponse | null;
-  taskManagementConfig?: ProjectDTO["taskManagementConfig"];
-  taskManagementConnectionName?: string;
-  taskManagementProvider?: string;
-  qaAutoDocConfig?: ProjectDTO["qaAutoDocConfig"];
-  qualityGateId?: number | null;
-  defaultBranchStats?: ProjectDTO["defaultBranchStats"];
+  createdAt: string;
+  defaultBranch: string | null;
+  defaultBranchStats?: {
+    branchName: string;
+    totalIssues: number;
+    highSeverityCount: number;
+    mediumSeverityCount: number;
+    lowSeverityCount: number;
+    resolvedCount: number;
+  };
 }
 
-interface ProjectFilters {
-  issueCount: IssueCountFilter;
-  qualityScore: "all" | "unscored" | QualityScore;
-  configuration: ConfigurationFilter;
-  status: ProjectStatusFilter;
+interface CodeHostingConfig {
+  id: string | number;
+  name: string;
   provider: string;
-  qaAutoDocEnabled: boolean;
-  ragEnabled: boolean;
-  taskManagementConnected: boolean;
-  aiConnected: boolean;
-  vcsConnected: boolean;
+  repository?: string;
 }
 
-interface VcsConnectionSummary {
-  id: number;
-  connectionName: string;
-  provider: NonNullable<ProjectDTO["vcsProvider"]>;
+interface TaskManagementConfig {
+  id: string;
+  name: string;
+  provider: string;
+  workspace: string;
 }
 
-const EMPTY_FILTERS: ProjectFilters = {
-  issueCount: "all",
-  qualityScore: "all",
-  configuration: "all",
-  status: "all",
-  provider: "all",
-  qaAutoDocEnabled: false,
-  ragEnabled: false,
-  taskManagementConnected: false,
-  aiConnected: false,
-  vcsConnected: false,
-};
-
-const loadVcsConnectionSummaries = async (
-  workspaceSlug: string,
-): Promise<VcsConnectionSummary[]> => {
-  const [bitbucketConnections, githubConnections, gitlabConnections] =
-    await Promise.all([
-      bitbucketCloudService.getUserConnections(workspaceSlug).catch(() => []),
-      githubService.getUserConnections(workspaceSlug).catch(() => []),
-      gitlabService.getUserConnections(workspaceSlug).catch(() => []),
-    ]);
-
-  return [
-    ...bitbucketConnections.map((connection) => ({
-      id: connection.id,
-      connectionName: connection.connectionName,
-      provider: "BITBUCKET_CLOUD" as const,
-    })),
-    ...githubConnections.map((connection) => ({
-      id: connection.id,
-      connectionName: connection.connectionName,
-      provider: "GITHUB" as const,
-    })),
-    ...gitlabConnections.map((connection) => ({
-      id: connection.id,
-      connectionName: connection.connectionName,
-      provider: "GITLAB" as const,
-    })),
-  ];
-};
-
-const formatProvider = (provider?: string | null) => {
-  if (!provider) return "No provider";
-  return provider
-    .replace(/_/g, " ")
-    .replace(/-/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (character) => character.toUpperCase());
-};
-
-const getRepositoryInfo = (workspace?: string, slug?: string) => {
-  if (!workspace || !slug) return "No repository";
-  return `${workspace}/${slug}`;
-};
-
-const getQualityScore = (project: Project): QualityScore | null => {
-  const stats = project.defaultBranchStats;
-  if (!stats) return null;
-
-  const weightedScore =
-    stats.highSeverityCount * 3 +
-    stats.mediumSeverityCount * 2 +
-    stats.lowSeverityCount;
-  const scoredIssueCount =
-    stats.highSeverityCount +
-    stats.mediumSeverityCount +
-    stats.lowSeverityCount;
-
-  if (scoredIssueCount === 0) return "A+";
-  if (weightedScore <= 5) return "A";
-  if (weightedScore <= 15) return "B";
-  if (weightedScore <= 30) return "C";
-  if (weightedScore <= 50) return "D";
-  return "F";
-};
-
-const getQualityScoreClass = (score: QualityScore | null) => {
-  switch (score) {
-    case "A+":
-    case "A":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-    case "B":
-      return "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400";
-    case "C":
-      return "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400";
-    case "D":
-    case "F":
-      return "border-destructive/30 bg-destructive/10 text-destructive";
-    default:
-      return "border-border bg-muted/60 text-muted-foreground";
-  }
-};
-
-const getCommentVisibility = (project: Project) => {
-  if (!project.qaAutoDocConfig?.enabled) return "QA documentation disabled";
-
-  const visibility = project.qaAutoDocConfig.commentVisibility;
-  if (!visibility) return "Visible to everyone";
-
-  const visibilityName =
-    visibility.displayName ||
-    visibility.value ||
-    visibility.identifier ||
-    "Restricted";
-
-  return `${visibility.type === "group" ? "Group" : "Role"}: ${visibilityName}`;
-};
-
-const getRagState = (project: Project) => {
-  if (!project.ragConfig?.enabled) {
-    return {
-      label: "RAG off",
-      className: "border-border bg-muted/60 text-muted-foreground",
-    };
-  }
-
-  if (project.ragStatus === null) {
-    return {
-      label: "RAG unavailable",
-      className:
-        "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    };
-  }
-
-  const status = project.ragStatus?.indexStatus?.status;
-  if (status === "INDEXED") {
-    return {
-      label: "RAG indexed",
-      className:
-        "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    };
-  }
-  if (status === "INDEXING" || status === "UPDATING") {
-    return {
-      label: status === "INDEXING" ? "RAG indexing" : "RAG updating",
-      className:
-        "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400",
-    };
-  }
-  if (status === "FAILED") {
-    return {
-      label: "RAG failed",
-      className: "border-destructive/30 bg-destructive/10 text-destructive",
-    };
-  }
-
-  return project.ragStatus?.isIndexed
-    ? {
-        label: "RAG indexed",
-        className:
-          "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-      }
-    : {
-        label: "RAG not indexed",
-        className:
-          "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-      };
-};
-
-const isFullyConfigured = (project: Project) =>
-  Boolean(project.vcsConnectionId && project.aiConnectionId && project.mainBranch);
-
-const countActiveFilters = (filters: ProjectFilters) =>
-  Number(filters.issueCount !== "all") +
-  Number(filters.qualityScore !== "all") +
-  Number(filters.configuration !== "all") +
-  Number(filters.status !== "all") +
-  Number(filters.provider !== "all") +
-  Number(filters.qaAutoDocEnabled) +
-  Number(filters.ragEnabled) +
-  Number(filters.taskManagementConnected) +
-  Number(filters.aiConnected) +
-  Number(filters.vcsConnected);
-
-interface ProjectFiltersPanelProps {
-  filters: ProjectFilters;
-  providers: string[];
-  idPrefix: string;
-  onChange: (filters: ProjectFilters) => void;
-  onClear: () => void;
-}
-
-function ProjectFiltersPanel({
-  filters,
-  providers,
-  idPrefix,
-  onChange,
-  onClear,
-}: ProjectFiltersPanelProps) {
-  const activeFilterCount = countActiveFilters(filters);
-  const updateFilter = <Key extends keyof ProjectFilters>(
-    key: Key,
-    value: ProjectFilters[Key],
-  ) => onChange({ ...filters, [key]: value });
-
-  const featureFilters: Array<{
-    key:
-      | "qaAutoDocEnabled"
-      | "ragEnabled"
-      | "taskManagementConnected"
-      | "aiConnected"
-      | "vcsConnected";
-    label: string;
-  }> = [
-    { key: "qaAutoDocEnabled", label: "QA auto-documentation" },
-    { key: "ragEnabled", label: "RAG enabled" },
-    { key: "taskManagementConnected", label: "Task management connected" },
-    { key: "aiConnected", label: "AI connected" },
-    { key: "vcsConnected", label: "VCS connected" },
-  ];
-
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4 text-primary" />
-          <h2 className="font-semibold">Filters</h2>
-          {activeFilterCount > 0 && (
-            <Badge className="h-5 min-w-5 justify-center px-1.5">
-              {activeFilterCount}
-            </Badge>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={activeFilterCount === 0}
-          onClick={onClear}
-          className="h-8 px-2 text-xs text-muted-foreground"
-        >
-          <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-          Reset
-        </Button>
-      </div>
-
-      <Separator />
-
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Issue count
-        </Label>
-        <Select
-          value={filters.issueCount}
-          onValueChange={(value) =>
-            updateFilter("issueCount", value as IssueCountFilter)
-          }
-        >
-          <SelectTrigger className="h-10 bg-background">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any issue count</SelectItem>
-            <SelectItem value="not-analyzed">Not analyzed</SelectItem>
-            <SelectItem value="none">No issues</SelectItem>
-            <SelectItem value="1-10">1–10 issues</SelectItem>
-            <SelectItem value="11-50">11–50 issues</SelectItem>
-            <SelectItem value="51-plus">51+ issues</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Quality score
-        </Label>
-        <Select
-          value={filters.qualityScore}
-          onValueChange={(value) =>
-            updateFilter(
-              "qualityScore",
-              value as ProjectFilters["qualityScore"],
-            )
-          }
-        >
-          <SelectTrigger className="h-10 bg-background">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any quality score</SelectItem>
-            <SelectItem value="unscored">Not analyzed</SelectItem>
-            {(["A+", "A", "B", "C", "D", "F"] as QualityScore[]).map(
-              (score) => (
-                <SelectItem key={score} value={score}>
-                  Score {score}
-                </SelectItem>
-              ),
-            )}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Configuration
-        </Label>
-        <Select
-          value={filters.configuration}
-          onValueChange={(value) =>
-            updateFilter("configuration", value as ConfigurationFilter)
-          }
-        >
-          <SelectTrigger className="h-10 bg-background">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any configuration</SelectItem>
-            <SelectItem value="configured">Fully configured</SelectItem>
-            <SelectItem value="needs-setup">Needs setup</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Status
-          </Label>
-          <Select
-            value={filters.status}
-            onValueChange={(value) =>
-              updateFilter("status", value as ProjectStatusFilter)
-            }
-          >
-            <SelectTrigger className="h-10 bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All projects</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Provider
-          </Label>
-          <Select
-            value={filters.provider}
-            onValueChange={(value) => updateFilter("provider", value)}
-          >
-            <SelectTrigger className="h-10 bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All providers</SelectItem>
-              {providers.map((provider) => (
-                <SelectItem key={provider} value={provider}>
-                  {formatProvider(provider)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <Separator />
-
-      <div className="space-y-3">
-        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Features
-        </Label>
-        {featureFilters.map((filter) => {
-          const id = `${idPrefix}-${filter.key}`;
-          return (
-            <div key={filter.key} className="flex items-center gap-2.5">
-              <Checkbox
-                id={id}
-                checked={filters[filter.key]}
-                onCheckedChange={(checked) =>
-                  updateFilter(filter.key, checked === true)
-                }
-              />
-              <Label htmlFor={id} className="cursor-pointer text-sm font-normal">
-                {filter.label}
-              </Label>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export default function ProjectManagement() {
+export default function ProjectSettings() {
   const navigate = useNavigate();
   const routes = useWorkspaceRoutes();
-  const { currentWorkspace } = useWorkspace();
-  const { canManageWorkspace } = usePermissions();
-  const { toast } = useToast();
-
   const [projects, setProjects] = useState<Project[]>([]);
+  const [codeHostingConfigs, setCodeHostingConfigs] = useState<CodeHostingConfig[]>([]);
+  const [taskManagementConfigs, setTaskManagementConfigs] = useState<TaskManagementConfig[]>([]);
+  const [projectStats, setProjectStats] = useState<Record<string, ProjectStatsData>>({});
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newProject, setNewProject] = useState({
+    name: "",
+    description: "",
+    vcsConnectionId: "",
+    aiConnectionId: ""
+  });
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [filters, setFilters] = useState<ProjectFilters>(EMPTY_FILTERS);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const { toast } = useToast();
+  const { currentWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(true);
+  const { canManageWorkspace } = usePermissions();
 
+  // Debounce search input
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDebouncedSearch(projectSearchQuery.trim().toLowerCase());
-      setCurrentPage(0);
-    }, 250);
-    return () => window.clearTimeout(timer);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(projectSearchQuery);
+      setCurrentPage(0); // Reset to first page on search
+    }, 300);
+    return () => clearTimeout(timer);
   }, [projectSearchQuery]);
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     if (!currentWorkspace) return;
     setLoading(true);
-
     try {
-      const [projectList, vcsConnections, taskConnections] = await Promise.all([
-        projectService.listProjects(currentWorkspace.slug),
-        loadVcsConnectionSummaries(currentWorkspace.slug),
-        taskManagementService
-          .listConnections(currentWorkspace.slug)
-          .catch(() => []),
-      ]);
-
-      const vcsConnectionsById = new Map(
-        vcsConnections.map((connection) => [connection.id, connection]),
-      );
-      const taskConnectionsById = new Map(
-        taskConnections.map((connection) => [connection.id, connection]),
+      let bbConnections;
+      // Load paginated projects with server-side search
+      const projectsResponse = await projectService.listProjectsPaginated(
+        currentWorkspace.slug,
+        { search: debouncedSearch, page: currentPage, size: pageSize }
       );
 
-      const ragStatuses = new Map<string, RagStatusResponse | null>();
-      await Promise.all(
-        projectList.map(async (project) => {
-          if (!project.ragConfig?.enabled || !project.namespace) return;
-          const status = await projectService
-            .getRagStatus(currentWorkspace.slug, project.namespace)
-            .catch(() => null);
-          ragStatuses.set(String(project.id), status);
-        }),
-      );
+      if (!canManageWorkspace) {
+        bbConnections = await bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []);
+      }
 
-      const mappedProjects = projectList.map<Project>((project) => {
-        const vcsConnection = project.vcsConnectionId
-          ? vcsConnectionsById.get(project.vcsConnectionId)
-          : undefined;
-        const taskConnectionId =
-          project.taskManagementConfig?.taskManagementConnectionId;
-        const taskConnection = taskConnectionId
-          ? taskConnectionsById.get(taskConnectionId)
-          : undefined;
+      const projList = projectsResponse.projects || [];
+      setTotalElements(projectsResponse.totalElements);
+      setTotalPages(projectsResponse.totalPages);
 
-        return {
-          id: String(project.id),
-          name: project.name,
-          description: project.description || "",
-          namespace: project.namespace || "",
-          vcsConnectionId: project.vcsConnectionId,
-          aiConnectionId: project.aiConnectionId,
-          projectVcsWorkspace: project.projectVcsWorkspace,
-          projectVcsRepoSlug: project.projectVcsRepoSlug,
-          isActive: project.isActive ?? project.active,
-          mainBranch:
-            project.mainBranch ||
-            project.defaultBranch ||
-            project.defaultBranchStats?.branchName ||
-            null,
-          vcsProvider: project.vcsProvider || vcsConnection?.provider,
-          vcsConnectionName: vcsConnection?.connectionName,
-          ragConfig: project.ragConfig,
-          ragStatus: project.ragConfig?.enabled
-            ? (ragStatuses.get(String(project.id)) ?? null)
-            : undefined,
-          taskManagementConfig: project.taskManagementConfig,
-          taskManagementConnectionName: taskConnection?.connectionName,
-          taskManagementProvider: taskConnection?.providerType,
-          qaAutoDocConfig: project.qaAutoDocConfig,
-          qualityGateId: project.qualityGateId,
-          defaultBranchStats: project.defaultBranchStats,
-        };
-      });
+      const mappedProjects: Project[] = projList.map((p: any) => ({
+        id: String(p.id),
+        name: p.name,
+        description: p.description || "",
+        namespace: p.namespace || "",
+        vcsConnectionId: p.vcsConnectionId,
+        aiConnectionId: p.aiConnectionId,
+        projectVcsWorkspace: p.projectVcsWorkspace,
+        projectVcsRepoSlug: p.projectVcsRepoSlug,
+        isActive: p.isActive,
+        createdAt: p.createdAt ? String(p.createdAt) : "",
+        defaultBranchStats: p.defaultBranchStats,
+        defaultBranch: p.defaultBranch,
+      }));
 
       setProjects(mappedProjects);
-    } catch (error: unknown) {
-      const message =
-        typeof error === "object" &&
-        error !== null &&
-        "message" in error &&
-        typeof error.message === "string"
-          ? error.message
-          : "Failed to load projects";
+
+      const mappedConnections: CodeHostingConfig[] = (bbConnections || []).map((c: any) => ({
+        id: c.id,
+        name: c.name || `Connection ${c.id}`,
+        provider: "Bitbucket",
+        repository: c.repository || ""
+      }));
+
+      setCodeHostingConfigs(mappedConnections);
+      setTaskManagementConfigs([]);
+
+      // Map default branch stats to project stats format
+      const statsMap: Record<string, ProjectStatsData> = {};
+      mappedProjects.forEach((project) => {
+        if (project.defaultBranchStats) {
+          statsMap[project.id] = {
+            totalIssues: project.defaultBranchStats.totalIssues,
+            highIssues: project.defaultBranchStats.highSeverityCount,
+            mediumIssues: project.defaultBranchStats.mediumSeverityCount,
+            lowIssues: project.defaultBranchStats.lowSeverityCount,
+          };
+        }
+      });
+      setProjectStats(statsMap);
+    } catch (err: any) {
       toast({
         title: "Error",
-        description: message,
-        variant: "destructive",
+        description: err?.message || "Failed to load projects",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
-  }, [currentWorkspace, toast]);
+  };
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    loadData();
+  }, [currentWorkspace, debouncedSearch, currentPage, pageSize]);
 
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [filters, pageSize]);
+  const handleCreateProject = async () => {
+    if (!newProject.name) {
+      toast({
+        title: "Error",
+        description: "Project name is required",
+        variant: "destructive"
+      });
+      return;
+    }
 
-  const providers = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          projects
-            .map((project) => project.vcsProvider)
-            .filter((provider): provider is NonNullable<typeof provider> =>
-              Boolean(provider),
-            ),
-        ),
-      ).sort(),
-    [projects],
-  );
+    try {
+      const payload: any = {
+        name: newProject.name,
+        description: newProject.description,
+        creationMode: "MANUAL"
+      };
 
-  const filteredProjects = useMemo(() => {
-    return projects.filter((project) => {
-      const stats = project.defaultBranchStats;
-      const issueCount = stats?.totalIssues;
-      const qualityScore = getQualityScore(project);
-
-      if (debouncedSearch) {
-        const searchableValues = [
-          project.name,
-          project.description,
-          project.namespace,
-          project.projectVcsWorkspace,
-          project.projectVcsRepoSlug,
-          project.vcsConnectionName,
-          project.taskManagementConnectionName,
-          project.mainBranch,
-        ];
-        if (
-          !searchableValues.some((value) =>
-            value?.toLowerCase().includes(debouncedSearch),
-          )
-        ) {
-          return false;
+      if (newProject.vcsConnectionId) {
+        // API expects a numeric connectionId for VCS connections
+        const parsed = Number(newProject.vcsConnectionId);
+        if (!isNaN(parsed)) {
+          payload.connectionId = parsed;
         }
       }
 
-      if (filters.issueCount === "not-analyzed" && stats) return false;
-      if (filters.issueCount === "none" && issueCount !== 0) return false;
-      if (
-        filters.issueCount === "1-10" &&
-        (issueCount === undefined || issueCount < 1 || issueCount > 10)
-      ) {
-        return false;
-      }
-      if (
-        filters.issueCount === "11-50" &&
-        (issueCount === undefined || issueCount < 11 || issueCount > 50)
-      ) {
-        return false;
-      }
-      if (
-        filters.issueCount === "51-plus" &&
-        (issueCount === undefined || issueCount < 51)
-      ) {
-        return false;
-      }
-
-      if (filters.qualityScore === "unscored" && qualityScore) return false;
-      if (
-        filters.qualityScore !== "all" &&
-        filters.qualityScore !== "unscored" &&
-        qualityScore !== filters.qualityScore
-      ) {
-        return false;
-      }
-
-      if (
-        filters.configuration === "configured" &&
-        !isFullyConfigured(project)
-      ) {
-        return false;
-      }
-      if (
-        filters.configuration === "needs-setup" &&
-        isFullyConfigured(project)
-      ) {
-        return false;
-      }
-
-      if (filters.status === "active" && project.isActive === false) return false;
-      if (filters.status === "inactive" && project.isActive !== false) return false;
-      if (filters.provider !== "all" && project.vcsProvider !== filters.provider) {
-        return false;
-      }
-      if (filters.qaAutoDocEnabled && !project.qaAutoDocConfig?.enabled) {
-        return false;
-      }
-      if (filters.ragEnabled && !project.ragConfig?.enabled) return false;
-      if (
-        filters.taskManagementConnected &&
-        !project.taskManagementConfig?.taskManagementConnectionId
-      ) {
-        return false;
-      }
-      if (filters.aiConnected && !project.aiConnectionId) return false;
-      if (filters.vcsConnected && !project.vcsConnectionId) return false;
-
-      return true;
-    });
-  }, [debouncedSearch, filters, projects]);
-
-  const totalElements = filteredProjects.length;
-  const totalPages = Math.ceil(totalElements / pageSize);
-  const visibleProjects = useMemo(
-    () =>
-      filteredProjects.slice(
-        currentPage * pageSize,
-        (currentPage + 1) * pageSize,
-      ),
-    [currentPage, filteredProjects, pageSize],
-  );
-  const activeFilterCount = countActiveFilters(filters);
-
-  useEffect(() => {
-    if (totalPages > 0 && currentPage >= totalPages) {
-      setCurrentPage(totalPages - 1);
+      await projectService.createProject(currentWorkspace!.slug, payload);
+      toast({
+        title: "Success",
+        description: "Project created successfully"
+      });
+      setNewProject({ name: "", description: "", vcsConnectionId: "", aiConnectionId: "" });
+      setIsCreateDialogOpen(false);
+      await loadData();
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to create project",
+        variant: "destructive"
+      });
     }
-  }, [currentPage, totalPages]);
+  };
 
-  const clearFilters = () => setFilters(EMPTY_FILTERS);
-  const resetSearchAndFilters = () => {
-    setProjectSearchQuery("");
-    setDebouncedSearch("");
-    setFilters(EMPTY_FILTERS);
+  const handleDeleteProject = async (namespace: string) => {
+    try {
+      await projectService.deleteProject(currentWorkspace!.slug, namespace);
+      toast({
+        title: "Success",
+        description: "Project deleted successfully"
+      });
+      setProjects(prev => prev.filter(p => p.namespace !== namespace));
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to delete project",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getRepositoryInfo = (workspace?: string, slug?: string) => {
+    if (!workspace || !slug) return "No repository";
+    return `${workspace}/${slug}`;
+  };
+
+  const handleProjectSettings = (namespace: string) => {
+    navigate(routes.projectSettings(namespace));
   };
 
   if (loading && projects.length === 0) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-40 -left-40 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 w-full">
-          <div className="w-full bg-background/40 backdrop-blur-xl border-b border-border/40 shadow-sm sticky top-0 z-40">
-            <div className="container mx-auto px-4 lg:px-8 py-6 sm:py-8">
-              <div className="flex items-center gap-5">
-                <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20 shadow-inner">
-                  <FolderKanban className="h-8 w-8 text-primary" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-8 w-48 animate-pulse rounded bg-muted/60" />
-                  <div className="h-4 w-80 max-w-full animate-pulse rounded bg-muted/50" />
-                </div>
-              </div>
-            </div>
+      <div className="p-6">
+        <div className="space-y-6">
+          <div className="h-8 bg-muted/50 rounded-lg w-1/4 animate-pulse"></div>
+          <div className="h-4 bg-muted/50 rounded w-1/2 animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="h-32 bg-muted/50 rounded-xl animate-pulse"></div>
+            <div className="h-32 bg-muted/50 rounded-xl animate-pulse"></div>
+            <div className="h-32 bg-muted/50 rounded-xl animate-pulse"></div>
           </div>
-
-          <div className="container mx-auto px-4 lg:px-8 py-8 space-y-6">
-            <div className="h-16 animate-pulse rounded-2xl bg-muted/50" />
-            <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-              <div className="hidden h-96 animate-pulse rounded-2xl bg-muted/50 lg:block" />
-              <div className="space-y-3">
-                {[...Array(5)].map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-32 animate-pulse rounded-xl bg-muted/50"
-                  />
-                ))}
-              </div>
-            </div>
+          <div className="h-10 bg-muted/50 rounded-lg w-full max-w-md animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-48 bg-muted/50 rounded-xl animate-pulse"></div>
+            ))}
           </div>
         </div>
       </div>
@@ -784,12 +249,14 @@ export default function ProjectManagement() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] relative overflow-hidden">
-      {/* Keep the same dashboard page background used by AI/VCS settings. */}
+      {/* Background decorative elements */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
       <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-40 -left-40 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
+      {/* Main Content Wrapper */}
       <div className="relative z-10 w-full">
+        {/* Page Header */}
         <div className="w-full bg-background/40 backdrop-blur-xl border-b border-border/40 shadow-sm sticky top-0 z-40">
           <div className="container mx-auto px-4 lg:px-8 py-6 sm:py-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
@@ -807,426 +274,305 @@ export default function ProjectManagement() {
                 </div>
               </div>
               {canManageWorkspace() && (
-                <Button
-                  onClick={() => navigate(routes.projectImport())}
-                  className="flex items-center space-x-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>New Project</span>
-                </Button>
+                <div className="flex gap-4">
+                  <Button size="lg" onClick={() => navigate(routes.projectImport())} className="shadow-md hover:shadow-lg transition-all animate-in fade-in slide-in-from-right-4">
+                    <Plus className="mr-2 h-5 w-5" />
+                    New Project
+                  </Button>
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="container mx-auto px-4 lg:px-8 py-8 space-y-6">
-          <div className="flex flex-col gap-3 rounded-2xl border border-border/50 bg-card/50 p-3 shadow-sm backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-xl">
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                aria-label="Search projects"
-                placeholder="Search projects, repositories, branches, or connections..."
-                value={projectSearchQuery}
-                onChange={(event) => setProjectSearchQuery(event.target.value)}
-                className="h-11 rounded-xl bg-background/80 pl-10"
-              />
-            </div>
-
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <Button
-                variant="outline"
-                onClick={() => setFiltersOpen(true)}
-                className="relative h-11 flex-1 lg:hidden"
-              >
-                <ListFilter className="mr-2 h-4 w-4" />
-                Filters
-                {activeFilterCount > 0 && (
-                  <Badge className="ml-2 h-5 min-w-5 justify-center px-1.5">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-
-              <div className="flex h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-2.5">
-                <span className="hidden whitespace-nowrap text-xs font-medium text-muted-foreground sm:inline">
-                  Per page
-                </span>
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(value) => setPageSize(Number(value))}
+        <div className="container mx-auto px-4 lg:px-8 py-8 space-y-10">
+          <div className="space-y-6">
+            {/* Search Bar and Page Size */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-card/40 backdrop-blur-xl p-4 rounded-2xl border border-border/50 shadow-sm animate-in fade-in duration-700">
+              <div className="relative max-w-md flex-1 w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search projects..."
+                  value={projectSearchQuery}
+                  onChange={(e) => setProjectSearchQuery(e.target.value)}
+                  className="pl-12 h-12 bg-background/80 hover:bg-background border-border/60 focus-visible:ring-primary/40 rounded-xl transition-colors text-base"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-muted-foreground">Show:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(0);
+                  }}
+                  className="h-12 px-4 py-2 rounded-xl border border-border/60 bg-background/80 hover:bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors cursor-pointer"
                 >
-                  <SelectTrigger
-                    aria-label="Items per page"
-                    className="h-8 w-[72px] border-0 bg-transparent px-2 font-semibold shadow-none focus:ring-0"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
               </div>
             </div>
-          </div>
 
-          <div className="grid items-start gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-            <aside className="sticky top-28 hidden rounded-2xl border border-border/50 bg-card/60 p-5 shadow-sm backdrop-blur-xl lg:block">
-              <ProjectFiltersPanel
-                filters={filters}
-                providers={providers}
-                idPrefix="desktop-filter"
-                onChange={setFilters}
-                onClear={clearFilters}
-              />
-            </aside>
+            {/* Projects Grid */}
+            {projects.length === 0 ? (
+              <Card className="border-dashed border-2 bg-transparent shadow-none animate-in fade-in duration-500">
+                <CardContent className="py-20 text-center flex flex-col items-center">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/5 ring-1 ring-primary/10 mb-6">
+                    <FolderKanban className="h-10 w-10 text-primary/60" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3">No projects found</h3>
+                  <p className="text-muted-foreground mb-8 text-lg max-w-md mx-auto">
+                    {projectSearchQuery ? "No projects match your search criteria." : "Get started by creating your first project in this workspace."}
+                  </p>
+                  {!projectSearchQuery && (
+                    <Button onClick={() => navigate(routes.projectNew())} size="lg" className="shadow-md px-8">
+                      <Plus className="mr-2 h-5 w-5" />
+                      New Project
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {projects.map((project, index) => {
+                  const stats = projectStats[project.id];
+                  const hasIssues = stats && stats.totalIssues > 0;
+                  const isConfigured = project.vcsConnectionId && project.aiConnectionId;
 
-            <main className="min-w-0 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-medium text-muted-foreground">
-                  <span className="font-semibold text-foreground">
-                    {totalElements}
-                  </span>{" "}
-                  project{totalElements === 1 ? "" : "s"}
-                  {(activeFilterCount > 0 || debouncedSearch) &&
-                    ` matching ${projects.length} total`}
-                </p>
-                {activeFilterCount > 0 && (
+                  return (
+                    <Card
+                      key={project.id}
+                      className="group cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1.5 border-border/50 hover:border-primary/40 flex flex-col bg-card/60 backdrop-blur-xl overflow-hidden relative animate-in fade-in slide-in-from-bottom-8"
+                      style={{ animationFillMode: "both", animationDelay: `${index * 50}ms` }}
+                      onClick={() => navigate(routes.projectDetail(project.namespace || project.id))}
+                    >
+                      {/* Top glow border */}
+                      <div className={`absolute top-0 left-0 w-full h-1 transition-all duration-500 ${stats && stats.highIssues > 0
+                        ? 'bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse'
+                        : stats && stats.totalIssues > 0
+                          ? 'bg-gradient-to-r from-yellow-500 via-green-500 to-yellow-500 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse'
+                          : isConfigured
+                            ? 'bg-gradient-to-r from-primary/60 via-primary to-primary/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse'
+                            : 'bg-gradient-to-r from-muted to-muted-foreground/30 opacity-50 group-hover:opacity-80'
+                        }`} />
+
+                      <CardHeader className="pb-3 pt-5 px-5 relative z-10">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="h-10 w-10 rounded-xl bg-background/80 shadow-sm ring-1 ring-border flex items-center justify-center shrink-0 group-hover:ring-primary/40 group-hover:bg-primary/10 transition-all duration-300">
+                                <FolderKanban className="h-5 w-5 text-primary/80 group-hover:text-primary group-hover:scale-110 transition-all duration-300" />
+                              </div>
+                              <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors truncate">
+                                {project.name}
+                              </CardTitle>
+                            </div>
+                            {project.description && (
+                              <CardDescription className="text-xs line-clamp-2 ml-[3.25rem] mt-[-0.25rem] leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
+                                {project.description}
+                              </CardDescription>
+                            )}
+                          </div>
+                          <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            {canManageWorkspace() && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all hover:bg-primary/10 hover:text-primary duration-300"
+                                onClick={() => handleProjectSettings(project.namespace || String(project.id))}
+                              >
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="pt-0 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
+                        {/* Repository Info */}
+                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-primary/20 transition-colors">
+                          <GitBranch className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                          <span className="truncate font-semibold">{getRepositoryInfo(project.projectVcsWorkspace, project.projectVcsRepoSlug)}</span>
+                          {project.defaultBranch && (
+                            <>
+                              <span className="text-border mx-1">→</span>
+                              <span className="truncate text-foreground/80">{project.defaultBranch}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Status Badges */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {project.vcsConnectionId ? (
+                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 font-semibold group-hover:bg-emerald-500/20 transition-colors">
+                              <CheckCircle className="h-2.5 w-2.5 mr-1" />
+                              VCS Connected
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-muted/80 text-muted-foreground border-muted-foreground/30 font-semibold">
+                              <Clock className="h-2.5 w-2.5 mr-1" />
+                              VCS Pending
+                            </Badge>
+                          )}
+                          {project.aiConnectionId ? (
+                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-600 border-violet-500/30 dark:text-violet-400 font-semibold group-hover:bg-violet-500/20 transition-colors">
+                              <Zap className="h-2.5 w-2.5 mr-1" />
+                              AI Enabled
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-muted/80 text-muted-foreground border-muted-foreground/30 font-semibold">
+                              <Clock className="h-2.5 w-2.5 mr-1" />
+                              AI Pending
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Analysis Stats or Empty State */}
+                        <div className="mt-auto pt-1">
+                          {stats ? (
+                            <div className="grid grid-cols-4 gap-1.5 px-2 py-3 rounded-lg bg-background/50 border border-border/50 group-hover:border-primary/20 group-hover:bg-primary/5 transition-all">
+                              <div className="text-center">
+                                <div className="text-xl font-extrabold text-foreground">{stats.totalIssues}</div>
+                                <div className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">Total</div>
+                              </div>
+                              <div className="text-center relative after:content-[''] after:absolute after:left-0 after:top-[20%] after:h-[60%] after:w-px after:bg-border/60">
+                                <div className="text-xl font-extrabold text-red-500">{stats.highIssues}</div>
+                                <div className="text-[9px] text-red-500/70 font-bold uppercase tracking-wider mt-0.5">High</div>
+                              </div>
+                              <div className="text-center relative after:content-[''] after:absolute after:left-0 after:top-[20%] after:h-[60%] after:w-px after:bg-border/60">
+                                <div className="text-xl font-extrabold text-amber-500">{stats.mediumIssues}</div>
+                                <div className="text-[9px] text-amber-500/70 font-bold uppercase tracking-wider mt-0.5">Med</div>
+                              </div>
+                              <div className="text-center relative after:content-[''] after:absolute after:left-0 after:top-[20%] after:h-[60%] after:w-px after:bg-border/60">
+                                <div className="text-xl font-extrabold text-sky-500">{stats.lowIssues}</div>
+                                <div className="text-[9px] text-sky-500/70 font-bold uppercase tracking-wider mt-0.5">Low</div>
+                              </div>
+                            </div>
+                          ) : !isConfigured ? (
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/15 transition-colors">
+                              <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-amber-700 dark:text-amber-300 leading-tight">Setup Required</div>
+                                <div className="text-[10px] font-medium text-amber-600/80 dark:text-amber-400/80 mt-0.5">Configure VCS & AI</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-primary/5 border border-primary/10 group-hover:bg-primary/10 transition-colors">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                <Activity className="h-4 w-4 text-primary/80" />
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-foreground/90 leading-tight">Ready for Analysis</div>
+                                <div className="text-[10px] font-medium text-muted-foreground mt-0.5">Awaiting first review</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between pt-8 mt-4 gap-4 animate-in fade-in duration-700">
+                <div className="text-sm font-semibold text-muted-foreground bg-card/40 backdrop-blur-md px-5 py-2.5 rounded-xl border border-border/50">
+                  Showing <span className="text-foreground">{currentPage * pageSize + 1}</span> - <span className="text-foreground">{Math.min((currentPage + 1) * pageSize, totalElements)}</span> of <span className="text-foreground">{totalElements}</span>
+                </div>
+                <div className="flex items-center gap-2 bg-card/40 backdrop-blur-md p-2 rounded-xl border border-border/50 shadow-sm">
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="h-8 text-xs text-muted-foreground lg:hidden"
+                    onClick={() => setCurrentPage(0)}
+                    disabled={currentPage === 0}
+                    className="h-9 px-4 font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
                   >
-                    Clear filters
+                    First
                   </Button>
-                )}
-              </div>
-
-              {projects.length === 0 ? (
-                <Card className="border-dashed bg-transparent shadow-none">
-                  <CardContent className="flex flex-col items-center py-16 text-center">
-                    <FolderKanban className="mb-4 h-12 w-12 text-primary/50" />
-                    <h2 className="text-xl font-semibold">No projects yet</h2>
-                    <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                      Import a repository to create the first project in this
-                      workspace.
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : visibleProjects.length === 0 ? (
-                <Card className="border-dashed bg-transparent shadow-none">
-                  <CardContent className="flex flex-col items-center py-14 text-center">
-                    <ListFilter className="mb-4 h-10 w-10 text-muted-foreground/60" />
-                    <h2 className="text-lg font-semibold">
-                      No matching projects
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Adjust the search or filters to see more projects.
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={resetSearchAndFilters}
-                      className="mt-5"
-                    >
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Reset search and filters
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {visibleProjects.map((project, index) => {
-                    const stats = project.defaultBranchStats;
-                    const qualityScore = getQualityScore(project);
-                    const ragState = getRagState(project);
-                    const taskConnectionId =
-                      project.taskManagementConfig
-                        ?.taskManagementConnectionId;
-
-                    return (
-                      <Card
-                        key={project.id}
-                        className="group relative cursor-pointer overflow-hidden border-border bg-card transition-all duration-200 hover:border-primary/40 hover:shadow-md animate-in fade-in slide-in-from-bottom-2"
-                        style={{
-                          animationFillMode: "both",
-                          animationDelay: `${index * 35}ms`,
-                        }}
-                        onClick={() =>
-                          navigate(
-                            routes.projectDetail(
-                              project.namespace || project.id,
-                            ),
-                          )
-                        }
-                      >
-                        <CardContent className="p-0">
-                          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-                            <div className="flex min-w-0 flex-1 items-center gap-3 pr-10 sm:pr-0">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                <FolderKanban className="h-5 w-5" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <h2 className="truncate text-base font-semibold transition-colors group-hover:text-primary">
-                                    {project.name}
-                                  </h2>
-                                  <span
-                                    className={`h-2 w-2 shrink-0 rounded-full ${
-                                      project.isActive === false
-                                        ? "bg-muted-foreground/40"
-                                        : "bg-emerald-500"
-                                    }`}
-                                    title={
-                                      project.isActive === false
-                                        ? "Inactive"
-                                        : "Active"
-                                    }
-                                  />
-                                </div>
-                                <p
-                                  className="mt-0.5 truncate text-sm font-medium text-foreground/75"
-                                  title={getRepositoryInfo(
-                                    project.projectVcsWorkspace,
-                                    project.projectVcsRepoSlug,
-                                  )}
-                                >
-                                  {getRepositoryInfo(
-                                    project.projectVcsWorkspace,
-                                    project.projectVcsRepoSlug,
-                                  )}
-                                </p>
-                                <p
-                                  className="mt-0.5 truncate text-xs text-muted-foreground"
-                                  title={project.vcsConnectionName}
-                                >
-                                  {formatProvider(project.vcsProvider)} ·{" "}
-                                  {project.vcsConnectionName ||
-                                    (project.vcsConnectionId
-                                      ? `Connection #${project.vcsConnectionId}`
-                                      : "Not connected")}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="w-full shrink-0 rounded-xl border border-border bg-muted/20 px-3 py-2.5 sm:w-[320px]">
-                              <div className="mb-2 flex items-center justify-between">
-                                <span className="text-xs font-semibold text-foreground">
-                                  Issues
-                                </span>
-                                <Badge
-                                  variant="outline"
-                                  className={`h-5 px-1.5 text-[10px] ${getQualityScoreClass(qualityScore)}`}
-                                >
-                                  Quality {qualityScore || "—"}
-                                </Badge>
-                              </div>
-                              <div className="grid grid-cols-4 divide-x divide-border text-center">
-                                <div>
-                                  <p className="text-xl font-bold leading-none text-foreground">
-                                    {stats?.totalIssues ?? "—"}
-                                  </p>
-                                  <p className="mt-1 text-[10px] font-medium text-muted-foreground">
-                                    Total
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-lg font-semibold leading-none text-destructive">
-                                    {stats?.highSeverityCount ?? "—"}
-                                  </p>
-                                  <p className="mt-1 text-[10px] font-medium text-muted-foreground">
-                                    High
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-lg font-semibold leading-none text-amber-500">
-                                    {stats?.mediumSeverityCount ?? "—"}
-                                  </p>
-                                  <p className="mt-1 text-[10px] font-medium text-muted-foreground">
-                                    Medium
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-lg font-semibold leading-none text-sky-500">
-                                    {stats?.lowSeverityCount ?? "—"}
-                                  </p>
-                                  <p className="mt-1 text-[10px] font-medium text-muted-foreground">
-                                    Low
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div
-                              className="absolute right-3 top-3 sm:static"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {canManageWorkspace() && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label={`Configure ${project.name}`}
-                                  className="h-9 w-9 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                  onClick={() =>
-                                    navigate(
-                                      routes.projectSettings(
-                                        project.namespace || project.id,
-                                      ),
-                                    )
-                                  }
-                                >
-                                  <Settings className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2 border-t border-border bg-muted/10 px-4 py-2.5 text-xs">
-                            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-2 py-1 text-sky-700 dark:text-sky-300">
-                              <GitBranch className="h-3.5 w-3.5 shrink-0" />
-                              <span className="font-medium">
-                                {project.mainBranch || "No main branch"}
-                              </span>
-                            </span>
-                            <span
-                              className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-1 ${
-                                project.qaAutoDocConfig?.enabled
-                                  ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                                  : "border-border bg-muted/60 text-muted-foreground"
-                              }`}
-                              title={getCommentVisibility(project)}
-                            >
-                              <BookOpenCheck className="h-3.5 w-3.5 shrink-0" />
-                              <span className="max-w-[180px] truncate">
-                                {project.qaAutoDocConfig?.enabled
-                                  ? getCommentVisibility(project)
-                                  : "QA documentation off"}
-                              </span>
-                              {project.qaAutoDocConfig?.enabled && (
-                                <Eye className="h-3 w-3 shrink-0" />
-                              )}
-                            </span>
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${ragState.className}`}
-                              title={
-                                project.ragConfig?.enabled
-                                  ? `Branch: ${project.ragConfig.branch || project.mainBranch || "main"}`
-                                  : undefined
-                              }
-                            >
-                              <Database className="h-3.5 w-3.5" />
-                              {ragState.label}
-                            </span>
-                            <span
-                              className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-1 ${
-                                taskConnectionId
-                                  ? "border-blue-500/25 bg-blue-500/10 text-blue-700 dark:text-blue-300"
-                                  : "border-border bg-muted/60 text-muted-foreground"
-                              }`}
-                              title={project.taskManagementConnectionName}
-                            >
-                              <ListTodo className="h-3.5 w-3.5 shrink-0" />
-                              <span className="max-w-[170px] truncate">
-                                {project.taskManagementConnectionName ||
-                                  (taskConnectionId
-                                    ? `Task connection #${taskConnectionId}`
-                                    : "Task management off")}
-                              </span>
-                            </span>
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${
-                                project.aiConnectionId
-                                  ? "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-                                  : "border-border bg-muted/60 text-muted-foreground"
-                              }`}
-                            >
-                              <Zap className="h-3.5 w-3.5" />
-                              AI {project.aiConnectionId ? "connected" : "off"}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-
-              {totalPages > 1 && (
-                <div className="flex flex-col items-center justify-between gap-3 pt-4 sm:flex-row">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Showing {currentPage * pageSize + 1}–
-                    {Math.min((currentPage + 1) * pageSize, totalElements)} of{" "}
-                    {totalElements}
-                  </p>
-                  <div className="flex items-center gap-1 rounded-xl border border-border/50 bg-card/50 p-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentPage(0)}
-                      disabled={currentPage === 0}
-                    >
-                      First
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setCurrentPage((page) => Math.max(0, page - 1))
-                      }
-                      disabled={currentPage === 0}
-                    >
-                      Previous
-                    </Button>
-                    <span className="px-2 text-sm font-semibold">
-                      {currentPage + 1} / {totalPages}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setCurrentPage((page) =>
-                          Math.min(totalPages - 1, page + 1),
-                        )
-                      }
-                      disabled={currentPage >= totalPages - 1}
-                    >
-                      Next
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentPage(totalPages - 1)}
-                      disabled={currentPage >= totalPages - 1}
-                    >
-                      Last
-                    </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="h-9 px-4 font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+                  >
+                    Previous
+                  </Button>
+                  <div className="text-sm font-bold px-4 py-1.5 bg-background/80 rounded-lg border border-border/60">
+                    {currentPage + 1} / {totalPages}
                   </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                    className="h-9 px-4 font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+                  >
+                    Next
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentPage(totalPages - 1)}
+                    disabled={currentPage >= totalPages - 1}
+                    className="h-9 px-4 font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
+                  >
+                    Last
+                  </Button>
                 </div>
-              )}
-            </main>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+            <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-sm hover:shadow-md transition-all hover:border-primary/30 group">
+              <CardContent className="p-6 flex items-center gap-5">
+                <div className="p-4 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors ring-1 ring-primary/20">
+                  <FolderKanban className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <div className="text-3xl font-extrabold tracking-tight">{totalElements}</div>
+                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">Total Projects</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-sm hover:shadow-md transition-all hover:border-emerald-500/30 group">
+              <CardContent className="p-6 flex items-center gap-5">
+                <div className="p-4 rounded-xl bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors ring-1 ring-emerald-500/20">
+                  <GitBranch className="h-6 w-6 text-emerald-500" />
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-3xl font-extrabold tracking-tight">{projects.filter(p => p.vcsConnectionId).length}</div>
+                    <p className="text-sm font-medium text-muted-foreground">/ {projects.length}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">VCS Connected</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-sm hover:shadow-md transition-all hover:border-violet-500/30 group">
+              <CardContent className="p-6 flex items-center gap-5">
+                <div className="p-4 rounded-xl bg-violet-500/10 group-hover:bg-violet-500/20 transition-colors ring-1 ring-violet-500/20">
+                  <Zap className="h-6 w-6 text-violet-500" />
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-3xl font-extrabold tracking-tight">{projects.filter(p => p.aiConnectionId).length}</div>
+                    <p className="text-sm font-medium text-muted-foreground">/ {projects.length}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">AI Enabled</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
-
-      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent side="left" className="overflow-y-auto">
-          <SheetHeader className="mb-6 text-left">
-            <SheetTitle>Filter projects</SheetTitle>
-            <SheetDescription>
-              Narrow projects by quality, issue count, and configuration.
-            </SheetDescription>
-          </SheetHeader>
-          <ProjectFiltersPanel
-            filters={filters}
-            providers={providers}
-            idPrefix="mobile-filter"
-            onChange={setFilters}
-            onClear={clearFilters}
-          />
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

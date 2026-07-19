@@ -67,6 +67,7 @@ import {
   WebhookInfoResponse,
   AnalysisLimitsConfig,
   AnalysisScopeConfig,
+  ReviewApproach,
 } from "@/api_service/project/projectService.ts";
 import { bitbucketCloudService } from "@/api_service/codeHosting/bitbucket/cloud/bitbucketCloudService.ts";
 import {
@@ -92,6 +93,8 @@ import CommentCommandsConfig from "@/components/CommentCommandsConfig";
 import CustomRulesConfig from "@/components/CustomRulesConfig";
 import ProjectTaskManagementConfiguration from "@/components/ProjectTaskManagementConfiguration";
 import QaAutoDocConfiguration from "@/components/QaAutoDocConfiguration";
+import ReviewApproachSelector from "@/components/ReviewApproachSelector";
+import { persistAnalysisConfiguration } from "./persistAnalysisConfiguration";
 import { BranchSelector } from "@/components/BranchSelector";
 import {
   qualityGateService,
@@ -162,20 +165,9 @@ export default function ProjectConfiguration() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>("");
   const [allConnections, setAllConnections] = useState<any[]>([]);
   const [aiConnections, setAiConnections] = useState<AIConnectionDTO[]>([]);
-  const [aiConnectionSearchQuery, setAiConnectionSearchQuery] = useState("");
   const [selectedAiConnectionId, setSelectedAiConnectionId] = useState<
     number | null
   >(null);
-
-  const normalizedAiConnectionSearch = aiConnectionSearchQuery
-    .trim()
-    .toLowerCase();
-  const filteredAiConnections = aiConnections.filter((connection) => {
-    if (!normalizedAiConnectionSearch) return true;
-    return [connection.name, connection.providerKey, connection.aiModel].some(
-      (value) => value?.toLowerCase().includes(normalizedAiConnectionSearch),
-    );
-  });
 
   // 2FA state for VCS connection change
   const [has2FA, setHas2FA] = useState(false);
@@ -195,6 +187,8 @@ export default function ProjectConfiguration() {
   const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
   const [maxAnalysisTokenLimit, setMaxAnalysisTokenLimit] =
     useState<number>(200000);
+  const [reviewApproach, setReviewApproach] =
+    useState<ReviewApproach>("CLASSIC");
   const [useMcpTools, setUseMcpTools] = useState(false);
   const [taskContextAnalysisEnabled, setTaskContextAnalysisEnabled] =
     useState(true);
@@ -303,6 +297,7 @@ export default function ProjectConfiguration() {
           proj.ragConfig?.enabled ? true : (proj.branchAnalysisEnabled ?? true),
         );
         setMaxAnalysisTokenLimit(proj.maxAnalysisTokenLimit ?? 200000);
+        setReviewApproach(proj.reviewApproach ?? "CLASSIC");
         setUseMcpTools(proj.useMcpTools ?? false);
         setTaskContextAnalysisEnabled(proj.taskContextAnalysisEnabled ?? true);
       }
@@ -399,22 +394,22 @@ export default function ProjectConfiguration() {
 
     setSavingAnalysisSettings(true);
     try {
-      await Promise.all([
-        projectService.updateAnalysisSettings(
-          currentWorkspace.slug,
-          namespace,
-          {
-            prAnalysisEnabled,
-            branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
-            installationMethod: project?.installationMethod || null,
-            maxAnalysisTokenLimit,
-            useMcpTools,
-            taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
-          },
-        ),
-        projectService.updateAnalysisLimits(currentWorkspace.slug, namespace, analysisLimits),
-        projectService.updateAnalysisScope(currentWorkspace.slug, namespace, analysisScope),
-      ]);
+      await persistAnalysisConfiguration(
+        projectService,
+        currentWorkspace.slug,
+        namespace,
+        {
+          prAnalysisEnabled,
+          branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
+          installationMethod: project?.installationMethod || null,
+          maxAnalysisTokenLimit,
+          reviewApproach,
+          useMcpTools,
+          taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
+        },
+        analysisLimits,
+        analysisScope,
+      );
 
       // Update local project state
       if (project) {
@@ -423,6 +418,7 @@ export default function ProjectConfiguration() {
           prAnalysisEnabled,
           branchAnalysisEnabled: effectiveBranchAnalysisEnabled,
           maxAnalysisTokenLimit,
+          reviewApproach,
           useMcpTools,
           taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
         });
@@ -1728,21 +1724,27 @@ export default function ProjectConfiguration() {
                   </div>
                 </div>
 
+                <ReviewApproachSelector
+                  value={reviewApproach}
+                  onValueChange={setReviewApproach}
+                  disabled={savingAnalysisSettings}
+                />
+
                 <div className="w-full flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <Wrench className="h-5 w-5 text-primary" />
                     <div>
-                      <div className="font-medium">MCP Tools</div>
+                      <div className="font-medium">Classic review MCP tools</div>
                       <div className="text-sm text-muted-foreground">
-                        Enable MCP tool calling during PR review aggregation.
-                        Allows the AI to fetch additional file content from the
-                        repository for deeper context.
+                        Allow the classic review flow to request additional
+                        repository context through the configured MCP service.
                       </div>
                     </div>
                   </div>
                   <Switch
                     checked={useMcpTools}
                     onCheckedChange={setUseMcpTools}
+                    disabled={savingAnalysisSettings}
                   />
                 </div>
 
@@ -2055,31 +2057,7 @@ export default function ProjectConfiguration() {
                     </p>
                   </div>
 
-                  <div className="relative max-w-xl">
-                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      aria-label="Search available AI connections"
-                      placeholder="Search by name, provider, or model..."
-                      value={aiConnectionSearchQuery}
-                      onChange={(event) =>
-                        setAiConnectionSearchQuery(event.target.value)
-                      }
-                      className="h-11 pl-10"
-                    />
-                  </div>
-
-                  {filteredAiConnections.length === 0 && (
-                    <div className="rounded-lg border border-dashed p-8 text-center">
-                      <Search className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
-                      <p className="font-medium">No matching AI connections</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Try a different connection name, provider, or model.
-                      </p>
-                    </div>
-                  )}
-
-                  {filteredAiConnections.map((connection) => (
+                  {aiConnections.map((connection) => (
                     <div key={connection.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">

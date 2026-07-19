@@ -16,7 +16,6 @@ interface ImportMetaEnv {
   readonly VITE_FEATURE_CLOUD_PLANS?: string;
   readonly VITE_FEATURE_USAGE_ANALYTICS?: string;
   readonly VITE_FEATURE_ENTERPRISE?: string;
-  readonly VITE_FEATURE_REVIEW_LIFECYCLE_V1?: string;
 
   // New Relic Browser Monitoring
   readonly VITE_NEW_RELIC_LICENSE_KEY?: string;

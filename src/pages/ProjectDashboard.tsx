@@ -92,8 +92,6 @@ import {
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { GitGraphViewer } from "@/components/GitGraph/GitGraphViewer";
 import { VectorStorageExplorer } from "@/components/VectorStorage/VectorStorageExplorer";
-import ReviewLifecycleCard from "@/components/ReviewLifecycleCard";
-import { FEATURES } from "@/config/features";
 import type {
   AnalysisIssue,
   PullRequestSummary,
@@ -2051,17 +2049,7 @@ export default function ProjectDashboard() {
           <div className="space-y-4">
             {/* PR Tab Content */}
             {prTab === "preview" && (
-              <>
-                {FEATURES.REVIEW_LIFECYCLE_V1 &&
-                  currentWorkspace &&
-                  namespace && (
-                    <ReviewLifecycleCard
-                      workspaceSlug={currentWorkspace.slug}
-                      projectNamespace={namespace}
-                      prNumber={selectedPR.prNumber}
-                    />
-                  )}
-                <Card>
+              <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
@@ -2475,15 +2463,9 @@ export default function ProjectDashboard() {
                       {currentFilteredIssues.length === 0 && (
                         <div className="text-center py-8">
                           <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500/50" />
-                          <p className="font-medium">
-                            {FEATURES.REVIEW_LIFECYCLE_V1
-                              ? "No legacy issues listed"
-                              : "All clear!"}
-                          </p>
+                          <p className="font-medium">All clear!</p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {FEATURES.REVIEW_LIFECYCLE_V1
-                              ? "Authoritative lifecycle status is shown above."
-                              : "No issues found in this PR"}
+                            No issues found in this PR
                           </p>
                         </div>
                       )}
@@ -2499,8 +2481,7 @@ export default function ProjectDashboard() {
                     </div>
                   )}
                 </CardContent>
-                </Card>
-              </>
+              </Card>
             )}
 
             {prTab === "qa-doc" && (

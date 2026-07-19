@@ -61,6 +61,8 @@ export type VcsConnectionType =
   | "REPOSITORY_TOKEN";
 export type VcsProvider = "BITBUCKET_CLOUD" | "GITHUB" | "GITLAB";
 
+export type ReviewApproach = "CLASSIC" | "AGENTIC";
+
 export interface ProjectDTO {
   id: number | string;
   name: string;
@@ -79,8 +81,6 @@ export interface ProjectDTO {
   qualityGateId?: number | null;
   // Main branch - primary branch used for RAG and analysis baseline
   mainBranch?: string;
-  /** @deprecated Use mainBranch instead. Still returned for older projects. */
-  defaultBranch?: string;
   defaultBranchStats?: {
     branchName: string;
     totalIssues: number;
@@ -96,6 +96,7 @@ export interface ProjectDTO {
   commentCommandsConfig?: CommentCommandsConfigDTO | null;
   webhooksConfigured?: boolean | null;
   maxAnalysisTokenLimit?: number | null;
+  reviewApproach?: ReviewApproach | null;
   useMcpTools?: boolean | null;
   taskContextAnalysisEnabled?: boolean | null;
   taskManagementConfig?: {
@@ -190,6 +191,7 @@ export interface UpdateAnalysisSettingsRequest {
   branchAnalysisEnabled?: boolean;
   installationMethod?: InstallationMethod | null;
   maxAnalysisTokenLimit?: number | null;
+  reviewApproach?: ReviewApproach | null;
   useMcpTools?: boolean | null;
   taskContextAnalysisEnabled?: boolean | null;
 }

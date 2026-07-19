@@ -20,7 +20,15 @@ RUN npm ci --prefer-offline
 
 COPY . .
 
-RUN npm run build
+# Vite values are public by design, but the source configuration must not be
+# stored in a build layer or exported cache. The hash is a non-secret cache key
+# so configuration changes cannot reuse stale frontend output.
+ARG PUBLIC_WEB_FRONTEND_ENV_SHA256
+RUN --mount=type=secret,id=web_frontend_env,required=true \
+    test "$(sha256sum /run/secrets/web_frontend_env | cut -d' ' -f1)" = "$PUBLIC_WEB_FRONTEND_ENV_SHA256" && \
+    cp /run/secrets/web_frontend_env .env.production && \
+    npm run build && \
+    rm -f .env.production
 
 # ---------------------
 # Production stage
