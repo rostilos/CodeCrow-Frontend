@@ -1,7 +1,30 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Settings, GitBranch, Zap, Trash2, Info, Search, FolderKanban, ArrowRight, Download, Calendar, AlertTriangle, CheckCircle, Clock, Activity, ExternalLink } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import {
+  Plus,
+  Settings,
+  GitBranch,
+  Zap,
+  Trash2,
+  Info,
+  Search,
+  FolderKanban,
+  ArrowRight,
+  Download,
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Activity,
+  ExternalLink,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
@@ -53,15 +76,21 @@ export default function ProjectSettings() {
   const navigate = useNavigate();
   const routes = useWorkspaceRoutes();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [codeHostingConfigs, setCodeHostingConfigs] = useState<CodeHostingConfig[]>([]);
-  const [taskManagementConfigs, setTaskManagementConfigs] = useState<TaskManagementConfig[]>([]);
-  const [projectStats, setProjectStats] = useState<Record<string, ProjectStatsData>>({});
+  const [codeHostingConfigs, setCodeHostingConfigs] = useState<
+    CodeHostingConfig[]
+  >([]);
+  const [taskManagementConfigs, setTaskManagementConfigs] = useState<
+    TaskManagementConfig[]
+  >([]);
+  const [projectStats, setProjectStats] = useState<
+    Record<string, ProjectStatsData>
+  >({});
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     name: "",
     description: "",
     vcsConnectionId: "",
-    aiConnectionId: ""
+    aiConnectionId: "",
   });
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -91,11 +120,13 @@ export default function ProjectSettings() {
       // Load paginated projects with server-side search
       const projectsResponse = await projectService.listProjectsPaginated(
         currentWorkspace.slug,
-        { search: debouncedSearch, page: currentPage, size: pageSize }
+        { search: debouncedSearch, page: currentPage, size: pageSize },
       );
 
-      if (!canManageWorkspace) {
-        bbConnections = await bitbucketCloudService.getUserConnections(currentWorkspace.slug).catch(() => []);
+      if (!canManageWorkspace()) {
+        bbConnections = await bitbucketCloudService
+          .getUserConnections(currentWorkspace.slug)
+          .catch(() => []);
       }
 
       const projList = projectsResponse.projects || [];
@@ -119,12 +150,14 @@ export default function ProjectSettings() {
 
       setProjects(mappedProjects);
 
-      const mappedConnections: CodeHostingConfig[] = (bbConnections || []).map((c: any) => ({
-        id: c.id,
-        name: c.name || `Connection ${c.id}`,
-        provider: "Bitbucket",
-        repository: c.repository || ""
-      }));
+      const mappedConnections: CodeHostingConfig[] = (bbConnections || []).map(
+        (c: any) => ({
+          id: c.id,
+          name: c.name || `Connection ${c.id}`,
+          provider: "Bitbucket",
+          repository: c.repository || "",
+        }),
+      );
 
       setCodeHostingConfigs(mappedConnections);
       setTaskManagementConfigs([]);
@@ -146,7 +179,7 @@ export default function ProjectSettings() {
       toast({
         title: "Error",
         description: err?.message || "Failed to load projects",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -162,7 +195,7 @@ export default function ProjectSettings() {
       toast({
         title: "Error",
         description: "Project name is required",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -171,7 +204,7 @@ export default function ProjectSettings() {
       const payload: any = {
         name: newProject.name,
         description: newProject.description,
-        creationMode: "MANUAL"
+        creationMode: "MANUAL",
       };
 
       if (newProject.vcsConnectionId) {
@@ -185,16 +218,21 @@ export default function ProjectSettings() {
       await projectService.createProject(currentWorkspace!.slug, payload);
       toast({
         title: "Success",
-        description: "Project created successfully"
+        description: "Project created successfully",
       });
-      setNewProject({ name: "", description: "", vcsConnectionId: "", aiConnectionId: "" });
+      setNewProject({
+        name: "",
+        description: "",
+        vcsConnectionId: "",
+        aiConnectionId: "",
+      });
       setIsCreateDialogOpen(false);
       await loadData();
     } catch (err: any) {
       toast({
         title: "Error",
         description: err?.message || "Failed to create project",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -204,14 +242,14 @@ export default function ProjectSettings() {
       await projectService.deleteProject(currentWorkspace!.slug, namespace);
       toast({
         title: "Success",
-        description: "Project deleted successfully"
+        description: "Project deleted successfully",
       });
-      setProjects(prev => prev.filter(p => p.namespace !== namespace));
+      setProjects((prev) => prev.filter((p) => p.namespace !== namespace));
     } catch (err: any) {
       toast({
         title: "Error",
         description: err?.message || "Failed to delete project",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -239,7 +277,10 @@ export default function ProjectSettings() {
           <div className="h-10 bg-muted/50 rounded-lg w-full max-w-md animate-pulse"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-48 bg-muted/50 rounded-xl animate-pulse"></div>
+              <div
+                key={i}
+                className="h-48 bg-muted/50 rounded-xl animate-pulse"
+              ></div>
             ))}
           </div>
         </div>
@@ -275,7 +316,11 @@ export default function ProjectSettings() {
               </div>
               {canManageWorkspace() && (
                 <div className="flex gap-4">
-                  <Button size="lg" onClick={() => navigate(routes.projectImport())} className="shadow-md hover:shadow-lg transition-all animate-in fade-in slide-in-from-right-4">
+                  <Button
+                    size="lg"
+                    onClick={() => navigate(routes.projectImport())}
+                    className="shadow-md hover:shadow-lg transition-all animate-in fade-in slide-in-from-right-4"
+                  >
                     <Plus className="mr-2 h-5 w-5" />
                     New Project
                   </Button>
@@ -300,7 +345,9 @@ export default function ProjectSettings() {
                 />
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm font-semibold text-muted-foreground">Show:</span>
+                <span className="text-sm font-semibold text-muted-foreground">
+                  Show:
+                </span>
                 <select
                   value={pageSize}
                   onChange={(e) => {
@@ -325,10 +372,16 @@ export default function ProjectSettings() {
                   </div>
                   <h3 className="text-2xl font-bold mb-3">No projects found</h3>
                   <p className="text-muted-foreground mb-8 text-lg max-w-md mx-auto">
-                    {projectSearchQuery ? "No projects match your search criteria." : "Get started by creating your first project in this workspace."}
+                    {projectSearchQuery
+                      ? "No projects match your search criteria."
+                      : "Get started by creating your first project in this workspace."}
                   </p>
                   {!projectSearchQuery && (
-                    <Button onClick={() => navigate(routes.projectNew())} size="lg" className="shadow-md px-8">
+                    <Button
+                      onClick={() => navigate(routes.projectNew())}
+                      size="lg"
+                      className="shadow-md px-8"
+                    >
                       <Plus className="mr-2 h-5 w-5" />
                       New Project
                     </Button>
@@ -340,24 +393,35 @@ export default function ProjectSettings() {
                 {projects.map((project, index) => {
                   const stats = projectStats[project.id];
                   const hasIssues = stats && stats.totalIssues > 0;
-                  const isConfigured = project.vcsConnectionId && project.aiConnectionId;
+                  const isConfigured =
+                    project.vcsConnectionId && project.aiConnectionId;
 
                   return (
                     <Card
                       key={project.id}
                       className="group cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1.5 border-border/50 hover:border-primary/40 flex flex-col bg-card/60 backdrop-blur-xl overflow-hidden relative animate-in fade-in slide-in-from-bottom-8"
-                      style={{ animationFillMode: "both", animationDelay: `${index * 50}ms` }}
-                      onClick={() => navigate(routes.projectDetail(project.namespace || project.id))}
+                      style={{
+                        animationFillMode: "both",
+                        animationDelay: `${index * 50}ms`,
+                      }}
+                      onClick={() =>
+                        navigate(
+                          routes.projectDetail(project.namespace || project.id),
+                        )
+                      }
                     >
                       {/* Top glow border */}
-                      <div className={`absolute top-0 left-0 w-full h-1 transition-all duration-500 ${stats && stats.highIssues > 0
-                        ? 'bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse'
-                        : stats && stats.totalIssues > 0
-                          ? 'bg-gradient-to-r from-yellow-500 via-green-500 to-yellow-500 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse'
-                          : isConfigured
-                            ? 'bg-gradient-to-r from-primary/60 via-primary to-primary/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse'
-                            : 'bg-gradient-to-r from-muted to-muted-foreground/30 opacity-50 group-hover:opacity-80'
-                        }`} />
+                      <div
+                        className={`absolute top-0 left-0 w-full h-1 transition-all duration-500 ${
+                          stats && stats.highIssues > 0
+                            ? "bg-gradient-to-r from-red-500 via-orange-500 to-red-500 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse"
+                            : stats && stats.totalIssues > 0
+                              ? "bg-gradient-to-r from-yellow-500 via-green-500 to-yellow-500 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse"
+                              : isConfigured
+                                ? "bg-gradient-to-r from-primary/60 via-primary to-primary/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] group-hover:animate-pulse"
+                                : "bg-gradient-to-r from-muted to-muted-foreground/30 opacity-50 group-hover:opacity-80"
+                        }`}
+                      />
 
                       <CardHeader className="pb-3 pt-5 px-5 relative z-10">
                         <div className="flex items-start justify-between gap-3">
@@ -376,13 +440,20 @@ export default function ProjectSettings() {
                               </CardDescription>
                             )}
                           </div>
-                          <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <div
+                            className="flex gap-1 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             {canManageWorkspace() && (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all hover:bg-primary/10 hover:text-primary duration-300"
-                                onClick={() => handleProjectSettings(project.namespace || String(project.id))}
+                                onClick={() =>
+                                  handleProjectSettings(
+                                    project.namespace || String(project.id),
+                                  )
+                                }
                               >
                                 <Settings className="h-4 w-4" />
                               </Button>
@@ -395,11 +466,18 @@ export default function ProjectSettings() {
                         {/* Repository Info */}
                         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-primary/20 transition-colors">
                           <GitBranch className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                          <span className="truncate font-semibold">{getRepositoryInfo(project.projectVcsWorkspace, project.projectVcsRepoSlug)}</span>
+                          <span className="truncate font-semibold">
+                            {getRepositoryInfo(
+                              project.projectVcsWorkspace,
+                              project.projectVcsRepoSlug,
+                            )}
+                          </span>
                           {project.defaultBranch && (
                             <>
                               <span className="text-border mx-1">→</span>
-                              <span className="truncate text-foreground/80">{project.defaultBranch}</span>
+                              <span className="truncate text-foreground/80">
+                                {project.defaultBranch}
+                              </span>
                             </>
                           )}
                         </div>
@@ -407,23 +485,35 @@ export default function ProjectSettings() {
                         {/* Status Badges */}
                         <div className="flex flex-wrap gap-1.5">
                           {project.vcsConnectionId ? (
-                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 font-semibold group-hover:bg-emerald-500/20 transition-colors">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 font-semibold group-hover:bg-emerald-500/20 transition-colors"
+                            >
                               <CheckCircle className="h-2.5 w-2.5 mr-1" />
                               VCS Connected
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-muted/80 text-muted-foreground border-muted-foreground/30 font-semibold">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 bg-muted/80 text-muted-foreground border-muted-foreground/30 font-semibold"
+                            >
                               <Clock className="h-2.5 w-2.5 mr-1" />
                               VCS Pending
                             </Badge>
                           )}
                           {project.aiConnectionId ? (
-                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-600 border-violet-500/30 dark:text-violet-400 font-semibold group-hover:bg-violet-500/20 transition-colors">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-600 border-violet-500/30 dark:text-violet-400 font-semibold group-hover:bg-violet-500/20 transition-colors"
+                            >
                               <Zap className="h-2.5 w-2.5 mr-1" />
                               AI Enabled
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-muted/80 text-muted-foreground border-muted-foreground/30 font-semibold">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 bg-muted/80 text-muted-foreground border-muted-foreground/30 font-semibold"
+                            >
                               <Clock className="h-2.5 w-2.5 mr-1" />
                               AI Pending
                             </Badge>
@@ -435,20 +525,36 @@ export default function ProjectSettings() {
                           {stats ? (
                             <div className="grid grid-cols-4 gap-1.5 px-2 py-3 rounded-lg bg-background/50 border border-border/50 group-hover:border-primary/20 group-hover:bg-primary/5 transition-all">
                               <div className="text-center">
-                                <div className="text-xl font-extrabold text-foreground">{stats.totalIssues}</div>
-                                <div className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">Total</div>
+                                <div className="text-xl font-extrabold text-foreground">
+                                  {stats.totalIssues}
+                                </div>
+                                <div className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">
+                                  Total
+                                </div>
                               </div>
                               <div className="text-center relative after:content-[''] after:absolute after:left-0 after:top-[20%] after:h-[60%] after:w-px after:bg-border/60">
-                                <div className="text-xl font-extrabold text-red-500">{stats.highIssues}</div>
-                                <div className="text-[9px] text-red-500/70 font-bold uppercase tracking-wider mt-0.5">High</div>
+                                <div className="text-xl font-extrabold text-red-500">
+                                  {stats.highIssues}
+                                </div>
+                                <div className="text-[9px] text-red-500/70 font-bold uppercase tracking-wider mt-0.5">
+                                  High
+                                </div>
                               </div>
                               <div className="text-center relative after:content-[''] after:absolute after:left-0 after:top-[20%] after:h-[60%] after:w-px after:bg-border/60">
-                                <div className="text-xl font-extrabold text-amber-500">{stats.mediumIssues}</div>
-                                <div className="text-[9px] text-amber-500/70 font-bold uppercase tracking-wider mt-0.5">Med</div>
+                                <div className="text-xl font-extrabold text-amber-500">
+                                  {stats.mediumIssues}
+                                </div>
+                                <div className="text-[9px] text-amber-500/70 font-bold uppercase tracking-wider mt-0.5">
+                                  Med
+                                </div>
                               </div>
                               <div className="text-center relative after:content-[''] after:absolute after:left-0 after:top-[20%] after:h-[60%] after:w-px after:bg-border/60">
-                                <div className="text-xl font-extrabold text-sky-500">{stats.lowIssues}</div>
-                                <div className="text-[9px] text-sky-500/70 font-bold uppercase tracking-wider mt-0.5">Low</div>
+                                <div className="text-xl font-extrabold text-sky-500">
+                                  {stats.lowIssues}
+                                </div>
+                                <div className="text-[9px] text-sky-500/70 font-bold uppercase tracking-wider mt-0.5">
+                                  Low
+                                </div>
                               </div>
                             </div>
                           ) : !isConfigured ? (
@@ -457,8 +563,12 @@ export default function ProjectSettings() {
                                 <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                               </div>
                               <div>
-                                <div className="text-xs font-bold text-amber-700 dark:text-amber-300 leading-tight">Setup Required</div>
-                                <div className="text-[10px] font-medium text-amber-600/80 dark:text-amber-400/80 mt-0.5">Configure VCS & AI</div>
+                                <div className="text-xs font-bold text-amber-700 dark:text-amber-300 leading-tight">
+                                  Setup Required
+                                </div>
+                                <div className="text-[10px] font-medium text-amber-600/80 dark:text-amber-400/80 mt-0.5">
+                                  Configure VCS & AI
+                                </div>
                               </div>
                             </div>
                           ) : (
@@ -467,8 +577,12 @@ export default function ProjectSettings() {
                                 <Activity className="h-4 w-4 text-primary/80" />
                               </div>
                               <div>
-                                <div className="text-xs font-bold text-foreground/90 leading-tight">Ready for Analysis</div>
-                                <div className="text-[10px] font-medium text-muted-foreground mt-0.5">Awaiting first review</div>
+                                <div className="text-xs font-bold text-foreground/90 leading-tight">
+                                  Ready for Analysis
+                                </div>
+                                <div className="text-[10px] font-medium text-muted-foreground mt-0.5">
+                                  Awaiting first review
+                                </div>
                               </div>
                             </div>
                           )}
@@ -484,7 +598,15 @@ export default function ProjectSettings() {
             {totalPages > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between pt-8 mt-4 gap-4 animate-in fade-in duration-700">
                 <div className="text-sm font-semibold text-muted-foreground bg-card/40 backdrop-blur-md px-5 py-2.5 rounded-xl border border-border/50">
-                  Showing <span className="text-foreground">{currentPage * pageSize + 1}</span> - <span className="text-foreground">{Math.min((currentPage + 1) * pageSize, totalElements)}</span> of <span className="text-foreground">{totalElements}</span>
+                  Showing{" "}
+                  <span className="text-foreground">
+                    {currentPage * pageSize + 1}
+                  </span>{" "}
+                  -{" "}
+                  <span className="text-foreground">
+                    {Math.min((currentPage + 1) * pageSize, totalElements)}
+                  </span>{" "}
+                  of <span className="text-foreground">{totalElements}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-card/40 backdrop-blur-md p-2 rounded-xl border border-border/50 shadow-sm">
                   <Button
@@ -497,7 +619,7 @@ export default function ProjectSettings() {
                   </Button>
                   <Button
                     variant="ghost"
-                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
                     disabled={currentPage === 0}
                     className="h-9 px-4 font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
                   >
@@ -508,7 +630,9 @@ export default function ProjectSettings() {
                   </div>
                   <Button
                     variant="ghost"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
                     disabled={currentPage >= totalPages - 1}
                     className="h-9 px-4 font-semibold hover:bg-primary/10 hover:text-primary transition-colors"
                   >
@@ -535,8 +659,12 @@ export default function ProjectSettings() {
                   <FolderKanban className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <div className="text-3xl font-extrabold tracking-tight">{totalElements}</div>
-                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">Total Projects</p>
+                  <div className="text-3xl font-extrabold tracking-tight">
+                    {totalElements}
+                  </div>
+                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">
+                    Total Projects
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -548,10 +676,16 @@ export default function ProjectSettings() {
                 </div>
                 <div>
                   <div className="flex items-baseline gap-2">
-                    <div className="text-3xl font-extrabold tracking-tight">{projects.filter(p => p.vcsConnectionId).length}</div>
-                    <p className="text-sm font-medium text-muted-foreground">/ {projects.length}</p>
+                    <div className="text-3xl font-extrabold tracking-tight">
+                      {projects.filter((p) => p.vcsConnectionId).length}
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      / {projects.length}
+                    </p>
                   </div>
-                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">VCS Connected</p>
+                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">
+                    VCS Connected
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -563,10 +697,16 @@ export default function ProjectSettings() {
                 </div>
                 <div>
                   <div className="flex items-baseline gap-2">
-                    <div className="text-3xl font-extrabold tracking-tight">{projects.filter(p => p.aiConnectionId).length}</div>
-                    <p className="text-sm font-medium text-muted-foreground">/ {projects.length}</p>
+                    <div className="text-3xl font-extrabold tracking-tight">
+                      {projects.filter((p) => p.aiConnectionId).length}
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      / {projects.length}
+                    </p>
                   </div>
-                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">AI Enabled</p>
+                  <p className="text-sm font-semibold text-muted-foreground mt-0.5">
+                    AI Enabled
+                  </p>
                 </div>
               </CardContent>
             </Card>
