@@ -76,6 +76,9 @@ const GitHubOAuthCallback = lazy(
 const GitHubAppInstalled = lazy(
   () => import("./pages/Account/CodeHosting/github/GitHubAppInstalled.tsx"),
 );
+const VcsInstallationResult = lazy(
+  () => import("./pages/Account/Integrations/VcsInstallationResult.tsx"),
+);
 const GitLabAddConnection = lazy(
   () => import("./pages/Account/CodeHosting/gitlab/AddConnection.tsx"),
 );
@@ -164,6 +167,10 @@ const App = () => (
               <Route
                 path="/github/app-installed"
                 element={<GitHubAppInstalled />}
+              />
+              <Route
+                path="/integrations/app-installed"
+                element={<VcsInstallationResult />}
               />
 
               {/* Docs now live on codecrow.app — redirect */}

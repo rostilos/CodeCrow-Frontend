@@ -70,7 +70,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import GitHubHostingSettings from "@/pages/Account/CodeHosting/github/GitHubHostingSettings.tsx";
 import GitLabHostingSettings from "@/pages/Account/CodeHosting/gitlab/GitLabHostingSettings.tsx";
-import bitbucketAppSetupImg from "@/assets/bitbucket-app-setup.png";
 import { cn } from "@/lib/utils";
 import { adminSettingsService } from "@/api_service/admin/adminSettingsService";
 import type { VcsProviderAvailability } from "@/api_service/admin/adminSettings.interface";
@@ -152,11 +151,31 @@ export default function HostingSettings() {
         const status = await integrationService.getBitbucketConnectStatus();
         setIsConnectAppConfigured(status.configured);
 
-        if (status.configured) {
-          // Load unlinked installations
-          const unlinked =
-            await integrationService.getUnlinkedConnectInstallations();
-          setUnlinkedInstallations(unlinked);
+        if (status.configured && currentWorkspace) {
+          // Include both newly installed records and exact installations
+          // retained for this workspace after their local connection was
+          // deleted. The latter makes delete-then-connect recoverable even
+          // when Bitbucket reports that the app is already installed.
+          const [unlinked, workspaceInstallations] = await Promise.all([
+            integrationService.getUnlinkedConnectInstallations(),
+            integrationService.getConnectInstallationsForWorkspace(
+              currentWorkspace.id,
+            ),
+          ]);
+          const reconnectable = workspaceInstallations.filter(
+            (installation) =>
+              installation.enabled && !installation.hasVcsConnection,
+          );
+          setUnlinkedInstallations(
+            Array.from(
+              new Map(
+                [...unlinked, ...reconnectable].map((installation) => [
+                  installation.id,
+                  installation,
+                ]),
+              ).values(),
+            ),
+          );
         }
       } catch {
         // Connect App not available, use OAuth fallback
@@ -164,7 +183,7 @@ export default function HostingSettings() {
       }
     };
     checkConnectAppConfig();
-  }, []);
+  }, [currentWorkspace]);
 
   // Fetch VCS provider availability from public site config
   useEffect(() => {
@@ -238,8 +257,8 @@ export default function HostingSettings() {
 
   /**
    * Handle Bitbucket Connect App installation.
-   * Opens popup for Bitbucket authorization. User enables dev mode in Bitbucket,
-   * app installs automatically, then user clicks "Manage App" to complete setup.
+   * Opens a popup for Bitbucket authorization and tracks the exact installation
+   * through Bitbucket's application-initiated redirect.
    */
   const handleConnectAppInstall = async () => {
     if (!currentWorkspace) return;
@@ -407,7 +426,10 @@ export default function HostingSettings() {
       }
       toast({
         title: "Connection deleted",
-        description: "The connection has been removed.",
+        description:
+          connectionToDelete.type === "app"
+            ? "The local connection was removed. A linked Bitbucket Connect installation was also uninstalled; OAuth authorizations may still require removal in Bitbucket."
+            : "The connection has been removed.",
       });
       await fetchConnections();
     } catch (error: any) {
@@ -577,7 +599,13 @@ export default function HostingSettings() {
   const hasNoConnections =
     manualConnections.length === 0 && appConnections.length === 0;
 
-  const activeTab = searchParams.get("tab") || "bitbucket";
+  // Provider callbacks historically used `provider` while the settings page
+  // navigation used `tab`. Accept both so callback continuations mount the
+  // provider-specific component instead of silently falling back to Bitbucket.
+  const requestedTab = searchParams.get("tab") || searchParams.get("provider");
+  const activeTab = navItems.some((item) => item.id === requestedTab)
+    ? requestedTab
+    : "bitbucket";
 
   const handleNavClick = (tabId: string) => {
     navigate(`?tab=${tabId}`);
@@ -693,8 +721,8 @@ export default function HostingSettings() {
                   <AlertTitle className="text-blue-800 dark:text-blue-200 text-sm">
                     How it works
                   </AlertTitle>
-                  <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs flex justify-between gap-x-4">
-                    <div className="w-1/2">
+                  <AlertDescription className="text-blue-700 dark:text-blue-300 text-xs">
+                    <div>
                       <ol className="list-decimal list-inside space-y-1 mt-2 mb-4">
                         <li>Click "Install Connect App" below</li>
                         <li>
@@ -704,8 +732,8 @@ export default function HostingSettings() {
                         </li>
                         <li>Authorize the app installation</li>
                         <li>
-                          After install, click <strong>"Manage App"</strong> in
-                          Bitbucket to complete setup
+                          Bitbucket returns the approver to a public completion
+                          page, and CodeCrow links the exact installation
                         </li>
                       </ol>
                       <Collapsible>
@@ -735,11 +763,6 @@ export default function HostingSettings() {
                         </CollapsibleContent>
                       </Collapsible>
                     </div>
-                    <img
-                      src={bitbucketAppSetupImg}
-                      alt="Bitbucket Manage App button location"
-                      className="rounded-lg border shadow-sm max-h-96 object-contain"
-                    />
                   </AlertDescription>
                 </Alert>
 
@@ -863,8 +886,8 @@ export default function HostingSettings() {
               Pending Bitbucket Installations
             </CardTitle>
             <CardDescription>
-              These Bitbucket workspaces have installed CodeCrow but haven't
-              been linked to your CodeCrow workspace yet.
+              These Bitbucket workspaces already have CodeCrow installed and
+              can be linked or restored without installing the app again.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -1205,9 +1228,10 @@ export default function HostingSettings() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Connection?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete this connection. Any projects using
-                  this connection will need to be reconfigured. This action cannot
-                  be undone.
+                  This connection can be deleted only after its projects are
+                  removed or unbound. CodeCrow will uninstall an exact linked
+                  Bitbucket Connect installation. Bitbucket OAuth authorization
+                  may still need to be removed in Bitbucket.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

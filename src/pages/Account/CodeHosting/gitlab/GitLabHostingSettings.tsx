@@ -225,7 +225,10 @@ export default function GitLabHostingSettings({
       }
       toast({
         title: "Connection deleted",
-        description: "The connection has been removed.",
+        description:
+          connectionToDelete.type === "oauth"
+            ? "The connection was removed and its GitLab OAuth grant was revoked."
+            : "The connection has been removed.",
       });
       await fetchConnections();
     } catch (error: any) {
@@ -755,9 +758,9 @@ export default function GitLabHostingSettings({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Connection</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this connection? This action
-              cannot be undone. All associated projects and webhooks will be
-              affected.
+              This connection can be deleted only after its projects are
+              removed or unbound. For an OAuth connection, CodeCrow will also
+              revoke its GitLab authorization.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

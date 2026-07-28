@@ -182,41 +182,6 @@ export default function RagConfiguration({
     setBranchRetentionDays(project.ragConfig?.branchRetentionDays ?? 30);
   }, [project.ragConfig]);
 
-  // Helper to check if reindex is allowed (24h cooldown after successful index)
-  const getReindexCooldownInfo = (): {
-    isOnCooldown: boolean;
-    remainingTime: string | null;
-  } => {
-    if (!ragStatus?.indexStatus) {
-      return { isOnCooldown: false, remainingTime: null };
-    }
-
-    const status = ragStatus.indexStatus.status;
-    const lastIndexedAt = ragStatus.indexStatus.lastIndexedAt;
-
-    // Only apply cooldown if the last index was successful
-    if (status !== "INDEXED" || !lastIndexedAt) {
-      return { isOnCooldown: false, remainingTime: null };
-    }
-
-    const lastIndexDate = new Date(lastIndexedAt);
-    const now = new Date();
-    const hoursSinceLastIndex =
-      (now.getTime() - lastIndexDate.getTime()) / (1000 * 60 * 60);
-    const cooldownHours = 24;
-
-    if (hoursSinceLastIndex < cooldownHours) {
-      const remainingHours = Math.ceil(cooldownHours - hoursSinceLastIndex);
-      const remainingTime =
-        remainingHours > 1
-          ? `${remainingHours} hours`
-          : `${Math.ceil((cooldownHours - hoursSinceLastIndex) * 60)} minutes`;
-      return { isOnCooldown: true, remainingTime };
-    }
-
-    return { isOnCooldown: false, remainingTime: null };
-  };
-
   const loadRagStatus = async () => {
     if (!project.namespace) return;
 
@@ -908,9 +873,19 @@ export default function RagConfiguration({
                 </span>
               </div>
               <div>
-                <span className="text-muted-foreground">Last Indexed:</span>
+                <span className="text-muted-foreground">
+                  {ragStatus.indexStatus.status === "INDEXING" ||
+                  ragStatus.indexStatus.status === "UPDATING"
+                    ? "Last activity:"
+                    : "Last Indexed:"}
+                </span>
                 <span className="ml-2">
-                  {formatDate(ragStatus.indexStatus.lastIndexedAt)}
+                  {formatDate(
+                    ragStatus.indexStatus.status === "INDEXING" ||
+                      ragStatus.indexStatus.status === "UPDATING"
+                      ? ragStatus.indexStatus.updatedAt
+                      : ragStatus.indexStatus.lastIndexedAt,
+                  )}
                 </span>
               </div>
               <div>
@@ -1092,39 +1067,26 @@ export default function RagConfiguration({
             Save Configuration
           </Button>
 
-          {(() => {
-            const cooldownInfo = getReindexCooldownInfo();
-            return (
-              <Button
-                variant={indexing ? "destructive" : "outline"}
-                onClick={handleTriggerIndexing}
-                disabled={
-                  !enabled ||
-                  (!ragStatus?.canStartIndexing && !indexing) ||
-                  cooldownInfo.isOnCooldown
-                }
-                title={
-                  cooldownInfo.isOnCooldown
-                    ? `Reindex available in ${cooldownInfo.remainingTime}`
-                    : undefined
-                }
-              >
-                {indexing ? (
-                  <>
-                    <Square className="mr-2 h-4 w-4" />
-                    Cancel Indexing
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-4 w-4" />
-                    {cooldownInfo.isOnCooldown
-                      ? `Reindex in ${cooldownInfo.remainingTime}`
-                      : "Trigger Indexing"}
-                  </>
-                )}
-              </Button>
-            );
-          })()}
+          <Button
+            variant={indexing ? "destructive" : "outline"}
+            onClick={handleTriggerIndexing}
+            disabled={
+              !enabled ||
+              (!ragStatus?.canStartIndexing && !indexing)
+            }
+          >
+            {indexing ? (
+              <>
+                <Square className="mr-2 h-4 w-4" />
+                Cancel Indexing
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Trigger Indexing
+              </>
+            )}
+          </Button>
 
           <Button
             variant="ghost"
@@ -1140,9 +1102,7 @@ export default function RagConfiguration({
           <p className="text-sm text-muted-foreground">
             {ragStatus?.indexStatus?.status === "INDEXING"
               ? "Indexing is currently in progress. The status will update automatically when complete."
-              : getReindexCooldownInfo().isOnCooldown
-                ? `Full reindex is limited to once every 24 hours after a successful index. Next reindex available in ${getReindexCooldownInfo().remainingTime}.`
-                : "Please wait before triggering another indexing operation."}
+              : "Please wait before triggering another indexing operation."}
           </p>
         )}
       </CardContent>
