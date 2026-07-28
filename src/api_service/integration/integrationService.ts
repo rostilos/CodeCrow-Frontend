@@ -164,6 +164,35 @@ class IntegrationService extends ApiService {
   }
 
   /**
+   * List existing GitHub App installations captured from the verified
+   * requester's user-scoped GitHub session.
+   */
+  async getGitHubInstallationCandidates(
+    workspaceSlug: string,
+    connectionId: number,
+  ): Promise<GitHubInstallationCandidate[]> {
+    return this.request<GitHubInstallationCandidate[]>(
+      `/${workspaceSlug}/integrations/github/connections/${connectionId}/installation-candidates`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * Start fresh user-scoped verification for one explicitly selected existing
+   * GitHub App installation.
+   */
+  async getGitHubInstallationCandidateVerificationUrl(
+    workspaceSlug: string,
+    connectionId: number,
+    installationId: number,
+  ): Promise<InstallUrlResponse> {
+    return this.request<InstallUrlResponse>(
+      `/${workspaceSlug}/integrations/github/connections/${connectionId}/installation-candidates/${installationId}/verify-url`,
+      { method: "GET" },
+    );
+  }
+
+  /**
    * Refresh the token for a GitHub App connection directly (server-side).
    * Unlike getReconnectUrl which redirects to the provider, this refreshes
    * the installation token using the App's private key without user interaction.
@@ -387,10 +416,22 @@ class IntegrationService extends ApiService {
     onStatusChange?: (status: string) => void,
   ): Promise<ConnectInstallStatusResponse> {
     // Start the Connect App install flow
-    const { installUrl, state } = await this.startConnectAppInstall(
+    const start = await this.startConnectAppInstall(
       workspaceId,
       workspaceSlug,
     );
+    if (start.status === "completed") {
+      onStatusChange?.("completed");
+      return {
+        status: "completed",
+        connectionId: start.connectionId,
+        workspaceSlug: start.workspaceSlug,
+      };
+    }
+    const { installUrl, state } = start;
+    if (!installUrl || !state) {
+      throw new Error("Bitbucket installation did not return a continuation URL");
+    }
 
     // Open popup
     const popup = window.open(
@@ -459,8 +500,18 @@ class IntegrationService extends ApiService {
  * Response from starting Connect App installation.
  */
 export interface ConnectInstallStartResponse {
-  installUrl: string;
-  state: string;
+  status: "pending" | "completed";
+  installUrl?: string;
+  state?: string;
+  connectionId?: number;
+  workspaceSlug?: string;
+}
+
+export interface GitHubInstallationCandidate {
+  installationId: number;
+  accountLogin: string;
+  accountType: string;
+  accountAvatarUrl?: string | null;
 }
 
 /**

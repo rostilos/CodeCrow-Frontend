@@ -283,6 +283,7 @@ export interface RagIndexStatusDTO {
   totalFilesIndexed: number | null;
   chunkCount: number | null;
   lastIndexedAt: string | null;
+  updatedAt: string;
   errorMessage: string | null;
   collectionName: string | null;
   failedIncrementalCount: number | null;

@@ -99,6 +99,10 @@ const NODE_KIND_STYLE: Record<string, { color: string; label: string }> = {
   external_type: { color: "#dc2626", label: "External types" },
   pr_chunk: { color: "#e11d48", label: "PR chunks" },
   code_chunk: { color: "#0284c7", label: "Chunks" },
+  architecture_context: { color: "#9333ea", label: "Architecture context" },
+  architecture_source: { color: "#a855f7", label: "Architecture sources" },
+  repository_snapshot: { color: "#64748b", label: "Plugin state" },
+  repository_facts: { color: "#475569", label: "Detection state" },
 };
 
 const NODE_LEGEND_ITEMS = [
@@ -110,6 +114,8 @@ const NODE_LEGEND_ITEMS = [
   { label: "Imports", color: NODE_KIND_STYLE.import.color },
   { label: "External types", color: NODE_KIND_STYLE.external_type.color },
   { label: "PR chunks", color: NODE_KIND_STYLE.pr_chunk.color },
+  { label: "Architecture", color: NODE_KIND_STYLE.architecture_context.color },
+  { label: "Plugin state", color: NODE_KIND_STYLE.repository_snapshot.color },
 ];
 
 const EDGE_STYLE: Record<string, { color: string; label: string; size: number }> = {

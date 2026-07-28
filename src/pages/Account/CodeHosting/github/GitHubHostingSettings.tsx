@@ -37,7 +37,10 @@ import {
   GitHubConnections,
   EGitSetupStatus,
 } from "@/api_service/codeHosting/github/githubService.interface.ts";
-import { integrationService } from "@/api_service/integration/integrationService.ts";
+import {
+  integrationService,
+} from "@/api_service/integration/integrationService.ts";
+import type { GitHubInstallationCandidate } from "@/api_service/integration/integrationService.ts";
 import { VcsConnection } from "@/api_service/integration/integration.interface.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
@@ -81,6 +84,16 @@ export default function GitHubHostingSettings({
     id: number;
     type: "app" | "oauth";
   } | null>(null);
+  const [candidateConnectionId, setCandidateConnectionId] = useState<
+    number | null
+  >(null);
+  const [installationCandidates, setInstallationCandidates] = useState<
+    GitHubInstallationCandidate[]
+  >([]);
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<number | null>(
+    null,
+  );
   const { toast } = useToast();
 
   const fetchConnections = async () => {
@@ -168,6 +181,92 @@ export default function GitHubHostingSettings({
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (
+      !currentWorkspace ||
+      searchParams.get("existingInstallations") !== "true"
+    ) {
+      return;
+    }
+
+    const parsedConnectionId = Number(searchParams.get("connectionId"));
+    if (!Number.isSafeInteger(parsedConnectionId) || parsedConnectionId <= 0) {
+      toast({
+        title: "Could not restore GitHub installation",
+        description:
+          "The connection reference is missing or invalid. Start the GitHub connection again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (candidateConnectionId === parsedConnectionId) {
+      return;
+    }
+
+    setCandidateConnectionId(parsedConnectionId);
+    setIsLoadingCandidates(true);
+    integrationService
+      .getGitHubInstallationCandidates(
+        currentWorkspace.slug,
+        parsedConnectionId,
+      )
+      .then((candidates) => {
+        setInstallationCandidates(candidates);
+        if (candidates.length === 0) {
+          toast({
+            title: "No reusable installation found",
+            description:
+              "The GitHub installation is no longer available. Start the connection again to install CodeCrow.",
+            variant: "destructive",
+          });
+        }
+      })
+      .catch((error: any) => {
+        toast({
+          title: "Could not load GitHub installations",
+          description: error.message || "Start the GitHub connection again.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => setIsLoadingCandidates(false));
+  }, [
+    candidateConnectionId,
+    currentWorkspace,
+    searchParams,
+    toast,
+  ]);
+
+  const closeCandidateSelection = () => {
+    setCandidateConnectionId(null);
+    setInstallationCandidates([]);
+    setSelectedCandidateId(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete("existingInstallations");
+    next.delete("connectionId");
+    setSearchParams(next, { replace: true });
+  };
+
+  const verifyExistingInstallation = async (installationId: number) => {
+    if (!currentWorkspace || candidateConnectionId == null) return;
+    try {
+      setSelectedCandidateId(installationId);
+      const response =
+        await integrationService.getGitHubInstallationCandidateVerificationUrl(
+          currentWorkspace.slug,
+          candidateConnectionId,
+          installationId,
+        );
+      window.location.href = response.installUrl;
+    } catch (error: any) {
+      toast({
+        title: "Could not verify GitHub installation",
+        description: error.message || "Start the GitHub connection again.",
+        variant: "destructive",
+      });
+      setSelectedCandidateId(null);
+    }
+  };
+
   const handleConnectGitHub = async () => {
     if (!currentWorkspace) return;
     try {
@@ -229,9 +328,9 @@ export default function GitHubHostingSettings({
     try {
       setReconnectingConnectionId(connectionId);
 
-      // Connected GitHub App installations refresh server-side. Request-bound
-      // pending rows check their exact approval; other pending rows continue
-      // through GitHub requester verification.
+      // GitHub App installation tokens are minted server-side. ERROR commonly
+      // means that the one-hour installation token expired, so repair the exact
+      // installation before asking GitHub for any user interaction.
       const connection = appConnections.find((c) => c.id === connectionId);
       if (connection?.installationRequestPending) {
         await handleSyncConnection(connectionId);
@@ -241,24 +340,29 @@ export default function GitHubHostingSettings({
       if (
         connection &&
         connection.connectionType === "APP" &&
-        connection.status === "CONNECTED"
+        (connection.status === "CONNECTED" || connection.status === "ERROR")
       ) {
-        // Server-side token refresh for GitHub App connections
-        await integrationService.refreshConnectionToken(
-          currentWorkspace.slug,
-          "github",
-          connectionId,
-        );
-        toast({
-          title: "Connection refreshed",
-          description: "GitHub App token has been refreshed successfully.",
-        });
-        await fetchConnections();
-        setReconnectingConnectionId(null);
-        return;
+        try {
+          await integrationService.refreshConnectionToken(
+            currentWorkspace.slug,
+            "github",
+            connectionId,
+          );
+          toast({
+            title: "Connection refreshed",
+            description: "GitHub App token has been refreshed successfully.",
+          });
+          await fetchConnections();
+          setReconnectingConnectionId(null);
+          return;
+        } catch {
+          // If GitHub rejects the server-side refresh, verify the exact known
+          // installation. The backend must not start a duplicate installation.
+        }
       }
 
-      // For OAuth connections, redirect to provider
+      // OAuth connections and failed App refreshes continue through the
+      // provider-specific, connection-bound verification flow.
       const response = await integrationService.getReconnectUrl(
         currentWorkspace.slug,
         "github",
@@ -292,7 +396,10 @@ export default function GitHubHostingSettings({
       }
       toast({
         title: "Connection deleted",
-        description: "The connection has been removed.",
+        description:
+          connectionToDelete.type === "app"
+            ? "The connection and its exact GitHub App installation were removed."
+            : "The connection has been removed.",
       });
       await fetchConnections();
     } catch (error: any) {
@@ -766,15 +873,91 @@ export default function GitHubHostingSettings({
         </Card>
       )}
 
+      <AlertDialog
+        open={candidateConnectionId != null}
+        onOpenChange={(open) => {
+          if (!open && selectedCandidateId == null) {
+            closeCandidateSelection();
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Use an existing GitHub installation
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              CodeCrow is already installed for more than one account available
+              to your verified GitHub user. Choose the exact account to connect
+              to this workspace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            {isLoadingCandidates && (
+              <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading installations...
+              </div>
+            )}
+            {!isLoadingCandidates &&
+              installationCandidates.map((candidate) => (
+                <Button
+                  key={candidate.installationId}
+                  variant="outline"
+                  className="h-auto w-full justify-start gap-3 p-3"
+                  disabled={selectedCandidateId != null}
+                  onClick={() =>
+                    verifyExistingInstallation(candidate.installationId)
+                  }
+                >
+                  {candidate.accountAvatarUrl ? (
+                    <img
+                      src={candidate.accountAvatarUrl}
+                      alt=""
+                      className="h-8 w-8 rounded-full"
+                    />
+                  ) : (
+                    <Github className="h-8 w-8" />
+                  )}
+                  <span className="flex-1 text-left">
+                    <span className="block font-medium">
+                      {candidate.accountLogin}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {candidate.accountType}
+                    </span>
+                  </span>
+                  {selectedCandidateId === candidate.installationId && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  )}
+                </Button>
+              ))}
+            {!isLoadingCandidates && installationCandidates.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No reusable installations are available.
+              </p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={closeCandidateSelection}
+              disabled={selectedCandidateId != null}
+            >
+              Cancel
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Connection</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this connection? This action
-              cannot be undone. All associated projects and webhooks will be
-              affected.
+              This connection can be deleted only after its projects are
+              removed or unbound. For an App connection, CodeCrow will also
+              uninstall that exact GitHub App installation.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
