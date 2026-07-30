@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type KeyboardEvent,
+} from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -30,6 +36,7 @@ import {
   ShieldCheck,
   Loader2,
   Search,
+  X,
 } from "lucide-react";
 import {
   Card,
@@ -39,6 +46,7 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import {
@@ -129,6 +137,94 @@ interface ProjectCodeHostingConfig {
   workspace?: string;
   branch?: string;
   provider?: string;
+}
+
+interface PatternListEditorProps {
+  id: string;
+  patterns: string[];
+  placeholder: string;
+  emptyMessage: string;
+  disabled?: boolean;
+  onChange: (patterns: string[]) => void;
+}
+
+function PatternListEditor({
+  id,
+  patterns,
+  placeholder,
+  emptyMessage,
+  disabled = false,
+  onChange,
+}: PatternListEditorProps) {
+  const [draft, setDraft] = useState("");
+
+  const addPattern = () => {
+    const pattern = draft.trim();
+    if (!pattern) return;
+    if (!patterns.includes(pattern)) {
+      onChange([...patterns, pattern]);
+    }
+    setDraft("");
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addPattern();
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <Input
+          id={id}
+          value={draft}
+          placeholder={placeholder}
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled || !draft.trim()}
+          onClick={addPattern}
+        >
+          <Plus className="mr-1 h-4 w-4" />
+          Add
+        </Button>
+      </div>
+      {patterns.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {patterns.map((pattern) => (
+            <Badge
+              key={pattern}
+              variant="secondary"
+              className="flex items-center gap-1 py-1 pl-3 pr-1"
+            >
+              <code className="text-xs">{pattern}</code>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0 hover:bg-destructive/20"
+                disabled={disabled}
+                aria-label={`Remove ${pattern}`}
+                onClick={() =>
+                  onChange(patterns.filter((candidate) => candidate !== pattern))
+                }
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs italic text-muted-foreground">{emptyMessage}</p>
+      )}
+    </div>
+  );
 }
 
 export default function ProjectConfiguration() {
@@ -1685,7 +1781,7 @@ export default function ProjectConfiguration() {
                     <div>
                       <div className="font-medium">PR and Branch File Scope</div>
                       <div className="text-sm text-muted-foreground">
-                        Glob patterns applied before PR AI review and branch reconciliation. Include patterns restrict analysis; exclusions always win.
+                        Glob patterns applied before PR and branch limits, AI review, and reconciliation. Include patterns restrict analysis; exclusions always win.
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1700,30 +1796,37 @@ export default function ProjectConfiguration() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="analysis-include-patterns">Include patterns</Label>
-                      <Textarea
+                      <PatternListEditor
                         id="analysis-include-patterns"
-                        rows={6}
-                        placeholder={"src/**\napp/**\n*.java"}
-                        value={analysisScope.includePatterns.join("\n")}
-                        onChange={(event) => setAnalysisScope({
+                        placeholder="e.g., src/** or *.java"
+                        patterns={analysisScope.includePatterns}
+                        disabled={savingAnalysisSettings || syncingAnalysisScope}
+                        emptyMessage="No include patterns — every path not excluded is in scope."
+                        onChange={(includePatterns) => setAnalysisScope({
                           ...analysisScope,
-                          includePatterns: event.target.value.split("\n").map((value) => value.trim()).filter(Boolean),
+                          includePatterns,
                         })}
                       />
-                      <p className="text-xs text-muted-foreground">Leave blank to include every path not excluded.</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="analysis-exclude-patterns">Exclude patterns</Label>
-                      <Textarea
+                      <PatternListEditor
                         id="analysis-exclude-patterns"
-                        rows={6}
-                        placeholder={"vendor/**\ndist/**\n**/*.generated.ts"}
-                        value={analysisScope.excludePatterns.join("\n")}
-                        onChange={(event) => setAnalysisScope({
+                        placeholder="e.g., vendor/** or **/*.generated.ts"
+                        patterns={analysisScope.excludePatterns}
+                        disabled={savingAnalysisSettings || syncingAnalysisScope}
+                        emptyMessage="No custom exclusions."
+                        onChange={(excludePatterns) => setAnalysisScope({
                           ...analysisScope,
-                          excludePatterns: event.target.value.split("\n").map((value) => value.trim()).filter(Boolean),
+                          excludePatterns,
                         })}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Known source-map files (for example <code>*.js.map</code>,
+                        {" "}<code>*.css.map</code>, and framework equivalents)
+                        and minified JavaScript, module, CommonJS, and CSS assets
+                        are always excluded.
+                      </p>
                     </div>
                   </div>
                 </div>
