@@ -28,6 +28,13 @@ const gitlabConnectionSchema = z.object({
     connectionName: z.string().min(1, "Connection name is required"),
     groupId: z.string().optional(),
     accessToken: z.string().min(1, "Personal Access Token is required"),
+    baseUrl: z.union([
+        z.literal(""),
+        z.string().url("Enter a valid GitLab instance URL").refine(
+            (url) => url.startsWith("https://") || url.startsWith("http://"),
+            "GitLab URL must use http or https",
+        ),
+    ]),
 });
 
 type GitLabConnectionForm = z.infer<typeof gitlabConnectionSchema>;
@@ -45,6 +52,7 @@ export default function GitLabAddConnection() {
             connectionName: "",
             groupId: "",
             accessToken: "",
+            baseUrl: "",
         },
     });
 
@@ -57,6 +65,7 @@ export default function GitLabAddConnection() {
                 connectionName: data.connectionName,
                 groupId: data.groupId || undefined,
                 accessToken: data.accessToken,
+                baseUrl: data.baseUrl.trim() || undefined,
             });
 
             toast({
@@ -118,6 +127,23 @@ export default function GitLabAddConnection() {
                                     <p className="text-sm text-muted-foreground">
                                         A friendly name to identify this connection
                                     </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="baseUrl">GitLab Instance URL</Label>
+                                    <Input
+                                        id="baseUrl"
+                                        placeholder="https://gitlab.example.com"
+                                        {...form.register("baseUrl")}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        Leave blank for GitLab.com. Enter the instance root without <code>/api/v4</code>.
+                                    </p>
+                                    {form.formState.errors.baseUrl && (
+                                        <p className="text-sm text-destructive">
+                                            {form.formState.errors.baseUrl.message}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

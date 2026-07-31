@@ -173,7 +173,7 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
     icon: "Gitlab",
     instructions:
       "1. GitLab → User Settings → Applications (or Admin Area → Applications for self-hosted)\n" +
-      "2. Redirect URI: {backend-url}/api/auth/gitlab/callback\n" +
+      "2. Redirect URI: {backend-url}/api/integrations/gitlab/app/callback\n" +
       "3. Scopes: api, read_user, read_repository, write_repository\n" +
       "4. Copy the Application ID and Secret below.",
     fields: [

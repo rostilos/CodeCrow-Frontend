@@ -16,6 +16,7 @@ export interface VcsConnection {
   status: VcsSetupStatus;
   externalWorkspaceId: string | null;
   externalWorkspaceSlug: string | null;
+  baseUrl?: string | null;
   installationRequestPending: boolean;
   repoCount: number;
   tokenExpiresAt: string | null;
