@@ -309,7 +309,7 @@ export default function GitLabHostingSettings({
         <CardContent>
           <Tabs defaultValue="oauth" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="oauth">OAuth App</TabsTrigger>
+              <TabsTrigger value="oauth">OAuth (GitLab.com)</TabsTrigger>
               <TabsTrigger value="pat">Personal Access Token</TabsTrigger>
             </TabsList>
 
@@ -322,8 +322,8 @@ export default function GitLabHostingSettings({
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Quick 1-click setup via OAuth 2.0. Review comments will be
-                  posted as your GitLab account.
+                  Quick 1-click setup for GitLab.com via OAuth 2.0. Review
+                  comments will be posted as your GitLab.com account.
                 </p>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export default function GitLabHostingSettings({
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    Support for GitLab.com & self-hosted
+                    GitLab.com accounts only
                   </li>
                 </ul>
                 <Button
@@ -354,13 +354,13 @@ export default function GitLabHostingSettings({
                   ) : (
                     <>
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      Connect with GitLab
+                      Connect with GitLab.com
                     </>
                   )}
                 </Button>
                 {vcsAvailability?.gitlabOAuth === false && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    GitLab OAuth is not configured on this instance. Ask your
+                    GitLab.com OAuth is not configured on this instance. Ask your
                     site administrator to set it up in Site Administration →
                     GitLab.
                   </p>
@@ -373,7 +373,8 @@ export default function GitLabHostingSettings({
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
                   Connect using a Personal Access Token for more granular
-                  control over permissions.
+                  control over permissions. This is the supported connection
+                  method for self-managed GitLab instances.
                 </p>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li className="flex items-center gap-2">
@@ -759,7 +760,7 @@ export default function GitLabHostingSettings({
                 disabled={vcsAvailability?.gitlabOAuth === false}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Connect with GitLab
+                Connect with GitLab.com
               </Button>
               <Button onClick={createManualConnection} variant="outline">
                 <Plus className="h-4 w-4 mr-2" />

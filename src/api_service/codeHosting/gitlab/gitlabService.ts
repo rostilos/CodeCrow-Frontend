@@ -62,8 +62,8 @@ class GitLabService extends ApiService {
 
     /**
      * Get the GitLab OAuth install URL to initiate the OAuth flow.
-     * This redirects to GitLab to authorize the application.
-     * Supports both GitLab.com and self-hosted GitLab instances.
+     * This redirects to GitLab.com to authorize the application.
+     * Self-managed GitLab connections use access tokens instead.
      */
     async getInstallUrl(workspaceSlug: string): Promise<{ installUrl: string }> {
         return this.request<{ installUrl: string }>(`/${workspaceSlug}/integrations/gitlab/app/install-url`, {});

@@ -77,7 +77,8 @@ export function GitLabRepositoryTokenForm({
               <div className="space-y-2">
                 <p>
                   <strong>Project Access Tokens</strong> provide access to a single repository only. 
-                  This is ideal when you don't have group/organization access.
+                  This is ideal when you don't have group/organization access and is a supported
+                  connection method for self-managed GitLab.
                 </p>
                 <p className="text-sm">
                   Create one in GitLab: <strong>Settings → Access Tokens</strong>
@@ -148,7 +149,7 @@ export function GitLabRepositoryTokenForm({
             {showAdvanced && (
               <div className="mt-4 pl-4 border-l-2 border-muted space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="baseUrl">GitLab URL (for self-hosted)</Label>
+                  <Label htmlFor="baseUrl">GitLab Instance URL</Label>
                   <Input
                     id="baseUrl"
                     placeholder="https://gitlab.example.com"
@@ -157,7 +158,7 @@ export function GitLabRepositoryTokenForm({
                     disabled={isLoading}
                   />
                   <p className="text-sm text-muted-foreground">
-                    Leave empty for GitLab.com
+                    Leave empty for GitLab.com. Enter the instance root without <code>/api/v4</code>.
                   </p>
                 </div>
               </div>

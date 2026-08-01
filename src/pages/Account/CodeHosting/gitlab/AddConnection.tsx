@@ -181,15 +181,7 @@ export default function GitLabAddConnection() {
                                         {...form.register("accessToken")}
                                     />
                                     <p className="text-sm text-muted-foreground">
-                                        Your GitLab Personal Access Token with api scope.
-                                        <a 
-                                            href="https://gitlab.com/-/user_settings/personal_access_tokens" 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="ml-1 text-primary hover:underline"
-                                        >
-                                            Create a token
-                                        </a>
+                                        Create a Personal Access Token with api scope on the GitLab instance entered under Connection Details.
                                     </p>
                                 </div>
 

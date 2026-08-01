@@ -125,7 +125,7 @@ export const PROVIDERS: ProviderInfo[] = [
   {
     id: 'gitlab',
     name: 'GitLab',
-    description: 'Connect to repositories on gitlab.com or self-hosted GitLab',
+    description: 'Connect to GitLab.com with OAuth or any GitLab instance with an access token',
     icon: 'gitlab',
     isSupported: false,
     supportedConnectionTypes: ['APPLICATION', 'PERSONAL_TOKEN'],
