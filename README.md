@@ -62,6 +62,11 @@ npm run build
 
 This generates optimized static files in the `dist/` directory.
 
+The production build gives every generated JavaScript, CSS, and imported asset
+a content-hashed filename under `dist/assets/`. Deploy `index.html` and the
+matching `assets/` directory atomically; never merge files from different
+builds.
+
 ### Deployment Options
 
 #### Option 1: Docker Deployment (Recommended)
@@ -166,6 +171,11 @@ The included `Dockerfile` is production-ready and includes:
 - Optimized layer caching
 - Health checks
 - Minimal image size
+
+The bundled nginx configuration prevents `index.html` and stable-name files
+from becoming stale, while content-hashed `/assets/` files are cached
+immutably for one year. A tab that was open across a deployment reloads once if
+one of its old lazy-loaded chunks no longer exists.
 
 ## License
 

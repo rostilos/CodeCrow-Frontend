@@ -107,6 +107,7 @@ function buildPrUrl(
   vcsWorkspace: string | undefined,
   repoSlug: string | undefined,
   prNumber: number,
+  vcsBaseUrl?: string | null,
 ): string | null {
   if (!vcsProvider || !vcsWorkspace || !repoSlug) return null;
 
@@ -116,7 +117,7 @@ function buildPrUrl(
     case "GITHUB":
       return `https://github.com/${vcsWorkspace}/${repoSlug}/pull/${prNumber}`;
     case "GITLAB":
-      return `https://gitlab.com/${vcsWorkspace}/${repoSlug}/-/merge_requests/${prNumber}`;
+      return `${vcsBaseUrl?.trim().replace(/\/+$/, "") || "https://gitlab.com"}/${vcsWorkspace}/${repoSlug}/-/merge_requests/${prNumber}`;
     default:
       return null;
   }
@@ -128,6 +129,7 @@ function buildCommitUrl(
   vcsWorkspace: string | undefined,
   repoSlug: string | undefined,
   commitHash: string,
+  vcsBaseUrl?: string | null,
 ): string | null {
   if (!vcsProvider || !vcsWorkspace || !repoSlug || !commitHash) return null;
 
@@ -137,7 +139,7 @@ function buildCommitUrl(
     case "GITHUB":
       return `https://github.com/${vcsWorkspace}/${repoSlug}/commit/${commitHash}`;
     case "GITLAB":
-      return `https://gitlab.com/${vcsWorkspace}/${repoSlug}/-/commit/${commitHash}`;
+      return `${vcsBaseUrl?.trim().replace(/\/+$/, "") || "https://gitlab.com"}/${vcsWorkspace}/${repoSlug}/-/commit/${commitHash}`;
     default:
       return null;
   }
@@ -1474,6 +1476,7 @@ export default function ProjectDashboard() {
                               project?.projectVcsWorkspace,
                               getRepoSlug(project),
                               pr.prNumber,
+                              project?.vcsBaseUrl,
                             );
                             return (
                               <CommandItem
@@ -2076,6 +2079,7 @@ export default function ProjectDashboard() {
                               project?.projectVcsWorkspace,
                               getRepoSlug(project),
                               selectedPR.prNumber,
+                              project?.vcsBaseUrl,
                             );
                             return prUrl ? (
                               <a
@@ -2096,6 +2100,7 @@ export default function ProjectDashboard() {
                                   project?.projectVcsWorkspace,
                                   getRepoSlug(project),
                                   versionCommitHash,
+                                  project?.vcsBaseUrl,
                                 )
                               : null;
                             return commitUrl ? (

@@ -386,7 +386,7 @@ export default function GitLabHostingSettings({
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    Manual webhook configuration required
+                    Automatic webhooks with sufficient project permissions
                   </li>
                 </ul>
                 <Button
@@ -437,6 +437,12 @@ export default function GitLabHostingSettings({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Instance: </span>
+                      <span className="font-medium break-all">
+                        {connection.baseUrl || "https://gitlab.com"}
+                      </span>
+                    </div>
                     <div className="text-sm">
                       <span className="text-muted-foreground">
                         Repositories:{" "}
@@ -564,6 +570,12 @@ export default function GitLabHostingSettings({
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="text-sm">
+                      <span className="text-muted-foreground">Instance: </span>
+                      <span className="font-medium break-all">
+                        {connection.baseUrl || "https://gitlab.com"}
+                      </span>
+                    </div>
+                    <div className="text-sm">
                       <span className="text-muted-foreground">
                         Repositories:{" "}
                       </span>
@@ -667,6 +679,12 @@ export default function GitLabHostingSettings({
                     <Badge variant="outline" className="text-xs">
                       Single Repository
                     </Badge>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Instance: </span>
+                      <span className="font-medium break-all">
+                        {connection.baseUrl || "https://gitlab.com"}
+                      </span>
+                    </div>
                     {connection.updatedAt && (
                       <div className="text-sm">
                         <span className="text-muted-foreground">Updated: </span>

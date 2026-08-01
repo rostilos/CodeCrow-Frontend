@@ -6,7 +6,7 @@ export interface CreateProjectRequest {
   namespace: string;
   description?: string;
   creationMode: "MANUAL" | "IMPORT";
-  vcsProvider?: "BITBUCKET_CLOUD" | "GITHUB";
+  vcsProvider?: "BITBUCKET_CLOUD" | "GITHUB" | "GITLAB";
   vcsConnectionId?: number;
   repositorySlug?: string;
   repositoryUUID?: string;
@@ -68,6 +68,7 @@ export interface ProjectDTO {
   vcsConnectionId?: number;
   vcsConnectionType?: VcsConnectionType | null;
   vcsProvider?: VcsProvider | null;
+  vcsBaseUrl?: string | null;
   aiConnectionId?: number;
   projectVcsWorkspace?: string;
   projectVcsRepoSlug?: string; // Backend returns this name

@@ -27,7 +27,8 @@ export function buildVcsPrUrl(
   vcsProvider: VcsProvider | null | undefined, 
   vcsWorkspace: string | undefined, 
   repoSlug: string | undefined, 
-  prNumber: number
+  prNumber: number,
+  vcsBaseUrl?: string | null,
 ): string | null {
   if (!vcsProvider || !vcsWorkspace || !repoSlug) return null;
   
@@ -37,7 +38,7 @@ export function buildVcsPrUrl(
     case 'GITHUB':
       return `https://github.com/${vcsWorkspace}/${repoSlug}/pull/${prNumber}`;
     case 'GITLAB':
-      return `https://gitlab.com/${vcsWorkspace}/${repoSlug}/-/merge_requests/${prNumber}`;
+      return `${vcsBaseUrl?.trim().replace(/\/+$/, '') || 'https://gitlab.com'}/${vcsWorkspace}/${repoSlug}/-/merge_requests/${prNumber}`;
     default:
       return null;
   }
@@ -88,6 +89,7 @@ export interface IssueListWithFiltersProps {
   vcsProvider?: VcsProvider | null;
   vcsWorkspace?: string;
   repoSlug?: string;
+  vcsBaseUrl?: string | null;
   sourceBranch?: string;
   targetBranch?: string;
   commitHash?: string;
@@ -126,6 +128,7 @@ export default function IssueListWithFilters({
   vcsProvider,
   vcsWorkspace,
   repoSlug,
+  vcsBaseUrl,
   sourceBranch,
   targetBranch,
   commitHash,
@@ -209,7 +212,9 @@ export default function IssueListWithFilters({
   }, [onIssueClick, issueDetailRoute, navigate]);
 
   // Build VCS URL
-  const vcsPrUrl = prNumber ? buildVcsPrUrl(vcsProvider, vcsWorkspace, repoSlug, prNumber) : null;
+  const vcsPrUrl = prNumber
+    ? buildVcsPrUrl(vcsProvider, vcsWorkspace, repoSlug, prNumber, vcsBaseUrl)
+    : null;
 
   // Summary stats from issueSummary or calculate from issues
   const summaryStats = useMemo(() => {

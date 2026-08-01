@@ -17,12 +17,15 @@ export interface GitLabConnection {
     updatedAt?: string;
     connectionType?: 'PERSONAL_TOKEN' | 'REPOSITORY_TOKEN';
     repositoryPath?: string;
+    baseUrl?: string;
 }
 
 export interface GitLabConnectionCreateRequest {
     connectionName: string;
     groupId?: string;
     accessToken: string;
+    /** GitLab instance root for self-managed GitLab; omitted means GitLab.com. */
+    baseUrl?: string;
 }
 
 /**
