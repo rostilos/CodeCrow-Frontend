@@ -167,12 +167,12 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
   },
   {
     key: "VCS_GITLAB",
-    label: "GitLab OAuth App",
+    label: "GitLab.com OAuth App",
     description:
-      "OAuth application credentials for 1-click GitLab integration. Works with GitLab.com and self-hosted instances.",
+      "OAuth application credentials for 1-click GitLab.com integration. Self-managed GitLab connections use personal or project access tokens.",
     icon: "Gitlab",
     instructions:
-      "1. GitLab → User Settings → Applications (or Admin Area → Applications for self-hosted)\n" +
+      "1. GitLab.com → User Settings → Applications\n" +
       "2. Redirect URI: {backend-url}/api/integrations/gitlab/app/callback\n" +
       "3. Scopes: api, read_user, read_repository, write_repository\n" +
       "4. Copy the Application ID and Secret below.",
@@ -190,14 +190,6 @@ export const SETTINGS_GROUPS: SettingsGroupMeta[] = [
         type: "password",
         placeholder: "GitLab application secret",
         required: false,
-      },
-      {
-        key: "base-url",
-        label: "GitLab Base URL",
-        type: "text",
-        placeholder: "https://gitlab.com",
-        helpText:
-          "For self-hosted GitLab, enter your instance URL. Leave empty for GitLab.com.",
       },
     ],
   },
