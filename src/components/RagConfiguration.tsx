@@ -103,6 +103,11 @@ export default function RagConfiguration({
   const [indexingError, setIndexingError] = useState<string | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  const handledTerminalJobIdRef = useRef<string | null>(null);
+  const completedJobIdRef = useRef<string | null>(null);
+  const [completedJobIdToReconcile, setCompletedJobIdToReconcile] = useState<
+    string | null
+  >(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const latestJobSequenceRef = useRef(0);
 
@@ -179,16 +184,35 @@ export default function RagConfiguration({
   const isTerminalJob = (job: Job) =>
     ["COMPLETED", "FAILED", "CANCELLED", "SKIPPED"].includes(job.status);
 
-  const loadRagStatus = useCallback(async () => {
+  const loadRagStatus = useCallback(async (silent = false) => {
     if (!project.namespace) return;
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const status = await projectService.getRagStatus(
         workspaceSlug,
         project.namespace,
       );
+
+      // A completed durable job is authoritative: the backend marks the RAG
+      // index complete before it marks the job complete. Do not let a stale or
+      // cached transitional response regress the card after that handoff.
+      if (
+        completedJobIdRef.current &&
+        status.indexStatus?.status !== "INDEXED"
+      ) {
+        return status;
+      }
+
       setRagStatus(status);
+      if (
+        completedJobIdRef.current &&
+        status.indexStatus?.status === "INDEXED"
+      ) {
+        completedJobIdRef.current = null;
+        setCompletedJobIdToReconcile(null);
+      }
+      return status;
     } catch (error: unknown) {
       console.error("Failed to load RAG status:", error);
       if (getErrorStatus(error) !== 404) {
@@ -202,12 +226,15 @@ export default function RagConfiguration({
         });
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [project.namespace, toast, workspaceSlug]);
 
   const applyTerminalJobState = useCallback(
     async (job: Job) => {
+      if (handledTerminalJobIdRef.current === job.id) return;
+      handledTerminalJobIdRef.current = job.id;
+
       setIndexing(false);
       setIndexingProgress(null);
       setSseConnected(false);
@@ -216,6 +243,24 @@ export default function RagConfiguration({
       abortControllerRef.current = null;
 
       if (job.status === "COMPLETED") {
+        completedJobIdRef.current = job.id;
+        setCompletedJobIdToReconcile(job.id);
+        setRagStatus((current) => {
+          if (!current?.indexStatus) return current;
+          const completedAt = job.completedAt || new Date().toISOString();
+          return {
+            ...current,
+            isIndexed: true,
+            canStartIndexing: true,
+            indexStatus: {
+              ...current.indexStatus,
+              status: "INDEXED",
+              lastIndexedAt: completedAt,
+              updatedAt: completedAt,
+              errorMessage: null,
+            },
+          };
+        });
         setIndexingError(null);
         toast({
           title: "Indexing Complete",
@@ -230,7 +275,7 @@ export default function RagConfiguration({
           variant: "destructive",
         });
       }
-      await loadRagStatus();
+      await loadRagStatus(job.status === "COMPLETED");
     },
     [loadRagStatus, toast],
   );
@@ -263,6 +308,10 @@ export default function RagConfiguration({
         ];
       });
 
+      // Keep the project-level Index Status card synchronized while the
+      // durable job and its log are being polled.
+      await loadRagStatus(true);
+
       if (!isTerminalJob(job)) {
         setActiveJobId(job.id);
         activeJobIdRef.current = job.id;
@@ -279,7 +328,13 @@ export default function RagConfiguration({
         await applyTerminalJobState(job);
       }
     },
-    [applyTerminalJobState, mapJobLog, project.namespace, workspaceSlug],
+    [
+      applyTerminalJobState,
+      loadRagStatus,
+      mapJobLog,
+      project.namespace,
+      workspaceSlug,
+    ],
   );
 
   const resumeRagJob = useCallback(async () => {
@@ -312,8 +367,11 @@ export default function RagConfiguration({
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     activeJobIdRef.current = null;
+    handledTerminalJobIdRef.current = null;
+    completedJobIdRef.current = null;
     latestJobSequenceRef.current = 0;
     setActiveJobId(null);
+    setCompletedJobIdToReconcile(null);
     setLogs([]);
     setIndexing(false);
     setIndexingProgress(null);
@@ -331,6 +389,18 @@ export default function RagConfiguration({
     }, 1500);
     return () => window.clearInterval(pollInterval);
   }, [activeJobId, refreshActiveJob]);
+
+  // Project status persistence and the terminal Job response can become
+  // observable a fraction of a second apart. Continue reconciling after the
+  // job poll stops so the Index Status card reaches the authoritative state
+  // without requiring a page reload.
+  useEffect(() => {
+    if (!completedJobIdToReconcile) return;
+    const pollInterval = window.setInterval(() => {
+      loadRagStatus(true);
+    }, 1500);
+    return () => window.clearInterval(pollInterval);
+  }, [completedJobIdToReconcile, loadRagStatus]);
 
   // The status row is a fallback while the durable job is being discovered.
   // This covers the brief interval between marking INDEXING and exposing the job.
@@ -505,6 +575,10 @@ export default function RagConfiguration({
     if (!project.namespace) return;
 
     if (indexing) return;
+
+    completedJobIdRef.current = null;
+    handledTerminalJobIdRef.current = null;
+    setCompletedJobIdToReconcile(null);
 
     // Clear previous logs and start fresh
     setLogs([]);
@@ -1313,7 +1387,7 @@ export default function RagConfiguration({
           <Button
             variant="ghost"
             size="icon"
-            onClick={loadRagStatus}
+            onClick={() => loadRagStatus()}
             disabled={loading || indexing}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
