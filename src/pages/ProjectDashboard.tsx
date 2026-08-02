@@ -2766,12 +2766,17 @@ export default function ProjectDashboard() {
           /* No branch or PR selected - show content based on active tab */
           <div className="space-y-4">
             {(selectionType === "branch" ? branchTab : prTab) === "preview" && (
-              <Alert className="mx-auto">
+              <Alert className="mx-auto border-primary/30 bg-primary/5">
                 <Info className="h-4 w-4" />
-                <AlertTitle>No selection</AlertTitle>
+                <AlertTitle>
+                  {branches.length === 0 && pullRequests.length === 0
+                    ? "Preview will be available after the first branch analysis"
+                    : "Select an analysis target"}
+                </AlertTitle>
                 <AlertDescription>
-                  Please select a branch or pull request to view analysis
-                  results.
+                  {branches.length === 0 && pullRequests.length === 0
+                    ? "This project has not produced branch statistics yet. Run or wait for the first branch analysis; CodeCrow will then select that branch automatically and show its issue summary here."
+                    : "Select a branch or pull request to view its analysis results."}
                 </AlertDescription>
               </Alert>
             )}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import {
   Database,
   Play,
@@ -7,7 +7,6 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
-  Square,
   Plus,
   X,
   Info,
@@ -31,6 +30,13 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -46,9 +52,19 @@ import {
   RagIndexingProgressEvent,
   RagIndexingResult,
 } from "@/api_service/project/projectService";
+import {
+  jobApi,
+  type Job,
+  type JobLog,
+} from "@/api_service/job/jobApi";
+import {
+  getProjectFrameworkPreset,
+  inferProjectFrameworkPreset,
+  PROJECT_FRAMEWORK_PRESETS,
+} from "@/config/projectFrameworkPresets";
 
 interface LogEntry {
-  id: number;
+  id: string;
   timestamp: Date;
   stage: string;
   message: string;
@@ -59,6 +75,17 @@ interface RagConfigurationProps {
   workspaceSlug: string;
   project: ProjectDTO;
   onProjectUpdate?: (project: ProjectDTO) => void;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function getErrorStatus(error: unknown) {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return undefined;
+  }
+  return Number((error as { status: unknown }).status);
 }
 
 export default function RagConfiguration({
@@ -74,7 +101,10 @@ export default function RagConfiguration({
   const [indexing, setIndexing] = useState(false);
   const [indexingProgress, setIndexingProgress] = useState<string | null>(null);
   const [indexingError, setIndexingError] = useState<string | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const activeJobIdRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const latestJobSequenceRef = useRef(0);
 
   // Log window state
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -94,6 +124,12 @@ export default function RagConfiguration({
     project.ragConfig?.excludePatterns ?? [],
   );
   const [newPattern, setNewPattern] = useState("");
+  const [frameworkPresetId, setFrameworkPresetId] = useState(() =>
+    inferProjectFrameworkPreset(
+      project.ragConfig?.includePatterns,
+      project.ragConfig?.excludePatterns,
+    ),
+  );
 
   // Multi-branch RAG state
   const [multiBranchEnabled, setMultiBranchEnabled] = useState(
@@ -111,7 +147,7 @@ export default function RagConfiguration({
     type: LogEntry["type"] = "info",
   ) => {
     const entry: LogEntry = {
-      id: ++logIdCounter.current,
+      id: `local-${++logIdCounter.current}`,
       timestamp: new Date(),
       stage,
       message,
@@ -124,65 +160,26 @@ export default function RagConfiguration({
     }
   };
 
-  // Auto-scroll to bottom when new logs are added
-  useEffect(() => {
-    if (logScrollRef.current) {
-      logScrollRef.current.scrollTop = logScrollRef.current.scrollHeight;
-    }
-  }, [logs]);
+  const mapJobLog = useCallback((log: JobLog): LogEntry => {
+    const type: LogEntry["type"] =
+      log.level === "ERROR"
+        ? "error"
+        : log.step === "complete"
+          ? "complete"
+          : "progress";
+    return {
+      id: `job-${log.id}`,
+      timestamp: new Date(log.timestamp),
+      stage: log.step || "indexing",
+      message: log.message,
+      type,
+    };
+  }, []);
 
-  useEffect(() => {
-    loadRagStatus();
-  }, [workspaceSlug, project.namespace]);
+  const isTerminalJob = (job: Job) =>
+    ["COMPLETED", "FAILED", "CANCELLED", "SKIPPED"].includes(job.status);
 
-  // Poll for status updates when indexing is in progress (detected from backend status)
-  // Also set local indexing state based on backend status
-  useEffect(() => {
-    if (ragStatus?.indexStatus?.status === "INDEXING") {
-      // Show that indexing is in progress (possibly from another session or before page reload)
-      if (!indexing && !sseConnected) {
-        setIndexingProgress("Indexing in progress...");
-        // Add a log entry if there are no logs (page was reloaded)
-        if (logs.length === 0) {
-          addLog(
-            "system",
-            "Detected indexing in progress. Live logs unavailable - page was reloaded during indexing.",
-            "info",
-          );
-        }
-      }
-
-      const pollInterval = setInterval(() => {
-        loadRagStatus();
-      }, 5000); // Poll every 5 seconds
-
-      return () => clearInterval(pollInterval);
-    } else {
-      // If backend says not indexing but we have local progress shown, clear it
-      if (indexingProgress === "Indexing in progress..." && !indexing) {
-        setIndexingProgress(null);
-        // If we were waiting for indexing to finish, add completion log
-        if (logs.length > 0 && !sseConnected) {
-          const lastLog = logs[logs.length - 1];
-          if (lastLog.message.includes("page was reloaded")) {
-            addLog("system", "Indexing completed.", "complete");
-          }
-        }
-      }
-    }
-  }, [ragStatus?.indexStatus?.status, indexing, sseConnected]);
-
-  useEffect(() => {
-    // Update local state when project changes
-    setEnabled(project.ragConfig?.enabled ?? false);
-    setBranch(project.ragConfig?.branch ?? "");
-    setExcludePatterns(project.ragConfig?.excludePatterns ?? []);
-    // Multi-branch settings
-    setMultiBranchEnabled(project.ragConfig?.multiBranchEnabled ?? false);
-    setBranchRetentionDays(project.ragConfig?.branchRetentionDays ?? 30);
-  }, [project.ragConfig]);
-
-  const loadRagStatus = async () => {
+  const loadRagStatus = useCallback(async () => {
     if (!project.namespace) return;
 
     try {
@@ -192,21 +189,182 @@ export default function RagConfiguration({
         project.namespace,
       );
       setRagStatus(status);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to load RAG status:", error);
-      // Don't show error toast for 404 - just means RAG not yet set up
-      if (error.status !== 404) {
+      if (getErrorStatus(error) !== 404) {
         toast({
           title: "Failed to load RAG status",
-          description:
-            error.message || "Could not retrieve RAG indexing status",
+          description: getErrorMessage(
+            error,
+            "Could not retrieve RAG indexing status",
+          ),
           variant: "destructive",
         });
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [project.namespace, toast, workspaceSlug]);
+
+  const applyTerminalJobState = useCallback(
+    async (job: Job) => {
+      setIndexing(false);
+      setIndexingProgress(null);
+      setSseConnected(false);
+      setActiveJobId(null);
+      activeJobIdRef.current = null;
+      abortControllerRef.current = null;
+
+      if (job.status === "COMPLETED") {
+        setIndexingError(null);
+        toast({
+          title: "Indexing Complete",
+          description: "The RAG index is ready and live updates are complete.",
+        });
+      } else if (job.status === "FAILED") {
+        const message = job.errorMessage || "RAG indexing failed";
+        setIndexingError(message);
+        toast({
+          title: "Indexing Failed",
+          description: message,
+          variant: "destructive",
+        });
+      }
+      await loadRagStatus();
+    },
+    [loadRagStatus, toast],
+  );
+
+  const refreshActiveJob = useCallback(
+    async (jobId: string, replaceLogs = false) => {
+      if (!project.namespace) return;
+
+      const [job, response] = await Promise.all([
+        jobApi.getJob(workspaceSlug, project.namespace, jobId),
+        jobApi.getJobLogs(
+          workspaceSlug,
+          project.namespace,
+          jobId,
+          replaceLogs ? undefined : latestJobSequenceRef.current || undefined,
+        ),
+      ]);
+
+      const incoming = response.logs.map(mapJobLog);
+      latestJobSequenceRef.current = Math.max(
+        latestJobSequenceRef.current,
+        response.latestSequence || 0,
+      );
+      setLogs((current) => {
+        if (replaceLogs) return incoming;
+        const knownIds = new Set(current.map((entry) => entry.id));
+        return [
+          ...current,
+          ...incoming.filter((entry) => !knownIds.has(entry.id)),
+        ];
+      });
+
+      if (!isTerminalJob(job)) {
+        setActiveJobId(job.id);
+        activeJobIdRef.current = job.id;
+        setIndexing(true);
+        setSseConnected(true);
+        setIsLogWindowOpen(true);
+        setIndexingError(null);
+        setIndexingProgress(
+          incoming.at(-1)?.message ||
+            job.currentStep ||
+            "RAG indexing is running...",
+        );
+      } else {
+        await applyTerminalJobState(job);
+      }
+    },
+    [applyTerminalJobState, mapJobLog, project.namespace, workspaceSlug],
+  );
+
+  const resumeRagJob = useCallback(async () => {
+    if (!project.namespace) return;
+    try {
+      const activeJobs = await jobApi.getActiveJobs(
+        workspaceSlug,
+        project.namespace,
+      );
+      const ragJob = activeJobs.find((job) =>
+        ["RAG_INITIAL_INDEX", "RAG_INCREMENTAL_INDEX"].includes(job.jobType),
+      );
+      if (ragJob) {
+        latestJobSequenceRef.current = 0;
+        await refreshActiveJob(ragJob.id, true);
+      }
+    } catch (error) {
+      console.warn("Could not restore active RAG job logs:", error);
+    }
+  }, [project.namespace, refreshActiveJob, workspaceSlug]);
+
+  // Auto-scroll to bottom when new logs are added
+  useEffect(() => {
+    if (logScrollRef.current) {
+      logScrollRef.current.scrollTop = logScrollRef.current.scrollHeight;
+    }
+  }, [logs]);
+
+  useEffect(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    activeJobIdRef.current = null;
+    latestJobSequenceRef.current = 0;
+    setActiveJobId(null);
+    setLogs([]);
+    setIndexing(false);
+    setIndexingProgress(null);
+    loadRagStatus();
+    resumeRagJob();
+  }, [loadRagStatus, project.namespace, resumeRagJob, workspaceSlug]);
+
+  useEffect(() => {
+    if (!activeJobId) return;
+    const pollInterval = window.setInterval(() => {
+      refreshActiveJob(activeJobId).catch((error) => {
+        console.warn("Could not refresh RAG job progress:", error);
+        setSseConnected(false);
+      });
+    }, 1500);
+    return () => window.clearInterval(pollInterval);
+  }, [activeJobId, refreshActiveJob]);
+
+  // The status row is a fallback while the durable job is being discovered.
+  // This covers the brief interval between marking INDEXING and exposing the job.
+  useEffect(() => {
+    if (
+      !["INDEXING", "UPDATING"].includes(
+        ragStatus?.indexStatus?.status ?? "",
+      ) || activeJobId
+    ) return;
+    setIndexing(true);
+    setIndexingProgress("Restoring live indexing progress...");
+    const pollInterval = window.setInterval(() => {
+      resumeRagJob();
+      loadRagStatus();
+    }, 3000);
+    return () => window.clearInterval(pollInterval);
+  }, [activeJobId, loadRagStatus, ragStatus?.indexStatus?.status, resumeRagJob]);
+
+  useEffect(() => {
+    // Update local state when project changes
+    setEnabled(project.ragConfig?.enabled ?? false);
+    setBranch(project.ragConfig?.branch ?? "");
+    setIncludePatterns(project.ragConfig?.includePatterns ?? []);
+    setExcludePatterns(project.ragConfig?.excludePatterns ?? []);
+    setFrameworkPresetId(
+      inferProjectFrameworkPreset(
+        project.ragConfig?.includePatterns,
+        project.ragConfig?.excludePatterns,
+      ),
+    );
+    // Multi-branch settings
+    setMultiBranchEnabled(project.ragConfig?.multiBranchEnabled ?? false);
+    setBranchRetentionDays(project.ragConfig?.branchRetentionDays ?? 30);
+  }, [project.ragConfig]);
 
   const handleUpdateConfig = async () => {
     if (!project.namespace) return;
@@ -238,10 +396,10 @@ export default function RagConfiguration({
 
       onProjectUpdate?.(updatedProject);
       await loadRagStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Failed to update RAG configuration",
-        description: error.message || "Could not update RAG settings",
+        description: getErrorMessage(error, "Could not update RAG settings"),
         variant: "destructive",
       });
     } finally {
@@ -269,6 +427,12 @@ export default function RagConfiguration({
       if (result.ragConfig) {
         setIncludePatterns(result.ragConfig.includePatterns ?? []);
         setExcludePatterns(result.ragConfig.excludePatterns ?? []);
+        setFrameworkPresetId(
+          inferProjectFrameworkPreset(
+            result.ragConfig.includePatterns,
+            result.ragConfig.excludePatterns,
+          ),
+        );
         onProjectUpdate?.({ ...project, ragConfig: result.ragConfig });
       }
       toast({
@@ -277,10 +441,10 @@ export default function RagConfiguration({
           ? "RAG patterns were copied to PR and branch analysis."
           : "Analysis patterns were copied to RAG indexing.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Scope synchronization failed",
-        description: error?.message || "Unable to synchronize scopes.",
+        description: getErrorMessage(error, "Unable to synchronize scopes."),
         variant: "destructive",
       });
     } finally {
@@ -291,12 +455,14 @@ export default function RagConfiguration({
   const handleAddIncludePattern = () => {
     const pattern = newIncludePattern.trim();
     if (pattern && !includePatterns.includes(pattern)) {
+      setFrameworkPresetId("generic");
       setIncludePatterns([...includePatterns, pattern]);
       setNewIncludePattern("");
     }
   };
 
   const handleRemoveIncludePattern = (pattern: string) => {
+    setFrameworkPresetId("generic");
     setIncludePatterns(includePatterns.filter((p) => p !== pattern));
   };
 
@@ -310,13 +476,22 @@ export default function RagConfiguration({
   const handleAddPattern = () => {
     const pattern = newPattern.trim();
     if (pattern && !excludePatterns.includes(pattern)) {
+      setFrameworkPresetId("generic");
       setExcludePatterns([...excludePatterns, pattern]);
       setNewPattern("");
     }
   };
 
   const handleRemovePattern = (pattern: string) => {
+    setFrameworkPresetId("generic");
     setExcludePatterns(excludePatterns.filter((p) => p !== pattern));
+  };
+
+  const handleFrameworkPresetChange = (presetId: string) => {
+    const preset = getProjectFrameworkPreset(presetId);
+    setFrameworkPresetId(preset.id);
+    setIncludePatterns([...preset.includePatterns]);
+    setExcludePatterns([...preset.excludePatterns]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -329,21 +504,7 @@ export default function RagConfiguration({
   const handleTriggerIndexing = async () => {
     if (!project.namespace) return;
 
-    // If already indexing, cancel it
-    if (indexing && abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-      setIndexing(false);
-      setIndexingProgress(null);
-      setIndexingError(null);
-      setSseConnected(false);
-      addLog("system", "Indexing cancelled by user", "info");
-      toast({
-        title: "Indexing Cancelled",
-        description: "RAG indexing operation was cancelled",
-      });
-      return;
-    }
+    if (indexing) return;
 
     // Clear previous logs and start fresh
     setLogs([]);
@@ -364,9 +525,33 @@ export default function RagConfiguration({
     };
 
     const handleComplete = (result: RagIndexingResult) => {
+      abortControllerRef.current = null;
+
+      if (result.status === "queued") {
+        setIndexing(true);
+        setIndexingProgress(result.message || "RAG indexing queued...");
+        addLog(
+          "queued",
+          result.message || "RAG indexing queued in the background",
+          "progress",
+        );
+        if (result.jobId) {
+          latestJobSequenceRef.current = 0;
+          setActiveJobId(result.jobId);
+          activeJobIdRef.current = result.jobId;
+          refreshActiveJob(result.jobId, true).catch((error) => {
+            console.warn("Could not attach to queued RAG job:", error);
+            setSseConnected(false);
+          });
+        } else {
+          setSseConnected(false);
+          resumeRagJob();
+        }
+        return;
+      }
+
       setIndexing(false);
       setIndexingProgress(null);
-      abortControllerRef.current = null;
       setSseConnected(false);
 
       if (result.status === "completed") {
@@ -404,16 +589,20 @@ export default function RagConfiguration({
     };
 
     const handleError = (error: string) => {
-      setIndexing(false);
-      setIndexingProgress(null);
       abortControllerRef.current = null;
       setSseConnected(false);
 
-      if (error === "Indexing cancelled") {
+      if (activeJobIdRef.current) {
+        // The trigger stream only acknowledges queue acceptance. Its browser
+        // connection can close while the durable project job keeps running.
+        setIndexing(true);
+        setIndexingProgress("Reconnecting to persisted RAG job progress...");
         setIndexingError(null);
-        return; // Don't show toast for user-cancelled operations
+        return;
       }
 
+      setIndexing(false);
+      setIndexingProgress(null);
       setIndexingError(error);
       addLog("error", error, "error");
 
@@ -515,6 +704,7 @@ export default function RagConfiguration({
 
   const hasChanges =
     enabled !== (project.ragConfig?.enabled ?? false) ||
+    branch.trim() !== (project.ragConfig?.branch ?? "") ||
     !arraysEqual(includePatterns, project.ragConfig?.includePatterns ?? []) ||
     !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []) ||
     multiBranchEnabled !== (project.ragConfig?.multiBranchEnabled ?? false) ||
@@ -577,7 +767,13 @@ export default function RagConfiguration({
         </Alert>
 
         {/* Enable/Disable Toggle */}
-        <div className="flex items-center justify-between">
+        <div
+          className={`flex items-center justify-between rounded-lg border p-4 transition-colors ${
+            enabled
+              ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+              : "border-border bg-muted/20"
+          }`}
+        >
           <div className="space-y-0.5">
             <Label htmlFor="rag-enabled">Enable RAG Indexing</Label>
             <p className="text-sm text-muted-foreground">
@@ -590,6 +786,31 @@ export default function RagConfiguration({
             onCheckedChange={setEnabled}
             disabled={updating}
           />
+        </div>
+
+        <div className="space-y-2 rounded-lg border p-4">
+          <Label htmlFor="rag-framework-preset">Framework preset</Label>
+          <Select
+            value={frameworkPresetId}
+            onValueChange={handleFrameworkPresetChange}
+            disabled={updating || !enabled}
+          >
+            <SelectTrigger id="rag-framework-preset">
+              <SelectValue placeholder="Select a framework preset" />
+            </SelectTrigger>
+            <SelectContent>
+              {PROJECT_FRAMEWORK_PRESETS.map((preset) => (
+                <SelectItem key={preset.id} value={preset.id}>
+                  {preset.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">
+            {getProjectFrameworkPreset(frameworkPresetId).description} Applying
+            a preset replaces the include and exclude patterns below; you can
+            customize them before saving.
+          </p>
         </div>
 
         {/* Branch Configuration - Read-only, managed via Branches tab */}
@@ -959,7 +1180,9 @@ export default function RagConfiguration({
 
         {/* Indexing Log Window */}
         {(logs.length > 0 ||
-          (ragStatus?.indexStatus?.status === "INDEXING" && !sseConnected)) && (
+          (["INDEXING", "UPDATING"].includes(
+            ragStatus?.indexStatus?.status ?? "",
+          ) && !sseConnected)) && (
             <Collapsible open={isLogWindowOpen} onOpenChange={setIsLogWindowOpen}>
               <div className="rounded-lg border bg-muted/20">
                 <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/40 transition-colors">
@@ -972,7 +1195,7 @@ export default function RagConfiguration({
                     {sseConnected ? (
                       <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
                         <Wifi className="h-3 w-3" />
-                        <span className="text-xs">Connected</span>
+                        <span className="text-xs">Live</span>
                       </div>
                     ) : ragStatus?.indexStatus?.status === "INDEXING" ? (
                       <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
@@ -989,16 +1212,18 @@ export default function RagConfiguration({
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
-                  {/* Warning when disconnected but indexing in progress */}
+                  {/* Transient warning while reconnecting to the persisted job. */}
                   {!sseConnected &&
-                    ragStatus?.indexStatus?.status === "INDEXING" && (
+                    ["INDEXING", "UPDATING"].includes(
+                      ragStatus?.indexStatus?.status ?? "",
+                    ) && (
                       <Alert className="mx-3 mb-2 bg-amber-500/10 border-amber-500/30">
                         <WifiOff className="h-4 w-4 text-amber-500" />
                         <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
-                          <strong>Connection lost.</strong> Indexing is still
-                          running in the background. New logs cannot be displayed
-                          until you trigger a new indexing operation. The status
-                          will update automatically when indexing completes.
+                          <strong>Reconnecting.</strong> Indexing is still
+                          running in the background. CodeCrow is restoring the
+                          persisted job log and will continue from the last
+                          recorded event.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -1068,17 +1293,14 @@ export default function RagConfiguration({
           </Button>
 
           <Button
-            variant={indexing ? "destructive" : "outline"}
+            variant="outline"
             onClick={handleTriggerIndexing}
-            disabled={
-              !enabled ||
-              (!ragStatus?.canStartIndexing && !indexing)
-            }
+            disabled={!enabled || indexing || !ragStatus?.canStartIndexing}
           >
             {indexing ? (
               <>
-                <Square className="mr-2 h-4 w-4" />
-                Cancel Indexing
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Indexing…
               </>
             ) : (
               <>

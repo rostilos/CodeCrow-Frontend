@@ -17,6 +17,9 @@ import {
   X,
   Info,
   Search,
+  Database,
+  ListTodo,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   Card,
@@ -37,6 +40,8 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { PasswordInput } from "@/components/ui/password-input.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
@@ -54,6 +59,22 @@ import {
 } from "@/api_service/ai/aiConnectionService.ts";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
+import { taskManagementService } from "@/api_service/taskManagement/taskManagementService";
+import {
+  DEFAULT_TASK_ID_PATTERN,
+  OUTPUT_LANGUAGES,
+  TASK_ID_SOURCES,
+  TEMPLATE_MODES,
+  type QaAutoDocTaskIdSource,
+  type QaAutoDocTemplateMode,
+  type TaskManagementConnectionRequest,
+  type TaskManagementConnectionResponse,
+} from "@/api_service/taskManagement/taskManagement.interface";
+import {
+  DEFAULT_PROJECT_FRAMEWORK_PRESET_ID,
+  getProjectFrameworkPreset,
+  PROJECT_FRAMEWORK_PRESETS,
+} from "@/config/projectFrameworkPresets";
 
 export default function NewProjectPage() {
   const navigate = useNavigate();
@@ -62,7 +83,7 @@ export default function NewProjectPage() {
   const { currentWorkspace } = useWorkspace();
   const routes = useWorkspaceRoutes();
 
-  // Current step: 1 = connection/repo selection, 2 = project details, 3 = AI connection
+  // Repository, details, AI, analysis, then RAG and project integrations.
   const [currentStep, setCurrentStep] = useState(1);
 
   const [connections, setConnections] = useState<any[]>([]);
@@ -117,6 +138,51 @@ export default function NewProjectPage() {
   const [newPrPattern, setNewPrPattern] = useState("");
   const [newBranchPattern, setNewBranchPattern] = useState("");
 
+  // RAG is deliberately enabled and configured at creation time, but indexing
+  // remains an explicit action after setup.
+  const [ragBranch, setRagBranch] = useState("");
+  const [frameworkPresetId, setFrameworkPresetId] = useState(
+    DEFAULT_PROJECT_FRAMEWORK_PRESET_ID,
+  );
+  const initialPreset = getProjectFrameworkPreset(
+    DEFAULT_PROJECT_FRAMEWORK_PRESET_ID,
+  );
+  const [ragIncludePatterns, setRagIncludePatterns] = useState(
+    initialPreset.includePatterns.join("\n"),
+  );
+  const [ragExcludePatterns, setRagExcludePatterns] = useState(
+    initialPreset.excludePatterns.join("\n"),
+  );
+  const [applyPresetToAnalysis, setApplyPresetToAnalysis] = useState(true);
+
+  // Task management and QA auto-documentation.
+  const [taskConnections, setTaskConnections] = useState<
+    TaskManagementConnectionResponse[]
+  >([]);
+  const [taskConnectionsLoading, setTaskConnectionsLoading] = useState(false);
+  const [taskConnectionMode, setTaskConnectionMode] = useState<
+    "existing" | "create"
+  >("existing");
+  const [selectedTaskConnectionId, setSelectedTaskConnectionId] = useState<
+    number | null
+  >(null);
+  const [newTaskConnection, setNewTaskConnection] =
+    useState<TaskManagementConnectionRequest>({
+      connectionName: "",
+      providerType: "JIRA_CLOUD",
+      baseUrl: "",
+      email: "",
+      apiToken: "",
+    });
+  const [taskIdPattern, setTaskIdPattern] = useState(DEFAULT_TASK_ID_PATTERN);
+  const [taskIdSource, setTaskIdSource] =
+    useState<QaAutoDocTaskIdSource>("BRANCH_NAME");
+  const [qaAutoDocEnabled, setQaAutoDocEnabled] = useState(false);
+  const [qaTemplateMode, setQaTemplateMode] =
+    useState<QaAutoDocTemplateMode>("BASE");
+  const [qaCustomTemplate, setQaCustomTemplate] = useState("");
+  const [qaOutputLanguage, setQaOutputLanguage] = useState("English");
+
   useEffect(() => {
     // read selection returned from repo selector
     if (location.state && (location.state as any).selectedRepo) {
@@ -125,6 +191,22 @@ export default function NewProjectPage() {
       const repo = (location.state as any).selectedRepo;
       if (!projectName) {
         setProjectName(repo.name || repo.slug || "");
+      }
+      const defaultBranch =
+        repo.defaultBranch ||
+        repo.mainBranch?.name ||
+        repo.mainbranch?.name ||
+        repo.mainBranch ||
+        repo.mainbranch ||
+        "";
+      if (defaultBranch) {
+        setRagBranch(defaultBranch);
+        setPrTargetPatterns((current) =>
+          current.length > 0 ? current : [defaultBranch],
+        );
+        setBranchPushPatterns((current) =>
+          current.length > 0 ? current : [defaultBranch],
+        );
       }
       // Move to step 2 if we have a repo selected
       setCurrentStep(2);
@@ -196,6 +278,41 @@ export default function NewProjectPage() {
       setIsLoadingAi(false);
     }
   };
+
+  const loadTaskConnections = async () => {
+    if (!currentWorkspace) return;
+    try {
+      setTaskConnectionsLoading(true);
+      const available = await taskManagementService.listConnections(
+        currentWorkspace.slug,
+      );
+      setTaskConnections(available);
+      const preferred =
+        available.find((connection) => connection.defaultConnection) ??
+        available[0];
+      if (preferred && !selectedTaskConnectionId) {
+        setSelectedTaskConnectionId(preferred.id);
+      }
+      if (available.length === 0) setTaskConnectionMode("create");
+    } catch (error) {
+      console.warn("Failed to load task management connections:", error);
+    } finally {
+      setTaskConnectionsLoading(false);
+    }
+  };
+
+  const applyFrameworkPreset = (presetId: string) => {
+    const preset = getProjectFrameworkPreset(presetId);
+    setFrameworkPresetId(preset.id);
+    setRagIncludePatterns(preset.includePatterns.join("\n"));
+    setRagExcludePatterns(preset.excludePatterns.join("\n"));
+  };
+
+  const parsePatterns = (value: string) =>
+    value
+      .split(/\r?\n/)
+      .map((pattern) => pattern.trim())
+      .filter(Boolean);
 
   const handleCreateAiConnection = async () => {
     if (!currentWorkspace) return;
@@ -272,6 +389,9 @@ export default function NewProjectPage() {
       loadAiConnections();
     } else if (currentStep === 3) {
       setCurrentStep(4);
+    } else if (currentStep === 4) {
+      setCurrentStep(5);
+      loadTaskConnections();
     }
   };
 
@@ -286,6 +406,54 @@ export default function NewProjectPage() {
       toast({
         title: "Name required",
         description: "Please provide a project name",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!ragBranch.trim()) {
+      toast({
+        title: "Default branch required",
+        description: "Choose the branch that RAG will index after setup.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      qaAutoDocEnabled &&
+      taskConnectionMode === "existing" &&
+      !selectedTaskConnectionId
+    ) {
+      toast({
+        title: "Task connection required",
+        description:
+          "Select or create a Jira connection before enabling QA auto-documentation.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      qaAutoDocEnabled &&
+      taskConnectionMode === "create" &&
+      !Object.values(newTaskConnection).every(
+        (value) => String(value).trim().length > 0,
+      )
+    ) {
+      toast({
+        title: "Complete the Jira connection",
+        description:
+          "Connection name, Jira URL, email, and API token are required for QA auto-documentation.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      qaAutoDocEnabled &&
+      qaTemplateMode === "CUSTOM" &&
+      !qaCustomTemplate.trim()
+    ) {
+      toast({
+        title: "Custom template required",
+        description: "Enter a QA documentation template before continuing.",
         variant: "destructive",
       });
       return;
@@ -306,6 +474,7 @@ export default function NewProjectPage() {
         namespace: namespace,
         description: projectDescription,
         creationMode: selectedRepo ? "IMPORT" : "MANUAL",
+        mainBranch: ragBranch.trim(),
       };
 
       if (selectedConnectionId) {
@@ -333,34 +502,140 @@ export default function NewProjectPage() {
         payload,
       );
 
-      // Update analysis settings
-      if (createdProject.namespace) {
-        await projectService.updateAnalysisSettings(
-          currentWorkspace!.slug,
-          createdProject.namespace,
-          {
-            prAnalysisEnabled,
-            branchAnalysisEnabled,
-            installationMethod,
-          },
-        );
+      const setupWarnings: string[] = [];
 
-        // Update branch patterns if any are set
-        if (prTargetPatterns.length > 0 || branchPushPatterns.length > 0) {
-          await projectService.updateBranchAnalysisConfig(
+      // Auxiliary setup is best-effort: a temporary RAG or Jira outage must not
+      // turn an already-created project into a duplicate on retry.
+      if (createdProject.namespace) {
+        try {
+          await projectService.updateAnalysisSettings(
             currentWorkspace!.slug,
             createdProject.namespace,
             {
-              prTargetBranches: prTargetPatterns,
-              branchPushPatterns: branchPushPatterns,
+              prAnalysisEnabled,
+              branchAnalysisEnabled,
+              installationMethod,
             },
           );
+        } catch (error: any) {
+          setupWarnings.push(
+            error?.message || "Analysis settings could not be saved.",
+          );
+        }
+
+        if (prTargetPatterns.length > 0 || branchPushPatterns.length > 0) {
+          try {
+            await projectService.updateBranchAnalysisConfig(
+              currentWorkspace!.slug,
+              createdProject.namespace,
+              {
+                prTargetBranches: prTargetPatterns,
+                branchPushPatterns,
+              },
+            );
+          } catch (error: any) {
+            setupWarnings.push(
+              error?.message || "Branch filters could not be saved.",
+            );
+          }
+        }
+
+        const includePatterns = parsePatterns(ragIncludePatterns);
+        const excludePatterns = parsePatterns(ragExcludePatterns);
+        try {
+          await projectService.updateRagConfig(
+            currentWorkspace!.slug,
+            createdProject.namespace,
+            {
+              enabled: true,
+              branch: ragBranch.trim(),
+              includePatterns,
+              excludePatterns,
+              multiBranchEnabled: false,
+              branchRetentionDays: 30,
+            },
+          );
+          if (applyPresetToAnalysis) {
+            await projectService.updateAnalysisScope(
+              currentWorkspace!.slug,
+              createdProject.namespace,
+              { includePatterns, excludePatterns },
+            );
+          }
+        } catch (error: any) {
+          setupWarnings.push(
+            error?.message || "RAG configuration could not be saved.",
+          );
+        }
+
+        let taskConnectionId = selectedTaskConnectionId;
+        if (taskConnectionMode === "create") {
+          const hasTaskDetails = Object.values(newTaskConnection).every(
+            (value) => String(value).trim().length > 0,
+          );
+          if (hasTaskDetails) {
+            try {
+              const createdConnection =
+                await taskManagementService.createConnection(
+                  currentWorkspace!.slug,
+                  newTaskConnection,
+                );
+              taskConnectionId = createdConnection.id;
+            } catch (error: any) {
+              setupWarnings.push(
+                error?.message || "The Jira connection could not be created.",
+              );
+            }
+          } else if (qaAutoDocEnabled) {
+            setupWarnings.push(
+              "QA auto-documentation was not enabled because the new Jira connection was incomplete.",
+            );
+          }
+        }
+
+        if (taskConnectionId) {
+          try {
+            await taskManagementService.updateProjectTaskManagementConfig(
+              currentWorkspace!.slug,
+              Number(createdProject.id),
+              {
+                taskManagementConnectionId: taskConnectionId,
+                taskIdPattern:
+                  taskIdPattern === DEFAULT_TASK_ID_PATTERN
+                    ? null
+                    : taskIdPattern,
+                taskIdSource,
+              },
+            );
+            await taskManagementService.updateQaAutoDocConfig(
+              currentWorkspace!.slug,
+              Number(createdProject.id),
+              {
+                enabled: qaAutoDocEnabled,
+                templateMode: qaTemplateMode,
+                customTemplate:
+                  qaTemplateMode === "CUSTOM"
+                    ? qaCustomTemplate.trim() || null
+                    : null,
+                outputLanguage: qaOutputLanguage,
+                commentVisibility: null,
+              },
+            );
+          } catch (error: any) {
+            setupWarnings.push(
+              error?.message || "Task management settings could not be saved.",
+            );
+          }
         }
       }
 
       toast({
         title: "Project created",
-        description: "Project was created successfully",
+        description:
+          setupWarnings.length === 0
+            ? "Project was created. Start the first RAG index when ready."
+            : `Project was created with ${setupWarnings.length} setup warning${setupWarnings.length === 1 ? "" : "s"}. Review project settings.`,
+        variant: setupWarnings.length > 0 ? "destructive" : undefined,
       });
 
       // Navigate to success page with project info
@@ -372,6 +647,10 @@ export default function NewProjectPage() {
           branchAnalysisEnabled,
           prTargetPatterns,
           branchPushPatterns,
+          ragEnabled: true,
+          ragBranch: ragBranch.trim(),
+          frameworkPresetId,
+          setupWarnings,
         },
       });
     } catch (err: any) {
@@ -452,9 +731,22 @@ export default function NewProjectPage() {
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 4 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
           >
-            4
+            {currentStep > 4 ? <CheckCircle className="h-4 w-4" /> : "4"}
           </div>
           <span className="hidden sm:inline font-medium">Analysis</span>
+        </div>
+        <div
+          className={`w-8 sm:w-12 h-0.5 ${currentStep >= 5 ? "bg-primary" : "bg-muted"}`}
+        />
+        <div
+          className={`flex items-center gap-2 ${currentStep >= 5 ? "text-primary" : "text-muted-foreground"}`}
+        >
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= 5 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+          >
+            5
+          </div>
+          <span className="hidden sm:inline font-medium">Context</span>
         </div>
       </div>
 
@@ -1268,7 +1560,359 @@ export default function NewProjectPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <Button onClick={handleCreate} disabled={creating}>
+            <Button onClick={handleNextStep}>
+              Continue
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* Step 5: RAG, task management, and QA documentation */}
+      {currentStep === 5 && (
+        <>
+          <Card className="border-primary/60 bg-primary/5 shadow-sm ring-1 ring-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5 text-primary" />
+                Retrieval-Augmented Generation (RAG)
+                <Badge>Enabled after setup</Badge>
+              </CardTitle>
+              <CardDescription>
+                Configure the first index now. CodeCrow will not start indexing
+                until you review these settings and explicitly start it from
+                project settings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <Alert className="border-primary/30 bg-background/80">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  RAG improves repository-aware analysis. It is enabled for every
+                  new project, while the potentially expensive first index remains
+                  under your control.
+                </AlertDescription>
+              </Alert>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="rag-branch">Branch to index *</Label>
+                  <Input
+                    id="rag-branch"
+                    value={ragBranch}
+                    onChange={(event) => setRagBranch(event.target.value)}
+                    placeholder="main"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Framework preset</Label>
+                  <Select
+                    value={frameworkPresetId}
+                    onValueChange={applyFrameworkPreset}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a framework" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECT_FRAMEWORK_PRESETS.map((preset) => (
+                        <SelectItem key={preset.id} value={preset.id}>
+                          {preset.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {getProjectFrameworkPreset(frameworkPresetId).description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="rag-includes">
+                    Include patterns (one per line)
+                  </Label>
+                  <Textarea
+                    id="rag-includes"
+                    value={ragIncludePatterns}
+                    onChange={(event) => {
+                      setFrameworkPresetId("generic");
+                      setRagIncludePatterns(event.target.value);
+                    }}
+                    placeholder="src/**"
+                    rows={7}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rag-excludes">
+                    Exclude patterns (one per line)
+                  </Label>
+                  <Textarea
+                    id="rag-excludes"
+                    value={ragExcludePatterns}
+                    onChange={(event) => {
+                      setFrameworkPresetId("generic");
+                      setRagExcludePatterns(event.target.value);
+                    }}
+                    placeholder={"vendor/**\ngenerated/**"}
+                    rows={7}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 rounded-lg border bg-background p-4">
+                <Checkbox
+                  id="apply-preset-analysis"
+                  checked={applyPresetToAnalysis}
+                  onCheckedChange={(checked) =>
+                    setApplyPresetToAnalysis(checked === true)
+                  }
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="apply-preset-analysis">
+                    Apply the same scope to code analysis
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Keeps framework-generated and dependency files out of both
+                    RAG and analysis. You can customize either scope later.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ListTodo className="h-5 w-5" />
+                Task Management
+              </CardTitle>
+              <CardDescription>
+                Optionally bind an existing workspace Jira connection or create
+                one for task context and QA documentation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={taskConnectionMode === "existing" ? "default" : "outline"}
+                  onClick={() => setTaskConnectionMode("existing")}
+                  disabled={taskConnections.length === 0}
+                >
+                  Existing connection
+                </Button>
+                <Button
+                  type="button"
+                  variant={taskConnectionMode === "create" ? "default" : "outline"}
+                  onClick={() => setTaskConnectionMode("create")}
+                >
+                  Create new
+                </Button>
+              </div>
+
+              {taskConnectionMode === "existing" ? (
+                <div className="space-y-2">
+                  <Label>Workspace Jira connection</Label>
+                  {taskConnectionsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading connections…
+                    </div>
+                  ) : (
+                    <Select
+                      value={selectedTaskConnectionId?.toString() ?? ""}
+                      onValueChange={(value) =>
+                        setSelectedTaskConnectionId(Number(value))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a Jira connection" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {taskConnections.map((connection) => (
+                          <SelectItem
+                            key={connection.id}
+                            value={connection.id.toString()}
+                          >
+                            {connection.connectionName} — {connection.baseUrl}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="jira-name">Connection name</Label>
+                    <Input
+                      id="jira-name"
+                      value={newTaskConnection.connectionName}
+                      onChange={(event) =>
+                        setNewTaskConnection((current) => ({
+                          ...current,
+                          connectionName: event.target.value,
+                        }))
+                      }
+                      placeholder="Company Jira"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jira-url">Jira Cloud URL</Label>
+                    <Input
+                      id="jira-url"
+                      value={newTaskConnection.baseUrl}
+                      onChange={(event) =>
+                        setNewTaskConnection((current) => ({
+                          ...current,
+                          baseUrl: event.target.value,
+                        }))
+                      }
+                      placeholder="https://company.atlassian.net"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jira-email">Jira email</Label>
+                    <Input
+                      id="jira-email"
+                      type="email"
+                      value={newTaskConnection.email}
+                      onChange={(event) =>
+                        setNewTaskConnection((current) => ({
+                          ...current,
+                          email: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jira-token">API token</Label>
+                    <PasswordInput
+                      id="jira-token"
+                      value={newTaskConnection.apiToken}
+                      onChange={(event) =>
+                        setNewTaskConnection((current) => ({
+                          ...current,
+                          apiToken: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="task-pattern">Task key pattern</Label>
+                  <Input
+                    id="task-pattern"
+                    value={taskIdPattern}
+                    onChange={(event) => setTaskIdPattern(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Read task key from</Label>
+                  <Select
+                    value={taskIdSource}
+                    onValueChange={(value) =>
+                      setTaskIdSource(value as QaAutoDocTaskIdSource)
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TASK_ID_SOURCES.map((source) => (
+                        <SelectItem key={source.value} value={source.value}>
+                          {source.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5" />
+                QA Auto-Documentation
+              </CardTitle>
+              <CardDescription>
+                Generate QA testing notes for reviewed pull requests and publish
+                them through the selected task-management connection.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label htmlFor="qa-enabled">Enable QA auto-documentation</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Requires a Jira connection selected above.
+                  </p>
+                </div>
+                <Switch
+                  id="qa-enabled"
+                  checked={qaAutoDocEnabled}
+                  onCheckedChange={setQaAutoDocEnabled}
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Documentation template</Label>
+                  <Select
+                    value={qaTemplateMode}
+                    onValueChange={(value) =>
+                      setQaTemplateMode(value as QaAutoDocTemplateMode)
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TEMPLATE_MODES.map((mode) => (
+                          <SelectItem key={mode.value} value={mode.value}>
+                            {mode.label}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Output language</Label>
+                  <Select
+                    value={qaOutputLanguage}
+                    onValueChange={setQaOutputLanguage}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {OUTPUT_LANGUAGES.map((language) => (
+                        <SelectItem key={language.value} value={language.value}>
+                          {language.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {qaTemplateMode === "CUSTOM" && (
+                <div className="space-y-2">
+                  <Label htmlFor="qa-custom-template">Custom QA template</Label>
+                  <Textarea
+                    id="qa-custom-template"
+                    value={qaCustomTemplate}
+                    onChange={(event) => setQaCustomTemplate(event.target.value)}
+                    placeholder="## QA testing notes for {task_key}"
+                    rows={6}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePreviousStep}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            </Button>
+            <Button onClick={handleCreate} disabled={creating || !ragBranch.trim()}>
               {creating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
