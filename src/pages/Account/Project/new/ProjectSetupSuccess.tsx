@@ -63,6 +63,9 @@ export default function ProjectSetupSuccess() {
     ((location.state as any)?.prTargetPatterns as string[]) || [];
   const branchPushPatterns =
     ((location.state as any)?.branchPushPatterns as string[]) || [];
+  const ragBranch = (location.state as any)?.ragBranch as string | undefined;
+  const setupWarnings =
+    ((location.state as any)?.setupWarnings as string[]) || [];
 
   useEffect(() => {
     if (!project && namespace && currentWorkspace) {
@@ -135,6 +138,19 @@ export default function ProjectSetupSuccess() {
           {project?.name} is now ready for code analysis
         </p>
       </div>
+
+      {setupWarnings.length > 0 && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            The project was created, but some optional settings need attention:
+            <ul className="mt-2 list-disc pl-5">
+              {setupWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Project Info Card */}
       <Card>
@@ -241,23 +257,24 @@ export default function ProjectSetupSuccess() {
       </Card>
 
       {/* RAG Info Card */}
-      <Card>
+      <Card className="border-primary/60 bg-primary/5 ring-1 ring-primary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
             RAG Context (AI Knowledge Base)
+            <Badge>Enabled · action required</Badge>
           </CardTitle>
           <CardDescription>
-            Enhance AI analysis with your codebase context
+            Configuration is saved{ragBranch ? ` for ${ragBranch}` : ""}; the
+            first index has not started.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
             <BookOpen className="h-4 w-4" />
             <AlertDescription>
-              <strong>RAG (Retrieval-Augmented Generation)</strong> allows
-              CodeCrow to understand your entire codebase and provide more
-              accurate, context-aware code analysis and suggestions.
+              Review the framework scope, then explicitly start the first index.
+              CodeCrow does not index automatically during project creation.
             </AlertDescription>
           </Alert>
 
@@ -283,7 +300,7 @@ export default function ProjectSetupSuccess() {
             onClick={() => navigate(routes.projectSettings(namespace!, "rag"))}
           >
             <Database className="h-4 w-4 mr-2" />
-            Configure RAG Indexing
+            Review configuration and start indexing
           </Button>
         </CardContent>
       </Card>

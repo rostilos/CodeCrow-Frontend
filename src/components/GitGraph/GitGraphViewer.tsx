@@ -787,7 +787,8 @@ export const GitGraphViewer = ({
         <GitBranch className="w-8 h-8 mb-2 opacity-50" />
         <p className="text-sm">No commit graph data yet.</p>
         <p className="text-xs mt-1 opacity-60">
-          Run a branch analysis to start building the commit graph.
+          No commits were returned for this branch. Check the repository
+          connection or select another branch.
         </p>
       </div>
     );

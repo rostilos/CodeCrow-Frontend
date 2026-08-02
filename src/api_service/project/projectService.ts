@@ -1057,6 +1057,7 @@ class ProjectService extends ApiService {
                 onError(parsed.message || "Unknown error");
               } else if (
                 parsed.status === "completed" ||
+                parsed.status === "queued" ||
                 parsed.status === "skipped" ||
                 parsed.status === "locked"
               ) {
@@ -1239,8 +1240,9 @@ export interface RagIndexingProgressEvent {
 }
 
 export interface RagIndexingResult {
-  status: "completed" | "error" | "skipped" | "locked";
+  status: "queued" | "completed" | "error" | "skipped" | "locked";
   message: string;
+  jobId?: string;
   filesIndexed?: number;
   branch?: string;
   commitHash?: string;
