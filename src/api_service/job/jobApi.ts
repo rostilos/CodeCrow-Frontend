@@ -136,14 +136,22 @@ class JobApiService extends ApiService {
    * Get active jobs for a project.
    */
   async getActiveJobs(workspaceSlug: string, projectNamespace: string): Promise<Job[]> {
-    return this.request<Job[]>(`/${workspaceSlug}/projects/${projectNamespace}/jobs/active`, {}, true);
+    return this.request<Job[]>(
+      `/${workspaceSlug}/projects/${projectNamespace}/jobs/active`,
+      { cache: 'no-store' },
+      true
+    );
   }
 
   /**
    * Get job details.
    */
   async getJob(workspaceSlug: string, projectNamespace: string, jobId: string): Promise<Job> {
-    return this.request<Job>(`/${workspaceSlug}/projects/${projectNamespace}/jobs/${jobId}`, {}, true);
+    return this.request<Job>(
+      `/${workspaceSlug}/projects/${projectNamespace}/jobs/${jobId}`,
+      { cache: 'no-store' },
+      true
+    );
   }
 
   /**
@@ -158,7 +166,7 @@ class JobApiService extends ApiService {
     const params = afterSequence ? `?afterSequence=${afterSequence}` : '';
     return this.request<JobLogsResponse>(
       `/${workspaceSlug}/projects/${projectNamespace}/jobs/${jobId}/logs${params}`,
-      {},
+      { cache: 'no-store' },
       true
     );
   }

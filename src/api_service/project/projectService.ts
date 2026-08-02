@@ -735,7 +735,7 @@ class ProjectService extends ApiService {
   ): Promise<RagStatusResponse> {
     return this.request<RagStatusResponse>(
       `/${workspaceSlug}/project/${namespace}/rag/status`,
-      {},
+      { cache: "no-store" },
       true,
     );
   }
