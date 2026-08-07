@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import {
   Collapsible,
   CollapsibleContent,
@@ -48,6 +49,7 @@ import {
   projectService,
   ProjectDTO,
   RagStatusResponse,
+  RagBranchIndexStatusDTO,
   UpdateRagConfigRequest,
   RagIndexingProgressEvent,
   RagIndexingResult,
@@ -69,6 +71,14 @@ interface LogEntry {
   stage: string;
   message: string;
   type: "info" | "progress" | "complete" | "error";
+}
+
+interface BranchIndexProgress {
+  indexedChunks?: number;
+  estimatedChunks?: number;
+  completedBatches?: number;
+  totalBatches?: number;
+  estimatedRemainingMs?: number;
 }
 
 interface RagConfigurationProps {
@@ -95,6 +105,8 @@ export default function RagConfiguration({
 }: RagConfigurationProps) {
   const { toast } = useToast();
   const [ragStatus, setRagStatus] = useState<RagStatusResponse | null>(null);
+  const [branchIndexes, setBranchIndexes] = useState<RagBranchIndexStatusDTO[]>([]);
+  const [branchProgress, setBranchProgress] = useState<Record<string, BranchIndexProgress>>({});
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [syncingScopes, setSyncingScopes] = useState(false);
@@ -143,6 +155,11 @@ export default function RagConfiguration({
   const [branchRetentionDays, setBranchRetentionDays] = useState(
     project.ragConfig?.branchRetentionDays ?? 30,
   );
+  const [indexedBranches, setIndexedBranches] = useState(
+    (project.ragConfig?.indexedBranches ?? []).join(", "),
+  );
+  const [transientBranchIndexesEnabled, setTransientBranchIndexesEnabled] =
+    useState(project.ragConfig?.transientBranchIndexesEnabled ?? false);
   const [isMultiBranchOpen, setIsMultiBranchOpen] = useState(false);
 
   // Helper to add a log entry
@@ -193,6 +210,12 @@ export default function RagConfiguration({
         workspaceSlug,
         project.namespace,
       );
+      const configuredBranches = await projectService
+        .getRagBranchIndexes(workspaceSlug, project.namespace)
+        .catch((error) => {
+          console.warn("Failed to load RAG branch index status:", error);
+          return [];
+        });
 
       // A completed durable job is authoritative: the backend marks the RAG
       // index complete before it marks the job complete. Do not let a stale or
@@ -205,6 +228,7 @@ export default function RagConfiguration({
       }
 
       setRagStatus(status);
+      setBranchIndexes(configuredBranches);
       if (
         completedJobIdRef.current &&
         status.indexStatus?.status === "INDEXED"
@@ -434,6 +458,10 @@ export default function RagConfiguration({
     // Multi-branch settings
     setMultiBranchEnabled(project.ragConfig?.multiBranchEnabled ?? false);
     setBranchRetentionDays(project.ragConfig?.branchRetentionDays ?? 30);
+    setIndexedBranches((project.ragConfig?.indexedBranches ?? []).join(", "));
+    setTransientBranchIndexesEnabled(
+      project.ragConfig?.transientBranchIndexesEnabled ?? false,
+    );
   }, [project.ragConfig]);
 
   const handleUpdateConfig = async () => {
@@ -449,6 +477,16 @@ export default function RagConfiguration({
         // Multi-branch settings
         multiBranchEnabled: multiBranchEnabled || null,
         branchRetentionDays: branchRetentionDays || null,
+        indexedBranches: multiBranchEnabled
+          ? indexedBranches
+              .split(",")
+              .map((value) => value.trim())
+              .filter((value, index, values) =>
+                Boolean(value) && values.indexOf(value) === index,
+              ) || null
+          : null,
+        transientBranchIndexesEnabled:
+          multiBranchEnabled && transientBranchIndexesEnabled ? true : null,
       };
 
       const updatedProject = await projectService.updateRagConfig(
@@ -571,7 +609,10 @@ export default function RagConfiguration({
     }
   };
 
-  const handleTriggerIndexing = async () => {
+  const handleTriggerIndexing = async (
+    targetBranch: string | null = null,
+    allConfiguredBranches = false,
+  ) => {
     if (!project.namespace) return;
 
     if (indexing) return;
@@ -587,10 +628,41 @@ export default function RagConfiguration({
     setIndexingError(null);
     setSseConnected(true);
     setIsLogWindowOpen(true);
-    addLog("system", "Connecting to indexing service...", "info");
+    const requestedBranch = targetBranch ?? (branch.trim() || null);
+    setBranchProgress((current) => {
+      if (allConfiguredBranches) return {};
+      return requestedBranch ? { ...current, [requestedBranch]: {} } : current;
+    });
+    setBranchIndexes((current) =>
+      current.map((index) =>
+        allConfiguredBranches || index.branchName === requestedBranch
+          ? { ...index, status: "BUILDING", errorMessage: null }
+          : index,
+      ),
+    );
+    addLog(
+      "system",
+      allConfiguredBranches
+        ? "Connecting to indexing service for all configured branches..."
+        : `Connecting to indexing service for ${requestedBranch || "the primary"} branch...`,
+      "info",
+    );
 
     const handleProgress = (event: RagIndexingProgressEvent) => {
       setIndexingProgress(event.message || `${event.stage}: Processing...`);
+      if (event.branch) {
+        setBranchProgress((current) => ({
+          ...current,
+          [event.branch!]: {
+            ...current[event.branch!],
+            indexedChunks: event.indexedChunks ?? current[event.branch!]?.indexedChunks,
+            estimatedChunks: event.estimatedChunks ?? current[event.branch!]?.estimatedChunks,
+            completedBatches: event.completedBatches ?? current[event.branch!]?.completedBatches,
+            totalBatches: event.totalBatches ?? current[event.branch!]?.totalBatches,
+            estimatedRemainingMs: event.estimatedRemainingMs ?? current[event.branch!]?.estimatedRemainingMs,
+          },
+        }));
+      }
       addLog(
         event.stage || "progress",
         event.message || "Processing...",
@@ -699,10 +771,11 @@ export default function RagConfiguration({
     abortControllerRef.current = projectService.triggerRagIndexing(
       workspaceSlug,
       project.namespace,
-      branch || null,
+      requestedBranch,
       handleProgress,
       handleComplete,
       handleError,
+      allConfiguredBranches,
     );
   };
 
@@ -766,9 +839,41 @@ export default function RagConfiguration({
     }
   };
 
+  const getBranchStatusBadge = (status: RagBranchIndexStatusDTO["status"]) => {
+    switch (status) {
+      case "READY":
+        return <Badge className="bg-green-500">Ready</Badge>;
+      case "PENDING":
+      case "BUILDING":
+        return <Badge className="bg-blue-500">Building</Badge>;
+      case "FAILED":
+        return <Badge variant="destructive">Failed</Badge>;
+      default:
+        return <Badge variant="secondary">Not indexed</Badge>;
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Never";
     return new Date(dateString).toLocaleString();
+  };
+
+  const formatRemainingTime = (milliseconds?: number) => {
+    if (milliseconds === undefined || milliseconds < 0) return null;
+    const seconds = Math.max(0, Math.round(milliseconds / 1000));
+    if (seconds < 60) return `~${seconds}s remaining`;
+    return `~${Math.floor(seconds / 60)}m ${seconds % 60}s remaining`;
+  };
+
+  const branchProgressPercent = (progress?: BranchIndexProgress) => {
+    if (!progress) return 0;
+    if (progress.estimatedChunks && progress.estimatedChunks > 0) {
+      return Math.min(100, (100 * (progress.indexedChunks ?? 0)) / progress.estimatedChunks);
+    }
+    if (progress.totalBatches && progress.totalBatches > 0) {
+      return (100 * (progress.completedBatches ?? 0)) / progress.totalBatches;
+    }
+    return 0;
   };
 
   const arraysEqual = (a: string[], b: string[]) => {
@@ -782,7 +887,11 @@ export default function RagConfiguration({
     !arraysEqual(includePatterns, project.ragConfig?.includePatterns ?? []) ||
     !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []) ||
     multiBranchEnabled !== (project.ragConfig?.multiBranchEnabled ?? false) ||
-    branchRetentionDays !== (project.ragConfig?.branchRetentionDays ?? 30);
+    branchRetentionDays !== (project.ragConfig?.branchRetentionDays ?? 30) ||
+    indexedBranches.trim() !==
+      (project.ragConfig?.indexedBranches ?? []).join(", ") ||
+    transientBranchIndexesEnabled !==
+      (project.ragConfig?.transientBranchIndexesEnabled ?? false);
 
   return (
     <Card>
@@ -1078,12 +1187,11 @@ export default function RagConfiguration({
               <Alert className="bg-amber-500/10 border-amber-500/30">
                 <Info className="h-4 w-4 text-amber-500" />
                 <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
-                  <strong>Multi-Branch Indexing</strong> tracks code changes
-                  across branches in a unified index. During PR review, context
-                  is retrieved from both the main branch and target branch, with
-                  branch-specific changes taking priority. This preserves
-                  cross-file relationships while providing accurate
-                  branch-specific context.
+                  <strong>Multi-Branch Indexing</strong> keeps an independent,
+                  revision-pinned index for each retained target branch. A PR
+                  against <code>master</code> queries the master generation; a
+                  PR against <code>develop</code> queries develop. Source changes
+                  are added as an isolated PR overlay.
                 </AlertDescription>
               </Alert>
 
@@ -1094,8 +1202,8 @@ export default function RagConfiguration({
                     Enable Multi-Branch Indexing
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Index branches matching your Branch Push Patterns for
-                    enhanced PR analysis
+                    Keep exact indexes for the primary branch and selected
+                    analysis targets
                   </p>
                 </div>
                 <Switch
@@ -1106,17 +1214,44 @@ export default function RagConfiguration({
                 />
               </div>
 
-              {/* Multi-Branch Info */}
+              {/* Retained branches */}
               {multiBranchEnabled && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    Branches matching your <strong>Branch Push Patterns</strong>{" "}
-                    will be indexed automatically. PR reviews will search both
-                    the target branch and main branch, with target branch
-                    changes taking priority.
-                  </AlertDescription>
-                </Alert>
+                <div className="space-y-2">
+                  <Label htmlFor="indexed-branches">Retained target branches</Label>
+                  <Input
+                    id="indexed-branches"
+                    value={indexedBranches}
+                    onChange={(event) => setIndexedBranches(event.target.value)}
+                    placeholder="develop, release/next"
+                    disabled={updating || !enabled}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Comma-separated exact branch names, excluding the primary
+                    branch above. Leaving this empty preserves legacy Branch
+                    Push Pattern behavior for existing projects.
+                  </p>
+                </div>
+              )}
+
+              {multiBranchEnabled && (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="transient-branch-indexes">
+                      Temporary indexes for other PR targets
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Build a revision-pinned target snapshot when an analyzed PR
+                      targets a branch that is not retained. Branch pushes do not
+                      make it durable.
+                    </p>
+                  </div>
+                  <Switch
+                    id="transient-branch-indexes"
+                    checked={transientBranchIndexesEnabled}
+                    onCheckedChange={setTransientBranchIndexesEnabled}
+                    disabled={updating || !enabled}
+                  />
+                </div>
               )}
 
               {/* Branch Retention Days */}
@@ -1137,13 +1272,108 @@ export default function RagConfiguration({
                   className="w-24"
                 />
                 <p className="text-sm text-muted-foreground">
-                  Automatically clean up branch index data older than this many
-                  days.
+                  Automatically clean up inactive temporary PR-target indexes
+                  after this many days. Retained branches stay available until
+                  their branch is deleted or removed from the project.
                 </p>
               </div>
             </CollapsibleContent>
           </div>
         </Collapsible>
+
+        {enabled && multiBranchEnabled && (
+          <div className="rounded-lg border p-4 space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-medium">
+                  <Layers className="h-4 w-4" />
+                  Configured branch indexes
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Each row is an independently queryable RAG snapshot. Refresh
+                  creates a new exact revision for that branch.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleTriggerIndexing(null, true)}
+                disabled={updating || indexing || hasChanges || branchIndexes.length === 0}
+              >
+                {indexing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Refresh all
+              </Button>
+            </div>
+
+            {hasChanges && (
+              <p className="text-sm text-muted-foreground">
+                Save the branch configuration before starting an index build.
+              </p>
+            )}
+
+            <div className="space-y-2">
+              {branchIndexes.map((index) => (
+                <div
+                  key={`${index.role}-${index.branchName}`}
+                  className="grid gap-2 rounded-md border p-3 text-sm md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <code className="truncate rounded bg-muted px-1.5 py-0.5 text-xs">
+                        {index.branchName}
+                      </code>
+                      <Badge variant="outline">{index.role === "PRIMARY" ? "Primary" : "Retained"}</Badge>
+                      {getBranchStatusBadge(index.status)}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Revision: {index.activeRevision ? index.activeRevision.slice(0, 12) : "—"}
+                      {" · "}
+                      Updated: {formatDate(index.lastUpdatedAt)}
+                      {index.fileCount !== null && index.chunkCount !== null
+                        ? ` · ${index.fileCount} files / ${index.chunkCount} chunks`
+                        : ""}
+                    </div>
+                    {index.errorMessage && (
+                      <p className="mt-1 text-xs text-destructive">{index.errorMessage}</p>
+                    )}
+                    {branchProgress[index.branchName] && index.status === "BUILDING" && (
+                      <div className="mt-2 space-y-1">
+                        <Progress value={branchProgressPercent(branchProgress[index.branchName])} className="h-1.5" />
+                        <p className="text-xs text-muted-foreground">
+                          {branchProgress[index.branchName].estimatedChunks
+                            ? `${branchProgress[index.branchName].indexedChunks ?? 0} / ~${branchProgress[index.branchName].estimatedChunks} chunks`
+                            : `${branchProgress[index.branchName].completedBatches ?? 0} / ${branchProgress[index.branchName].totalBatches ?? "?"} batches`}
+                          {branchProgress[index.branchName].totalBatches
+                            ? ` · batch ${branchProgress[index.branchName].completedBatches ?? 0}/${branchProgress[index.branchName].totalBatches}`
+                            : ""}
+                          {formatRemainingTime(branchProgress[index.branchName].estimatedRemainingMs)
+                            ? ` · ${formatRemainingTime(branchProgress[index.branchName].estimatedRemainingMs)}`
+                            : ""}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleTriggerIndexing(index.branchName)}
+                    disabled={updating || indexing || hasChanges || index.status === "BUILDING" || index.status === "PENDING"}
+                  >
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    {index.status === "NOT_INDEXED" ? "Build" : "Refresh"}
+                  </Button>
+                </div>
+              ))}
+              {branchIndexes.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Save a primary branch and at least one retained target branch to manage their indexes here.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Status Information */}
         {ragStatus?.indexStatus && (

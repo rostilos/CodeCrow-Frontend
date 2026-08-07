@@ -158,6 +158,8 @@ export interface RagConfigDTO {
   // Multi-branch RAG settings
   multiBranchEnabled: boolean | null;
   branchRetentionDays: number | null;
+  indexedBranches: string[] | null;
+  transientBranchIndexesEnabled: boolean | null;
 }
 
 export interface UpdateRagConfigRequest {
@@ -168,6 +170,8 @@ export interface UpdateRagConfigRequest {
   // Multi-branch RAG settings
   multiBranchEnabled?: boolean | null;
   branchRetentionDays?: number | null;
+  indexedBranches?: string[] | null;
+  transientBranchIndexesEnabled?: boolean | null;
 }
 
 // Branch Index types
@@ -181,6 +185,18 @@ export interface RagBranchIndexDTO {
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RagBranchIndexStatusDTO {
+  branchName: string;
+  role: "PRIMARY" | "RETAINED";
+  status: "NOT_INDEXED" | "PENDING" | "BUILDING" | "READY" | "FAILED";
+  activeRevision: string | null;
+  requestedRevision: string | null;
+  fileCount: number | null;
+  chunkCount: number | null;
+  lastUpdatedAt: string | null;
+  errorMessage: string | null;
 }
 
 // Analysis settings types
@@ -805,6 +821,17 @@ class ProjectService extends ApiService {
     );
   }
 
+  async getRagBranchIndexes(
+    workspaceSlug: string,
+    namespace: string,
+  ): Promise<RagBranchIndexStatusDTO[]> {
+    return this.request<RagBranchIndexStatusDTO[]>(
+      `/${workspaceSlug}/project/${namespace}/rag/branches`,
+      {},
+      true,
+    );
+  }
+
   // Analysis Settings methods
   async updateAnalysisSettings(
     workspaceSlug: string,
@@ -849,7 +876,9 @@ class ProjectService extends ApiService {
     namespace: string,
   ): Promise<AnalysisScopeConfig> {
     return this.request<AnalysisScopeConfig>(
-      `/${workspaceSlug}/project/${namespace}/analysis-scope`, {}, true,
+      `/${workspaceSlug}/project/${namespace}/analysis-scope`,
+      {},
+      true,
     );
   }
 
@@ -860,7 +889,8 @@ class ProjectService extends ApiService {
   ): Promise<AnalysisScopeConfig> {
     return this.request<AnalysisScopeConfig>(
       `/${workspaceSlug}/project/${namespace}/analysis-scope`,
-      { method: "PUT", body: JSON.stringify(scope) }, true,
+      { method: "PUT", body: JSON.stringify(scope) },
+      true,
     );
   }
 
@@ -871,7 +901,8 @@ class ProjectService extends ApiService {
   ): Promise<AnalysisScopeSyncResponse> {
     return this.request<AnalysisScopeSyncResponse>(
       `/${workspaceSlug}/project/${namespace}/analysis-scope/sync`,
-      { method: "POST", body: JSON.stringify({ direction }) }, true,
+      { method: "POST", body: JSON.stringify({ direction }) },
+      true,
     );
   }
 
@@ -962,6 +993,7 @@ class ProjectService extends ApiService {
     onProgress: (data: RagIndexingProgressEvent) => void,
     onComplete: (data: RagIndexingResult) => void,
     onError: (error: string) => void,
+    allConfiguredBranches = false,
   ): AbortController {
     const abortController = new AbortController();
     const token = localStorage.getItem("codecrow_token");
@@ -970,6 +1002,9 @@ class ProjectService extends ApiService {
     let url = `/${workspaceSlug}/project/${namespace}/rag/trigger`;
     if (branch) {
       url += `?branch=${encodeURIComponent(branch)}`;
+    }
+    if (allConfiguredBranches) {
+      url += `${branch ? "&" : "?"}allConfiguredBranches=true`;
     }
 
     // Use native EventSource with workaround for auth header
@@ -1237,6 +1272,13 @@ export interface RagIndexingProgressEvent {
   message: string;
   progress?: number;
   total?: number;
+  branch?: string;
+  indexedChunks?: number;
+  estimatedChunks?: number;
+  completedBatches?: number;
+  totalBatches?: number;
+  batchDurationMs?: number;
+  estimatedRemainingMs?: number;
 }
 
 export interface RagIndexingResult {
