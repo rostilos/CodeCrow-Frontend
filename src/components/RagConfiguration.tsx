@@ -67,6 +67,7 @@ import {
 
 interface LogEntry {
   id: string;
+  jobId?: string;
   timestamp: Date;
   stage: string;
   message: string;
@@ -113,15 +114,15 @@ export default function RagConfiguration({
   const [indexing, setIndexing] = useState(false);
   const [indexingProgress, setIndexingProgress] = useState<string | null>(null);
   const [indexingError, setIndexingError] = useState<string | null>(null);
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
-  const activeJobIdRef = useRef<string | null>(null);
-  const handledTerminalJobIdRef = useRef<string | null>(null);
+  const [activeJobIds, setActiveJobIds] = useState<string[]>([]);
+  const activeJobIdsRef = useRef<Set<string>>(new Set());
+  const handledTerminalJobIdsRef = useRef<Set<string>>(new Set());
   const completedJobIdRef = useRef<string | null>(null);
   const [completedJobIdToReconcile, setCompletedJobIdToReconcile] = useState<
     string | null
   >(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const latestJobSequenceRef = useRef(0);
+  const latestJobSequenceRef = useRef<Record<string, number>>({});
 
   // Log window state
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -182,7 +183,7 @@ export default function RagConfiguration({
     }
   };
 
-  const mapJobLog = useCallback((log: JobLog): LogEntry => {
+  const mapJobLog = useCallback((jobId: string, log: JobLog): LogEntry => {
     const type: LogEntry["type"] =
       log.level === "ERROR"
         ? "error"
@@ -191,12 +192,66 @@ export default function RagConfiguration({
           : "progress";
     return {
       id: `job-${log.id}`,
+      jobId,
       timestamp: new Date(log.timestamp),
       stage: log.step || "indexing",
       message: log.message,
       type,
     };
   }, []);
+
+  const parseJobLogMetadata = useCallback((log: JobLog) => {
+    if (!log.metadata) return undefined;
+    try {
+      const parsed = JSON.parse(log.metadata);
+      return typeof parsed === "object" && parsed !== null
+        ? (parsed as Record<string, unknown>)
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
+  const restoreBranchProgress = useCallback(
+    (job: Job, jobLogs: JobLog[]) => {
+      setBranchProgress((current) => {
+        const next = { ...current };
+        for (const log of jobLogs) {
+          const metadata = parseJobLogMetadata(log);
+          const branchName =
+            (typeof metadata?.branch === "string" ? metadata.branch : undefined) ||
+            job.branchName;
+          if (!branchName || !metadata) continue;
+          const previous = next[branchName] ?? {};
+          next[branchName] = {
+            ...previous,
+            indexedChunks:
+              typeof metadata.indexedChunks === "number"
+                ? metadata.indexedChunks
+                : previous.indexedChunks,
+            estimatedChunks:
+              typeof metadata.estimatedChunks === "number"
+                ? metadata.estimatedChunks
+                : previous.estimatedChunks,
+            completedBatches:
+              typeof metadata.completedBatches === "number"
+                ? metadata.completedBatches
+                : previous.completedBatches,
+            totalBatches:
+              typeof metadata.totalBatches === "number"
+                ? metadata.totalBatches
+                : previous.totalBatches,
+            estimatedRemainingMs:
+              typeof metadata.estimatedRemainingMs === "number"
+                ? metadata.estimatedRemainingMs
+                : previous.estimatedRemainingMs,
+          };
+        }
+        return next;
+      });
+    },
+    [parseJobLogMetadata],
+  );
 
   const isTerminalJob = (job: Job) =>
     ["COMPLETED", "FAILED", "CANCELLED", "SKIPPED"].includes(job.status);
@@ -216,6 +271,7 @@ export default function RagConfiguration({
           console.warn("Failed to load RAG branch index status:", error);
           return [];
         });
+      setBranchIndexes(configuredBranches);
 
       // A completed durable job is authoritative: the backend marks the RAG
       // index complete before it marks the job complete. Do not let a stale or
@@ -228,7 +284,6 @@ export default function RagConfiguration({
       }
 
       setRagStatus(status);
-      setBranchIndexes(configuredBranches);
       if (
         completedJobIdRef.current &&
         status.indexStatus?.status === "INDEXED"
@@ -256,39 +311,55 @@ export default function RagConfiguration({
 
   const applyTerminalJobState = useCallback(
     async (job: Job) => {
-      if (handledTerminalJobIdRef.current === job.id) return;
-      handledTerminalJobIdRef.current = job.id;
+      if (handledTerminalJobIdsRef.current.has(job.id)) return;
+      handledTerminalJobIdsRef.current.add(job.id);
 
-      setIndexing(false);
-      setIndexingProgress(null);
-      setSseConnected(false);
-      setActiveJobId(null);
-      activeJobIdRef.current = null;
-      abortControllerRef.current = null;
+      activeJobIdsRef.current.delete(job.id);
+      const remainingJobIds = Array.from(activeJobIdsRef.current);
+      const stillIndexing = remainingJobIds.length > 0;
+      setActiveJobIds(remainingJobIds);
+      setIndexing(stillIndexing);
+      setIndexingProgress(
+        stillIndexing
+          ? `${remainingJobIds.length} RAG branch job${remainingJobIds.length === 1 ? "" : "s"} still running...`
+          : null,
+      );
+      setSseConnected(stillIndexing);
+      if (!stillIndexing) {
+        abortControllerRef.current = null;
+      }
 
       if (job.status === "COMPLETED") {
-        completedJobIdRef.current = job.id;
-        setCompletedJobIdToReconcile(job.id);
-        setRagStatus((current) => {
-          if (!current?.indexStatus) return current;
-          const completedAt = job.completedAt || new Date().toISOString();
-          return {
-            ...current,
-            isIndexed: true,
-            canStartIndexing: true,
-            indexStatus: {
-              ...current.indexStatus,
-              status: "INDEXED",
-              lastIndexedAt: completedAt,
-              updatedAt: completedAt,
-              errorMessage: null,
-            },
-          };
-        });
+        const primaryBranch =
+          project.mainBranch || project.ragConfig?.branch || branch.trim();
+        const completedPrimary =
+          !job.branchName || !primaryBranch || job.branchName === primaryBranch;
+        if (completedPrimary) {
+          completedJobIdRef.current = job.id;
+          setCompletedJobIdToReconcile(job.id);
+          setRagStatus((current) => {
+            if (!current?.indexStatus) return current;
+            const completedAt = job.completedAt || new Date().toISOString();
+            return {
+              ...current,
+              isIndexed: true,
+              canStartIndexing: true,
+              indexStatus: {
+                ...current.indexStatus,
+                status: "INDEXED",
+                lastIndexedAt: completedAt,
+                updatedAt: completedAt,
+                errorMessage: null,
+              },
+            };
+          });
+        }
         setIndexingError(null);
         toast({
           title: "Indexing Complete",
-          description: "The RAG index is ready and live updates are complete.",
+          description: job.branchName
+            ? `The RAG index for '${job.branchName}' is ready.`
+            : "The RAG index is ready and live updates are complete.",
         });
       } else if (job.status === "FAILED") {
         const message = job.errorMessage || "RAG indexing failed";
@@ -301,7 +372,7 @@ export default function RagConfiguration({
       }
       await loadRagStatus(job.status === "COMPLETED");
     },
-    [loadRagStatus, toast],
+    [branch, loadRagStatus, project.mainBranch, project.ragConfig?.branch, toast],
   );
 
   const refreshActiveJob = useCallback(
@@ -314,31 +385,34 @@ export default function RagConfiguration({
           workspaceSlug,
           project.namespace,
           jobId,
-          replaceLogs ? undefined : latestJobSequenceRef.current || undefined,
+          replaceLogs
+            ? undefined
+            : latestJobSequenceRef.current[jobId] || undefined,
         ),
       ]);
 
-      const incoming = response.logs.map(mapJobLog);
-      latestJobSequenceRef.current = Math.max(
-        latestJobSequenceRef.current,
+      const incoming = response.logs.map((log) => mapJobLog(job.id, log));
+      latestJobSequenceRef.current[jobId] = Math.max(
+        latestJobSequenceRef.current[jobId] || 0,
         response.latestSequence || 0,
       );
       setLogs((current) => {
-        if (replaceLogs) return incoming;
-        const knownIds = new Set(current.map((entry) => entry.id));
-        return [
-          ...current,
-          ...incoming.filter((entry) => !knownIds.has(entry.id)),
-        ];
+        const retained = replaceLogs
+          ? current.filter((entry) => entry.jobId !== job.id)
+          : current;
+        const knownIds = new Set(retained.map((entry) => entry.id));
+        return [...retained, ...incoming.filter((entry) => !knownIds.has(entry.id))]
+          .sort((left, right) => left.timestamp.getTime() - right.timestamp.getTime());
       });
+      restoreBranchProgress(job, response.logs);
 
       // Keep the project-level Index Status card synchronized while the
       // durable job and its log are being polled.
       await loadRagStatus(true);
 
       if (!isTerminalJob(job)) {
-        setActiveJobId(job.id);
-        activeJobIdRef.current = job.id;
+        activeJobIdsRef.current.add(job.id);
+        setActiveJobIds(Array.from(activeJobIdsRef.current));
         setIndexing(true);
         setSseConnected(true);
         setIsLogWindowOpen(true);
@@ -357,26 +431,36 @@ export default function RagConfiguration({
       loadRagStatus,
       mapJobLog,
       project.namespace,
+      restoreBranchProgress,
       workspaceSlug,
     ],
   );
 
-  const resumeRagJob = useCallback(async () => {
+  const resumeRagJobs = useCallback(async () => {
     if (!project.namespace) return;
     try {
       const activeJobs = await jobApi.getActiveJobs(
         workspaceSlug,
         project.namespace,
       );
-      const ragJob = activeJobs.find((job) =>
+      const ragJobs = activeJobs.filter((job) =>
         ["RAG_INITIAL_INDEX", "RAG_INCREMENTAL_INDEX"].includes(job.jobType),
       );
-      if (ragJob) {
-        latestJobSequenceRef.current = 0;
-        await refreshActiveJob(ragJob.id, true);
+      if (ragJobs.length > 0) {
+        const jobIds = ragJobs.map((job) => job.id);
+        activeJobIdsRef.current = new Set(jobIds);
+        setActiveJobIds(jobIds);
+        setIndexing(true);
+        setSseConnected(true);
+        setIsLogWindowOpen(true);
+        setIndexingProgress(
+          `Restored ${ragJobs.length} active RAG branch job${ragJobs.length === 1 ? "" : "s"}...`,
+        );
+        latestJobSequenceRef.current = {};
+        await Promise.all(ragJobs.map((job) => refreshActiveJob(job.id, true)));
       }
     } catch (error) {
-      console.warn("Could not restore active RAG job logs:", error);
+      console.warn("Could not restore active RAG jobs and logs:", error);
     }
   }, [project.namespace, refreshActiveJob, workspaceSlug]);
 
@@ -390,29 +474,29 @@ export default function RagConfiguration({
   useEffect(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
-    activeJobIdRef.current = null;
-    handledTerminalJobIdRef.current = null;
+    activeJobIdsRef.current = new Set();
+    handledTerminalJobIdsRef.current = new Set();
     completedJobIdRef.current = null;
-    latestJobSequenceRef.current = 0;
-    setActiveJobId(null);
+    latestJobSequenceRef.current = {};
+    setActiveJobIds([]);
     setCompletedJobIdToReconcile(null);
     setLogs([]);
     setIndexing(false);
     setIndexingProgress(null);
     loadRagStatus();
-    resumeRagJob();
-  }, [loadRagStatus, project.namespace, resumeRagJob, workspaceSlug]);
+    resumeRagJobs();
+  }, [loadRagStatus, project.namespace, resumeRagJobs, workspaceSlug]);
 
   useEffect(() => {
-    if (!activeJobId) return;
+    if (activeJobIds.length === 0) return;
     const pollInterval = window.setInterval(() => {
-      refreshActiveJob(activeJobId).catch((error) => {
+      Promise.all(activeJobIds.map((jobId) => refreshActiveJob(jobId))).catch((error) => {
         console.warn("Could not refresh RAG job progress:", error);
         setSseConnected(false);
       });
     }, 1500);
     return () => window.clearInterval(pollInterval);
-  }, [activeJobId, refreshActiveJob]);
+  }, [activeJobIds, refreshActiveJob]);
 
   // Project status persistence and the terminal Job response can become
   // observable a fraction of a second apart. Continue reconciling after the
@@ -429,19 +513,23 @@ export default function RagConfiguration({
   // The status row is a fallback while the durable job is being discovered.
   // This covers the brief interval between marking INDEXING and exposing the job.
   useEffect(() => {
+    const hasBuildingBranch = branchIndexes.some((index) =>
+      ["PENDING", "BUILDING"].includes(index.status),
+    );
     if (
-      !["INDEXING", "UPDATING"].includes(
+      (!["INDEXING", "UPDATING"].includes(
         ragStatus?.indexStatus?.status ?? "",
-      ) || activeJobId
+      ) && !hasBuildingBranch) ||
+      activeJobIds.length > 0
     ) return;
     setIndexing(true);
     setIndexingProgress("Restoring live indexing progress...");
     const pollInterval = window.setInterval(() => {
-      resumeRagJob();
+      resumeRagJobs();
       loadRagStatus();
     }, 3000);
     return () => window.clearInterval(pollInterval);
-  }, [activeJobId, loadRagStatus, ragStatus?.indexStatus?.status, resumeRagJob]);
+  }, [activeJobIds.length, branchIndexes, loadRagStatus, ragStatus?.indexStatus?.status, resumeRagJobs]);
 
   useEffect(() => {
     // Update local state when project changes
@@ -618,7 +706,9 @@ export default function RagConfiguration({
     if (indexing) return;
 
     completedJobIdRef.current = null;
-    handledTerminalJobIdRef.current = null;
+    handledTerminalJobIdsRef.current = new Set();
+    activeJobIdsRef.current = new Set();
+    setActiveJobIds([]);
     setCompletedJobIdToReconcile(null);
 
     // Clear previous logs and start fresh
@@ -682,16 +772,16 @@ export default function RagConfiguration({
           "progress",
         );
         if (result.jobId) {
-          latestJobSequenceRef.current = 0;
-          setActiveJobId(result.jobId);
-          activeJobIdRef.current = result.jobId;
+          latestJobSequenceRef.current[result.jobId] = 0;
+          activeJobIdsRef.current.add(result.jobId);
+          setActiveJobIds(Array.from(activeJobIdsRef.current));
           refreshActiveJob(result.jobId, true).catch((error) => {
             console.warn("Could not attach to queued RAG job:", error);
             setSseConnected(false);
           });
         } else {
           setSseConnected(false);
-          resumeRagJob();
+          resumeRagJobs();
         }
         return;
       }
@@ -738,7 +828,7 @@ export default function RagConfiguration({
       abortControllerRef.current = null;
       setSseConnected(false);
 
-      if (activeJobIdRef.current) {
+      if (activeJobIdsRef.current.size > 0) {
         // The trigger stream only acknowledges queue acceptance. Its browser
         // connection can close while the durable project job keeps running.
         setIndexing(true);
