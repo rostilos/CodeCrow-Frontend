@@ -1508,6 +1508,18 @@ export default function IssueDetails() {
                       </span>
                     </>
                   )}
+                  {issue.introducingAuthorName && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span
+                        className="text-xs flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50"
+                        title={issue.introducingAuthorEmail || undefined}
+                      >
+                        <GitCommitVertical className="h-3 w-3 text-muted-foreground" />
+                        Introduced by {issue.introducingAuthorName}
+                      </span>
+                    </>
+                  )}
                   <Separator orientation="vertical" className="h-4" />
                   {issue.prNumber && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -1620,7 +1632,10 @@ export default function IssueDetails() {
                 )}
 
               {/* Original Issue Detection Info */}
-              {(issue.analysisId || issue.prNumber || issue.commitHash) && (
+              {(issue.analysisId ||
+                issue.prNumber ||
+                issue.commitHash ||
+                issue.introducingCommitHash) && (
                 <Card
                   className={cn(
                     "mb-6 basis-1/2 grow",
@@ -1749,6 +1764,21 @@ export default function IssueDetails() {
                           <span className="ml-2 font-mono font-medium">
                             {issue.commitHash.substring(0, 8)}
                           </span>
+                        </div>
+                      )}
+                      {issue.introducingCommitHash && (
+                        <div>
+                          <span className="text-muted-foreground">
+                            Introduced in commit:
+                          </span>
+                          <span className="ml-2 font-mono font-medium">
+                            {issue.introducingCommitHash.substring(0, 8)}
+                          </span>
+                          {issue.provenanceConfidence && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              ({issue.provenanceConfidence.toLowerCase().replaceAll("_", " ")})
+                            </span>
+                          )}
                         </div>
                       )}
                       {issue.detectedAt && (
