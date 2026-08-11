@@ -718,11 +718,17 @@ export default function RagConfiguration({
     setIndexingError(null);
     setSseConnected(true);
     setIsLogWindowOpen(true);
-    const requestedBranch = targetBranch ?? (branch.trim() || null);
-    setBranchProgress((current) => {
-      if (allConfiguredBranches) return {};
-      return requestedBranch ? { ...current, [requestedBranch]: {} } : current;
-    });
+    // An all-branch rebuild is selected by its explicit flag and must not also
+    // carry a single branch. Keeping these request shapes mutually exclusive
+    // makes the pipeline-agent dispatch unambiguous.
+    const requestedBranch = allConfiguredBranches
+      ? null
+      : targetBranch ?? (branch.trim() || null);
+    setBranchProgress(
+      allConfiguredBranches || !requestedBranch
+        ? {}
+        : { [requestedBranch]: {} },
+    );
     setBranchIndexes((current) =>
       current.map((index) =>
         allConfiguredBranches || index.branchName === requestedBranch
@@ -982,6 +988,13 @@ export default function RagConfiguration({
       (project.ragConfig?.indexedBranches ?? []).join(", ") ||
     transientBranchIndexesEnabled !==
       (project.ragConfig?.transientBranchIndexesEnabled ?? false);
+
+  // Multi-branch progress is rendered per branch row. A single-branch project
+  // has no such rows, so expose the same persisted batch/ETA metadata in the
+  // project-level progress card instead.
+  const singleBranchProgress = !multiBranchEnabled
+    ? Object.values(branchProgress)[0]
+    : undefined;
 
   return (
     <Card>
@@ -1551,6 +1564,25 @@ export default function RagConfiguration({
                 {indexingProgress}
               </span>
             </div>
+            {singleBranchProgress && (
+              <div className="mt-2 space-y-1 pl-6">
+                <Progress
+                  value={branchProgressPercent(singleBranchProgress)}
+                  className="h-1.5"
+                />
+                <p className="text-xs text-blue-700/80 dark:text-blue-300/80">
+                  {singleBranchProgress.estimatedChunks
+                    ? `${singleBranchProgress.indexedChunks ?? 0} / ~${singleBranchProgress.estimatedChunks} chunks`
+                    : `${singleBranchProgress.completedBatches ?? 0} / ${singleBranchProgress.totalBatches ?? "?"} batches`}
+                  {singleBranchProgress.totalBatches
+                    ? ` · batch ${singleBranchProgress.completedBatches ?? 0}/${singleBranchProgress.totalBatches}`
+                    : ""}
+                  {formatRemainingTime(singleBranchProgress.estimatedRemainingMs)
+                    ? ` · ${formatRemainingTime(singleBranchProgress.estimatedRemainingMs)}`
+                    : ""}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -1687,8 +1719,9 @@ export default function RagConfiguration({
           </Button>
 
           <Button
+            type="button"
             variant="outline"
-            onClick={handleTriggerIndexing}
+            onClick={() => handleTriggerIndexing(null, multiBranchEnabled)}
             disabled={!enabled || indexing || !ragStatus?.canStartIndexing}
           >
             {indexing ? (

@@ -309,6 +309,13 @@ export interface QaDocDocumentResponse {
   lastAnalysisId?: number | null;
   commitHash?: string | null;
   markdownContent?: string | null;
+  overviewMarkdown?: string | null;
+  testCases: Array<{
+    title: string;
+    priority?: string | null;
+    functionalArea?: string | null;
+    descriptionMarkdown: string;
+  }>;
   generatedAt?: string | null;
 }
 
