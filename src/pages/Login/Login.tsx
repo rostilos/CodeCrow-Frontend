@@ -44,6 +44,20 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+function consumeIntendedDestination() {
+  const sessionDestination = sessionStorage.getItem("intendedDestination");
+  if (sessionDestination) {
+    sessionStorage.removeItem("intendedDestination");
+    return sessionDestination;
+  }
+
+  const localDestination = localStorage.getItem("intendedDestination");
+  if (localDestination) {
+    localStorage.removeItem("intendedDestination");
+  }
+  return localDestination;
+}
+
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -56,9 +70,8 @@ export default function Login() {
 
   useEffect(() => {
     if (authUtils.isAuthenticated()) {
-      const intendedDestination = localStorage.getItem("intendedDestination");
+      const intendedDestination = consumeIntendedDestination();
       if (intendedDestination) {
-        localStorage.removeItem("intendedDestination");
         navigate(intendedDestination);
       } else {
         const savedWorkspaceSlug = localStorage.getItem("currentWorkspaceSlug");
@@ -165,9 +178,8 @@ export default function Login() {
   };
 
   const handleSuccessfulAuth = async () => {
-    const intendedDestination = localStorage.getItem("intendedDestination");
+    const intendedDestination = consumeIntendedDestination();
     if (intendedDestination) {
-      localStorage.removeItem("intendedDestination");
       navigate(intendedDestination);
     } else {
       const savedWorkspaceSlug = localStorage.getItem("currentWorkspaceSlug");

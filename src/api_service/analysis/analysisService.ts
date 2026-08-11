@@ -316,6 +316,7 @@ export interface QaDocDocumentResponse {
     functionalArea?: string | null;
     descriptionMarkdown: string;
   }>;
+  environmentMarkdown?: string | null;
   generatedAt?: string | null;
 }
 

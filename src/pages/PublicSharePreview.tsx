@@ -1,31 +1,15 @@
-import { useEffect, useState, type ReactNode } from "react";
-import {
-  AlertCircle,
-  BookOpen,
-  ClipboardCheck,
-  FolderKanban,
-  ShieldCheck,
-  TicketCheck,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
-import { QaDocTestCasesSection } from "@/components/QaDocTestCasesSection";
+import { QaDocPanel } from "@/components/QaDocPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   getPublicSharePreview,
-  type PublicTestCasesPreview,
+  type PublicQaDocPreview,
 } from "@/api_service/publicShareService";
-import { authUtils } from "@/lib/auth";
+import type { QaDocDocumentResponse } from "@/api_service/analysis/analysisService";
 import { CROSS_LINKS } from "@/lib/domains";
 
 export default function PublicSharePreview() {
@@ -35,14 +19,13 @@ export default function PublicSharePreview() {
       : window.location.hash;
     return new URLSearchParams(fragment).get("token")?.trim() ?? "";
   });
-  const [preview, setPreview] = useState<PublicTestCasesPreview | null>(null);
+  const [preview, setPreview] = useState<PublicQaDocPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(token));
-  const [authenticated] = useState(() => authUtils.isAuthenticated());
 
   useEffect(() => {
     const originalTitle = document.title;
-    document.title = "Shared QA test cases · CodeCrow";
+    document.title = "Shared QA documentation · CodeCrow";
 
     const referrerMeta = document.createElement("meta");
     referrerMeta.name = "referrer";
@@ -72,7 +55,16 @@ export default function PublicSharePreview() {
     setLoading(true);
     setError(null);
     getPublicSharePreview(token, controller.signal)
-      .then(setPreview)
+      .then((result) => {
+        if (
+          result.authorizedPath &&
+          result.authorizedPath.startsWith("/dashboard/")
+        ) {
+          window.location.replace(result.authorizedPath);
+          return;
+        }
+        setPreview(result.content);
+      })
       .catch((requestError: unknown) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") {
           return;
@@ -88,10 +80,33 @@ export default function PublicSharePreview() {
     return () => controller.abort();
   }, [token]);
 
+  const qaDoc = useMemo<QaDocDocumentResponse | null>(() => {
+    if (!preview) {
+      return null;
+    }
+    return {
+      available: true,
+      prNumber: 0,
+      taskId: preview.taskKey,
+      markdownContent: null,
+      overviewMarkdown: preview.overviewMarkdown,
+      testCases: preview.testCases,
+      environmentMarkdown: preview.environmentMarkdown,
+      generatedAt: null,
+    };
+  }, [preview]);
+
+  const rememberShareDestination = () => {
+    sessionStorage.setItem(
+      "intendedDestination",
+      `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    );
+  };
+
   return (
-    <div className="flex min-h-screen flex-col bg-muted/20">
+    <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b bg-background">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:px-6">
           <a href={CROSS_LINKS.home} aria-label="CodeCrow home">
             <CodeCrowLogo size="sm" />
           </a>
@@ -103,135 +118,38 @@ export default function PublicSharePreview() {
               </a>
             </Button>
             <ThemeToggle />
-            <Button size="sm" asChild>
-              <Link to={authenticated ? CROSS_LINKS.dashboard : CROSS_LINKS.login}>
-                {authenticated ? "Open CodeCrow" : "Sign in"}
+            <Button size="sm" asChild onClick={rememberShareDestination}>
+              <Link to={CROSS_LINKS.login}>
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign in
               </Link>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-8 sm:px-6 sm:py-10">
-        <div className="mx-auto max-w-5xl space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <ClipboardCheck className="h-4 w-4" />
-              <span>QA documentation</span>
-            </div>
-            <Badge
-              variant="outline"
-              className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Public preview
-            </Badge>
-          </div>
-
-          <Card className="overflow-hidden border-border/70 shadow-sm">
-            {loading ? (
-              <CardContent className="py-24 text-center text-muted-foreground">
-                <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                Loading QA documentation...
-              </CardContent>
-            ) : error ? (
-              <CardContent className="p-6 sm:p-8">
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Preview unavailable</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              </CardContent>
-            ) : preview ? (
-              <>
-                <CardHeader className="border-b bg-background p-5 sm:p-6">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-xl border border-primary/20 bg-primary/10 p-2.5 text-primary">
-                      <ClipboardCheck className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 space-y-1">
-                      <CardTitle className="text-xl">QA documentation</CardTitle>
-                      <CardDescription>
-                        Shared, read-only test cases for the project and task below.
-                      </CardDescription>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 pt-4 sm:grid-cols-2">
-                    <MetadataCard
-                      icon={<FolderKanban className="h-4 w-4" />}
-                      label="Project"
-                      value={preview.projectName || "Project name unavailable"}
-                    />
-                    <MetadataCard
-                      icon={<TicketCheck className="h-4 w-4" />}
-                      label="Task"
-                      value={preview.taskSummary || "Task summary unavailable"}
-                      badge={preview.taskKey}
-                    />
-                  </div>
-                </CardHeader>
-
-                <CardContent className="p-5 sm:p-6">
-                  <QaDocTestCasesSection testCases={preview.testCases} />
-                </CardContent>
-              </>
-            ) : null}
-          </Card>
-
-          <div className="flex items-start gap-2 rounded-lg border border-dashed bg-background/60 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>
-              This share credential grants read-only access to the displayed
-              project name, task details, and test cases only. It does not grant
-              workspace, project, source-code, or protected API access.
-            </p>
-          </div>
+      <main className="flex-1">
+        <div className="container mx-auto p-4 lg:p-6">
+          <QaDocPanel
+            projectName={preview?.projectName}
+            taskSummary={preview?.taskSummary}
+            prNumber={null}
+            qaDoc={qaDoc}
+            loading={loading}
+            error={error}
+          />
         </div>
       </main>
 
       <footer className="border-t bg-background">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="container mx-auto flex flex-col gap-3 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between lg:px-6">
           <div className="flex items-center gap-2">
             <CodeCrowLogo size="sm" showText={false} />
             <span>© {new Date().getFullYear()} CodeCrow</span>
           </div>
-          <div className="flex items-center gap-4">
-            <a href={CROSS_LINKS.home} className="transition-colors hover:text-foreground">
-              About CodeCrow
-            </a>
-            <a href={CROSS_LINKS.docs} className="transition-colors hover:text-foreground">
-              Documentation
-            </a>
-          </div>
+          <span>Shared QA documentation · Read-only access</span>
         </div>
       </footer>
-    </div>
-  );
-}
-
-interface MetadataCardProps {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  badge?: string | null;
-}
-
-function MetadataCard({ icon, label, value, badge }: MetadataCardProps) {
-  return (
-    <div className="rounded-lg border bg-muted/20 p-3.5">
-      <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        {badge && (
-          <Badge variant="secondary" className="shrink-0 font-mono font-normal">
-            {badge}
-          </Badge>
-        )}
-        <p className="min-w-0 break-words text-sm font-medium text-foreground">{value}</p>
-      </div>
     </div>
   );
 }

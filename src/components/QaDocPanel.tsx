@@ -7,6 +7,7 @@ import {
   GitBranch,
   GitCommit,
   ListChecks,
+  Settings2,
   TicketCheck,
 } from "lucide-react";
 import type { QaDocDocumentResponse } from "@/api_service/analysis/analysisService";
@@ -25,7 +26,8 @@ import { QaDocTestCasesSection } from "@/components/QaDocTestCasesSection";
 
 interface QaDocPanelProps {
   projectName?: string | null;
-  prNumber: number;
+  taskSummary?: string | null;
+  prNumber?: number | null;
   prTitle?: string | null;
   sourceBranch?: string | null;
   targetBranch?: string | null;
@@ -36,6 +38,7 @@ interface QaDocPanelProps {
 
 export function QaDocPanel({
   projectName,
+  taskSummary,
   prNumber,
   prTitle,
   sourceBranch,
@@ -45,13 +48,14 @@ export function QaDocPanel({
   error,
 }: QaDocPanelProps) {
   const testCases = qaDoc?.testCases ?? [];
+  const environmentContent = qaDoc?.environmentMarkdown;
   const overviewContent =
     qaDoc?.overviewMarkdown !== null && qaDoc?.overviewMarkdown !== undefined
       ? qaDoc.overviewMarkdown
       : qaDoc?.markdownContent;
   const hasDocument = Boolean(
     qaDoc?.available &&
-      (overviewContent || testCases.length > 0),
+      (overviewContent || testCases.length > 0 || environmentContent),
   );
 
   return (
@@ -65,8 +69,9 @@ export function QaDocPanel({
             <div className="min-w-0">
               <CardTitle className="text-xl">QA documentation</CardTitle>
               <CardDescription className="mt-1">
-                PR #{prNumber}
-                {prTitle ? ` · ${prTitle}` : ""}
+                {prNumber
+                  ? `PR #${prNumber}${prTitle ? ` · ${prTitle}` : ""}`
+                  : taskSummary || "Shared QA documentation"}
               </CardDescription>
               {(sourceBranch || targetBranch) && (
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -130,7 +135,7 @@ export function QaDocPanel({
             className="space-y-0"
           >
             <div className="border-b bg-muted/20 px-5 pt-4 sm:px-6">
-              <TabsList className="h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0 sm:w-auto">
+              <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 sm:w-auto">
                 <TabsTrigger
                   value="overview"
                   className="gap-2 rounded-t-lg rounded-b-none border-b-2 border-transparent px-4 py-3 data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-none"
@@ -148,6 +153,13 @@ export function QaDocPanel({
                     {testCases.length}
                   </Badge>
                 </TabsTrigger>
+                <TabsTrigger
+                  value="environment"
+                  className="gap-2 whitespace-nowrap rounded-t-lg rounded-b-none border-b-2 border-transparent px-4 py-3 data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:shadow-none"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Environment &amp; setup
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -159,8 +171,26 @@ export function QaDocPanel({
               </div>
             </TabsContent>
 
-            <TabsContent value="test-cases" className="m-0 p-5 sm:p-6">
-              <QaDocTestCasesSection testCases={testCases} />
+            <TabsContent
+              value="test-cases"
+              forceMount
+              className="m-0 p-5 data-[state=inactive]:hidden sm:p-6"
+            >
+              <QaDocTestCasesSection
+                key={`${qaDoc?.prNumber ?? "shared"}-${qaDoc?.generatedAt ?? ""}-${qaDoc?.commitHash ?? ""}-${qaDoc?.taskId ?? ""}`}
+                testCases={testCases}
+              />
+            </TabsContent>
+
+            <TabsContent value="environment" className="m-0 p-5 sm:p-6">
+              <div className="rounded-xl border bg-background p-5">
+                <MarkdownRenderer
+                  content={
+                    environmentContent ||
+                    "No environment or setup notes are available for this QA document."
+                  }
+                />
+              </div>
             </TabsContent>
           </Tabs>
         ) : (
