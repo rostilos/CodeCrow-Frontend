@@ -24,6 +24,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { QaDocTestCasesSection } from "@/components/QaDocTestCasesSection";
 
+export type QaDocTab = "overview" | "test-cases" | "environment";
+
 interface QaDocPanelProps {
   projectName?: string | null;
   taskSummary?: string | null;
@@ -34,6 +36,7 @@ interface QaDocPanelProps {
   qaDoc: QaDocDocumentResponse | null;
   loading: boolean;
   error: string | null;
+  initialTab?: QaDocTab;
 }
 
 export function QaDocPanel({
@@ -46,6 +49,7 @@ export function QaDocPanel({
   qaDoc,
   loading,
   error,
+  initialTab,
 }: QaDocPanelProps) {
   const testCases = qaDoc?.testCases ?? [];
   const environmentContent = qaDoc?.environmentMarkdown;
@@ -131,7 +135,9 @@ export function QaDocPanel({
           </div>
         ) : hasDocument ? (
           <Tabs
-            defaultValue={testCases.length > 0 ? "test-cases" : "overview"}
+            defaultValue={
+              initialTab ?? (testCases.length > 0 ? "test-cases" : "overview")
+            }
             className="space-y-0"
           >
             <div className="border-b bg-muted/20 px-5 pt-4 sm:px-6">

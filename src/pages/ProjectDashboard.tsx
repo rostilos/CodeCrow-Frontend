@@ -90,7 +90,7 @@ import {
   AnalysisResultType,
 } from "@/components/AnalysisResultBadge";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { QaDocPanel } from "@/components/QaDocPanel";
+import { QaDocPanel, type QaDocTab } from "@/components/QaDocPanel";
 import { GitGraphViewer } from "@/components/GitGraph/GitGraphViewer";
 import { VectorStorageExplorer } from "@/components/VectorStorage/VectorStorageExplorer";
 import type {
@@ -122,6 +122,12 @@ function buildPrUrl(
     default:
       return null;
   }
+}
+
+function readQaDocTab(value: string | null): QaDocTab | undefined {
+  return value === "overview" || value === "test-cases" || value === "environment"
+    ? value
+    : undefined;
 }
 
 // Build URL for viewing a specific commit on the VCS platform
@@ -2500,6 +2506,7 @@ export default function ProjectDashboard() {
                 qaDoc={qaDoc}
                 loading={qaDocLoading}
                 error={qaDocError}
+                initialTab={readQaDocTab(searchParams.get("qaTab"))}
               />
             )}
 

@@ -3,7 +3,7 @@ import { BookOpen, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
-import { QaDocPanel } from "@/components/QaDocPanel";
+import { QaDocPanel, type QaDocTab } from "@/components/QaDocPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   getPublicSharePreview,
@@ -12,13 +12,25 @@ import {
 import type { QaDocDocumentResponse } from "@/api_service/analysis/analysisService";
 import { CROSS_LINKS } from "@/lib/domains";
 
+function readSharedQaTab(fragment: string): QaDocTab {
+  const requestedTab = new URLSearchParams(fragment).get("tab");
+  return requestedTab === "overview" ||
+    requestedTab === "test-cases" ||
+    requestedTab === "environment"
+    ? requestedTab
+    : "test-cases";
+}
+
 export default function PublicSharePreview() {
-  const [token] = useState(() => {
-    const fragment = window.location.hash.startsWith("#")
+  const [fragment] = useState(() => {
+    return window.location.hash.startsWith("#")
       ? window.location.hash.slice(1)
       : window.location.hash;
+  });
+  const [token] = useState(() => {
     return new URLSearchParams(fragment).get("token")?.trim() ?? "";
   });
+  const [initialTab] = useState<QaDocTab>(() => readSharedQaTab(fragment));
   const [preview, setPreview] = useState<PublicQaDocPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(token));
@@ -60,7 +72,10 @@ export default function PublicSharePreview() {
           result.authorizedPath &&
           result.authorizedPath.startsWith("/dashboard/")
         ) {
-          window.location.replace(result.authorizedPath);
+          const separator = result.authorizedPath.includes("?") ? "&" : "?";
+          window.location.replace(
+            `${result.authorizedPath}${separator}qaTab=${initialTab}`,
+          );
           return;
         }
         setPreview(result.content);
@@ -78,7 +93,7 @@ export default function PublicSharePreview() {
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [token]);
+  }, [initialTab, token]);
 
   const qaDoc = useMemo<QaDocDocumentResponse | null>(() => {
     if (!preview) {
@@ -137,6 +152,7 @@ export default function PublicSharePreview() {
             qaDoc={qaDoc}
             loading={loading}
             error={error}
+            initialTab={initialTab}
           />
         </div>
       </main>
