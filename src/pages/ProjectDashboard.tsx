@@ -90,6 +90,7 @@ import {
   AnalysisResultType,
 } from "@/components/AnalysisResultBadge";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { QaDocPanel, type QaDocTab } from "@/components/QaDocPanel";
 import { GitGraphViewer } from "@/components/GitGraph/GitGraphViewer";
 import { VectorStorageExplorer } from "@/components/VectorStorage/VectorStorageExplorer";
 import type {
@@ -121,6 +122,12 @@ function buildPrUrl(
     default:
       return null;
   }
+}
+
+function readQaDocTab(value: string | null): QaDocTab | undefined {
+  return value === "overview" || value === "test-cases" || value === "environment"
+    ? value
+    : undefined;
 }
 
 // Build URL for viewing a specific commit on the VCS platform
@@ -2490,68 +2497,17 @@ export default function ProjectDashboard() {
             )}
 
             {prTab === "qa-doc" && (
-              <Card>
-                <CardHeader>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        QA Doc
-                      </CardTitle>
-                      <CardDescription>
-                        Latest generated QA documentation for PR #
-                        {selectedPR.prNumber}
-                      </CardDescription>
-                    </div>
-                    {qaDoc?.available && qaDoc.generatedAt && (
-                      <Badge variant="secondary" className="w-fit">
-                        {new Date(qaDoc.generatedAt).toLocaleString()}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {qaDocLoading ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
-                      Loading QA Doc...
-                    </div>
-                  ) : qaDocError ? (
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>QA Doc could not be loaded</AlertTitle>
-                      <AlertDescription>{qaDocError}</AlertDescription>
-                    </Alert>
-                  ) : qaDoc?.available && qaDoc.markdownContent ? (
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        {qaDoc.taskId && (
-                          <Badge variant="outline">{qaDoc.taskId}</Badge>
-                        )}
-                        {qaDoc.commitHash && (
-                          <Badge variant="outline">
-                            {qaDoc.commitHash.slice(0, 7)}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="rounded-md border bg-background p-4">
-                        <MarkdownRenderer content={qaDoc.markdownContent} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="font-medium">
-                        QA Doc wasn't generated for this PR yet
-                      </p>
-                      <p className="text-sm mt-1">
-                        The latest generated QA Doc will appear here when it is
-                        available.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <QaDocPanel
+                projectName={project.name}
+                prNumber={selectedPR.prNumber}
+                prTitle={selectedPR.title}
+                sourceBranch={selectedPR.sourceBranchName}
+                targetBranch={selectedPR.targetBranchName}
+                qaDoc={qaDoc}
+                loading={qaDocLoading}
+                error={qaDocError}
+                initialTab={readQaDocTab(searchParams.get("qaTab"))}
+              />
             )}
 
             {prTab === "issues" && (

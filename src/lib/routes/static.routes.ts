@@ -9,5 +9,6 @@ export const STATIC_ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
+  PUBLIC_SHARE: '/share',
   WORKSPACE_SELECTION: '/workspace',
 } as const;

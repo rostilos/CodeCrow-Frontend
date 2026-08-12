@@ -126,6 +126,7 @@ const JobDetailPage = lazy(() => import("./pages/Jobs/JobDetailPage.tsx"));
 const QualityGatesPage = lazy(
   () => import("./pages/QualityGates/QualityGatesPage.tsx"),
 );
+const PublicSharePreview = lazy(() => import("./pages/PublicSharePreview.tsx"));
 
 // Admin pages (Site Administration — community/self-hosted only)
 const AdminSettingsPage = lazy(
@@ -162,6 +163,7 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/share" element={<PublicSharePreview />} />
 
               {/* Public success page for GitHub App installation (org owner, no auth needed) */}
               <Route

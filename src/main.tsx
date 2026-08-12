@@ -21,7 +21,11 @@ window.addEventListener("vite:preloadError", (event) => {
   window.location.reload();
 });
 
-// Initialize New Relic Browser monitoring (before React renders)
-initNewRelic();
+// Public-share URLs contain a bearer credential in the fragment. Keep that
+// route entirely outside browser telemetry so the credential cannot be
+// captured as a page URL or error attribute.
+if (!window.location.pathname.startsWith("/share")) {
+  initNewRelic();
+}
 
 createRoot(document.getElementById("root")!).render(<App />);
