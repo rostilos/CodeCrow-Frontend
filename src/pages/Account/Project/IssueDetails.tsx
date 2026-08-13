@@ -1937,11 +1937,10 @@ export default function IssueDetails() {
                       onExpand={handleSnippetExpand}
                       expanding={snippetExpanding}
                       onIssueSelect={(inlineIssue) => {
-                        // Find the matching scope issue by title and navigate to it
+                        // Persisted IDs are the only safe identity when multiple
+                        // real issues share a title or source anchor.
                         const match = scopeIssues.find(
-                          (si) =>
-                            si.title === inlineIssue.title &&
-                            si.file === issue.file,
+                          (si) => String(si.id) === String(inlineIssue.issueId),
                         );
                         if (match) {
                           navigate(getIssueUrl(match.id), {
@@ -2086,25 +2085,15 @@ function IssueCodeSnippet({
     return () => clearTimeout(timer);
   }, [issueLineNumber]);
 
-  // Build a set of lines that have issues for quick lookup.
-  // Aggressively deduplicate to avoid showing the same issue twice
-  // (can happen when branch tracking creates copies without content_fingerprint,
-  // or when PR analysis + branch tracking both produce entries).
+  // Build a set of lines that have issues for quick lookup. Distinct persisted
+  // issue IDs remain distinct even when their title and anchor are identical.
   const issuesByLine = new Map<number, InlineIssue[]>();
   const seenIssueIds = new Set<number>();
-  const seenNormKeys = new Set<string>();
-
-  const normalizeTitle = (t: string | null | undefined) =>
-    (t ?? "").trim().toLowerCase();
 
   snippet.issues.forEach((issue) => {
     // Skip exact duplicate issueIds
     if (seenIssueIds.has(issue.issueId)) return;
-    // Skip same line + same normalized title (catches slightly differing whitespace / case)
-    const normKey = `${issue.lineNumber}:${normalizeTitle(issue.title)}`;
-    if (seenNormKeys.has(normKey)) return;
     seenIssueIds.add(issue.issueId);
-    seenNormKeys.add(normKey);
 
     // For BLOCK/FUNCTION/FILE scopes with an endLineNumber, expand across the full range
     const scope = issue.issueScope;
@@ -2154,6 +2143,7 @@ function IssueCodeSnippet({
         issueScope: null,
         endLineNumber: null,
         scopeStartLine: null,
+        historicalNotRevalidated: false,
       };
       issuesByLine.set(activeIssue.lineNumber, [newEntry]);
     }
@@ -2291,14 +2281,13 @@ function IssueCodeSnippet({
               lineIssues
                 ?.filter((iss) => iss.lineNumber === line.lineNumber)
                 .map((iss) => {
-                  // isIssueLine is the reliable indicator (line highlight works).
-                  // For lines with multiple annotations, use normalized title to pick the right one.
+                  // Persisted identity is authoritative when several findings
+                  // share a source line or title.
                   const isActive =
                     isIssueLine &&
                     activeIssue != null &&
                     (lineIssues!.length === 1 ||
-                      normalizeTitle(iss.title) ===
-                        normalizeTitle(activeIssue.title));
+                      Number(activeIssue.issueId) === iss.issueId);
                   const isClickable = !isActive && onIssueSelect;
                   return (
                     <div
@@ -2344,6 +2333,14 @@ function IssueCodeSnippet({
                             )}
                           >
                             {getCategoryInfo(iss.category).label}
+                          </Badge>
+                        )}
+                        {iss.historicalNotRevalidated && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                          >
+                            Not revalidated in current run
                           </Badge>
                         )}
                         <span className="text-muted-foreground/70 ml-auto">

@@ -280,6 +280,8 @@ export interface InlineIssue {
   issueScope: "LINE" | "BLOCK" | "FUNCTION" | "FILE" | null;
   endLineNumber: number | null;
   scopeStartLine: number | null;
+  /** Older active lineage tip that was not rechecked by the current PR run. */
+  historicalNotRevalidated: boolean;
 }
 
 export interface FileSnippetResponse {

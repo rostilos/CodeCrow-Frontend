@@ -467,6 +467,14 @@ function FileTreeItem({
                   {issue.resolved && (
                     <CheckCircle className="h-3 w-3 text-green-500 shrink-0 mt-0.5" />
                   )}
+                  {issue.historicalNotRevalidated && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                    >
+                      Not revalidated in current run
+                    </Badge>
+                  )}
                 </button>
               ))
           ) : (
