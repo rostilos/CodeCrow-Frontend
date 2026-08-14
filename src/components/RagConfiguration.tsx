@@ -1305,8 +1305,8 @@ export default function RagConfiguration({
                     Enable Multi-Branch Indexing
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Keep exact indexes for the primary branch and selected
-                    analysis targets
+                    Keep exact indexes for the primary branch and explicitly
+                    retained target branches
                   </p>
                 </div>
                 <Switch
@@ -1330,8 +1330,10 @@ export default function RagConfiguration({
                   />
                   <p className="text-sm text-muted-foreground">
                     Comma-separated exact branch names, excluding the primary
-                    branch above. Leaving this empty preserves legacy Branch
-                    Push Pattern behavior for existing projects.
+                    branch above. Only branches listed here receive retained
+                    RAG snapshots; Branch Analysis patterns are configured and
+                    evaluated separately. A new commit on a retained branch
+                    rebuilds its exact snapshot.
                   </p>
                 </div>
               )}
