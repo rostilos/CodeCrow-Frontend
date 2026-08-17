@@ -180,9 +180,9 @@ const EDGE_STYLE: Record<string, { color: string; label: string; size: number }>
     size: 1.35,
   },
   metadata_reference: {
-    color: "rgba(251, 191, 36, 0.5)",
-    label: "metadata reference",
-    size: 0.95,
+    color: "rgba(245, 158, 11, 0.9)",
+    label: "deterministic plugin relation",
+    size: 1.7,
   },
 };
 
@@ -1678,7 +1678,11 @@ export function VectorStorageExplorer({
       edgeReducer: (edge, data) => {
         const reduced: SigmaEdgeAttributes = { ...data };
         if (!activeNode) {
-          if (hugeGraph) {
+          if (data.kind === "metadata_reference") {
+            reduced.hidden = false;
+            reduced.color = data.color;
+            reduced.size = Math.max(data.size, 1.35);
+          } else if (hugeGraph) {
             reduced.hidden = true;
           } else if (denseGraph && data.kind === "file_sequence") {
             reduced.hidden = true;

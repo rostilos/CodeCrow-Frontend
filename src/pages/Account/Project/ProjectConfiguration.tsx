@@ -991,6 +991,8 @@ export default function ProjectConfiguration() {
         name: project.name,
         namespace: project.namespace,
         description: project.description,
+        projectType: project.projectType ?? null,
+        sourceRoot: project.sourceRoot?.trim() || null,
       });
       toast({ title: "Success", description: "Project info updated" });
       await load();
@@ -1102,6 +1104,40 @@ export default function ProjectConfiguration() {
                   }
                   rows={3}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="project-type">Project type</Label>
+                <Select
+                  value={project.projectType || "auto"}
+                  onValueChange={(value) => setProject({
+                    ...project,
+                    projectType: value === "auto" ? null : value as "magento",
+                  })}
+                >
+                  <SelectTrigger id="project-type"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto-detect from coherent repository markers</SelectItem>
+                    <SelectItem value="magento">Magento 2</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Manual selection is authoritative. Changing this setting requires a full RAG reindex.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="source-root">Source root (optional)</Label>
+                <Input
+                  id="source-root"
+                  value={project.sourceRoot || ""}
+                  onChange={(event) => setProject({
+                    ...project,
+                    sourceRoot: event.target.value,
+                  })}
+                  placeholder="magento/src/etc"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Repository-relative application root; arbitrary nesting is supported.
+                </p>
               </div>
               <div className="flex space-x-2">
                 <Button onClick={handleSaveProjectInfo}>

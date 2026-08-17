@@ -93,6 +93,8 @@ export default function NewProjectPage() {
   // Project details
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
+  const [projectType, setProjectType] = useState<"auto" | "magento">("auto");
+  const [sourceRoot, setSourceRoot] = useState("");
   const [selectedConnectionId, setSelectedConnectionId] = useState<
     number | null
   >(null);
@@ -475,6 +477,8 @@ export default function NewProjectPage() {
         description: projectDescription,
         creationMode: selectedRepo ? "IMPORT" : "MANUAL",
         mainBranch: ragBranch.trim(),
+        projectType: projectType === "auto" ? null : projectType,
+        sourceRoot: sourceRoot.trim() || null,
       };
 
       if (selectedConnectionId) {
@@ -914,6 +918,35 @@ export default function NewProjectPage() {
                   placeholder="Enter project description"
                   rows={3}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="project-type">Project type</Label>
+                <Select value={projectType} onValueChange={(value) => setProjectType(value as "auto" | "magento")}>
+                  <SelectTrigger id="project-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto-detect from coherent repository markers</SelectItem>
+                    <SelectItem value="magento">Magento 2</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  A manual type is authoritative and skips framework marker detection.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="source-root">Source root (optional)</Label>
+                <Input
+                  id="source-root"
+                  value={sourceRoot}
+                  onChange={(event) => setSourceRoot(event.target.value)}
+                  placeholder="magento/src/etc"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Repository-relative application root. Leave empty for repository root or automatic root discovery.
+                </p>
               </div>
             </CardContent>
           </Card>
