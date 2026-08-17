@@ -86,6 +86,21 @@ type SigmaEdgeAttributes = {
 
 type SigmaGraph = Graph<SigmaNodeAttributes, SigmaEdgeAttributes>;
 
+type MetadataRecord = Record<string, unknown>;
+
+type PluginGraphFact = {
+  kind: string;
+  source: string;
+  relation: string;
+  target: string;
+  path?: string;
+  line?: number;
+  attributes: MetadataRecord;
+  relatedPaths: string[];
+  packetKey?: string;
+  packetAttributes: MetadataRecord;
+};
+
 const NODE_PALETTE = ["#2563eb", "#16a34a", "#db2777", "#0891b2", "#ea580c", "#7c3aed"];
 
 const NODE_KIND_STYLE: Record<string, { color: string; label: string }> = {
@@ -189,6 +204,38 @@ const STRONG_LAYOUT_EDGE_KINDS = new Set([
   "same_symbol",
   "same_parent",
   "metadata_reference",
+]);
+
+const POINT_DETAIL_METADATA_KEYS = new Set([
+  "workspace",
+  "project",
+  "branch",
+  "path",
+  "commit",
+  "language",
+  "filetype",
+  "pr",
+  "pr_number",
+  "pr_branch",
+  "start_line",
+  "end_line",
+  "chunk_index",
+  "sub_chunk_index",
+  "semantic_names",
+  "primary_name",
+  "parent_class",
+  "full_path",
+  "namespace",
+  "signature",
+  "indexed_at",
+]);
+
+const PROVENANCE_METADATA_KEYS = new Set([
+  "plugin_ids",
+  "plugin_fingerprint",
+  "plugin_descriptor_fingerprint",
+  "plugin_implementation_fingerprint",
+  "index_representation_fingerprint",
 ]);
 
 type ResolvedGraphTheme = {
@@ -722,10 +769,160 @@ function nodeSubtitle(node: VectorStorageNode) {
   return location ? `${type} in ${location}` : type;
 }
 
+function isMetadataRecord(value: unknown): value is MetadataRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function metadataString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function metadataStringList(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    .map((item) => item.trim());
+}
+
+function pluginGraphFacts(metadata?: MetadataRecord): PluginGraphFact[] {
+  const rawFacts = metadata?.plugin_graph_facts;
+  if (!Array.isArray(rawFacts)) return [];
+
+  return rawFacts.flatMap((rawFact) => {
+    if (!isMetadataRecord(rawFact)) return [];
+    const kind = metadataString(rawFact.kind);
+    const source = metadataString(rawFact.source);
+    const relation = metadataString(rawFact.relation);
+    const target = metadataString(rawFact.target);
+    if (!kind || !source || !relation || !target) return [];
+
+    const rawLine = rawFact.line;
+    const line =
+      typeof rawLine === "number" && Number.isFinite(rawLine)
+        ? rawLine
+        : typeof rawLine === "string" && /^\d+$/.test(rawLine)
+          ? Number(rawLine)
+          : undefined;
+
+    return [{
+      kind,
+      source,
+      relation,
+      target,
+      path: metadataString(rawFact.path),
+      line,
+      attributes: isMetadataRecord(rawFact.attributes) ? rawFact.attributes : {},
+      relatedPaths: metadataStringList(rawFact.related_paths ?? rawFact.relatedPaths),
+      packetKey: metadataString(rawFact.packetKey ?? rawFact.packet_key),
+      packetAttributes: isMetadataRecord(
+        rawFact.packetAttributes ?? rawFact.packet_attributes,
+      )
+        ? (rawFact.packetAttributes ?? rawFact.packet_attributes) as MetadataRecord
+        : {},
+    }];
+  });
+}
+
+function metadataLabel(value: string) {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/^./, (character) => character.toUpperCase());
+}
+
 function metricValue(value: unknown) {
-  if (Array.isArray(value)) return value.slice(0, 12).join(", ");
-  if (typeof value === "object" && value !== null) return JSON.stringify(value, null, 2);
+  if (Array.isArray(value)) {
+    const visible = value.slice(0, 12);
+    if (visible.every((item) => item === null || typeof item !== "object")) {
+      return visible.map((item) => String(item)).join(", ");
+    }
+    return JSON.stringify(visible, null, 2);
+  }
+  if (isMetadataRecord(value)) return JSON.stringify(value, null, 2);
   return String(value);
+}
+
+function hasMetadataValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function ArchitectureFactCard({ fact }: { fact: PluginGraphFact }) {
+  const attributes = Object.entries({
+    ...fact.packetAttributes,
+    ...fact.attributes,
+  }).filter(([, value]) => hasMetadataValue(value));
+
+  return (
+    <article className="min-w-0 rounded-md border border-violet-200 bg-violet-50/70 p-3 text-xs dark:border-violet-400/20 dark:bg-violet-500/[0.07]">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <Badge className="max-w-full break-words bg-violet-600 text-[10px] text-white [overflow-wrap:anywhere] hover:bg-violet-600">
+          {fact.kind}
+        </Badge>
+        {fact.packetKey && (
+          <Badge variant="outline" className="max-w-full break-words border-violet-300 text-[10px] text-violet-800 [overflow-wrap:anywhere] dark:border-violet-400/30 dark:text-violet-200">
+            {fact.packetKey}
+          </Badge>
+        )}
+      </div>
+
+      <div className="mt-2 grid min-w-0 gap-1.5">
+        <code className="min-w-0 whitespace-pre-wrap break-words rounded bg-white/80 px-2 py-1.5 font-medium text-slate-900 [overflow-wrap:anywhere] dark:bg-black/25 dark:text-slate-100">
+          {fact.source}
+        </code>
+        <div className="flex items-center gap-2 pl-2 text-violet-700 dark:text-violet-300">
+          <span aria-hidden="true">↓</span>
+          <span className="break-words font-semibold [overflow-wrap:anywhere]">{fact.relation}</span>
+        </div>
+        <code className="min-w-0 whitespace-pre-wrap break-words rounded bg-white/80 px-2 py-1.5 font-medium text-slate-900 [overflow-wrap:anywhere] dark:bg-black/25 dark:text-slate-100">
+          {fact.target}
+        </code>
+      </div>
+
+      {fact.path && (
+        <div className="mt-2 break-words text-slate-600 [overflow-wrap:anywhere] dark:text-slate-300">
+          <span className="text-slate-500 dark:text-slate-400">Evidence: </span>
+          {fact.path}{fact.line ? `:${fact.line}` : ""}
+        </div>
+      )}
+
+      {attributes.length > 0 && (
+        <div className="mt-2 flex min-w-0 flex-wrap gap-1">
+          {attributes.slice(0, 12).map(([key, value]) => (
+            <span
+              key={key}
+              className="max-w-full break-words rounded border border-violet-200 bg-white/70 px-1.5 py-1 text-slate-600 [overflow-wrap:anywhere] dark:border-violet-400/20 dark:bg-black/20 dark:text-slate-300"
+            >
+              <span className="font-medium">{metadataLabel(key)}:</span> {metricValue(value)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {fact.relatedPaths.length > 0 && (
+        <details className="mt-2 text-slate-600 dark:text-slate-300">
+          <summary className="cursor-pointer font-medium">
+            {fact.relatedPaths.length} related repository path{fact.relatedPaths.length === 1 ? "" : "s"}
+          </summary>
+          <div className="mt-1.5 space-y-1 border-l border-violet-200 pl-2 dark:border-violet-400/20">
+            {fact.relatedPaths.slice(0, 12).map((path) => (
+              <div key={path} className="break-words [overflow-wrap:anywhere]">{path}</div>
+            ))}
+            {fact.relatedPaths.length > 12 && (
+              <div className="text-slate-500 dark:text-slate-400">
+                +{fact.relatedPaths.length - 12} more
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+    </article>
+  );
 }
 
 function edgeLabel(kind?: string) {
@@ -1028,8 +1225,8 @@ export function VectorStorageExplorer({
       if (!data.available) {
         setError(data.reason || "Vector storage is not available");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load vector storage overview");
+    } catch (error: unknown) {
+      setError(errorMessage(error, "Failed to load vector storage overview"));
     } finally {
       setLoadingOverview(false);
     }
@@ -1083,8 +1280,8 @@ export function VectorStorageExplorer({
         );
         setCursor(response.nextCursor || null);
         if (!append) setSelectedNode(null);
-      } catch (err: any) {
-        setError(err.message || "Failed to load vector graph");
+      } catch (error: unknown) {
+        setError(errorMessage(error, "Failed to load vector graph"));
       } finally {
         setLoadingGraph(false);
       }
@@ -1114,8 +1311,8 @@ export function VectorStorageExplorer({
             setEdges((prev) => mergeEdges(prev, response.edges || []));
           }
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to load vector point");
+      } catch (error: unknown) {
+        setError(errorMessage(error, "Failed to load vector point"));
       } finally {
         setLoadingNode(false);
       }
@@ -1174,8 +1371,8 @@ export function VectorStorageExplorer({
       if (safetyCounter >= 80 && nextCursor) {
         setError("Stopped after 80 graph pages. Use Load More to continue.");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load remaining vector graph pages");
+    } catch (error: unknown) {
+      setError(errorMessage(error, "Failed to load remaining vector graph pages"));
     } finally {
       setLoadingAll(false);
     }
@@ -1529,24 +1726,67 @@ export function VectorStorageExplorer({
       icon: Database,
     },
     {
-      label: "Graph nodes",
+      label: "Visible nodes",
       value: formatNumber(nodes.length),
       icon: Network,
     },
     {
-      label: "Relations",
+      label: "Visible edges",
       value: formatNumber(edges.length),
       icon: Split,
     },
     {
-      label: "Files",
+      label: "Listed files",
       value: formatNumber(overview?.files?.length),
       icon: FileCode,
     },
   ];
 
-  const selectedMetadata = selectedNode?.metadata
-    ? Object.entries(selectedNode.metadata).filter(([, value]) => value !== null && value !== "")
+  const selectedMetadataRecord = selectedNode?.metadata;
+  const selectedPluginFacts = pluginGraphFacts(selectedMetadataRecord);
+  const architecturePlugin = metadataString(selectedMetadataRecord?.architecture_plugin);
+  const architectureKind = metadataString(selectedMetadataRecord?.architecture_kind);
+  const architectureSourcePath = metadataString(
+    selectedMetadataRecord?.architecture_source_path,
+  );
+  const architecturePaths = metadataStringList(selectedMetadataRecord?.architecture_paths);
+  const architectureKeys = metadataStringList(selectedMetadataRecord?.architecture_keys);
+  const hasArchitectureBoundary = Boolean(
+    architecturePlugin ||
+    architectureKind ||
+    architectureSourcePath ||
+    architecturePaths.length > 0,
+  );
+  const graphFactOwner = selectedPluginFacts.some((fact) => fact.kind.startsWith("magento-"))
+    ? "Magento 2"
+    : architecturePlugin
+      ? metadataLabel(architecturePlugin)
+      : "Plugin";
+  const selectedMetadata = selectedMetadataRecord
+    ? Object.entries(selectedMetadataRecord).filter(([key, value]) => {
+        if (!hasMetadataValue(value)) return false;
+        if (POINT_DETAIL_METADATA_KEYS.has(key) || PROVENANCE_METADATA_KEYS.has(key)) {
+          return false;
+        }
+        if (key.startsWith("architecture_") || key.startsWith("plugin_fact_")) {
+          return false;
+        }
+        if (key === "plugin_graph_facts" && selectedPluginFacts.length > 0) {
+          return false;
+        }
+        return true;
+      })
+    : [];
+  const selectedProvenance = selectedMetadataRecord
+    ? [
+        ["Plugins", selectedMetadataRecord.plugin_ids],
+        ["Plugin selection fingerprint", selectedMetadataRecord.plugin_fingerprint],
+        ["Plugin descriptor fingerprint", selectedMetadataRecord.plugin_descriptor_fingerprint],
+        ["Plugin implementation fingerprint", selectedMetadataRecord.plugin_implementation_fingerprint],
+        ["Index representation fingerprint", selectedMetadataRecord.index_representation_fingerprint],
+        ["Commit", selectedMetadataRecord.commit],
+        ["Indexed at", selectedNode?.indexedAt ?? selectedMetadataRecord.indexed_at],
+      ].filter(([, value]) => hasMetadataValue(value))
     : [];
   const selectedRelations = useMemo(
     () =>
@@ -2281,9 +2521,95 @@ export function VectorStorageExplorer({
                         </div>
                       )}
 
+                      {hasArchitectureBoundary && (
+                        <div>
+                          <div className="mb-2 text-sm font-medium">Architecture boundary</div>
+                          <div className="space-y-3 rounded-md border border-violet-200 bg-violet-50/50 p-3 text-xs dark:border-violet-400/20 dark:bg-violet-500/[0.05]">
+                            <div className="grid min-w-0 grid-cols-2 gap-2">
+                              <div className="min-w-0">
+                                <div className="text-slate-500 dark:text-slate-400">Plugin</div>
+                                <div className="mt-1 break-words font-medium [overflow-wrap:anywhere]">
+                                  {architecturePlugin || "-"}
+                                </div>
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-slate-500 dark:text-slate-400">Boundary kind</div>
+                                <div className="mt-1 break-words font-medium [overflow-wrap:anywhere]">
+                                  {architectureKind || "-"}
+                                </div>
+                              </div>
+                              {architectureSourcePath && (
+                                <div className="col-span-2 min-w-0">
+                                  <div className="text-slate-500 dark:text-slate-400">Source</div>
+                                  <div className="mt-1 break-words font-medium [overflow-wrap:anywhere]">
+                                    {architectureSourcePath}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {architectureKeys.length > 0 && (
+                              <div>
+                                <div className="mb-1.5 text-slate-500 dark:text-slate-400">Packet keys</div>
+                                <div className="flex min-w-0 flex-wrap gap-1">
+                                  {architectureKeys.slice(0, 25).map((key) => (
+                                    <Badge
+                                      key={key}
+                                      variant="outline"
+                                      className="max-w-full break-words border-violet-300 text-[10px] [overflow-wrap:anywhere] dark:border-violet-400/30"
+                                    >
+                                      {key}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {architecturePaths.length > 0 && (
+                              <div>
+                                <div className="mb-1.5 text-slate-500 dark:text-slate-400">
+                                  Repository paths in this boundary ({architecturePaths.length})
+                                </div>
+                                <div className="max-h-40 space-y-1 overflow-auto border-l border-violet-200 pl-2 dark:border-violet-400/20">
+                                  {architecturePaths.map((path) => (
+                                    <div key={path} className="break-words text-slate-700 [overflow-wrap:anywhere] dark:text-slate-200">
+                                      {path}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedPluginFacts.length > 0 && (
+                        <div>
+                          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-sm font-medium">
+                              {graphFactOwner} deterministic relationships
+                            </div>
+                            <Badge variant="secondary">
+                              {selectedPluginFacts.length} in this point
+                            </Badge>
+                          </div>
+                          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                            Exact plugin facts stored with this point. These are separate from the visible graph edges below.
+                          </p>
+                          <div className="space-y-2">
+                            {selectedPluginFacts.map((fact, index) => (
+                              <ArchitectureFactCard
+                                key={`${fact.kind}:${fact.source}:${fact.relation}:${fact.target}:${fact.path || ""}:${fact.line || 0}:${index}`}
+                                fact={fact}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {selectedRelations.length > 0 && (
                         <div>
-                          <div className="mb-2 text-sm font-medium">Relations</div>
+                          <div className="mb-2 text-sm font-medium">Visible graph connections</div>
                           <div className="space-y-1.5">
                             {selectedRelations.map((edge) => {
                               const outgoing = edge.source === selectedNode.id;
@@ -2331,7 +2657,7 @@ export function VectorStorageExplorer({
 
                       {selectedMetadata.length > 0 && (
                         <div>
-                          <div className="mb-2 text-sm font-medium">Metadata</div>
+                          <div className="mb-2 text-sm font-medium">Additional metadata</div>
                           <div className="space-y-1.5">
                             {selectedMetadata.slice(0, 42).map(([key, value]) => (
                               <div
@@ -2346,6 +2672,24 @@ export function VectorStorageExplorer({
                             ))}
                           </div>
                         </div>
+                      )}
+
+                      {selectedProvenance.length > 0 && (
+                        <details className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-white/10 dark:bg-white/[0.04]">
+                          <summary className="cursor-pointer text-sm font-medium">
+                            Index provenance
+                          </summary>
+                          <div className="mt-2 space-y-2">
+                            {selectedProvenance.map(([label, value]) => (
+                              <div key={String(label)} className="min-w-0">
+                                <div className="text-slate-500 dark:text-slate-400">{label}</div>
+                                <div className="mt-0.5 whitespace-pre-wrap break-words font-mono text-slate-700 [overflow-wrap:anywhere] dark:text-slate-200">
+                                  {metricValue(value)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
                       )}
                     </div>
                   </ScrollArea>
