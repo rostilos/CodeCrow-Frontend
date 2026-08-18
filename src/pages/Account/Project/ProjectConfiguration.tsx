@@ -1107,21 +1107,21 @@ export default function ProjectConfiguration() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="project-type">Project type</Label>
-                <Select
-                  value={project.projectType || "auto"}
-                  onValueChange={(value) => setProject({
+                <Input
+                  id="project-type"
+                  list="configured-project-types"
+                  value={project.projectType || ""}
+                  onChange={(event) => setProject({
                     ...project,
-                    projectType: value === "auto" ? null : value as "magento",
+                    projectType: event.target.value,
                   })}
-                >
-                  <SelectTrigger id="project-type"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto-detect from coherent repository markers</SelectItem>
-                    <SelectItem value="magento">Magento 2</SelectItem>
-                  </SelectContent>
-                </Select>
+                  placeholder="Automatic detection"
+                />
+                <datalist id="configured-project-types">
+                  <option value="magento">Magento 2</option>
+                </datalist>
                 <p className="text-xs text-muted-foreground">
-                  Manual selection is authoritative. Changing this setting requires a full RAG reindex.
+                  Optional analysis plugin identifier. Changing this setting requires a full RAG reindex.
                 </p>
               </div>
               <div className="space-y-2">

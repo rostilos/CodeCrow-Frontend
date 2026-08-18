@@ -84,7 +84,7 @@ export interface RepoOnboardRequest {
   defaultBranch?: string;
   prAnalysisEnabled?: boolean;
   branchAnalysisEnabled?: boolean;
-  projectType?: "magento" | null;
+  projectType?: string | null;
   sourceRoot?: string | null;
   setupWebhooks?: boolean;
 }

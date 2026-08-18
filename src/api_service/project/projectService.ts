@@ -15,7 +15,7 @@ export interface CreateProjectRequest {
   mainBranch?: string;
   /** @deprecated Use mainBranch instead */
   defaultBranch?: string;
-  projectType?: "magento" | null;
+  projectType?: string | null;
   sourceRoot?: string | null;
 }
 
@@ -39,7 +39,7 @@ export interface UpdateProjectRequest {
   mainBranch?: string;
   /** @deprecated Use mainBranch instead */
   defaultBranch?: string;
-  projectType?: "magento" | null;
+  projectType?: string | null;
   sourceRoot?: string | null;
 }
 
@@ -103,7 +103,7 @@ export interface ProjectDTO {
   maxAnalysisTokenLimit?: number | null;
   useMcpTools?: boolean | null;
   taskContextAnalysisEnabled?: boolean | null;
-  projectType?: "magento" | null;
+  projectType?: string | null;
   sourceRoot?: string | null;
   taskManagementConfig?: {
     taskManagementConnectionId: number | null;

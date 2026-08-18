@@ -93,7 +93,7 @@ export default function NewProjectPage() {
   // Project details
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
-  const [projectType, setProjectType] = useState<"auto" | "magento">("auto");
+  const [projectType, setProjectType] = useState("");
   const [sourceRoot, setSourceRoot] = useState("");
   const [selectedConnectionId, setSelectedConnectionId] = useState<
     number | null
@@ -477,7 +477,7 @@ export default function NewProjectPage() {
         description: projectDescription,
         creationMode: selectedRepo ? "IMPORT" : "MANUAL",
         mainBranch: ragBranch.trim(),
-        projectType: projectType === "auto" ? null : projectType,
+        projectType: projectType.trim() || null,
         sourceRoot: sourceRoot.trim() || null,
       };
 
@@ -922,17 +922,18 @@ export default function NewProjectPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="project-type">Project type</Label>
-                <Select value={projectType} onValueChange={(value) => setProjectType(value as "auto" | "magento")}>
-                  <SelectTrigger id="project-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">Auto-detect from coherent repository markers</SelectItem>
-                    <SelectItem value="magento">Magento 2</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="project-type"
+                  list="new-project-types"
+                  value={projectType}
+                  onChange={(event) => setProjectType(event.target.value)}
+                  placeholder="Automatic detection"
+                />
+                <datalist id="new-project-types">
+                  <option value="magento">Magento 2</option>
+                </datalist>
                 <p className="text-xs text-muted-foreground">
-                  A manual type is authoritative and skips framework marker detection.
+                  Optional analysis plugin identifier. A manual value is authoritative and skips framework marker detection.
                 </p>
               </div>
 
