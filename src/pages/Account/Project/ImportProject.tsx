@@ -1459,7 +1459,16 @@ export default function ImportProject() {
                   placeholder="Automatic detection"
                 />
                 <datalist id="import-project-types">
+                  <option value="django">Django</option>
+                  <option value="ember">Ember.js</option>
+                  <option value="express">Express.js</option>
+                  <option value="fastapi">FastAPI</option>
+                  <option value="hyva">Hyvä</option>
                   <option value="magento">Magento 2</option>
+                  <option value="nextjs">Next.js</option>
+                  <option value="quarkus">Quarkus</option>
+                  <option value="rails">Ruby on Rails</option>
+                  <option value="spring">Spring</option>
                 </datalist>
                 <p className="text-xs text-muted-foreground">
                   Optional analysis plugin identifier. A manual value is authoritative and skips framework marker detection.
