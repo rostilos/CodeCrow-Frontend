@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Globe,
   GitBranch,
-  Database,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
@@ -43,9 +42,8 @@ import { Switch } from "@/components/ui/switch";
  *
  * Step 0: Welcome
  * Step 1: Base URLs
- * Step 2: Embedding provider (required — RAG pipeline needs this)
- * Step 3: VCS provider (at least one — Bitbucket, GitHub, or GitLab)
- * Step 4: Done
+ * Step 2: VCS provider (at least one — Bitbucket, GitHub, or GitLab)
+ * Step 3: Done
  */
 interface WizardStep {
   id: string;
@@ -53,7 +51,7 @@ interface WizardStep {
   description: string;
   icon: React.ElementType;
   settingsGroup?: SiteSettingsGroup;
-  vcsChoice?: boolean; // step 3 lets user pick which VCS
+  vcsChoice?: boolean;
 }
 
 const WIZARD_STEPS: WizardStep[] = [
@@ -69,13 +67,6 @@ const WIZARD_STEPS: WizardStep[] = [
     description: "Where is your instance accessible?",
     icon: Globe,
     settingsGroup: "BASE_URLS",
-  },
-  {
-    id: "embedding",
-    label: "Embedding Provider",
-    description: "Configure how code is embedded for AI-powered search.",
-    icon: Database,
-    settingsGroup: "EMBEDDING",
   },
   {
     id: "vcs",
@@ -198,10 +189,6 @@ export default function SetupWizard() {
                     <span>Base URLs for your instance</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <Database className="h-4 w-4 text-primary" />
-                    <span>Embedding provider for AI search</span>
-                  </li>
-                  <li className="flex items-center gap-2">
                     <GitBranch className="h-4 w-4 text-primary" />
                     <span>Version control provider</span>
                   </li>
@@ -213,7 +200,7 @@ export default function SetupWizard() {
               </div>
             )}
 
-            {/* Step: Settings form (Base URLs, Embedding) */}
+            {/* Step: Settings form */}
             {step.settingsGroup && (
               <div className="space-y-5">
                 {getGroupMeta(step.settingsGroup)?.fields.map((field) => (

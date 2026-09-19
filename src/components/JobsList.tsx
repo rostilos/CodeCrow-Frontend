@@ -85,8 +85,7 @@ const JobTypeBadge = ({ type }: { type: JobType }) => {
     PR_ANALYSIS: "PR Analysis",
     BRANCH_ANALYSIS: "Branch Analysis",
     BRANCH_RECONCILIATION: "Branch Reconciliation",
-    RAG_INITIAL_INDEX: "Initial Indexing",
-    RAG_INCREMENTAL_INDEX: "Incremental Index",
+    REPOSITORY_INDEX_BUILD: "Repository Index Build",
     MANUAL_ANALYSIS: "Manual Analysis",
     REPO_SYNC: "Repo Sync",
     SUMMARIZE_COMMAND: "Summarize",
@@ -274,11 +273,8 @@ export default function JobsList({
               <SelectItem value="ALL">All Types</SelectItem>
               <SelectItem value="PR_ANALYSIS">PR Analysis</SelectItem>
               <SelectItem value="BRANCH_ANALYSIS">Branch Analysis</SelectItem>
-              <SelectItem value="RAG_INITIAL_INDEX">
-                Initial Indexing
-              </SelectItem>
-              <SelectItem value="RAG_INCREMENTAL_INDEX">
-                Incremental Index
+              <SelectItem value="REPOSITORY_INDEX_BUILD">
+                Repository Index Build
               </SelectItem>
               <SelectItem value="SUMMARIZE_COMMAND">Summarize</SelectItem>
               <SelectItem value="ASK_COMMAND">Ask</SelectItem>

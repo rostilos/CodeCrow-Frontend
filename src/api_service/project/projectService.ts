@@ -11,7 +11,7 @@ export interface CreateProjectRequest {
   repositorySlug?: string;
   repositoryUUID?: string;
   importMode?: boolean;
-  // Main branch - primary branch used for RAG indexing and as base for all analysis
+  // Main branch used for the structural repository index and analysis baseline
   mainBranch?: string;
   /** @deprecated Use mainBranch instead */
   defaultBranch?: string;
@@ -35,7 +35,7 @@ export interface UpdateProjectRequest {
   name?: string;
   namespace?: string;
   description?: string;
-  // Main branch - primary branch used for RAG indexing and as base for all analysis
+  // Main branch used for the structural repository index and analysis baseline
   mainBranch?: string;
   /** @deprecated Use mainBranch instead */
   defaultBranch?: string;
@@ -82,7 +82,7 @@ export interface ProjectDTO {
   createdAt?: string;
   defaultBranchId?: number;
   qualityGateId?: number | null;
-  // Main branch - primary branch used for RAG and analysis baseline
+  // Main branch used for the structural repository index and analysis baseline
   mainBranch?: string;
   /** @deprecated Use mainBranch instead. Still returned for older projects. */
   defaultBranch?: string;
@@ -155,17 +155,12 @@ export interface UpdateBranchAnalysisConfigRequest {
   branchPushPatterns: string[];
 }
 
-// RAG Configuration types
+// Repository-index configuration types (backend contract retains rag* names)
 export interface RagConfigDTO {
   enabled: boolean;
   branch: string | null;
   includePatterns: string[] | null;
   excludePatterns: string[] | null;
-  // Multi-branch RAG settings
-  multiBranchEnabled: boolean | null;
-  branchRetentionDays: number | null;
-  indexedBranches: string[] | null;
-  transientBranchIndexesEnabled: boolean | null;
 }
 
 export interface UpdateRagConfigRequest {
@@ -173,11 +168,6 @@ export interface UpdateRagConfigRequest {
   branch?: string | null;
   includePatterns?: string[] | null;
   excludePatterns?: string[] | null;
-  // Multi-branch RAG settings
-  multiBranchEnabled?: boolean | null;
-  branchRetentionDays?: number | null;
-  indexedBranches?: string[] | null;
-  transientBranchIndexesEnabled?: boolean | null;
 }
 
 // Branch Index types
@@ -308,8 +298,6 @@ export interface RagIndexStatusDTO {
   lastIndexedAt: string | null;
   updatedAt: string;
   errorMessage: string | null;
-  collectionName: string | null;
-  failedIncrementalCount: number | null;
 }
 
 // Webhook Management types
@@ -344,39 +332,138 @@ export interface RagStatusResponse {
   canStartIndexing: boolean;
 }
 
-export interface VectorStorageMetric {
+export interface RepositoryIndexMetric {
   value: string | number;
   count: number;
 }
 
-export interface VectorStorageOverview {
+export interface RepositoryIndexOverview {
   available: boolean;
   reason?: string;
   workspace?: string;
   project?: string;
-  collection?: string;
   totalPoints?: number;
   sampledPoints?: number;
   scannedPoints?: number;
   sampled?: boolean;
-  branches?: VectorStorageMetric[];
-  languages?: VectorStorageMetric[];
-  files?: VectorStorageMetric[];
-  prNumbers?: VectorStorageMetric[];
-  semanticNames?: VectorStorageMetric[];
+  branches?: string[];
+  languages?: RepositoryIndexMetric[];
+  files?: RepositoryIndexMetric[];
+  symbolNames?: RepositoryIndexMetric[];
+  recordTypes?: RepositoryIndexMetric[];
+  totalRelations?: number;
+  renderableRelations?: number;
+  suppressedSelfRelations?: number;
+  resolvedRelations?: number;
+  partiallyResolvedRelations?: number;
+  unresolvedRelations?: number;
+  pluginRelations?: number;
+  indexedFileCount?: number;
+  structuralFileCount?: number;
+  selfRelations?: number;
+  relationKinds?: RepositoryIndexMetric[];
+  relationOrigins?: RepositoryIndexMetric[];
+  relationPlugins?: RepositoryIndexMetric[];
+  relationLabels?: RepositoryIndexMetric[];
+  selectedBranch?: string;
 }
 
-export interface VectorStorageFilters {
+export interface RepositoryIndexFilters {
   branches?: string[];
   languages?: string[];
   path?: string;
   fileQuery?: string;
-  semanticQuery?: string;
-  prNumber?: number | null;
-  includePr?: boolean;
+  textQuery?: string;
 }
 
-export interface VectorStorageNode {
+export interface StructuralSourceSpan {
+  start_byte?: number;
+  end_byte?: number;
+  start_line: number;
+  end_line: number;
+  start_column?: number;
+  end_column?: number;
+}
+
+export interface StructuralAttribute {
+  name: string;
+  value: string;
+}
+
+export interface StructuralCaptureRecord {
+  name: string;
+  node_type: string;
+  text: string;
+  span: StructuralSourceSpan;
+}
+
+export interface StructuralDiagnosticRecord {
+  code: string;
+  message: string;
+  recoverable: boolean;
+  span?: StructuralSourceSpan | null;
+}
+
+export interface StructuralQueryProvenanceRecord {
+  kind: string;
+  source: string;
+  sha256: string;
+}
+
+export interface StructuralProvenanceRecord {
+  parser: string;
+  grammar_module: string;
+  grammar_factory: string;
+  queries: StructuralQueryProvenanceRecord[];
+}
+
+export interface StructuralFileRecord {
+  structural_record_type?: "structural_file";
+  key: string;
+  path: string;
+  plugin_id?: string | null;
+  language_id?: string | null;
+  supported: boolean;
+  parsed: boolean;
+  status: string;
+  span: StructuralSourceSpan;
+  text?: string;
+  provenance?: StructuralProvenanceRecord | null;
+  diagnostics: StructuralDiagnosticRecord[];
+}
+
+export interface StructuralEntityRecord {
+  structural_record_type?: "structural_entity";
+  key: string;
+  kind: string;
+  name: string;
+  qualified_name: string;
+  path: string;
+  span: StructuralSourceSpan;
+  parent_key?: string | null;
+  node_type: string;
+  text?: string;
+  attributes?: StructuralAttribute[];
+  captures?: StructuralCaptureRecord[];
+}
+
+export interface StructuralRelationRecord {
+  structural_record_type?: "structural_relation";
+  key: string;
+  kind: string;
+  source?: string;
+  source_key: string;
+  target: string;
+  target_key?: string | null;
+  path: string;
+  span: StructuralSourceSpan;
+  evidence?: string;
+  related_paths?: string[];
+  attributes?: StructuralAttribute[];
+  captures?: StructuralCaptureRecord[];
+}
+
+export interface RepositoryIndexNode {
   id: string;
   title: string;
   kind: string;
@@ -385,13 +472,11 @@ export interface VectorStorageNode {
   path?: string | null;
   language?: string | null;
   filetype?: string | null;
-  prNumber?: number | null;
   startLine?: number | null;
   endLine?: number | null;
   chunkIndex?: number | null;
-  subChunkIndex?: number | null;
   primaryName?: string | null;
-  semanticNames?: string[];
+  symbolNames?: string[];
   parentClass?: string | null;
   fullPath?: string | null;
   namespace?: string | null;
@@ -400,33 +485,50 @@ export interface VectorStorageNode {
   preview?: string;
   text?: string;
   virtual?: boolean;
-  metricCount?: number;
+  recordType?: string | null;
+  fileKey?: string | null;
+  file?: StructuralFileRecord | null;
+  entityKey?: string | null;
+  entity?: StructuralEntityRecord | null;
+  relationKey?: string | null;
+  relation?: StructuralRelationRecord | null;
   metadata?: Record<string, unknown>;
 }
 
-export interface VectorStorageEdge {
+export interface RepositoryIndexEdge {
   id: string;
   source: string;
   target: string;
   kind: string;
+  label?: string;
   weight?: number;
   tokens?: string[];
+  metadata?: Record<string, unknown>;
+  relation?: StructuralRelationRecord;
 }
 
-export interface VectorStorageGraphResponse {
+export interface RepositoryIndexGraphResponse {
   available: boolean;
   reason?: string;
-  nodes: VectorStorageNode[];
-  edges: VectorStorageEdge[];
+  nodes: RepositoryIndexNode[];
+  edges: RepositoryIndexEdge[];
   nextCursor?: string | null;
   scannedPoints?: number;
   limit?: number;
+  totalRelations?: number;
+  returnedRelations?: number;
+  omittedRelations?: number;
+  relationOffset?: number;
+  eligibleRelations?: number;
+  selectedRelationRows?: number;
+  droppedEndpointRelations?: number;
+  relationsTruncated?: boolean;
 }
 
-export interface VectorStoragePointResponse {
-  node?: VectorStorageNode;
-  neighbors?: VectorStorageNode[];
-  edges?: VectorStorageEdge[];
+export interface RepositoryIndexPointResponse {
+  node?: RepositoryIndexNode;
+  neighbors?: RepositoryIndexNode[];
+  edges?: RepositoryIndexEdge[];
   available?: boolean;
   reason?: string;
 }
@@ -762,29 +864,31 @@ class ProjectService extends ApiService {
     );
   }
 
-  async getVectorStorageOverview(
+  async getRepositoryIndexOverview(
     workspaceSlug: string,
     namespace: string,
-  ): Promise<VectorStorageOverview> {
-    return this.request<VectorStorageOverview>(
-      `/${workspaceSlug}/project/${namespace}/rag/vector-storage/overview`,
+    branch?: string | null,
+  ): Promise<RepositoryIndexOverview> {
+    const query = branch ? `?branch=${encodeURIComponent(branch)}` : "";
+    return this.request<RepositoryIndexOverview>(
+      `/${workspaceSlug}/project/${namespace}/rag/repository-index/overview${query}`,
       {},
       true,
     );
   }
 
-  async getVectorStorageGraph(
+  async getRepositoryIndexGraph(
     workspaceSlug: string,
     namespace: string,
     request: {
-      filters?: VectorStorageFilters;
+      filters?: RepositoryIndexFilters;
       limit?: number;
       cursor?: string | null;
       scanLimit?: number;
     },
-  ): Promise<VectorStorageGraphResponse> {
-    return this.request<VectorStorageGraphResponse>(
-      `/${workspaceSlug}/project/${namespace}/rag/vector-storage/graph`,
+  ): Promise<RepositoryIndexGraphResponse> {
+    return this.request<RepositoryIndexGraphResponse>(
+      `/${workspaceSlug}/project/${namespace}/rag/repository-index/graph`,
       {
         method: "POST",
         body: JSON.stringify(request),
@@ -793,17 +897,17 @@ class ProjectService extends ApiService {
     );
   }
 
-  async getVectorStoragePoint(
+  async getRepositoryIndexPoint(
     workspaceSlug: string,
     namespace: string,
     pointId: string,
     request: {
-      filters?: VectorStorageFilters;
+      filters?: RepositoryIndexFilters;
       neighborLimit?: number;
     },
-  ): Promise<VectorStoragePointResponse> {
-    return this.request<VectorStoragePointResponse>(
-      `/${workspaceSlug}/project/${namespace}/rag/vector-storage/points/${encodeURIComponent(pointId)}`,
+  ): Promise<RepositoryIndexPointResponse> {
+    return this.request<RepositoryIndexPointResponse>(
+      `/${workspaceSlug}/project/${namespace}/rag/repository-index/points/${encodeURIComponent(pointId)}`,
       {
         method: "POST",
         body: JSON.stringify(request),
@@ -999,7 +1103,6 @@ class ProjectService extends ApiService {
     onProgress: (data: RagIndexingProgressEvent) => void,
     onComplete: (data: RagIndexingResult) => void,
     onError: (error: string) => void,
-    allConfiguredBranches = false,
   ): AbortController {
     const abortController = new AbortController();
     const token = localStorage.getItem("codecrow_token");
@@ -1009,10 +1112,6 @@ class ProjectService extends ApiService {
     if (branch) {
       url += `?branch=${encodeURIComponent(branch)}`;
     }
-    if (allConfiguredBranches) {
-      url += `${branch ? "&" : "?"}allConfiguredBranches=true`;
-    }
-
     // Use native EventSource with workaround for auth header
     // Since EventSource doesn't support headers, we use fetch with SSE parsing
     this.fetchSSE(

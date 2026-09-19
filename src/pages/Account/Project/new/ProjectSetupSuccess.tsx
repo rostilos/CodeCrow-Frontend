@@ -262,19 +262,20 @@ export default function ProjectSetupSuccess() {
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
             RAG Context (AI Knowledge Base)
-            <Badge>Enabled · action required</Badge>
+            <Badge>Enabled · queued automatically</Badge>
           </CardTitle>
           <CardDescription>
             Configuration is saved{ragBranch ? ` for ${ragBranch}` : ""}; the
-            first index has not started.
+            durable queue owns the first index and any retry.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
             <BookOpen className="h-4 w-4" />
             <AlertDescription>
-              Review the framework scope, then explicitly start the first index.
-              CodeCrow does not index automatically during project creation.
+              You can review or change the framework scope while the primary
+              branch index is queued in the background. Review analysis remains
+              available if optional indexing is temporarily unavailable.
             </AlertDescription>
           </Alert>
 
@@ -300,7 +301,7 @@ export default function ProjectSetupSuccess() {
             onClick={() => navigate(routes.projectSettings(namespace!, "rag"))}
           >
             <Database className="h-4 w-4 mr-2" />
-            Review configuration and start indexing
+            Review indexing state
           </Button>
         </CardContent>
       </Card>

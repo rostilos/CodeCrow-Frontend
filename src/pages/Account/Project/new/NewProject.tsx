@@ -140,8 +140,8 @@ export default function NewProjectPage() {
   const [newPrPattern, setNewPrPattern] = useState("");
   const [newBranchPattern, setNewBranchPattern] = useState("");
 
-  // RAG is deliberately enabled and configured at creation time, but indexing
-  // remains an explicit action after setup.
+  // RAG is enabled and configured at creation time. The durable index queue
+  // starts the primary generation after the configuration is saved.
   const [ragBranch, setRagBranch] = useState("");
   const [frameworkPresetId, setFrameworkPresetId] = useState(
     DEFAULT_PROJECT_FRAMEWORK_PRESET_ID,
@@ -555,8 +555,6 @@ export default function NewProjectPage() {
               branch: ragBranch.trim(),
               includePatterns,
               excludePatterns,
-              multiBranchEnabled: false,
-              branchRetentionDays: 30,
             },
           );
           if (applyPresetToAnalysis) {
@@ -637,7 +635,7 @@ export default function NewProjectPage() {
         title: "Project created",
         description:
           setupWarnings.length === 0
-            ? "Project was created. Start the first RAG index when ready."
+            ? "Project was created. The first RAG index has been queued automatically."
             : `Project was created with ${setupWarnings.length} setup warning${setupWarnings.length === 1 ? "" : "s"}. Review project settings.`,
         variant: setupWarnings.length > 0 ? "destructive" : undefined,
       });
@@ -1622,9 +1620,8 @@ export default function NewProjectPage() {
                 <Badge>Enabled after setup</Badge>
               </CardTitle>
               <CardDescription>
-                Configure the first index now. CodeCrow will not start indexing
-                until you review these settings and explicitly start it from
-                project settings.
+                Configure the repository index. CodeCrow queues the primary
+                branch automatically after setup.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -1632,8 +1629,8 @@ export default function NewProjectPage() {
                 <Info className="h-4 w-4" />
                 <AlertDescription>
                   RAG improves repository-aware analysis. It is enabled for every
-                  new project, while the potentially expensive first index remains
-                  under your control.
+                  new project, built through the durable background queue, and
+                  remains fail-open when optional indexing is unavailable.
                 </AlertDescription>
               </Alert>
 

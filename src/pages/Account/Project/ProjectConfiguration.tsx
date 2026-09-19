@@ -291,7 +291,7 @@ export default function ProjectConfiguration() {
   const [branchAnalysisEnabled, setBranchAnalysisEnabled] = useState(true);
   const [maxAnalysisTokenLimit, setMaxAnalysisTokenLimit] =
     useState<number>(200000);
-  const [useMcpTools, setUseMcpTools] = useState(false);
+  const [useMcpTools, setUseMcpTools] = useState(true);
   const [taskContextAnalysisEnabled, setTaskContextAnalysisEnabled] =
     useState(true);
   const [savingAnalysisSettings, setSavingAnalysisSettings] = useState(false);
@@ -399,7 +399,7 @@ export default function ProjectConfiguration() {
           proj.ragConfig?.enabled ? true : (proj.branchAnalysisEnabled ?? true),
         );
         setMaxAnalysisTokenLimit(proj.maxAnalysisTokenLimit ?? 200000);
-        setUseMcpTools(proj.useMcpTools ?? false);
+        setUseMcpTools(proj.useMcpTools ?? true);
         setTaskContextAnalysisEnabled(proj.taskContextAnalysisEnabled ?? true);
       }
     } catch (err: any) {
@@ -1130,7 +1130,7 @@ export default function ProjectConfiguration() {
                   <option value="spring">Spring</option>
                 </datalist>
                 <p className="text-xs text-muted-foreground">
-                  Optional analysis plugin identifier. Changing this setting requires a full RAG reindex.
+                  Optional analysis plugin identifier. Changing it queues a replacement RAG generation automatically.
                 </p>
               </div>
               <div className="space-y-2">
@@ -1737,8 +1737,8 @@ export default function ProjectConfiguration() {
                           Analyze code when branches are pushed
                           {project?.ragConfig?.enabled && (
                             <span className="block text-xs text-amber-600 mt-1">
-                              Branch analysis is required when RAG indexing is
-                              enabled (for incremental updates)
+                              Branch analysis refreshes the exact repository
+                              index generation for each analyzed revision
                             </span>
                           )}
                         </div>
@@ -1882,9 +1882,19 @@ export default function ProjectConfiguration() {
                     <div>
                       <div className="font-medium">MCP Tools</div>
                       <div className="text-sm text-muted-foreground">
-                        Enable MCP tool calling during PR review aggregation.
-                        Allows the AI to fetch additional file content from the
-                        repository for deeper context.
+                        Enabled by default. Stage 1 file-review agents are
+                        instructed to retrieve a small structural neighborhood
+                        through MCP instead of receiving a preloaded relation
+                        map. For PRs, getReviewFileContent reads proposed source
+                        for modified paths when available, even across review
+                        batches, and pinned target source for unchanged paths. An
+                        unavailable modified path is reported unavailable and
+                        never falls back to stale target source. If the agent
+                        fails after retrieving exact proposed-tree context, the
+                        direct recovery call can reuse that completed result;
+                        target-head relation maps are not preloaded. Disabling
+                        may reduce cost and latency, but may reduce output
+                        quality.
                       </div>
                     </div>
                   </div>

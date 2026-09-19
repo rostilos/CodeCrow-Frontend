@@ -92,7 +92,7 @@ import {
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { QaDocPanel, type QaDocTab } from "@/components/QaDocPanel";
 import { GitGraphViewer } from "@/components/GitGraph/GitGraphViewer";
-import { VectorStorageExplorer } from "@/components/VectorStorage/VectorStorageExplorer";
+import { RepositoryIndexExplorer } from "@/components/RepositoryIndex/RepositoryIndexExplorer";
 import type {
   AnalysisIssue,
   PullRequestSummary,
@@ -164,7 +164,7 @@ const DASHBOARD_SUB_TABS = [
   "qa-doc",
   "graph",
   "source",
-  "vector",
+  "repository-index",
 ] as const;
 
 type DashboardSubTab = (typeof DASHBOARD_SUB_TABS)[number];
@@ -1712,21 +1712,22 @@ export default function ProjectDashboard() {
               <button
                 onClick={() => {
                   if (selectionType === "branch") {
-                    setBranchTab("vector");
+                    setBranchTab("repository-index");
                   } else {
-                    setPrTab("vector");
+                    setPrTab("repository-index");
                   }
                 }}
                 className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
-                  (selectionType === "branch" ? branchTab : prTab) === "vector"
+                  (selectionType === "branch" ? branchTab : prTab) ===
+                  "repository-index"
                     ? "text-orange-500 !font-bold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Database className="h-3.5 w-3.5" />
-                Vector Storage
+                Repository Index
                 {(selectionType === "branch" ? branchTab : prTab) ===
-                  "vector" && (
+                  "repository-index" && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
@@ -2047,8 +2048,8 @@ export default function ProjectDashboard() {
                   </div>
                 </CardContent>
               </Card>
-            ) : branchTab === "vector" ? (
-              <VectorStorageExplorer
+            ) : branchTab === "repository-index" ? (
+              <RepositoryIndexExplorer
                 workspaceSlug={currentWorkspace!.slug}
                 namespace={namespace!}
                 initialBranch={selectedBranch}
@@ -2707,14 +2708,13 @@ export default function ProjectDashboard() {
               </Card>
             )}
 
-            {prTab === "vector" && (
-              <VectorStorageExplorer
+            {prTab === "repository-index" && (
+              <RepositoryIndexExplorer
                 workspaceSlug={currentWorkspace!.slug}
                 namespace={namespace!}
                 initialBranch={
-                  selectedPR.sourceBranchName || selectedPR.targetBranchName
+                  selectedPR.targetBranchName
                 }
-                initialPrNumber={selectedPR.prNumber}
               />
             )}
           </div>
@@ -2822,8 +2822,9 @@ export default function ProjectDashboard() {
                 </AlertDescription>
               </Alert>
             )}
-            {(selectionType === "branch" ? branchTab : prTab) === "vector" && (
-              <VectorStorageExplorer
+            {(selectionType === "branch" ? branchTab : prTab) ===
+              "repository-index" && (
+              <RepositoryIndexExplorer
                 workspaceSlug={currentWorkspace!.slug}
                 namespace={namespace!}
               />
