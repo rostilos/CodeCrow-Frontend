@@ -10,7 +10,6 @@ import {
   Plus,
   X,
   Info,
-  GitBranch,
   Layers,
   ChevronDown,
   ChevronUp,
@@ -148,20 +147,6 @@ export default function RagConfiguration({
       project.ragConfig?.excludePatterns,
     ),
   );
-
-  // Multi-branch RAG state
-  const [multiBranchEnabled, setMultiBranchEnabled] = useState(
-    project.ragConfig?.multiBranchEnabled ?? false,
-  );
-  const [branchRetentionDays, setBranchRetentionDays] = useState(
-    project.ragConfig?.branchRetentionDays ?? 30,
-  );
-  const [indexedBranches, setIndexedBranches] = useState(
-    (project.ragConfig?.indexedBranches ?? []).join(", "),
-  );
-  const [transientBranchIndexesEnabled, setTransientBranchIndexesEnabled] =
-    useState(project.ragConfig?.transientBranchIndexesEnabled ?? false);
-  const [isMultiBranchOpen, setIsMultiBranchOpen] = useState(false);
 
   // Helper to add a log entry
   const addLog = (
@@ -444,7 +429,7 @@ export default function RagConfiguration({
         project.namespace,
       );
       const ragJobs = activeJobs.filter((job) =>
-        ["RAG_INITIAL_INDEX", "RAG_INCREMENTAL_INDEX"].includes(job.jobType),
+        job.jobType === "REPOSITORY_INDEX_BUILD",
       );
       if (ragJobs.length > 0) {
         const jobIds = ragJobs.map((job) => job.id);
@@ -543,13 +528,6 @@ export default function RagConfiguration({
         project.ragConfig?.excludePatterns,
       ),
     );
-    // Multi-branch settings
-    setMultiBranchEnabled(project.ragConfig?.multiBranchEnabled ?? false);
-    setBranchRetentionDays(project.ragConfig?.branchRetentionDays ?? 30);
-    setIndexedBranches((project.ragConfig?.indexedBranches ?? []).join(", "));
-    setTransientBranchIndexesEnabled(
-      project.ragConfig?.transientBranchIndexesEnabled ?? false,
-    );
   }, [project.ragConfig]);
 
   const handleUpdateConfig = async () => {
@@ -562,19 +540,6 @@ export default function RagConfiguration({
         branch: branch.trim() || null,
         includePatterns: includePatterns.length > 0 ? includePatterns : null,
         excludePatterns: excludePatterns.length > 0 ? excludePatterns : null,
-        // Multi-branch settings
-        multiBranchEnabled: multiBranchEnabled || null,
-        branchRetentionDays: branchRetentionDays || null,
-        indexedBranches: multiBranchEnabled
-          ? indexedBranches
-              .split(",")
-              .map((value) => value.trim())
-              .filter((value, index, values) =>
-                Boolean(value) && values.indexOf(value) === index,
-              ) || null
-          : null,
-        transientBranchIndexesEnabled:
-          multiBranchEnabled && transientBranchIndexesEnabled ? true : null,
       };
 
       const updatedProject = await projectService.updateRagConfig(
@@ -613,8 +578,6 @@ export default function RagConfiguration({
           branch: branch.trim() || null,
           includePatterns: includePatterns.length > 0 ? includePatterns : null,
           excludePatterns: excludePatterns.length > 0 ? excludePatterns : null,
-          multiBranchEnabled: multiBranchEnabled || null,
-          branchRetentionDays: branchRetentionDays || null,
         });
       }
       const result = await projectService.syncAnalysisScope(
@@ -697,10 +660,7 @@ export default function RagConfiguration({
     }
   };
 
-  const handleTriggerIndexing = async (
-    targetBranch: string | null = null,
-    allConfiguredBranches = false,
-  ) => {
+  const handleTriggerIndexing = async (targetBranch: string | null = null) => {
     if (!project.namespace) return;
 
     if (indexing) return;
@@ -718,29 +678,20 @@ export default function RagConfiguration({
     setIndexingError(null);
     setSseConnected(true);
     setIsLogWindowOpen(true);
-    // An all-branch rebuild is selected by its explicit flag and must not also
-    // carry a single branch. Keeping these request shapes mutually exclusive
-    // makes the pipeline-agent dispatch unambiguous.
-    const requestedBranch = allConfiguredBranches
-      ? null
-      : targetBranch ?? (branch.trim() || null);
+    const requestedBranch = targetBranch ?? (branch.trim() || null);
     setBranchProgress(
-      allConfiguredBranches || !requestedBranch
-        ? {}
-        : { [requestedBranch]: {} },
+      requestedBranch ? { [requestedBranch]: {} } : {},
     );
     setBranchIndexes((current) =>
       current.map((index) =>
-        allConfiguredBranches || index.branchName === requestedBranch
+        index.branchName === requestedBranch
           ? { ...index, status: "BUILDING", errorMessage: null }
           : index,
       ),
     );
     addLog(
       "system",
-      allConfiguredBranches
-        ? "Connecting to indexing service for all configured branches..."
-        : `Connecting to indexing service for ${requestedBranch || "the primary"} branch...`,
+      `Connecting to indexing service for ${requestedBranch || "the primary"} branch...`,
       "info",
     );
 
@@ -871,7 +822,6 @@ export default function RagConfiguration({
       handleProgress,
       handleComplete,
       handleError,
-      allConfiguredBranches,
     );
   };
 
@@ -981,18 +931,9 @@ export default function RagConfiguration({
     enabled !== (project.ragConfig?.enabled ?? false) ||
     branch.trim() !== (project.ragConfig?.branch ?? "") ||
     !arraysEqual(includePatterns, project.ragConfig?.includePatterns ?? []) ||
-    !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []) ||
-    multiBranchEnabled !== (project.ragConfig?.multiBranchEnabled ?? false) ||
-    branchRetentionDays !== (project.ragConfig?.branchRetentionDays ?? 30) ||
-    indexedBranches.trim() !==
-      (project.ragConfig?.indexedBranches ?? []).join(", ") ||
-    transientBranchIndexesEnabled !==
-      (project.ragConfig?.transientBranchIndexesEnabled ?? false);
+    !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []);
 
-  // Multi-branch progress is rendered per branch row. A single-branch project
-  // has no such rows, so expose the same persisted batch/ETA metadata in the
-  // project-level progress card instead.
-  const singleBranchProgress = !multiBranchEnabled
+  const singleBranchProgress = Object.values(branchProgress).length === 1
     ? Object.values(branchProgress)[0]
     : undefined;
 
@@ -1265,150 +1206,21 @@ export default function RagConfiguration({
           )}
         </div>
 
-        {/* Multi-Branch RAG Configuration */}
-        <Collapsible
-          open={isMultiBranchOpen}
-          onOpenChange={setIsMultiBranchOpen}
-        >
-          <div className="rounded-lg border p-4 bg-muted/20">
-            <CollapsibleTrigger className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-primary" />
-                <span className="font-medium">
-                  Multi-Branch Indexing (Advanced)
-                </span>
-                <Badge variant="outline" className="text-xs">
-                  Beta
-                </Badge>
-              </div>
-              <GitBranch
-                className={`h-4 w-4 transition-transform ${isMultiBranchOpen ? "rotate-90" : ""}`}
-              />
-            </CollapsibleTrigger>
-
-            <CollapsibleContent className="pt-4 space-y-4">
-              <Alert className="bg-amber-500/10 border-amber-500/30">
-                <Info className="h-4 w-4 text-amber-500" />
-                <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
-                  <strong>Multi-Branch Indexing</strong> keeps an independent,
-                  revision-pinned index for each retained target branch. A PR
-                  against <code>master</code> queries the master generation; a
-                  PR against <code>develop</code> queries develop. Source changes
-                  are added as an isolated PR overlay.
-                </AlertDescription>
-              </Alert>
-
-              {/* Enable Multi-Branch Indexing */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="multi-branch-enabled">
-                    Enable Multi-Branch Indexing
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Keep exact indexes for the primary branch and explicitly
-                    retained target branches
-                  </p>
-                </div>
-                <Switch
-                  id="multi-branch-enabled"
-                  checked={multiBranchEnabled}
-                  onCheckedChange={setMultiBranchEnabled}
-                  disabled={updating || !enabled}
-                />
-              </div>
-
-              {/* Retained branches */}
-              {multiBranchEnabled && (
-                <div className="space-y-2">
-                  <Label htmlFor="indexed-branches">Retained target branches</Label>
-                  <Input
-                    id="indexed-branches"
-                    value={indexedBranches}
-                    onChange={(event) => setIndexedBranches(event.target.value)}
-                    placeholder="develop, release/next"
-                    disabled={updating || !enabled}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Comma-separated exact branch names, excluding the primary
-                    branch above. Only branches listed here receive retained
-                    RAG snapshots; Branch Analysis patterns are configured and
-                    evaluated separately. A new commit on a retained branch
-                    rebuilds its exact snapshot.
-                  </p>
-                </div>
-              )}
-
-              {multiBranchEnabled && (
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="transient-branch-indexes">
-                      Temporary indexes for other PR targets
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Build a revision-pinned target snapshot when an analyzed PR
-                      targets a branch that is not retained. Branch pushes do not
-                      make it durable.
-                    </p>
-                  </div>
-                  <Switch
-                    id="transient-branch-indexes"
-                    checked={transientBranchIndexesEnabled}
-                    onCheckedChange={setTransientBranchIndexesEnabled}
-                    disabled={updating || !enabled}
-                  />
-                </div>
-              )}
-
-              {/* Branch Retention Days */}
-              <div className="space-y-2">
-                <Label htmlFor="branch-retention">
-                  Branch Index Retention (days)
-                </Label>
-                <Input
-                  id="branch-retention"
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={branchRetentionDays}
-                  onChange={(e) =>
-                    setBranchRetentionDays(parseInt(e.target.value) || 30)
-                  }
-                  disabled={updating || !enabled || !multiBranchEnabled}
-                  className="w-24"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Automatically clean up inactive temporary PR-target indexes
-                  after this many days. Retained branches stay available until
-                  their branch is deleted or removed from the project.
-                </p>
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-
-        {enabled && multiBranchEnabled && (
+        {enabled && (
           <div className="rounded-lg border p-4 space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
               <div>
                 <div className="flex items-center gap-2 font-medium">
                   <Layers className="h-4 w-4" />
-                  Configured branch indexes
+                  Managed branch indexes
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Each row is an independently queryable RAG snapshot. Refresh
-                  creates a new exact revision for that branch.
+                  The primary branch is queued automatically. Other exact branch
+                  generations are created when an eligible PR target or analyzed
+                  branch is observed. Broad branch patterns are indexed on demand,
+                  not eagerly enumerated.
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleTriggerIndexing(null, true)}
-                disabled={updating || indexing || hasChanges || branchIndexes.length === 0}
-              >
-                {indexing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                Refresh all
-              </Button>
             </div>
 
             {hasChanges && (
@@ -1428,7 +1240,7 @@ export default function RagConfiguration({
                       <code className="truncate rounded bg-muted px-1.5 py-0.5 text-xs">
                         {index.branchName}
                       </code>
-                      <Badge variant="outline">{index.role === "PRIMARY" ? "Primary" : "Retained"}</Badge>
+                      <Badge variant="outline">{index.role === "PRIMARY" ? "Primary" : "Managed"}</Badge>
                       {getBranchStatusBadge(index.status)}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
@@ -1473,7 +1285,8 @@ export default function RagConfiguration({
               ))}
               {branchIndexes.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Save a primary branch and at least one retained target branch to manage their indexes here.
+                  The first primary-branch index is queued automatically after
+                  RAG is enabled. Its state will appear here.
                 </p>
               )}
             </div>
@@ -1534,28 +1347,6 @@ export default function RagConfiguration({
             )}
           </div>
         )}
-
-        {/* Warning for failed incremental updates */}
-        {ragStatus?.indexStatus &&
-          (ragStatus.indexStatus.failedIncrementalCount ?? 0) >= 5 && (
-            <div className="rounded-lg border border-amber-500 p-4 bg-amber-50 dark:bg-amber-950/30">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium text-amber-800 dark:text-amber-200">
-                    Multiple Incremental Update Failures Detected
-                  </p>
-                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                    There have been{" "}
-                    {ragStatus.indexStatus.failedIncrementalCount} failed
-                    incremental RAG updates. This may indicate issues with the
-                    repository structure or file patterns. Consider triggering a
-                    full reindex to resolve potential index inconsistencies.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
         {/* Indexing Progress */}
         {indexingProgress && (
@@ -1723,7 +1514,7 @@ export default function RagConfiguration({
           <Button
             type="button"
             variant="outline"
-            onClick={() => handleTriggerIndexing(null, multiBranchEnabled)}
+            onClick={() => handleTriggerIndexing(null)}
             disabled={!enabled || indexing || !ragStatus?.canStartIndexing}
           >
             {indexing ? (
@@ -1734,7 +1525,7 @@ export default function RagConfiguration({
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Trigger Indexing
+                Rebuild Primary Index
               </>
             )}
           </Button>

@@ -1937,8 +1937,9 @@ export default function ImportProject() {
                   <Info className="h-4 w-4" />
                   <AlertDescription>
                     <strong>Important:</strong> The main branch is used as the
-                    baseline for RAG code indexing, multi-branch context
-                    retrieval for PRs, and is always included in analysis
+                    baseline for RAG code indexing and PR context. Eligible
+                    target branches are indexed on demand and the main branch
+                    is always included in analysis
                     patterns. It cannot be removed from branch filters.
                   </AlertDescription>
                 </Alert>

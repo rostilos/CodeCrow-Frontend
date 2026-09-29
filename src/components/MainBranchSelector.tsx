@@ -228,8 +228,8 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
       );
       
       const message = hasRagTraining
-        ? `Main branch changed to "${mainBranch}". RAG retraining is required for the changes to take full effect.`
-        : `Main branch set to "${mainBranch}". RAG configuration will use this branch.`;
+        ? `Main branch changed to "${mainBranch}". A replacement primary index will be queued automatically.`
+        : `Main branch set to "${mainBranch}". The primary index will be queued automatically.`;
       
       toast({
         title: "Main branch updated",
@@ -286,8 +286,9 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              The main branch is used as the baseline for RAG code indexing, multi-branch context retrieval for PRs, 
-              and is always included in PR target and branch push analysis patterns.
+              The main branch is queued automatically as the repository-index baseline.
+              Other eligible PR targets and analyzed branches receive exact generations
+              on demand, and the main branch remains included in analysis patterns.
             </AlertDescription>
           </Alert>
           
@@ -296,7 +297,7 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 <strong>Warning:</strong> Changing the main branch after analysis has been performed will require 
-                RAG retraining. All indexed branch data will need to be reprocessed against the new main branch.
+                a new primary RAG generation. Existing managed branch generations remain revision-bound.
               </AlertDescription>
             </Alert>
           )}
@@ -366,8 +367,9 @@ export default function MainBranchSelector({ project, onUpdate }: MainBranchSele
                 You are about to change the main branch from <strong>{currentMainBranch}</strong> to <strong>{mainBranch}</strong>.
               </p>
               <p className="text-destructive">
-                This action will require RAG retraining. All indexed branch data will need to be 
-                reprocessed against the new main branch.
+                This action changes the primary repository-index identity. A
+                replacement generation will be queued automatically; the prior
+                exact generation remains available until publication completes.
               </p>
               <p>
                 Are you sure you want to proceed?
