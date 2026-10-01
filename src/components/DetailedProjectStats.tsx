@@ -26,6 +26,7 @@ import { analysisService, AnalysisTrendData, BranchIssuesTrendPoint } from '@/ap
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import PartialAnalysesSection from './PartialAnalysesSection';
 
 // Cache for trend data to avoid repeated API calls
 const trendDataCache = new Map<string, { data: AnalysisTrendData[] | BranchIssuesTrendPoint[]; timestamp: number }>();
@@ -184,6 +185,7 @@ export default function DetailedProjectStats({
     };
 
     const totalIssuesByType = (stats.securityIssues || 0) + (stats.qualityIssues || 0) + (stats.performanceIssues || 0) + (stats.styleIssues || 0);
+    const recentAnalyses = stats.recentAnalyses?.filter((analysis) => analysis.status !== 'partial') || [];
 
     return (
         <div className="space-y-6">
@@ -802,7 +804,7 @@ export default function DetailedProjectStats({
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="history" className="mt-4">
+                <TabsContent value="history" className="mt-4 space-y-4">
                     <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-lg overflow-hidden relative">
                         {/* Subtle top glow */}
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/30 via-primary/50 to-primary/30" />
@@ -812,8 +814,8 @@ export default function DetailedProjectStats({
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2">
-                                {stats.recentAnalyses && stats.recentAnalyses.length > 0 ? (
-                                    [...stats.recentAnalyses]
+                                {recentAnalyses.length > 0 ? (
+                                    [...recentAnalyses]
                                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                         .map((analysis, index) => (
                                             <div key={index}
@@ -848,6 +850,12 @@ export default function DetailedProjectStats({
                             </div>
                         </CardContent>
                     </Card>
+                    <PartialAnalysesSection
+                        key={`${workspaceSlug}/${projectNamespace}/${branchName || ''}`}
+                        workspaceSlug={workspaceSlug}
+                        projectNamespace={projectNamespace}
+                        branchName={branchName}
+                    />
                 </TabsContent>
 
                 <TabsContent value="files" className="mt-4">

@@ -84,6 +84,7 @@ import BranchPRHierarchy from "@/components/BranchPRHierarchy";
 import IssuesByFileDisplay from "@/components/IssuesByFileDisplay";
 import IssueFilterPanel, { IssueFilters } from "@/components/IssueFilterPanel";
 import JobsList from "@/components/JobsList";
+import PartialAnalysesSection from "@/components/PartialAnalysesSection";
 import { useWorkspaceRoutes } from "@/hooks/useWorkspaceRoutes";
 import {
   AnalysisResultBadge,
@@ -161,6 +162,7 @@ const DASHBOARD_SUB_TABS = [
   "preview",
   "issues",
   "activity",
+  "partial",
   "qa-doc",
   "graph",
   "source",
@@ -194,7 +196,13 @@ export default function ProjectDashboard() {
     PullRequestSummary | PullRequestDTO | null
   >(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const analysisRequest = useRef(0);
   const [maxVersion, setMaxVersion] = useState<number>(1);
+  const [availableVersions, setAvailableVersions] = useState<number[]>([]);
+  const [partialVersions, setPartialVersions] = useState<number[]>([]);
+  const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
+  const isPartialAnalysis = analysisStatus === "PARTIAL";
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
   const [versionCommitHash, setVersionCommitHash] = useState<string | null>(
     null,
@@ -335,7 +343,7 @@ export default function ProjectDashboard() {
       searchParams.get("returnTab") || searchParams.get("subTab");
     if (isDashboardSubTab(returnTab)) {
       setBranchTab(returnTab);
-      setPrTab(returnTab);
+      setPrTab(returnTab === "partial" ? "preview" : returnTab);
       // Clean up one-time returnTab param, persist as subTab for browser back
       if (searchParams.has("returnTab")) {
         const cleanParams = new URLSearchParams(searchParams);
@@ -364,6 +372,21 @@ export default function ProjectDashboard() {
       loadBranchData(urlBranch);
     }
   }, [namespace, currentWorkspace]);
+
+  const urlPrId = searchParams.get("prId");
+  const urlPrNumber = searchParams.get("prNumber");
+  const urlVersion = searchParams.get("version");
+
+  useEffect(() => {
+    if (!urlPrId && !urlPrNumber) return;
+    const pr = [...pullRequests, ...Object.values(prsByBranch).flat()].find((item) =>
+      urlPrId ? String(item.id) === urlPrId : String(item.prNumber) === urlPrNumber,
+    );
+    if (!pr) return;
+    setSelectionType("pr");
+    setSelectedPR(pr);
+    loadAnalysisIssuesForPR(pr, urlVersion ? parseInt(urlVersion) : undefined);
+  }, [urlPrId, urlPrNumber, urlVersion, pullRequests, prsByBranch, namespace, currentWorkspace]);
 
   useEffect(() => {
     if (selectionType === "pr" && selectedPR && prTab === "qa-doc") {
@@ -555,7 +578,6 @@ export default function ProjectDashboard() {
     if (!namespace || !currentWorkspace) return;
 
     try {
-      setAnalysisLoading(true);
       const pullRequestsResponse = await analysisService.getPullRequests(
         currentWorkspace.slug,
         namespace,
@@ -565,31 +587,8 @@ export default function ProjectDashboard() {
         (a, b) => b.prNumber - a.prNumber,
       );
       setPullRequests(sortedPullRequests);
-
-      // Check if there's a PR ID in the URL params
-      const urlPrId = searchParams.get("prId");
-      const urlPrNumber = searchParams.get("prNumber");
-      const urlVersion = searchParams.get("version");
-      let prToSelect: PullRequestSummary | null = null;
-
-      if ((urlPrId || urlPrNumber) && sortedPullRequests.length > 0) {
-        const foundPR = sortedPullRequests.find((p) =>
-          urlPrId
-            ? String(p.id) === urlPrId
-            : String(p.prNumber) === urlPrNumber,
-        );
-        if (foundPR) {
-          prToSelect = foundPR;
-          setSelectionType("pr");
-          setSelectedPR(foundPR);
-          const versionToLoad = urlVersion ? parseInt(urlVersion) : undefined;
-          await loadAnalysisIssuesForPR(foundPR, versionToLoad);
-        }
-      }
     } catch (error: any) {
       console.error("Failed to load project analysis:", error);
-    } finally {
-      setAnalysisLoading(false);
     }
   };
 
@@ -599,7 +598,17 @@ export default function ProjectDashboard() {
   ) => {
     if (!currentWorkspace || !namespace) return;
 
-    // Clear selections when loading new PR
+    const request = ++analysisRequest.current;
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    setSelectedVersion(version ?? 0);
+    setAnalysisIssues([]);
+    setIssueSummary(null);
+    setAnalysisStatus(null);
+    setAnalysisSummary(null);
+    setVersionCommitHash(null);
+    setAvailableVersions([]);
+    setPartialVersions([]);
     setSelectedIssues(new Set());
 
     try {
@@ -609,23 +618,34 @@ export default function ProjectDashboard() {
         String(pr.prNumber),
         version,
       );
+      if (request !== analysisRequest.current) return;
       setAnalysisIssues(response.issues);
       setIssueSummary(response.summary);
-      setMaxVersion(response.maxVersion || 1);
+      setMaxVersion(response.maxVersion ?? 0);
+      setAvailableVersions(response.availableVersions ?? []);
+      setPartialVersions(response.partialVersions ?? []);
+      setAnalysisStatus(response.analysisStatus ?? null);
       setAnalysisSummary(response.analysisSummary || null);
       setVersionCommitHash(response.commitHash || null);
 
       // Set version to what was actually loaded (version param or latest)
       const loadedVersion =
-        version !== undefined ? version : response.maxVersion || 1;
+        response.currentVersion ?? response.maxVersion ?? 0;
       setSelectedVersion(loadedVersion);
     } catch (error: any) {
+      if (request !== analysisRequest.current) return;
       console.error("Failed to load analysis issues:", error);
+      setAnalysisError(error.message || "Could not load this PR analysis.");
       setAnalysisIssues([]);
       setIssueSummary(null);
       setMaxVersion(1);
+      setAvailableVersions([]);
+      setPartialVersions([]);
+      setAnalysisStatus(null);
       setAnalysisSummary(null);
       setVersionCommitHash(null);
+    } finally {
+      if (request === analysisRequest.current) setAnalysisLoading(false);
     }
   };
 
@@ -682,15 +702,6 @@ export default function ProjectDashboard() {
   const loadMoreBranchIssues = async () => {
     if (selectedBranch && branchIssues.length < branchIssuesTotalCount) {
       await loadBranchIssues(selectedBranch, branchIssuesPage + 1, true);
-    }
-  };
-
-  const loadPRAnalysis = async (pr: PullRequestSummary | PullRequestDTO) => {
-    setAnalysisLoading(true);
-    try {
-      await loadAnalysisIssuesForPR(pr);
-    } finally {
-      setAnalysisLoading(false);
     }
   };
 
@@ -769,7 +780,6 @@ export default function ProjectDashboard() {
     newParams.set("prId", String(pr.id));
     setSearchParams(newParams);
 
-    await loadPRAnalysis(pr);
   };
 
   const handleBranchChange = async (branchName: string) => {
@@ -828,7 +838,6 @@ export default function ProjectDashboard() {
       params.set("prId", String(selectedPR.id));
       params.set("version", String(versionNum));
       setSearchParams(params);
-      loadAnalysisIssuesForPR(selectedPR, versionNum);
     }
   };
 
@@ -1391,7 +1400,8 @@ export default function ProjectDashboard() {
                             ? `${selectedPR.sourceBranchName} → ${selectedPR.targetBranchName}`
                             : selectedPR.targetBranchName}
                         </span>
-                        {"analysisResult" in selectedPR &&
+                        {isPartialAnalysis && <Badge variant="outline" className="border-warning/50 text-warning">Partial</Badge>}
+                        {!isPartialAnalysis && "analysisResult" in selectedPR &&
                           selectedPR.analysisResult && (
                             <AnalysisResultBadge
                               result={
@@ -1571,7 +1581,7 @@ export default function ProjectDashboard() {
 
           {/* Tabs Row - Always visible */}
           <div className="flex items-center justify-between mt-6 lg:mt-8 -mb-4">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6 overflow-x-auto whitespace-nowrap">
               <button
                 onClick={() => clearFiltersAndSwitchToPreview(selectionType)}
                 className={`pb-3 text-base font-medium transition-colors relative ${
@@ -1637,6 +1647,20 @@ export default function ProjectDashboard() {
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
+              {selectionType === "branch" && <button
+                onClick={() => setBranchTab("partial")}
+                className={`pb-3 text-base font-medium transition-colors relative flex items-center gap-2 ${
+                  branchTab === "partial"
+                    ? "text-orange-500 !font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Partial analyses
+                {branchTab === "partial" && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+                )}
+              </button>}
               <button
                 onClick={() =>
                   selectionType === "branch"
@@ -1732,20 +1756,20 @@ export default function ProjectDashboard() {
                 )}
               </button>
             </div>
-            {selectionType === "pr" && selectedPR && maxVersion > 1 && (
-              <div className="-mt-4">
+            {selectionType === "pr" && selectedPR && availableVersions.length > 0 && (
+              <div className="-mt-4 shrink-0 ml-4">
                 <Select
                   value={String(selectedVersion)}
                   onValueChange={handleVersionChange}
                 >
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-[190px]" aria-label="Analysis version" disabled={analysisLoading || availableVersions.length === 1}>
                     <SelectValue placeholder="Version" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: maxVersion }, (_, i) => i + 1).map(
+                    {availableVersions.map(
                       (v) => (
                         <SelectItem key={v} value={String(v)}>
-                          Version {v}
+                          Version {v}{partialVersions.includes(v) ? " · Partial" : ""}
                         </SelectItem>
                       ),
                     )}
@@ -1759,7 +1783,15 @@ export default function ProjectDashboard() {
 
       {/* Main Content */}
       <div className="container mx-auto p-4 lg:p-6">
-        {selectionType === "branch" && selectedBranch ? (
+        {selectionType === "branch" && branchTab === "partial" ? (
+          <PartialAnalysesSection
+            key={`${currentWorkspace!.slug}/${namespace}/branch/${selectedBranch}`}
+            workspaceSlug={currentWorkspace!.slug}
+            projectNamespace={namespace!}
+            branchName={selectedBranch || undefined}
+            refreshKey={jobsRefreshKey}
+          />
+        ) : selectionType === "branch" && selectedBranch ? (
           <div className="space-y-4">
             {/* Branch Tab Content */}
             {statsLoading ? (
@@ -2058,15 +2090,36 @@ export default function ProjectDashboard() {
           </div>
         ) : selectionType === "pr" && selectedPR ? (
           <div className="space-y-4">
+            {analysisError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Could not load PR #{selectedPR.prNumber}</AlertTitle>
+                <AlertDescription className="flex items-center justify-between gap-3">
+                  {analysisError}
+                  <Button variant="outline" size="sm" onClick={() => loadAnalysisIssuesForPR(selectedPR, selectedVersion || undefined)}>Retry</Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            {isPartialAnalysis && !analysisLoading && (
+              <Alert className="border-warning/40">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Partial analysis · Version {selectedVersion}</AlertTitle>
+                <AlertDescription>
+                  This run did not finish. Saved findings and summary remain available in the usual tabs.
+                  Results are excluded from project totals and trends, and do not establish a complete quality verdict.
+                </AlertDescription>
+              </Alert>
+            )}
             {/* PR Tab Content */}
-            {prTab === "preview" && (
+            {prTab === "preview" && !analysisError && (
               <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
                         PR #{selectedPR.prNumber}
-                        {"analysisResult" in selectedPR &&
+                        {isPartialAnalysis && <Badge variant="outline" className="border-warning/50 text-warning">Partial</Badge>}
+                        {!isPartialAnalysis && "analysisResult" in selectedPR &&
                           selectedPR.analysisResult && (
                             <AnalysisResultBadge
                               result={
@@ -2475,10 +2528,10 @@ export default function ProjectDashboard() {
 
                       {currentFilteredIssues.length === 0 && (
                         <div className="text-center py-8">
-                          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500/50" />
-                          <p className="font-medium">All clear!</p>
+                          {isPartialAnalysis ? <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-warning/50" /> : <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500/50" />}
+                          <p className="font-medium">{isPartialAnalysis ? "No saved findings match the current filters" : "All clear!"}</p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            No issues found in this PR
+                            {isPartialAnalysis ? "This incomplete run does not establish a clean result." : "No issues found in this PR"}
                           </p>
                         </div>
                       )}
@@ -2595,10 +2648,10 @@ export default function ProjectDashboard() {
                           <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4"></div>
                           Loading analysis...
                         </div>
-                      ) : currentFilteredIssues.length === 0 ? (
+                      ) : analysisError ? null : currentFilteredIssues.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground">
-                          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />
-                          <p className="font-medium">No issues found</p>
+                          {isPartialAnalysis ? <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-warning/50" /> : <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />}
+                          <p className="font-medium">{isPartialAnalysis ? "No saved findings match the current filters" : "No issues found"}</p>
                           <p className="text-sm mt-1">
                             No analysis issues match the current filters
                           </p>

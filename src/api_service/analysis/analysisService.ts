@@ -74,19 +74,31 @@ export interface PullRequestDTO {
 
 export interface AnalysisHistory {
   id: string;
-  branch: string;
-  commitHash: string;
-  analysisDate: string;
-  totalIssues: number;
-  status: "completed" | "failed" | "in_progress";
+  branch: string | null;
+  sourceBranch: string | null;
+  pullRequestId: string | null;
+  commitHash: string | null;
+  prVersion: number | null;
+  analysisType: string | null;
+  triggeredAt: string;
+  completedAt: string;
+  issuesFound: number;
+  criticalIssuesFound: number;
+  status: "accepted" | "rejected" | "pending" | "error" | "partial";
 }
 
 export interface AnalysesHistoryResponse {
-  content: AnalysisHistory[];
+  analyses: AnalysisHistory[];
   totalElements: number;
   totalPages: number;
   currentPage: number;
   pageSize: number;
+}
+
+export interface AnalysisReportResponse {
+  analysis: AnalysisHistory;
+  summary: string | null;
+  issues: AnalysisIssue[];
 }
 
 export interface PullRequestsResponse {
@@ -170,6 +182,9 @@ export interface AnalysisIssuesResponse {
   summary: AnalysisIssueSummary;
   maxVersion?: number;
   currentVersion?: number;
+  availableVersions?: number[];
+  partialVersions?: number[];
+  analysisStatus?: "ACCEPTED" | "REJECTED" | "PENDING" | "ERROR" | "PARTIAL";
   analysisSummary?: string; // The comment/summary from the analysis
   commitHash?: string; // The commit hash for this specific analysis version
 }
@@ -383,6 +398,8 @@ class AnalysisService extends ApiService {
     page: number = 1,
     pageSize: number = 20,
     branch?: string,
+    status?: "ACCEPTED" | "REJECTED" | "PENDING" | "ERROR" | "PARTIAL",
+    prNumber?: number,
   ): Promise<AnalysesHistoryResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -392,9 +409,23 @@ class AnalysisService extends ApiService {
     if (branch) {
       params.append("branch", branch);
     }
+    if (status) params.append("status", status);
+    if (prNumber !== undefined) params.append("prNumber", String(prNumber));
 
     return this.request<AnalysesHistoryResponse>(
-      `/${workspaceSlug}/project/${namespace}/analysis/history?${params.toString()}`,
+      `/${workspaceSlug}/projects/${namespace}/analysis/history?${params.toString()}`,
+      {},
+      true,
+    );
+  }
+
+  async getAnalysisReport(
+    workspaceSlug: string,
+    namespace: string,
+    analysisId: string,
+  ): Promise<AnalysisReportResponse> {
+    return this.request<AnalysisReportResponse>(
+      `/${workspaceSlug}/projects/${namespace}/analysis/history/${analysisId}`,
       {},
       true,
     );
