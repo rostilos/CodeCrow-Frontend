@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import LearnedRulesConfig from "@/components/LearnedRulesConfig";
 import {
   projectService,
   ProjectDTO,
@@ -179,6 +180,7 @@ export default function CustomRulesConfig({ project, onUpdate }: CustomRulesConf
   }
 
   return (
+    <div className="space-y-6">
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -383,5 +385,9 @@ export default function CustomRulesConfig({ project, onUpdate }: CustomRulesConf
         </Alert>
       </CardContent>
     </Card>
+    {currentWorkspace && <LearnedRulesConfig key={`${currentWorkspace.slug}:${project.namespace}`}
+      workspace={currentWorkspace.slug} project={project.namespace}
+      disabled={hasChanges || saving} onRulesChanged={loadRules} />}
+    </div>
   );
 }

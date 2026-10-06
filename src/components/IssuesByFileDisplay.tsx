@@ -372,7 +372,7 @@ export default function IssuesByFileDisplay({
                             {issue.line > 0 ? (
                               <div className="flex items-center gap-1">
                                 <span className="text-muted-foreground/80">
-                                  L:{issue.line}
+                                  {issue.anchorSide === "BASE" ? "Base line" : "L"}:{issue.line}
                                 </span>
                               </div>
                             ) : (

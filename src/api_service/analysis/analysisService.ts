@@ -233,6 +233,7 @@ export interface AnalysisIssue {
   // Issue scope and range
   issueScope?: "LINE" | "BLOCK" | "FUNCTION" | "FILE" | null;
   endLineNumber?: number | null;
+  anchorSide?: "HEAD" | "BASE";
   // Origin issue – the CodeAnalysisIssue this branch issue was cloned from
   originIssueId?: number | null;
 }

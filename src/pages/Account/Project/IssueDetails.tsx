@@ -72,6 +72,7 @@ import {
 } from "@/components/ui/tooltip";
 import { buildVcsPrUrl } from "@/components/IssueListWithFilters";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import ReviewFindingFeedback from "@/components/ReviewFindingFeedback";
 
 export default function IssueDetails() {
   const { namespace, issueId } = useParams<{
@@ -127,7 +128,7 @@ export default function IssueDetails() {
   const sameFileIssueKey = useMemo(() => {
     if (!issue?.file) return "";
     return scopeIssues
-      .filter((si) => si.file === issue.file && si.line > 0)
+      .filter((si) => si.file === issue.file && si.line > 0 && si.anchorSide !== "BASE")
       .map((si) => si.line)
       .sort((a, b) => a - b)
       .join(",");
@@ -361,6 +362,11 @@ export default function IssueDetails() {
   // already covers them — no re-fetch, no loading flash.
   useEffect(() => {
     if (!issue || !currentWorkspace || !namespace) return;
+    if (issue.anchorSide === "BASE") {
+      setSnippet(null);
+      setSnippetLoading(false);
+      return;
+    }
     if (!issue.file || !issue.line || issue.line <= 0) {
       setSnippet(null);
       return;
@@ -532,6 +538,7 @@ export default function IssueDetails() {
   }, [
     issue?.id,
     issue?.analysisId,
+    issue?.anchorSide,
     sameFileIssueKey,
     currentWorkspace,
     namespace,
@@ -541,7 +548,7 @@ export default function IssueDetails() {
   // Expand snippet up or down by 50 lines
   const handleSnippetExpand = useCallback(
     async (direction: "up" | "down" | "all") => {
-      if (!snippet || !issue || !currentWorkspace || !namespace) return;
+      if (!snippet || !issue || issue.anchorSide === "BASE" || !currentWorkspace || !namespace) return;
       // Need at least one source
       if (!issue.analysisId && !issue.branch && !issue.prNumber) return;
 
@@ -1453,6 +1460,7 @@ export default function IssueDetails() {
                             : "Line"}
                     </Badge>
                   )}
+                  {issue.anchorSide === "BASE" && <Badge variant="outline">Removed source</Badge>}
                   <Separator orientation="vertical" className="h-4" />
                   <TooltipProvider>
                     <Tooltip>
@@ -1801,7 +1809,33 @@ export default function IssueDetails() {
             {/* For resolved branch issues the line numbers may have drifted,
                 so we hide the (possibly misleading) branch file snippet and
                 show a link to the original PR-level issue instead. */}
-            {scopeBranch &&
+            {issue.anchorSide === "BASE" ? (
+              <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Code2 className="h-4 w-4" />
+                    Removed source
+                  </CardTitle>
+                  <CardDescription>
+                    This finding refers to code removed by the change. The reported
+                    line belongs to the base revision. Open the pull request diff
+                    to view the original source; the current file is not shown here.
+                  </CardDescription>
+                </CardHeader>
+                {buildPrUrl(issue.prNumber) && (
+                  <CardContent>
+                    <a
+                      href={buildPrUrl(issue.prNumber)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      View pull request diff
+                    </a>
+                  </CardContent>
+                )}
+              </Card>
+            ) : scopeBranch &&
             issue.status === "resolved" &&
             (issue.originIssueId || issue.prNumber || issue.analysisId) ? (
               <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
@@ -1979,6 +2013,14 @@ export default function IssueDetails() {
                   )}
                 </CardContent>
               </Card>
+
+              {currentWorkspace && namespace && (!scopeBranch || issue.originIssueId) && (
+                <ReviewFindingFeedback
+                  key={`${currentWorkspace.slug}:${namespace}:${scopeBranch ? issue.originIssueId : issue.id}`}
+                  workspace={currentWorkspace.slug} project={namespace}
+                  issueId={String(scopeBranch ? issue.originIssueId : issue.id)}
+                />
+              )}
 
               {/* Code Diff */}
               {diffContent && (
