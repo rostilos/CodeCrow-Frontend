@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph from "graphology";
+import { buildDirectoryMap, buildFileMap, directoryLayout, directedLayout, pointFilters, relationFacet, traceDistances } from "./repositoryGraph";
 import Sigma from "sigma";
 import {
   EdgeArrowProgram,
@@ -13,6 +14,7 @@ import {
   Code2,
   Database,
   FileCode,
+  FolderOpen,
   Filter,
   GitBranch,
   Layers,
@@ -102,37 +104,18 @@ type SigmaGraph = Graph<SigmaNodeAttributes, SigmaEdgeAttributes>;
 
 type MetadataRecord = Record<string, unknown>;
 
-const NODE_PALETTE = ["#2563eb", "#16a34a", "#db2777", "#0891b2", "#ea580c", "#7c3aed"];
-const EDGE_PALETTE = ["#0ea5e9", "#22c55e", "#f59e0b", "#ef4444", "#d946ef", "#6366f1"];
-
-const NODE_KIND_STYLE: Record<string, { color: string; label: string }> = {
-  entity: { color: "#06b6d4", label: "Entities" },
-  file: { color: "#2563eb", label: "Files" },
-  module: { color: "#2563eb", label: "Modules" },
-  namespace: { color: "#3b82f6", label: "Namespaces" },
-  class: { color: "#7c3aed", label: "Classes" },
-  interface: { color: "#8b5cf6", label: "Interfaces" },
-  record: { color: "#9333ea", label: "Records" },
-  struct: { color: "#a855f7", label: "Structs" },
-  trait: { color: "#c026d3", label: "Traits" },
-  enum: { color: "#db2777", label: "Enums" },
-  method: { color: "#16a34a", label: "Methods" },
-  function: { color: "#10b981", label: "Functions" },
-  constructor: { color: "#059669", label: "Constructors" },
-  property: { color: "#0891b2", label: "Properties" },
-  field: { color: "#0e7490", label: "Fields" },
-  variable: { color: "#0284c7", label: "Variables" },
-  constant: { color: "#0369a1", label: "Constants" },
-  type: { color: "#c2410c", label: "Types" },
-};
+// Colors identify a small set of structural roles, consistently across files.
+const NODE_KIND_STYLE: Record<string, { color: string; label: string }> = Object.fromEntries([
+  ["directory"].map(kind => [kind, { color: "#8b5cf6", label: "Folders" }]),
+  ["file", "module", "namespace"].map(kind => [kind, { color: "#3b82f6", label: "Files / modules" }]),
+  ["class", "interface", "record", "struct", "trait", "enum", "type"].map(kind => [kind, { color: "#a855f7", label: "Types" }]),
+  ["method", "function", "constructor"].map(kind => [kind, { color: "#10b981", label: "Callables" }]),
+  ["property", "field", "variable", "constant", "entity"].map(kind => [kind, { color: "#94a3b8", label: "Other symbols" }]),
+].flat());
 
 const EDGE_COLOR: Record<string, string> = {
-  contains: "#94a3b8",
-  imports: "#f59e0b",
-  calls: "#22c55e",
-  references: "#0ea5e9",
-  extends: "#ef4444",
-  implements: "#d946ef",
+  dependency: "#3b82f6", contains: "#94a3b8", imports: "#38bdf8", calls: "#10b981",
+  references: "#38bdf8", extends: "#a855f7", implements: "#a855f7",
 };
 
 const DEFAULT_FILTERS: RepositoryIndexFilters = {};
@@ -142,12 +125,7 @@ const OVERVIEW_GRAPH_THRESHOLD = 320;
 const DENSE_GRAPH_THRESHOLD = 500;
 const HUGE_GRAPH_THRESHOLD = 12000;
 const MAX_LAYOUT_EDGE_COUNT = 80000;
-const INACTIVE_NODE_OPACITY = 0.45;
 const RELATION_BROWSER_PAGE_SIZE = 100;
-
-function relationFacet(edge: RepositoryIndexEdge) {
-  return (edge.label || edge.kind || "related").trim().toLocaleLowerCase();
-}
 
 function relationFamily(edge: RepositoryIndexEdge) {
   const value = `${edge.kind || ""} ${edge.label || ""}`.toLocaleLowerCase();
@@ -216,14 +194,14 @@ function getResolvedGraphTheme(): ResolvedGraphTheme {
         isDark: true,
         labelColor: "#e5e7eb",
         activeLabelColor: "#0f172a",
-        inactiveEdgeColor: "rgba(94, 121, 150, 0.24)",
+        inactiveEdgeColor: "#596b82",
         defaultEdgeColor: "rgba(148, 163, 184, 0.3)",
       }
     : {
         isDark: false,
         labelColor: "#0f172a",
         activeLabelColor: "#0f172a",
-        inactiveEdgeColor: "rgba(71, 85, 105, 0.2)",
+        inactiveEdgeColor: "#9aa9bb",
         defaultEdgeColor: "rgba(71, 85, 105, 0.32)",
       };
 }
@@ -287,12 +265,9 @@ function hashIndex(value: string, modulo: number) {
 }
 
 function colorForNode(node: RepositoryIndexNode) {
-  if (node.recordType === "file_aggregate") {
-    return NODE_PALETTE[hashIndex(node.group || node.path || node.id, NODE_PALETTE.length)];
-  }
-  const style = NODE_KIND_STYLE[node.kind];
-  if (style) return style.color;
-  return NODE_PALETTE[hashIndex(node.group || node.language || node.id, NODE_PALETTE.length)];
+  if (node.kind === "directory") return "#8b5cf6";
+  if (node.virtual && node.recordType !== "file_aggregate") return "#94a3b8";
+  return NODE_KIND_STYLE[node.kind]?.color || "#94a3b8";
 }
 
 function edgeVisualStyle(edge: RepositoryIndexEdge) {
@@ -301,144 +276,9 @@ function edgeVisualStyle(edge: RepositoryIndexEdge) {
   return {
     color:
       EDGE_COLOR[family] ||
-      EDGE_PALETTE[hashIndex(relationFacet(edge) || edge.id, EDGE_PALETTE.length)],
+      "#94a3b8",
     label: edge.label || metadataLabel(edge.kind || "related"),
-    size: Math.min(2.4, 0.65 + Math.log2(weight + 1) * 0.32),
-  };
-}
-
-function topLevelGroup(path?: string | null) {
-  if (!path) return "External";
-  const parts = path.split("/").filter(Boolean);
-  if (parts.length <= 1) return "Repository root";
-  return parts.slice(0, Math.min(parts.length - 1, 2)).join("/");
-}
-
-function pathNodeId(path: string) {
-  return `file-map:${path}`;
-}
-
-type FileMapResult = {
-  nodes: RepositoryIndexNode[];
-  edges: RepositoryIndexEdge[];
-  internalRelations: number;
-};
-
-/** Collapse raw symbols into an inspectable, rendering-only file map. */
-function buildFileMap(
-  nodes: RepositoryIndexNode[],
-  edges: RepositoryIndexEdge[],
-): FileMapResult {
-  const sourceNodeById = new Map(nodes.map((node) => [node.id, node]));
-  const nodesByPath = new Map<string, RepositoryIndexNode[]>();
-  const externalNodes = new Map<string, RepositoryIndexNode>();
-
-  nodes.forEach((node) => {
-    if (!node.path) {
-      externalNodes.set(node.id, node);
-      return;
-    }
-    const group = nodesByPath.get(node.path);
-    if (group) group.push(node);
-    else nodesByPath.set(node.path, [node]);
-  });
-
-  const relationCountsByPath = new Map<string, number>();
-  edges.forEach((edge) => {
-    const sourcePath = sourceNodeById.get(edge.source)?.path;
-    const targetPath = sourceNodeById.get(edge.target)?.path;
-    if (sourcePath) relationCountsByPath.set(sourcePath, (relationCountsByPath.get(sourcePath) || 0) + 1);
-    if (targetPath && targetPath !== sourcePath) {
-      relationCountsByPath.set(targetPath, (relationCountsByPath.get(targetPath) || 0) + 1);
-    }
-  });
-
-  const fileNodes = Array.from(nodesByPath.entries()).map(([path, members]) => {
-    const representative =
-      members.find((node) => node.kind === "file" || node.recordType === "structural_file") ||
-      members[0];
-    const languages = Array.from(new Set(members.map((node) => node.language).filter(Boolean)));
-    const memberKinds = new Map<string, number>();
-    members.forEach((node) => memberKinds.set(node.kind, (memberKinds.get(node.kind) || 0) + 1));
-    return {
-      ...representative,
-      id: pathNodeId(path),
-      title: path.split("/").filter(Boolean).at(-1) || path,
-      kind: "file",
-      group: topLevelGroup(path),
-      path,
-      language: languages.join(", ") || representative.language,
-      primaryName: path,
-      symbolNames: members.flatMap((node) => node.symbolNames || []).slice(0, 80),
-      preview: `${members.length} indexed structural records · ${relationCountsByPath.get(path) || 0} loaded relations`,
-      virtual: true,
-      recordType: "file_aggregate",
-      metadata: {
-        ...(representative.metadata || {}),
-        aggregate_record_count: members.length,
-        aggregate_relation_count: relationCountsByPath.get(path) || 0,
-        aggregate_kinds: Object.fromEntries(Array.from(memberKinds.entries()).sort()),
-      },
-      file: null,
-      entity: null,
-      relation: null,
-    } satisfies RepositoryIndexNode;
-  });
-
-  const endpointId = (nodeId: string) => {
-    const node = sourceNodeById.get(nodeId);
-    return node?.path ? pathNodeId(node.path) : nodeId;
-  };
-  const bundles = new Map<string, RepositoryIndexEdge & { count: number; relationIds: string[] }>();
-  let internalRelations = 0;
-
-  edges.forEach((edge) => {
-    const source = endpointId(edge.source);
-    const target = endpointId(edge.target);
-    if (source === target) {
-      internalRelations += 1;
-      return;
-    }
-    const facet = relationFacet(edge);
-    const key = `${source}\0${target}\0${facet}`;
-    const current = bundles.get(key);
-    if (current) {
-      current.count += 1;
-      current.weight = current.count;
-      current.relationIds.push(edge.id);
-      current.tokens = Array.from(new Set([...(current.tokens || []), ...(edge.tokens || [])])).slice(0, 12);
-      return;
-    }
-    bundles.set(key, {
-      ...edge,
-      id: `file-edge:${hashIndex(key, 2147483647)}:${bundles.size}`,
-      source,
-      target,
-      label: edge.label || edge.kind,
-      weight: 1,
-      metadata: { ...(edge.metadata || {}), aggregate: true },
-      relation: undefined,
-      count: 1,
-      relationIds: [edge.id],
-    });
-  });
-
-  const aggregateEdges = Array.from(bundles.values()).map(({ count, relationIds, ...edge }) => ({
-    ...edge,
-    weight: count,
-    metadata: {
-      ...(edge.metadata || {}),
-      aggregate: true,
-      aggregateCount: count,
-      relationIds: relationIds.slice(0, 80),
-    },
-  }));
-  const usedExternalIds = new Set(aggregateEdges.flatMap((edge) => [edge.source, edge.target]));
-  const renderedExternalNodes = Array.from(externalNodes.values()).filter((node) => usedExternalIds.has(node.id));
-  return {
-    nodes: [...fileNodes, ...renderedExternalNodes],
-    edges: aggregateEdges,
-    internalRelations,
+    size: Math.min(2.4, 1 + Math.log2(weight + 1) * 0.32),
   };
 }
 
@@ -556,6 +396,7 @@ function computeRelationLayoutPositions(
 ) {
   const positions = new Map<string, { x: number; y: number }>();
   if (nodes.length === 0) return positions;
+  if (nodes.length <= 180) return directedLayout(nodes, edges);
 
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const adjacency = new Map(nodes.map((node) => [node.id, new Set<string>()]));
@@ -878,12 +719,14 @@ function initialPosition(
 }
 
 function sizeForNode(node: RepositoryIndexNode, degree: number, graphOrder: number) {
+  if (node.kind === "directory") return 9;
+  if (node.recordType === "file_aggregate") return 6;
   const degreeBoost = Math.sqrt(Math.max(degree, 0));
   const smallGraphBoost = graphOrder <= 40 ? 1.16 : graphOrder <= 180 ? 1.06 : 1;
   if (node.recordType === "structural_file" || node.kind === "file") {
     return Math.min(17, (8.4 + degreeBoost * 0.82) * smallGraphBoost);
   }
-  return Math.min(11.5, (4.6 + degreeBoost * 0.68) * smallGraphBoost);
+  return Math.min(11.5, (5.5 + degreeBoost * 0.68) * smallGraphBoost);
 }
 
 function cappedDenseNodeSize(node: RepositoryIndexNode, baseSize: number, graphOrder: number) {
@@ -914,6 +757,7 @@ function buildSigmaGraph(
   nodes: RepositoryIndexNode[],
   edges: RepositoryIndexEdge[],
   positions: Map<string, { x: number; y: number }>,
+  mapMode = false,
 ) {
   const graph = new Graph<SigmaNodeAttributes, SigmaEdgeAttributes>({
     type: "directed",
@@ -922,7 +766,7 @@ function buildSigmaGraph(
   });
   const nodeIds = new Set(nodes.map((node) => node.id));
   const degreeById = new Map<string, number>();
-  const layoutPositions = computeRelationLayoutPositions(nodes, edges);
+  const layoutPositions = mapMode ? directoryLayout(nodes) : computeRelationLayoutPositions(nodes, edges);
   const overviewEdgeIds = selectOverviewEdgeIds(nodes, edges);
 
   edges.forEach((edge) => {
@@ -934,20 +778,6 @@ function buildSigmaGraph(
     degreeById.set(edge.target, (degreeById.get(edge.target) || 0) + weight);
   });
 
-  const labelBudget =
-    nodes.length <= 40 ? nodes.length :
-      nodes.length <= 180 ? 18 :
-        nodes.length <= 500 ? 20 : 18;
-  const prominentNodeIds = new Set(
-    [...nodes]
-      .sort((left, right) =>
-        (degreeById.get(right.id) || 0) - (degreeById.get(left.id) || 0) ||
-        (left.title || left.id).localeCompare(right.title || right.id),
-      )
-      .slice(0, labelBudget)
-      .map((node) => node.id),
-  );
-
   nodes.forEach((node, index) => {
     const position = initialPosition(
       node,
@@ -958,14 +788,14 @@ function buildSigmaGraph(
     );
     const degree = degreeById.get(node.id) || 0;
     graph.addNode(node.id, {
-      label: node.title || "Repository index point",
+      label: node.kind === "directory" ? `${node.title} · ${node.metadata?.file_count} files` : node.title || "Repository index point",
       x: position.x,
       y: position.y,
       size: sizeForNode(node, degree, nodes.length),
       color: colorForNode(node),
       kind: node.kind,
       raw: node,
-      forceLabel: prominentNodeIds.has(node.id),
+      forceLabel: mapMode && nodes.length <= 60,
       zIndex: 1,
     });
   });
@@ -980,7 +810,7 @@ function buildSigmaGraph(
       label: style.label,
       size: style.size,
       weight: layoutEdgeWeight(edge),
-      color: colorWithOpacity(style.color, 0.62),
+      color: style.color,
       kind: edge.kind,
       raw: edge,
       backbone: overviewEdgeIds.has(edge.id),
@@ -1022,13 +852,17 @@ export function RepositoryIndexExplorer({
   initialBranch,
 }: RepositoryIndexExplorerProps) {
   const { theme } = useTheme();
-  const graphSectionRef = useRef<HTMLElement | null>(null);
+  const graphSectionRef = useRef<HTMLDivElement | null>(null);
   const graphHostRef = useRef<HTMLDivElement | null>(null);
   const sigmaRef = useRef<Sigma<SigmaNodeAttributes, SigmaEdgeAttributes> | null>(null);
   const graphRef = useRef<SigmaGraph | null>(null);
   const layoutTimerRef = useRef<number | null>(null);
   const forceLayoutRef = useRef<ForceAtlas2Layout<SigmaNodeAttributes, SigmaEdgeAttributes> | null>(null);
   const positionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const scopeRequestRef = useRef(0);
+  const pointRequestRef = useRef(0);
+  const overviewRequestRef = useRef(0);
+  const loadedGraphRef = useRef({ nodes: [] as RepositoryIndexNode[], edges: [] as RepositoryIndexEdge[] });
   const layoutTopologyRef = useRef<{
     nodes: RepositoryIndexNode[];
     edges: RepositoryIndexEdge[];
@@ -1047,7 +881,12 @@ export function RepositoryIndexExplorer({
   const [selectedEdge, setSelectedEdge] = useState<RepositoryIndexEdge | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [graphView, setGraphView] = useState<GraphViewMode>("files");
-  const [showDisconnected, setShowDisconnected] = useState(false);
+  const graphViewRef = useRef<GraphViewMode>("files");
+  const cancelAllRef = useRef(false);
+  const [loadProgress, setLoadProgress] = useState(0);
+  const [directoryScope, setDirectoryScope] = useState("");
+  const [showAllConnections, setShowAllConnections] = useState(false);
+  const [showDisconnected, setShowDisconnected] = useState(true);
   const [showExternalEndpoints, setShowExternalEndpoints] = useState(false);
   const [hiddenRelationFacets, setHiddenRelationFacets] = useState<Set<string>>(() => new Set());
   const [graphCoverage, setGraphCoverage] = useState<GraphCoverage>({});
@@ -1056,7 +895,11 @@ export function RepositoryIndexExplorer({
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingGraph, setLoadingGraph] = useState(false);
+  const [loadingCompleteMap, setLoadingCompleteMap] = useState(false);
   const [loadingNode, setLoadingNode] = useState(false);
+  const [expansionMessage, setExpansionMessage] = useState<string | null>(null);
+  const [traceDepth, setTraceDepth] = useState(1);
+  const [nodeQuery, setNodeQuery] = useState("");
   const [loadingAll, setLoadingAll] = useState(false);
   const [layoutRunning, setLayoutRunning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1084,8 +927,8 @@ export function RepositoryIndexExplorer({
   }, [theme]);
 
   useEffect(() => {
-    filtersRef.current = filters;
-  }, [filters]);
+    loadedGraphRef.current = { nodes, edges };
+  }, [nodes, edges]);
 
   useEffect(() => {
     cursorRef.current = cursor;
@@ -1145,14 +988,28 @@ export function RepositoryIndexExplorer({
       return total + Number(edge.metadata?.aggregateCount || 1);
     }, 0);
   }, [fileMap.edges, fileMapProjection.nodes, showExternalEndpoints]);
+  const mapMode = graphView === "files" || (nodes.length > 250 && !filtersRef.current.path);
+  const directoryMap = useMemo(() => buildDirectoryMap({
+    ...fileMapProjection,
+    edges: fileMapProjection.edges.filter(edge => !hiddenRelationFacets.has(relationFacet(edge))),
+  }, directoryScope), [directoryScope, fileMapProjection, hiddenRelationFacets]);
   const graphProjection = useMemo(
-    () => graphView === "files" ? fileMapProjection : { nodes, edges, internalRelations: 0 },
-    [edges, fileMapProjection, graphView, nodes],
+    () => mapMode ? directoryMap : { nodes, edges, internalRelations: 0 },
+    [directoryMap, edges, mapMode, nodes],
   );
   const relationFilteredEdges = useMemo(
-    () => graphProjection.edges.filter((edge) => !hiddenRelationFacets.has(relationFacet(edge))),
-    [graphProjection.edges, hiddenRelationFacets],
+    () => mapMode ? graphProjection.edges : graphProjection.edges.filter(edge => !hiddenRelationFacets.has(relationFacet(edge))),
+    [graphProjection.edges, hiddenRelationFacets, mapMode],
   );
+  const representedRelations = graphView === "files" ? graphCoverage.returnedRelations || 0 : edges.length;
+  const openDirectory = useCallback((path: string) => {
+    ++pointRequestRef.current;
+    setDirectoryScope(path);
+    setSelectedNode(null);
+    setSelectedEdge(null);
+    setHoveredNodeId(null);
+    positionsRef.current.clear();
+  }, []);
   const connectedNodeIds = useMemo(
     () => new Set(relationFilteredEdges.flatMap((edge) => [edge.source, edge.target])),
     [relationFilteredEdges],
@@ -1163,7 +1020,12 @@ export function RepositoryIndexExplorer({
       : graphProjection.nodes.filter((node) => connectedNodeIds.has(node.id)),
     [connectedNodeIds, graphProjection.nodes, relationFilteredEdges.length, showDisconnected],
   );
-  const renderedEdges = relationFilteredEdges;
+  const matchingNodes = useMemo(() => {
+    const query = nodeQuery.trim().toLocaleLowerCase();
+    return query ? (mapMode ? fileMapProjection.nodes : nodes).filter(node => `${node.title} ${node.path || ""}`.toLocaleLowerCase().includes(query)).slice(0, 12) : [];
+  }, [fileMapProjection.nodes, mapMode, nodeQuery, nodes]);
+  const renderedEdges = useMemo(() => relationFilteredEdges.filter(edge => edge.source !== edge.target), [relationFilteredEdges]);
+  const selfRelationCount = relationFilteredEdges.length - renderedEdges.length;
   const nodeById = useMemo(
     () => new Map(graphProjection.nodes.map((node) => [node.id, node])),
     [graphProjection.nodes],
@@ -1175,14 +1037,9 @@ export function RepositoryIndexExplorer({
   const overviewGraph = renderedNodes.length >= OVERVIEW_GRAPH_THRESHOLD;
   const denseGraph = renderedNodes.length >= DENSE_GRAPH_THRESHOLD;
   const hugeGraph = renderedNodes.length >= HUGE_GRAPH_THRESHOLD;
-  const overviewEdgeCount = useMemo(
-    () => overviewGraph
-      ? selectOverviewEdgeIds(renderedNodes, renderedEdges).size
-      : renderedEdges.length,
-    [overviewGraph, renderedEdges, renderedNodes],
-  );
 
   const loadOverview = useCallback(async (branch?: string | null) => {
+    const request = ++overviewRequestRef.current;
     setLoadingOverview(true);
     try {
       const data = await projectService.getRepositoryIndexOverview(
@@ -1190,6 +1047,7 @@ export function RepositoryIndexExplorer({
         namespace,
         branch,
       );
+      if (request !== overviewRequestRef.current) return;
       setOverview(data);
       if (!branch && data.selectedBranch) {
         const nextFilters = {
@@ -1203,9 +1061,9 @@ export function RepositoryIndexExplorer({
         setError(data.reason || "Repository index is not available");
       }
     } catch (error: unknown) {
-      setError(errorMessage(error, "Failed to load repository index overview"));
+      if (request === overviewRequestRef.current) setError(errorMessage(error, "Failed to load repository index overview"));
     } finally {
-      setLoadingOverview(false);
+      if (request === overviewRequestRef.current) setLoadingOverview(false);
     }
   }, [workspaceSlug, namespace]);
 
@@ -1215,16 +1073,48 @@ export function RepositoryIndexExplorer({
       overrideFilters?: RepositoryIndexFilters,
       overrideCursor?: string | null,
     ) => {
+      const request = ++scopeRequestRef.current;
+      ++pointRequestRef.current;
+      setLoadingNode(false);
+      setLoadingAll(false);
+      setExpansionMessage(null);
       const activeFilters = overrideFilters || filtersRef.current;
+      if (!append) {
+        filtersRef.current = activeFilters;
+        positionsRef.current.clear();
+        setSelectedNode(null);
+        setSelectedEdge(null);
+        setNodes([]);
+        setEdges([]);
+        setCursor(null);
+        cursorRef.current = null;
+      }
       const activeCursor = append ? overrideCursor || cursorRef.current : null;
       setLoadingGraph(true);
       setError(null);
+      const wantsMap = graphViewRef.current === "files";
+      setLoadingCompleteMap(wantsMap);
+      let mapFinished = false;
+      if (wantsMap && !append) {
+        // Render a small preview while the complete projection is built on a
+        // cold generation. A cached map usually wins and discards this preview.
+        void projectService.getRepositoryIndexGraph(workspaceSlug, namespace, {
+          filters: activeFilters, limit: DEFAULT_GRAPH_LIMIT, projection: "symbols",
+        }).then(preview => {
+          if (mapFinished || request !== scopeRequestRef.current || !preview.available) return;
+          setNodes(preview.nodes || []);
+          setEdges(preview.edges || []);
+          setGraphCoverage({ returnedRelations: preview.returnedRelations, relationsTruncated: true });
+          setLoadingGraph(false);
+        }).catch(() => { /* The complete-map request reports a failure if needed. */ });
+      }
       try {
         const response = await projectService.getRepositoryIndexGraph(
           workspaceSlug,
           namespace,
           {
             filters: activeFilters,
+            projection: graphViewRef.current,
             limit: limitRef.current,
             cursor: activeCursor,
             scanLimit:
@@ -1236,6 +1126,7 @@ export function RepositoryIndexExplorer({
           },
         );
 
+        if (request !== scopeRequestRef.current) return;
         if (!response.available) {
           setNodes([]);
           setEdges([]);
@@ -1246,14 +1137,15 @@ export function RepositoryIndexExplorer({
           return;
         }
 
-        positionsRef.current.clear();
+        if (!append) positionsRef.current.clear();
         setNodes((prev) =>
           append ? mergeNodes(prev, response.nodes || []) : response.nodes || [],
         );
         setEdges((prev) =>
           append ? mergeEdges(prev, response.edges || []) : response.edges || [],
         );
-        setCursor(response.nextCursor || null);
+        cursorRef.current = response.nextCursor || null;
+        setCursor(cursorRef.current);
         setGraphCoverage({
           eligibleRelations: response.eligibleRelations,
           returnedRelations: response.returnedRelations,
@@ -1264,9 +1156,10 @@ export function RepositoryIndexExplorer({
           setSelectedEdge(null);
         }
       } catch (error: unknown) {
-        setError(errorMessage(error, "Failed to load repository index graph"));
+        if (request === scopeRequestRef.current) setError(errorMessage(error, "Failed to load repository index graph"));
       } finally {
-        setLoadingGraph(false);
+        mapFinished = true;
+        if (request === scopeRequestRef.current) { setLoadingGraph(false); setLoadingCompleteMap(false); }
       }
     },
     [namespace, workspaceSlug],
@@ -1274,47 +1167,63 @@ export function RepositoryIndexExplorer({
 
   const loadPoint = useCallback(
     async (node: RepositoryIndexNode, mergeNeighborhood = false) => {
+      const request = ++pointRequestRef.current;
+      const scope = scopeRequestRef.current;
+      setExpansionMessage(null);
+      setLoadingNode(false);
       if (node.virtual) {
         setSelectedNode(node);
         return;
       }
       setLoadingNode(true);
+      setError(null);
       try {
         const response = await projectService.getRepositoryIndexPoint(
-          workspaceSlug,
-          namespace,
-          node.id,
-          { filters: filtersRef.current, neighborLimit: 120 },
+          workspaceSlug, namespace, node.id,
+          { filters: pointFilters(node, filtersRef.current.branches), neighborLimit: 160 },
         );
-        if (response.node) {
-          setSelectedNode(response.node);
-          if (mergeNeighborhood) {
-            const incomingNodes = [
-              response.node,
-              ...(response.neighbors || []),
-            ];
-            positionsRef.current.clear();
-            setNodes((prev) => mergeNodes(prev, incomingNodes));
-            setEdges((prev) => mergeEdges(prev, response.edges || []));
-          }
+        if (request !== pointRequestRef.current || scope !== scopeRequestRef.current) return;
+        if (response.available === false || !response.node) {
+          setError(response.reason || "This indexed symbol is unavailable. Refresh the graph to load the current generation.");
+          return;
+        }
+        setSelectedNode(response.node);
+        if (mergeNeighborhood) {
+          const incomingNodes = [response.node, ...(response.neighbors || [])];
+          const current = loadedGraphRef.current;
+          const nodeIds = new Set(current.nodes.map(item => item.id));
+          const edgeIds = new Set(current.edges.map(item => item.id));
+          const addedNodes = incomingNodes.filter(item => !nodeIds.has(item.id)).length;
+          const addedEdges = (response.edges || []).filter(item => !edgeIds.has(item.id)).length;
+          setNodes(prev => mergeNodes(prev, incomingNodes));
+          setEdges(prev => mergeEdges(prev, response.edges || []));
+          setExpansionMessage(
+            `${addedNodes} new records · ${addedEdges} new relations. ` +
+            (response.relationsTruncated
+              ? "This neighborhood is limited to 160 neighbors. Load more graph pages or open the file to explore the remaining relations."
+              : "Select a connected symbol and expand it to continue along the graph."),
+          );
         }
       } catch (error: unknown) {
-        setError(errorMessage(error, "Failed to load repository index point"));
+        if (request === pointRequestRef.current && scope === scopeRequestRef.current) {
+          setError(errorMessage(error, "Failed to load repository index point"));
+        }
       } finally {
-        setLoadingNode(false);
+        if (request === pointRequestRef.current && scope === scopeRequestRef.current) setLoadingNode(false);
       }
     },
     [namespace, workspaceSlug],
   );
 
   const applyFilters = useCallback(
-    (nextFilters = filtersRef.current) => {
+    (nextFilters = filters) => {
+      filtersRef.current = nextFilters;
       setFilters(nextFilters);
       setCursor(null);
       void loadOverview(nextFilters.branches?.[0]);
       void loadGraph(false, nextFilters, null);
     },
-    [loadGraph, loadOverview],
+    [filters, loadGraph, loadOverview],
   );
 
   const resetFilters = useCallback(() => {
@@ -1326,37 +1235,45 @@ export function RepositoryIndexExplorer({
           ? [overview.selectedBranch]
           : [],
     };
+    graphViewRef.current = "files";
     setGraphView("files");
+    setDirectoryScope("");
     setHiddenRelationFacets(new Set());
     applyFilters(next);
   }, [applyFilters, initialBranch, overview?.selectedBranch]);
 
   const loadAllAvailable = useCallback(async () => {
     if (!cursorRef.current || loadingGraph || loadingAll) return;
+    const request = scopeRequestRef.current;
+    const activeFilters = filtersRef.current;
     setLoadingAll(true);
+    cancelAllRef.current = false;
+    const allNodes = new Map(loadedGraphRef.current.nodes.map(node => [node.id, node]));
+    const allEdges = new Map(loadedGraphRef.current.edges.map(edge => [edge.id, edge]));
+    setLoadProgress(allEdges.size);
     setError(null);
     try {
       let nextCursor = cursorRef.current;
-      let safetyCounter = 0;
-      while (nextCursor && safetyCounter < 80) {
-        safetyCounter += 1;
+      while (nextCursor && !cancelAllRef.current) {
+        const previousCursor = nextCursor;
         const response = await projectService.getRepositoryIndexGraph(
           workspaceSlug,
           namespace,
           {
-            filters: filtersRef.current,
+            filters: activeFilters,
             limit: MAX_GRAPH_PAGE_SIZE,
             cursor: nextCursor,
             scanLimit: MAX_GRAPH_PAGE_SIZE * 3,
           },
         );
+        if (request !== scopeRequestRef.current) return;
         if (!response.available) {
           setError(response.reason || "Repository index is not available");
           break;
         }
-        positionsRef.current.clear();
-        setNodes((prev) => mergeNodes(prev, response.nodes || []));
-        setEdges((prev) => mergeEdges(prev, response.edges || []));
+        for (const node of response.nodes || []) allNodes.set(node.id, node);
+        for (const edge of response.edges || []) allEdges.set(edge.id, edge);
+        setLoadProgress(allEdges.size);
         nextCursor = response.nextCursor || null;
         setCursor(nextCursor);
         cursorRef.current = nextCursor;
@@ -1365,15 +1282,18 @@ export function RepositoryIndexExplorer({
           returnedRelations: response.returnedRelations,
           relationsTruncated: response.relationsTruncated,
         });
+        if (nextCursor === previousCursor) throw new Error("The index cursor did not advance. Refresh to continue.");
         await new Promise((resolve) => window.setTimeout(resolve, 0));
       }
-      if (safetyCounter >= 80 && nextCursor) {
-        setError("Stopped after 80 graph pages. Use Load More to continue.");
-      }
+
     } catch (error: unknown) {
-      setError(errorMessage(error, "Failed to load remaining repository index graph pages"));
+      if (request === scopeRequestRef.current) setError(errorMessage(error, "Failed to load remaining repository index graph pages"));
     } finally {
-      setLoadingAll(false);
+      if (request === scopeRequestRef.current) {
+        setNodes([...allNodes.values()]);
+        setEdges([...allEdges.values()]);
+        setLoadingAll(false);
+      }
     }
   }, [loadingAll, loadingGraph, namespace, workspaceSlug]);
 
@@ -1456,13 +1376,19 @@ export function RepositoryIndexExplorer({
     const layoutEdges: RepositoryIndexEdge[] = [];
     graph.forEachNode((_nodeId, attributes) => layoutNodes.push(attributes.raw));
     graph.forEachEdge((_edgeId, attributes) => layoutEdges.push(attributes.raw));
-    const seedPositions = computeRelationLayoutPositions(layoutNodes, layoutEdges);
+    const seedPositions = mapMode ? directoryLayout(layoutNodes) : computeRelationLayoutPositions(layoutNodes, layoutEdges);
     graph.forEachNode((nodeId) => {
       const position = seedPositions.get(nodeId);
       if (position) graph.mergeNodeAttributes(nodeId, position);
     });
     sanitizeGraphPositions(graph);
     renderer.refresh();
+
+    if (mapMode || graph.order <= 180) {
+      storePositions(graph);
+      renderer.getCamera().animatedReset({ duration: 260 });
+      return;
+    }
 
     let forceLayout: ForceAtlas2Layout<SigmaNodeAttributes, SigmaEdgeAttributes>;
     try {
@@ -1506,19 +1432,25 @@ export function RepositoryIndexExplorer({
       renderer.getCamera().animatedReset({ duration: 320 });
       setLayoutRunning(false);
     }, duration);
-  }, [storePositions]);
+  }, [mapMode, storePositions]);
 
   const focusNode = useCallback((nodeId?: string | null) => {
     const graph = graphRef.current;
     const renderer = sigmaRef.current;
     if (!nodeId || !graph || !renderer || !graph.hasNode(nodeId)) return;
     sanitizeGraphPositions(graph);
-    const attributes = graph.getNodeAttributes(nodeId);
-    if (!Number.isFinite(attributes.x) || !Number.isFinite(attributes.y)) return;
+    const attributes = renderer.getNodeDisplayData(nodeId);
+    if (!attributes || !Number.isFinite(attributes.x) || !Number.isFinite(attributes.y)) return;
     renderer.getCamera().animate(
       { x: attributes.x, y: attributes.y, ratio: 0.42 },
       { duration: 320 },
     );
+  }, []);
+
+  const invalidateRequests = useCallback(() => {
+    ++scopeRequestRef.current;
+    ++pointRequestRef.current;
+    ++overviewRequestRef.current;
   }, []);
 
   useEffect(() => {
@@ -1532,8 +1464,12 @@ export function RepositoryIndexExplorer({
     };
     setFilters(nextFilters);
     setCursor(null);
+    filtersRef.current = nextFilters;
+    setExpansionMessage(null);
+    setHiddenRelationFacets(new Set());
     void loadGraph(false, nextFilters, null);
-  }, [initialBranch, loadGraph]);
+    return invalidateRequests;
+  }, [initialBranch, invalidateRequests, loadGraph]);
 
   useEffect(() => {
     const container = graphHostRef.current;
@@ -1550,7 +1486,7 @@ export function RepositoryIndexExplorer({
     if (topologyChanged) positionsRef.current.clear();
     layoutTopologyRef.current = { nodes: renderedNodes, edges: renderedEdges };
 
-    const graph = buildSigmaGraph(renderedNodes, renderedEdges, positionsRef.current);
+    const graph = buildSigmaGraph(renderedNodes, renderedEdges, positionsRef.current, mapMode);
     graphRef.current = graph;
 
     if (graph.order === 0) return;
@@ -1571,14 +1507,14 @@ export function RepositoryIndexExplorer({
         defaultDrawNodeHover: drawRepositoryIndexNodeHover,
         enableEdgeEvents: true,
         hideEdgesOnMove: denseGraph,
-        hideLabelsOnMove: true,
+        hideLabelsOnMove: false,
         itemSizesReference: "screen",
         labelColor: { attribute: "labelColor", color: graphTheme.labelColor },
-        labelDensity: hugeGraph ? 0 : denseGraph ? 0.008 : graph.order > 180 ? 0.045 : 0.12,
+        labelDensity: hugeGraph ? 0 : denseGraph ? 0.008 : graph.order > 180 ? 0.2 : 1,
         labelFont: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
         labelGridCellSize: denseGraph ? 140 : 112,
-        labelRenderedSizeThreshold: hugeGraph ? 999 : denseGraph ? 20 : graph.order > 280 ? 15 : graph.order > 40 ? 11 : 7,
-        labelSize: denseGraph ? 10 : 11,
+        labelRenderedSizeThreshold: hugeGraph ? 999 : denseGraph ? 20 : graph.order > 280 ? 15 : 6,
+        labelSize: mapMode ? 12 : denseGraph ? 10 : 11,
         labelWeight: "500",
         minCameraRatio: 0.02,
         maxCameraRatio: 8,
@@ -1604,12 +1540,18 @@ export function RepositoryIndexExplorer({
       setSelectedNode(raw);
       void loadPoint(raw, false);
     });
+    renderer.on("doubleClickNode", ({ node, event }) => {
+      const raw = graph.getNodeAttribute(node, "raw");
+      if (raw.recordType === "directory_aggregate" && raw.path) { event.preventSigmaDefault(); openDirectory(raw.path); }
+    });
     renderer.on("clickEdge", ({ edge, event }) => {
       event.preventSigmaDefault();
+      ++pointRequestRef.current;
       setSelectedNode(null);
       setSelectedEdge(graph.getEdgeAttribute(edge, "raw"));
     });
     renderer.on("clickStage", () => {
+      ++pointRequestRef.current;
       setSelectedNode(null);
       setSelectedEdge(null);
       setHoveredNodeId(null);
@@ -1671,7 +1613,7 @@ export function RepositoryIndexExplorer({
       renderer.kill();
       if (sigmaRef.current === renderer) sigmaRef.current = null;
     };
-  }, [denseGraph, graphTheme.defaultEdgeColor, graphTheme.labelColor, hugeGraph, loadPoint, renderedEdges, renderedNodes, runLayout, stopLayout, storePositions]);
+  }, [denseGraph, graphTheme.defaultEdgeColor, graphTheme.labelColor, hugeGraph, loadPoint, mapMode, openDirectory, renderedEdges, renderedNodes, runLayout, stopLayout, storePositions]);
 
   useEffect(() => {
     const renderer = sigmaRef.current;
@@ -1679,14 +1621,13 @@ export function RepositoryIndexExplorer({
     if (!renderer || !graph) return;
 
     const activeNode = selectedNode?.id || hoveredNodeId;
-    const neighbors = new Set<string>();
-    if (activeNode && graph.hasNode(activeNode)) {
-      graph.forEachNeighbor(activeNode, (neighbor) => neighbors.add(neighbor));
-    }
+    const sparseMap = renderedNodes.length <= 25 && renderedEdges.length <= renderedNodes.length * 1.5;
+    const distances = traceDistances(renderedNodes, renderedEdges, activeNode, mapMode ? 1 : traceDepth);
+    const neighbors = new Set([...distances.keys()].filter(id => id !== activeNode));
 
     renderer.setSettings({
       nodeReducer: (node, data) => {
-        const active = !!activeNode;
+        const active = distances.size > 0;
         const isActive = node === activeNode;
         const isNeighbor = neighbors.has(node);
         const graphAttributes = graph.getNodeAttributes(node);
@@ -1697,9 +1638,7 @@ export function RepositoryIndexExplorer({
           ...data,
           x: Number.isFinite(data.x) ? data.x : graphAttributes.x,
           y: Number.isFinite(data.y) ? data.y : graphAttributes.y,
-          size: hugeGraph
-            ? Math.min(displaySize, 2.8)
-            : displaySize,
+          size: (hugeGraph ? Math.min(displaySize, 2.8) : displaySize) * Math.min(1, Math.max(0.4, renderer.getDimensions().width / 800)),
           labelColor: graphTheme.labelColor,
         };
 
@@ -1710,12 +1649,10 @@ export function RepositoryIndexExplorer({
         }
 
         if (active && !isActive && !isNeighbor) {
-          reduced.color = colorWithOpacity(
-            data.color || graphAttributes.color || colorForNode(graphAttributes.raw),
-            INACTIVE_NODE_OPACITY,
-          );
+          reduced.color = graphTheme.isDark ? "#78869a" : "#94a3b8";
+          reduced.labelColor = graphTheme.isDark ? "#a4afbf" : "#64748b";
           reduced.size = Math.max(2.2, reduced.size * 0.82);
-          reduced.label = "";
+          if (graph.order > 40) reduced.label = "";
           reduced.zIndex = 0;
         } else if (denseGraph && !isActive && !isNeighbor) {
           reduced.label = "";
@@ -1723,13 +1660,12 @@ export function RepositoryIndexExplorer({
         }
 
         if (isNeighbor) {
-          reduced.size = Math.max(reduced.size * 1.35, 4);
           reduced.zIndex = 4;
-          reduced.forceLabel = neighbors.size <= 24 || baseSize > 8;
+          reduced.forceLabel = false;
         }
 
         if (isActive) {
-          reduced.color = "#ff7a00";
+          reduced.color = "#f59e0b";
           reduced.labelColor = graphTheme.activeLabelColor;
           reduced.size = Math.max(reduced.size * 1.8, 7);
           reduced.forceLabel = true;
@@ -1742,16 +1678,17 @@ export function RepositoryIndexExplorer({
       edgeReducer: (edge, data) => {
         const reduced: SigmaEdgeAttributes = { ...data };
         if (selectedEdge?.id === edge) {
-          reduced.color = "#ff7a00";
-          reduced.size = Math.max(data.size * 2.2, 3.2);
+          reduced.color = "#f59e0b";
+          reduced.size = Math.max(data.size * 1.8, 2.2);
           reduced.hidden = false;
           return reduced;
         }
+        if (mapMode && !showAllConnections && !sparseMap) {
+          const [source, target] = graph.extremities(edge);
+          reduced.hidden = !activeNode || (source !== activeNode && target !== activeNode);
+          return reduced;
+        }
         if (!activeNode) {
-          if (overviewGraph && !data.backbone) {
-            reduced.hidden = true;
-            return reduced;
-          }
           if (hugeGraph) {
             reduced.color = colorWithOpacity(data.color, graphTheme.isDark ? 0.34 : 0.42);
             reduced.size = Math.max(0.55, Math.min(reduced.size, 0.9));
@@ -1768,23 +1705,19 @@ export function RepositoryIndexExplorer({
           (neighbors.has(source) && neighbors.has(target));
 
         if (!inNeighborhood) {
-          if (overviewGraph) {
-            reduced.hidden = true;
-            return reduced;
-          }
           reduced.color = graphTheme.inactiveEdgeColor;
-          reduced.size = 0.45;
+          reduced.size = 0.9;
           return reduced;
         }
 
         reduced.hidden = false;
-        reduced.color = data.color;
+        reduced.color = colorWithOpacity(data.color, 0.9);
         reduced.size = data.size * (touchesActive ? 1.7 : 1.1);
         return reduced;
       },
     });
     renderer.refresh();
-  }, [denseGraph, graphTheme.activeLabelColor, graphTheme.inactiveEdgeColor, graphTheme.isDark, graphTheme.labelColor, hoveredNodeId, hugeGraph, overviewGraph, renderedEdges.length, renderedNodes.length, selectedEdge?.id, selectedNode?.id]);
+  }, [denseGraph, graphTheme.activeLabelColor, graphTheme.inactiveEdgeColor, graphTheme.isDark, graphTheme.labelColor, hoveredNodeId, hugeGraph, mapMode, overviewGraph, showAllConnections, renderedEdges, renderedNodes, selectedEdge?.id, selectedNode?.id, traceDepth]);
 
   const metricItems = [
     {
@@ -1798,8 +1731,8 @@ export function RepositoryIndexExplorer({
       icon: GitBranch,
     },
     {
-      label: "Loaded relations",
-      value: formatNumber(edges.length),
+      label: graphView === "files" ? "Mapped relations" : "Loaded relations",
+      value: formatNumber(representedRelations),
       icon: Split,
     },
     {
@@ -1811,25 +1744,14 @@ export function RepositoryIndexExplorer({
 
   const nodeLegendItems = useMemo(() => {
     const kinds = Array.from(new Set(renderedNodes.map((node) => node.kind).filter(Boolean)));
-    return kinds.slice(0, 12).map((kind) => ({
+    return Array.from(new Map(kinds.map((kind) => [colorForNode(renderedNodes.find(node => node.kind === kind)!), {
       kind,
       label: NODE_KIND_STYLE[kind]?.label || metadataLabel(kind),
       color: NODE_KIND_STYLE[kind]?.color || colorForNode(
         renderedNodes.find((node) => node.kind === kind) as RepositoryIndexNode,
       ),
-    }));
+    }])).values());
   }, [renderedNodes]);
-  const edgeLegendItems = useMemo(() => {
-    const byKind = new Map<string, RepositoryIndexEdge>();
-    renderedEdges.forEach((edge) => {
-      const family = relationFamily(edge);
-      if (!byKind.has(family)) byKind.set(family, edge);
-    });
-    return Array.from(byKind.values()).slice(0, 12).map((edge) => ({
-      kind: relationFamily(edge),
-      ...edgeVisualStyle(edge),
-    }));
-  }, [renderedEdges]);
 
   const selectedMetadataRecord = selectedNode?.metadata;
   const selectedFile = selectedNode?.file;
@@ -1871,7 +1793,7 @@ export function RepositoryIndexExplorer({
   const selectedRelations = useMemo(
     () =>
       selectedNode
-        ? renderedEdges
+        ? relationFilteredEdges
             .filter((edge) => edge.source === selectedNode.id || edge.target === selectedNode.id)
             .sort((left, right) => {
               const leftWeight = left.weight || 0;
@@ -1880,7 +1802,7 @@ export function RepositoryIndexExplorer({
             })
             .slice(0, 36)
         : [],
-    [renderedEdges, selectedNode],
+    [relationFilteredEdges, selectedNode],
   );
   const selectedEdgeSource = selectedEdge
     ? nodeById.get(selectedEdge.source) || rawNodeById.get(selectedEdge.source)
@@ -1908,8 +1830,8 @@ export function RepositoryIndexExplorer({
       const source = rawNodeById.get(edge.source);
       const target = rawNodeById.get(edge.target);
       if (relationBrowserPair) {
-        if (relationBrowserPair.sourcePath && source?.path !== relationBrowserPair.sourcePath) return false;
-        if (relationBrowserPair.targetPath && target?.path !== relationBrowserPair.targetPath) return false;
+        if (relationBrowserPair.sourcePath && !(source?.path === relationBrowserPair.sourcePath || source?.path?.startsWith(`${relationBrowserPair.sourcePath}/`))) return false;
+        if (relationBrowserPair.targetPath && !(target?.path === relationBrowserPair.targetPath || target?.path?.startsWith(`${relationBrowserPair.targetPath}/`))) return false;
       }
       if (!query) return true;
       return [
@@ -1946,6 +1868,7 @@ export function RepositoryIndexExplorer({
 
   const filterToNode = useCallback(() => {
     if (!selectedNode) return;
+    if (selectedNode.recordType === "directory_aggregate" && selectedNode.path) { openDirectory(selectedNode.path); return; }
     const entityQuery =
       selectedNode.entity?.qualified_name || selectedNode.entity?.name;
     if (entityQuery) {
@@ -1956,22 +1879,33 @@ export function RepositoryIndexExplorer({
       return;
     }
     if (selectedNode.path) {
+      graphViewRef.current = "symbols";
       setGraphView("symbols");
       applyFilters({
         ...filtersRef.current,
         path: selectedNode.path,
         fileQuery: "",
+        textQuery: "",
+        languages: [],
       });
     }
-  }, [applyFilters, selectedNode]);
+  }, [applyFilters, openDirectory, selectedNode]);
 
   const setGraphViewMode = useCallback((mode: GraphViewMode) => {
+    ++pointRequestRef.current;
+    setLoadingNode(false);
+    setExpansionMessage(null);
+    graphViewRef.current = mode;
     setGraphView(mode);
+    setDirectoryScope("");
+    const nextFilters = mode === "files" ? { ...filtersRef.current, path: undefined } : filtersRef.current;
+    setFilters(nextFilters);
+    void loadGraph(false, nextFilters);
     setSelectedNode(null);
     setSelectedEdge(null);
     setHoveredNodeId(null);
     positionsRef.current.clear();
-  }, []);
+  }, [loadGraph]);
 
   const toggleRelationFacet = useCallback((facet: string) => {
     positionsRef.current.clear();
@@ -1996,7 +1930,7 @@ export function RepositoryIndexExplorer({
     setRelationBrowserPage(0);
     setRelationBrowserQuery("");
     if (edge) {
-      setRelationBrowserFacet(relationFacet(edge));
+      setRelationBrowserFacet(mapMode ? "__all__" : relationFacet(edge));
       const source = nodeById.get(edge.source) || rawNodeById.get(edge.source);
       const target = nodeById.get(edge.target) || rawNodeById.get(edge.target);
       setRelationBrowserPair({
@@ -2008,9 +1942,10 @@ export function RepositoryIndexExplorer({
       setRelationBrowserPair(null);
     }
     setRelationBrowserOpen(true);
-  }, [nodeById, rawNodeById]);
+  }, [mapMode, nodeById, rawNodeById]);
 
   const inspectRawRelation = useCallback((edge: RepositoryIndexEdge) => {
+    ++pointRequestRef.current;
     const facet = relationFacet(edge);
     setHiddenRelationFacets((current) => {
       if (!current.has(facet)) return current;
@@ -2018,7 +1953,7 @@ export function RepositoryIndexExplorer({
       next.delete(facet);
       return next;
     });
-    setGraphView("symbols");
+    if (!edge.metadata?.aggregate) { graphViewRef.current = "symbols"; setGraphView("symbols"); }
     setSelectedNode(null);
     setSelectedEdge(edge);
     setHoveredNodeId(null);
@@ -2036,7 +1971,7 @@ export function RepositoryIndexExplorer({
               <h2 className="text-lg font-semibold">Repository Index</h2>
               {overview?.sampled && (
                 <Badge variant="outline" className="text-[11px]">
-                  sampled
+                  sampled filters
                 </Badge>
               )}
               {layoutRunning && (
@@ -2050,7 +1985,7 @@ export function RepositoryIndexExplorer({
               <span>
                 {overview?.selectedBranch
                   ? `Branch: ${overview.selectedBranch}`
-                  : "Project repository index"}
+                  : "Explore indexed files, symbols, and their relationships"}
               </span>
               {activeFilterCount > 0 && (
                 <Badge variant="outline" className="text-[11px]">
@@ -2060,19 +1995,19 @@ export function RepositoryIndexExplorer({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:min-w-[640px]">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {metricItems.map((item) => {
               const Icon = item.icon;
               return (
                 <div
                   key={item.label}
-                  className="min-w-[128px] rounded-md border bg-background/60 px-3 py-2"
+                  className="min-w-0 border-l px-3 py-1"
                 >
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Icon className="h-3.5 w-3.5" />
                     {item.label}
                   </div>
-                  <div className="mt-1 text-xl font-semibold">{item.value}</div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums">{item.value}</div>
                 </div>
               );
             })}
@@ -2094,7 +2029,7 @@ export function RepositoryIndexExplorer({
         )}
       </div>
 
-      <div className="relative">
+      <div ref={graphSectionRef} className="relative bg-background">
         {filtersOpen && (
           <div className={cn("absolute inset-0 z-50", isFullscreen && "fixed z-[60]")}>
             <button
@@ -2283,6 +2218,7 @@ export function RepositoryIndexExplorer({
                               ...filtersRef.current,
                               path: value,
                               fileQuery: "",
+                              textQuery: "",
                             });
                           }}
                         >
@@ -2346,10 +2282,10 @@ export function RepositoryIndexExplorer({
                   <div>
                     <div className="flex items-center gap-2 font-medium">
                       <GitBranch className="h-4 w-4 text-primary" />
-                      Exact Relation Browser
+                      {graphView === "files" ? "File Relation Bundles" : "Exact Relation Browser"}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatNumber(relationBrowserEdges.length)} matching · {formatNumber(edges.length)} exact relations loaded
+                      {formatNumber(relationBrowserEdges.length)} matching · {formatNumber(edges.length)} {graphView === "files" ? "file bundles" : "exact relations"} loaded
                       {overview?.totalRelations !== undefined
                         ? ` · ${formatNumber(overview.totalRelations)} stored`
                         : ""}
@@ -2431,7 +2367,7 @@ export function RepositoryIndexExplorer({
                 <div className="space-y-1.5 p-3">
                   {relationBrowserSlice.length === 0 ? (
                     <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                      No loaded exact relations match this selection.
+                      No loaded relations match this selection.
                     </div>
                   ) : relationBrowserSlice.map((edge) => {
                     const source = rawNodeById.get(edge.source);
@@ -2455,7 +2391,7 @@ export function RepositoryIndexExplorer({
                           </span>
                           <ArrowRight className="h-3.5 w-3.5 text-primary" />
                           <span className="text-[10px] text-muted-foreground">
-                            {String(edge.metadata?.origin || edge.relation?.evidence || "indexed")}
+                            {edge.metadata?.aggregate ? `${formatNumber(Number(edge.metadata.aggregateCount))} relations` : String(edge.metadata?.origin || edge.relation?.evidence || "indexed")}
                             {Array.isArray(edge.metadata?.plugins) && edge.metadata.plugins.length > 0
                               ? ` · ${edge.metadata.plugins.map(String).join(", ")}`
                               : edge.metadata?.plugin
@@ -2505,7 +2441,6 @@ export function RepositoryIndexExplorer({
         )}
 
         <section
-          ref={graphSectionRef}
           data-repository-index-graph="true"
           className={cn(
             "relative overflow-hidden rounded-xl border border-slate-200/90 bg-slate-50 shadow-sm dark:border-white/10 dark:bg-[#080b10]",
@@ -2515,70 +2450,54 @@ export function RepositoryIndexExplorer({
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.075)_1px,transparent_1px)] [background-size:32px_32px] dark:bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.1)_1px,transparent_1px)]" />
           <div className="absolute inset-0 bg-white/[0.64] dark:bg-[rgba(8,11,16,0.74)]" />
 
-          <div className={cn("relative z-10 flex min-h-[760px] flex-col", isFullscreen && "h-screen min-h-screen")}>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/[0.94] px-4 py-2.5 text-slate-900 backdrop-blur dark:border-white/10 dark:bg-[rgba(13,17,24,0.92)] dark:text-slate-100">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <MousePointer2 className="h-4 w-4 text-primary" />
-                <span>{formatNumber(renderedNodes.length)} displayed records</span>
-                <span className="text-slate-400 dark:text-slate-500">/</span>
-                <span>
-                  {graphView === "files"
-                    ? `${formatNumber(renderedEdges.length)} cross-file bundles`
-                    : `${formatNumber(renderedEdges.length)} directed relations`}
+          <div className={cn("relative z-10 flex min-h-[680px] flex-col lg:h-[780px]", isFullscreen && "h-screen min-h-screen lg:h-screen")}>
+            <div className="flex flex-col gap-3 border-b border-slate-200 bg-white/[0.94] px-4 py-3 text-slate-900 backdrop-blur dark:border-white/10 dark:bg-[rgba(13,17,24,0.92)] dark:text-slate-100">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span className="tabular-nums">
+                  {formatNumber(renderedNodes.length)} {mapMode ? "folders / files" : "symbols / records"}
+                  {" · "}{formatNumber(renderedEdges.length)} {mapMode ? "connection bundles" : "directed connections"}
+                  {selfRelationCount > 0 && ` · ${selfRelationCount} self-relations in Relations`}
+                  {graphView === "files" && fileMap.internalRelations > 0 && ` · ${formatNumber(fileMap.internalRelations)} relations within files`}
+                  {graphView === "files" && hiddenExternalRelationCount > 0 && ` · ${formatNumber(hiddenExternalRelationCount)} external hidden`}
                 </span>
-                {graphView === "files" && fileMap.internalRelations > 0 && (
-                  <span className="text-slate-500 dark:text-slate-400">
-                    + {formatNumber(fileMap.internalRelations)} inside files
-                  </span>
-                )}
-                {graphView === "files" && hiddenExternalRelationCount > 0 && (
-                  <span className="text-slate-500 dark:text-slate-400">
-                    · {formatNumber(hiddenExternalRelationCount)} external hidden
-                  </span>
-                )}
-                {overview?.totalRelations !== undefined && (
-                  <Badge variant="outline" className="border-slate-300 text-slate-700 dark:border-white/20 dark:text-slate-200">
-                    {formatNumber(edges.length)} / {formatNumber(overview.totalRelations)} stored relations loaded
-                  </Badge>
-                )}
-                {(cursor || graphCoverage.relationsTruncated) && (
-                  <Badge variant="outline" className="border-slate-300 text-slate-700 dark:border-white/20 dark:text-slate-200">
-                    more available
-                  </Badge>
-                )}
-                {overviewGraph && (
-                  <Badge variant="outline" className="border-violet-500/40 text-violet-700 dark:border-violet-400/30 dark:text-violet-100">
-                    overview · {formatNumber(overviewEdgeCount)} backbone edges
-                  </Badge>
-                )}
-                {denseGraph && (
-                  <Badge variant="outline" className="border-cyan-500/40 text-cyan-700 dark:border-cyan-400/30 dark:text-cyan-100">
-                    dense mode
-                  </Badge>
-                )}
+                <span>{formatNumber(representedRelations)} relations {graphView === "files" ? (loadingCompleteMap ? "in preview · building complete map…" : graphCoverage.relationsTruncated ? "in partial map · refresh to retry" : "mapped · complete file map") : `loaded${cursor || graphCoverage.relationsTruncated ? " · more pages available" : " · end of graph pages"}`}</span>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="mr-1 flex rounded-md border border-slate-300 bg-white/75 p-0.5 dark:border-white/20 dark:bg-white/5">
                   <Button
                     variant={graphView === "files" ? "secondary" : "ghost"}
                     size="sm"
                     className="h-7 px-2 text-xs"
+                    aria-pressed={graphView === "files"}
                     onClick={() => setGraphViewMode("files")}
                   >
                     <Boxes className="h-3.5 w-3.5" />
-                    File map
+                    Repository map
                   </Button>
                   <Button
                     variant={graphView === "symbols" ? "secondary" : "ghost"}
                     size="sm"
                     className="h-7 px-2 text-xs"
+                    aria-pressed={graphView === "symbols"}
                     onClick={() => setGraphViewMode("symbols")}
                   >
                     <Waypoints className="h-3.5 w-3.5" />
                     AST symbols
                   </Button>
                 </div>
+                {mapMode && <Button size="sm" variant="outline" onClick={() => setShowAllConnections(value => !value)}>{showAllConnections ? "Connections: all" : "Connections: auto"}</Button>}
+                {!mapMode && <Select value={String(traceDepth)} onValueChange={value => setTraceDepth(Number(value))}>
+                  <SelectTrigger aria-label="Trace depth" className="h-8 w-32 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Trace 1 hop</SelectItem>
+                    <SelectItem value="2">Trace 2 hops</SelectItem>
+                    <SelectItem value="3">Trace 3 hops</SelectItem>
+                    <SelectItem value="999999">Trace component</SelectItem>
+                  </SelectContent>
+                </Select>}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -2733,7 +2652,7 @@ export function RepositoryIndexExplorer({
                   variant="outline"
                   size="sm"
                   disabled={!cursor || loadingGraph || loadingAll}
-                  onClick={() => loadGraph(true, filters, cursor)}
+                  onClick={() => loadGraph(true, undefined, cursor)}
                   className="border-slate-300 bg-white/75 text-slate-900 hover:bg-white dark:border-white/20 dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10"
                 >
                   <Layers className="h-4 w-4" />
@@ -2767,30 +2686,6 @@ export function RepositoryIndexExplorer({
               >
                 Show all
               </Button>
-              {overview?.resolvedRelations !== undefined && (
-                <span className="mr-1 shrink-0 text-[11px] text-slate-500 dark:text-slate-400">
-                  {formatNumber(overview.resolvedRelations)} resolved
-                  {overview.partiallyResolvedRelations !== undefined
-                    ? ` · ${formatNumber(overview.partiallyResolvedRelations)} partial`
-                    : ""}
-                  {overview.unresolvedRelations !== undefined
-                    ? ` · ${formatNumber(overview.unresolvedRelations)} unresolved`
-                    : ""}
-                  {overview.pluginRelations !== undefined
-                    ? ` · ${formatNumber(overview.pluginRelations)} plugin`
-                    : ""}
-                </span>
-              )}
-              {(overview?.relationOrigins || []).map((origin) => (
-                <Badge key={`origin:${origin.value}`} variant="outline" className="h-6 shrink-0 text-[10px]">
-                  {metadataLabel(String(origin.value))}: {formatNumber(origin.count)}
-                </Badge>
-              ))}
-              {(overview?.relationPlugins || []).slice(0, 8).map((plugin) => (
-                <Badge key={`plugin:${plugin.value}`} variant="secondary" className="h-6 shrink-0 text-[10px]">
-                  {String(plugin.value)} · {formatNumber(plugin.count)}
-                </Badge>
-              ))}
               {relationFacets.map(({ facet, edge, count }) => {
                 const hidden = hiddenRelationFacets.has(facet);
                 const style = edgeVisualStyle(edge);
@@ -2817,7 +2712,13 @@ export function RepositoryIndexExplorer({
               })}
             </div>
 
-            <div className="relative flex-1">
+            {mapMode && <div className="relative z-20 flex items-center gap-2 overflow-x-auto border-b bg-background px-4 py-2 text-xs">
+              <button className="shrink-0 font-medium text-primary hover:underline" onClick={() => openDirectory("")}>Repository</button>
+              {directoryScope.split("/").filter(Boolean).map((part, index, parts) => <span key={index} className="flex shrink-0 items-center gap-2"><span className="text-muted-foreground">/</span><button className="hover:underline" onClick={() => openDirectory(parts.slice(0, index + 1).join("/"))}>{part}</button></span>)}
+              <span className="ml-auto shrink-0 text-muted-foreground">{formatNumber(directoryMap.fileCount)} files{directoryMap.outsideRelations > 0 && ` · ${formatNumber(directoryMap.outsideRelations)} relations outside this folder`}</span>
+            </div>}
+            <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+              <div className="relative h-[540px] min-h-[400px] min-w-0 flex-1 lg:h-auto">
               <div
                 ref={graphHostRef}
                 className="absolute inset-0"
@@ -2825,10 +2726,24 @@ export function RepositoryIndexExplorer({
                 aria-label="Interactive repository relationship graph"
               />
 
+              <div className="absolute left-3 top-3 z-20 w-64 max-w-[calc(100%-1.5rem)]">
+                <Input aria-label="Find a loaded graph record" placeholder="Find a loaded file or symbol…" value={nodeQuery} onChange={event => setNodeQuery(event.target.value)} className="h-9 bg-background/95 text-xs shadow-sm" />
+                {nodeQuery.trim() && (
+                  <div className="mt-1 max-h-64 overflow-auto rounded-md border bg-popover p-1 shadow-lg">
+                    {matchingNodes.length === 0 && <p className="p-2 text-xs text-muted-foreground">No loaded records match. Use Filters to search the index.</p>}
+                    {matchingNodes.map(node => (
+                      <button key={node.id} type="button" onClick={() => { if (mapMode && node.path) openDirectory(node.path.split("/").slice(0, -1).join("/")); inspectGraphNode(node); setNodeQuery(""); }} className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-muted focus:bg-muted">
+                        <span className="block truncate font-medium">{node.title}</span>
+                        <span className="block truncate text-muted-foreground">{node.path || "Unresolved endpoint"}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {!loadingGraph && renderedNodes.length > 0 && (
-                <div className="pointer-events-none absolute left-4 top-4 z-20 inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/[0.88] px-3 py-1.5 text-[11px] text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/75 dark:text-slate-300">
+                <div className="pointer-events-none absolute left-4 top-14 z-10 hidden lg:inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/[0.88] px-3 py-1.5 text-[11px] text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/75 dark:text-slate-300">
                   <MousePointer2 className="h-3.5 w-3.5 text-primary" />
-                  Drag nodes · hover to trace connections · click to inspect
+                  {mapMode ? "Select to see connections · double-click a folder to open" : "Arrows show direction · select to trace · zoom for labels"}
                 </div>
               )}
 
@@ -2836,18 +2751,19 @@ export function RepositoryIndexExplorer({
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 text-slate-700 dark:bg-[rgba(8,11,16,0.60)] dark:text-slate-200">
                   <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 shadow-lg dark:border-white/10 dark:bg-[#111827]">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    {loadingAll ? "Loading graph pages" : "Loading graph"}
+                    {loadingAll ? `${formatNumber(loadProgress)} relations loaded` : "Loading graph"}
+                    {loadingAll && <Button variant="outline" size="sm" onClick={() => { cancelAllRef.current = true; }}>Stop loading</Button>}
                   </div>
                 </div>
               )}
 
-              {!loadingGraph && nodes.length === 0 && (
+              {!loadingGraph && renderedNodes.length === 0 && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center p-6 text-center text-slate-700 dark:text-slate-300">
                   <div className="max-w-sm rounded-md border border-slate-200 bg-white p-4 shadow-lg dark:border-white/10 dark:bg-[#111827]">
                     <Database className="mx-auto mb-3 h-8 w-8 text-slate-400 dark:text-slate-500" />
                     <div className="font-medium">No repository index points found</div>
                     <div className="mt-1 text-sm text-slate-500 dark:text-slate-500">
-                      No matching indexed chunks for the current selection.
+                      No records match the current filters. Show all relation types or include disconnected records.
                     </div>
                   </div>
                 </div>
@@ -2863,20 +2779,12 @@ export function RepositoryIndexExplorer({
                     {item.label}
                   </span>
                 ))}
-                <span className="hidden h-4 w-px bg-slate-200 dark:bg-white/15 sm:inline-block" />
-                {edgeLegendItems.map((item) => (
-                  <span key={item.kind} className="inline-flex shrink-0 items-center gap-1.5">
-                    <span
-                      className="h-2 w-5 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    {item.label}
-                  </span>
-                ))}
+                <span className="inline-flex shrink-0 items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]" />Selected</span>
               </div>
 
+              </div>
               {selectedEdge && (
-                <aside className="absolute bottom-4 right-4 top-4 z-30 flex w-[min(500px,calc(100%-2rem))] min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white/95 text-slate-900 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[rgba(17,24,39,0.96)] dark:text-slate-100">
+                <aside className="z-30 flex h-[520px] w-full shrink-0 flex-col overflow-hidden border-t border-slate-200 bg-background text-foreground lg:h-auto lg:w-[360px] lg:border-l lg:border-t-0 xl:w-[400px] dark:border-white/10">
                   <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-medium">
@@ -2975,11 +2883,11 @@ export function RepositoryIndexExplorer({
                         <div className="grid gap-2 sm:grid-cols-2">
                           <Button variant="outline" onClick={() => openRelationBrowser(selectedEdge)}>
                             <GitBranch className="h-4 w-4" />
-                            Browse exact relations
+                            Browse relation bundles
                           </Button>
-                          <Button onClick={() => setGraphViewMode("symbols") }>
+                          <Button onClick={() => inspectGraphNode(selectedEdgeSource)}>
                             <Waypoints className="h-4 w-4" />
-                            Show AST graph
+                            Inspect source
                           </Button>
                         </div>
                       )}
@@ -2989,13 +2897,13 @@ export function RepositoryIndexExplorer({
               )}
 
               {selectedNode && (
-                <aside className="absolute bottom-4 right-4 top-4 z-30 flex w-[min(520px,calc(100%-2rem))] min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white/95 text-slate-900 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[rgba(17,24,39,0.94)] dark:text-slate-100">
+                <aside className="z-30 flex h-[520px] w-full shrink-0 flex-col overflow-hidden border-t border-slate-200 bg-background text-foreground lg:h-auto lg:w-[360px] lg:border-l lg:border-t-0 xl:w-[400px] dark:border-white/10">
                   <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <Split className="h-4 w-4 text-primary" />
+                        {selectedNode?.kind === "directory" ? <FolderOpen className="h-4 w-4 text-primary" /> : <Split className="h-4 w-4 text-primary" />}
                         <div className="text-sm font-medium">
-                          {selectedNode.recordType === "file_aggregate" ? "File Inspector" : "Point Inspector"}
+                          {selectedNode.recordType === "directory_aggregate" ? "Folder Inspector" : selectedNode.recordType === "file_aggregate" ? "File Inspector" : "Point Inspector"}
                         </div>
                       </div>
                       <h3 className="mt-3 break-words text-base font-semibold [overflow-wrap:anywhere]">
@@ -3008,7 +2916,8 @@ export function RepositoryIndexExplorer({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => setSelectedNode(null)}
+                      aria-label="Close point inspector"
+                      onClick={() => { ++pointRequestRef.current; setSelectedNode(null); }}
                       className="shrink-0 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
                     >
                       <X className="h-4 w-4" />
@@ -3080,7 +2989,7 @@ export function RepositoryIndexExplorer({
                             ) : (
                               <Filter className="h-4 w-4" />
                             )}
-                            {selectedNode.recordType === "file_aggregate" ? "Open AST" : "Filter"}
+                            {selectedNode.recordType === "directory_aggregate" ? "Open folder" : selectedNode.recordType === "file_aggregate" ? "Open AST" : "Filter"}
                           </Button>
                         )}
                         {!selectedNode.virtual && (
@@ -3096,11 +3005,17 @@ export function RepositoryIndexExplorer({
                             ) : (
                               <Network className="h-4 w-4" />
                             )}
-                            Expand
+                            Expand connections
                           </Button>
                         )}
                       </div>
 
+                      {expansionMessage && (
+                        <p role="status" className="rounded-md border bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">{expansionMessage}</p>
+                      )}
+                      {selectedNode.virtual && selectedNode.recordType !== "file_aggregate" && (
+                        <p className="text-xs text-muted-foreground">Unresolved endpoint. No indexed source record is available to expand.</p>
+                      )}
                       {selectedNode.signature && (
                         <div>
                           <div className="mb-2 text-sm font-medium">Signature</div>
@@ -3223,9 +3138,9 @@ export function RepositoryIndexExplorer({
                                     <Badge variant="outline" className="shrink-0 border-slate-300 text-[10px] dark:border-white/20">
                                       {style.label}
                                     </Badge>
-                                    <span className="min-w-0 break-words text-slate-600 [overflow-wrap:anywhere] dark:text-slate-300">
+                                    <button type="button" onClick={() => inspectGraphNode(otherNode)} className="min-w-0 break-words text-left text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-primary [overflow-wrap:anywhere] dark:text-slate-300">
                                       {outgoing ? "to" : "from"} {compactNodeTitle(otherNode)}
-                                    </span>
+                                    </button>
                                   </div>
                                   {(edge.tokens || []).length > 0 && (
                                     <div className="mt-1 min-w-0 break-words pl-7 text-slate-500 [overflow-wrap:anywhere] dark:text-slate-400">
@@ -3278,7 +3193,7 @@ export function RepositoryIndexExplorer({
                           <div className="mt-2 space-y-2">
                             {selectedProvenance.map(([label, value]) => (
                               <div key={String(label)} className="min-w-0">
-                                <div className="text-slate-500 dark:text-slate-400">{label}</div>
+                                <div className="text-slate-500 dark:text-slate-400">{String(label)}</div>
                                 <div className="mt-0.5 whitespace-pre-wrap break-words font-mono text-slate-700 [overflow-wrap:anywhere] dark:text-slate-200">
                                   {metricValue(value)}
                                 </div>

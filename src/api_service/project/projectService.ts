@@ -508,6 +508,9 @@ export interface RepositoryIndexEdge {
 }
 
 export interface RepositoryIndexGraphResponse {
+  projection?: "files" | "symbols";
+  internalRelations?: number;
+  externalRelations?: number;
   available: boolean;
   reason?: string;
   nodes: RepositoryIndexNode[];
@@ -526,6 +529,9 @@ export interface RepositoryIndexGraphResponse {
 }
 
 export interface RepositoryIndexPointResponse {
+  eligibleRelations?: number;
+  returnedRelations?: number;
+  relationsTruncated?: boolean;
   node?: RepositoryIndexNode;
   neighbors?: RepositoryIndexNode[];
   edges?: RepositoryIndexEdge[];
@@ -885,6 +891,7 @@ class ProjectService extends ApiService {
       limit?: number;
       cursor?: string | null;
       scanLimit?: number;
+      projection?: "files" | "symbols";
     },
   ): Promise<RepositoryIndexGraphResponse> {
     return this.request<RepositoryIndexGraphResponse>(
