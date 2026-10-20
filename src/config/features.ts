@@ -18,7 +18,7 @@ export const FEATURES = {
   BILLING: import.meta.env.VITE_FEATURE_BILLING === "true",
 
   /**
-   * Cloud subscription plans (Pro, Pro+, Enterprise)
+   * Cloud subscription plans (Starter, Pro, Pro+)
    * Enables: Plan selection, upgrades, downgrades
    */
   CLOUD_PLANS: import.meta.env.VITE_FEATURE_CLOUD_PLANS === "true",

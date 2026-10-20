@@ -17,6 +17,7 @@ export function pointFilters(node: RepositoryIndexNode, branches?: string[]) {
 }
 
 export function traceDistances(nodes: RepositoryIndexNode[], edges: RepositoryIndexEdge[], start: string | null, depth: number) {
+  const terminalIds = new Set(nodes.filter(node => node.recordType === "external_aggregate").map(node => node.id));
   const adjacency = new Map(nodes.map(node => [node.id, new Set<string>()]));
   for (const edge of edges) {
     if (!adjacency.has(edge.source) || !adjacency.has(edge.target)) continue;
@@ -29,7 +30,7 @@ export function traceDistances(nodes: RepositoryIndexNode[], edges: RepositoryIn
   const queue = [start];
   for (let i = 0; i < queue.length; i += 1) {
     const distance = distances.get(queue[i])!;
-    if (distance >= depth) continue;
+    if (distance >= depth || terminalIds.has(queue[i])) continue;
     for (const next of adjacency.get(queue[i])!) {
       if (distances.has(next)) continue;
       distances.set(next, distance + 1);
@@ -194,74 +195,25 @@ export function buildFileMap(
   };
 }
 
-
-/** Navigate by real directories; bundle parallel relations before rendering. */
-export function buildDirectoryMap(fileMap: FileMapResult, scope = "") {
-  const prefix = scope ? `${scope}/` : "";
-  const files = fileMap.nodes.filter(node => node.path?.startsWith(prefix));
-  const grouped = files.length > 60;
-  const members = new Map<string, RepositoryIndexNode[]>();
-  for (const node of files) {
-    const rest = node.path!.slice(prefix.length);
-    const directory = grouped && rest.includes("/") ? prefix + rest.split("/")[0] : "";
-    const key = directory ? `directory:${directory}` : node.id;
-    const group = members.get(key) || [];
-    group.push(node);
-    members.set(key, group);
+/** Parallel types and reciprocal directions must not cover one another. */
+export function edgeCurvatures(edges: RepositoryIndexEdge[]) {
+  const pairs = new Map<string, RepositoryIndexEdge[]>();
+  for (const edge of edges) {
+    const key = JSON.stringify([edge.source, edge.target].sort());
+    const group = pairs.get(key) || [];
+    group.push(edge);
+    pairs.set(key, group);
   }
-  const endpoints = new Map<string, string>();
-  const nodes: RepositoryIndexNode[] = [];
-  for (const [id, group] of members) {
-    group.forEach(node => endpoints.set(node.id, id));
-    if (!id.startsWith("directory:")) { nodes.push(group[0]); continue; }
-    // Skip empty directory chains, e.g. src/main/java/org/company/package.
-    let path = id.slice("directory:".length);
-    while (true) {
-      const parts = group.map(node => node.path!.slice(path.length + 1).split("/"));
-      if (parts.some(part => part.length < 2) || new Set(parts.map(part => part[0])).size !== 1) break;
-      path += `/${parts[0][0]}`;
-    }
-    const title = path.slice(prefix.length);
-    nodes.push({
-      id, title, path, kind: "directory", recordType: "directory_aggregate",
-      branch: group[0].branch, virtual: true, group: scope || "Repository",
-      preview: `${group.length} files · open folder to explore`,
-      metadata: { file_count: group.length, directory_path: path },
-    });
-  }
-  if (!scope) for (const node of fileMap.nodes.filter(node => !node.path)) {
-    endpoints.set(node.id, node.id);
-    nodes.push(node);
-  }
-  const bundles = new Map<string, RepositoryIndexEdge>();
-  let internalRelations = files.reduce((sum, node) => sum + Number(node.metadata?.internal_relations || 0), 0);
-  let outsideRelations = 0;
-  for (const edge of fileMap.edges) {
-    const source = endpoints.get(edge.source), target = endpoints.get(edge.target);
-    const count = Number(edge.metadata?.aggregateCount || 1);
-    if (!source || !target) { if (source || target) outsideRelations += count; continue; }
-    if (source === target) { internalRelations += count; continue; }
-    const key = `${source}\0${target}`;
-    const existing = bundles.get(key);
-    if (existing) {
-      existing.weight = (existing.weight || 0) + count;
-      existing.metadata!.aggregateCount = existing.weight;
-    } else {
-      bundles.set(key, { id: `directory-edge:${key}`, source, target,
-        kind: "dependency", label: "Relations", weight: count,
-        metadata: { aggregate: true, aggregateCount: count },
+  const curvatures = new Map<string, number>();
+  for (const pair of pairs.values()) {
+    const reciprocal = pair.some(edge => edge.source !== pair[0].source);
+    for (const source of new Set(pair.map(edge => edge.source))) {
+      const direction = pair.filter(edge => edge.source === source).sort((a, b) => a.id.localeCompare(b.id));
+      direction.forEach((edge, index) => {
+        const offset = reciprocal ? index + 1 : index - (direction.length - 1) / 2;
+        curvatures.set(edge.id, offset * Math.min(0.24, 0.8 / direction.length));
       });
     }
   }
-  return { nodes, edges: [...bundles.values()], internalRelations, outsideRelations, fileCount: files.length };
-}
-
-/** A stable grid keeps directory/file labels apart even for highly cyclic code. */
-export function directoryLayout(nodes: RepositoryIndexNode[]) {
-  const sorted = [...nodes].sort((a, b) => Number(b.kind === "directory") - Number(a.kind === "directory") || (a.path || a.title).localeCompare(b.path || b.title));
-  const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length * 0.9)));
-  return new Map(sorted.map((node, index) => [node.id, {
-    x: (index % columns) * 280,
-    y: -Math.floor(index / columns) * 110,
-  }]));
+  return curvatures;
 }

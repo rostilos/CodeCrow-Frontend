@@ -142,10 +142,9 @@ export function usePaymentMethods(workspaceSlug: string | undefined): UsePayment
 
 export function formatTierName(tier: SubscriptionResponse['tier']): string {
     switch (tier) {
-        case 'TRIAL': return 'Free Trial';
+        case 'STARTER': return 'Starter';
         case 'PRO': return 'Pro';
         case 'PRO_PLUS': return 'Pro+';
-        case 'ENTERPRISE': return 'Enterprise';
         default: return tier;
     }
 }

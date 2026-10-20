@@ -2,7 +2,7 @@ import { ApiService } from '../api';
 
 // ==================== Types ====================
 
-export type SubscriptionTier = 'TRIAL' | 'PRO' | 'PRO_PLUS' | 'ENTERPRISE';
+export type SubscriptionTier = 'STARTER' | 'PRO' | 'PRO_PLUS';
 export type SubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED' | 'TRIAL_EXPIRED';
 
 export interface PaymentMethodResponse {
@@ -14,23 +14,42 @@ export interface PaymentMethodResponse {
     isDefault: boolean;
 }
 
-export interface UsageResponse {
-    projectsUsed: number;
-    projectsLimit: number;
-    membersUsed: number;
-    membersLimit: number;
-    prReviewsUsed: number;
-    prReviewsLimit: number;
-    ragPipelinesUsed: number;
-    ragPipelinesLimit: number;
-    billingPeriodStart: string;
+export interface AuthorUsage {
+    authorId: string | null;
+    authorName: string | null;
+    distinctPrs: number;
+    managedPrs: number;
+    active: boolean;
+    includedPrsRemaining: number;
+    overagePrs: number;
+    subtotalCents: number;
 }
 
-export interface LimitsResponse {
-    maxProjects: number;
-    maxMembers: number;
-    maxPrReviews: number;
-    maxRagPipelines: number;
+export interface ProjectUsage {
+    projectId: number;
+    projectName: string;
+    activeSeats: number;
+    distinctPrs: number;
+    managedPrs: number;
+    overagePrs: number;
+    subtotalCents: number;
+    overageCents: number;
+    pricingReason: string | null;
+    authors: AuthorUsage[];
+}
+
+export interface UsageResponse {
+    periodStart: string | null;
+    periodEnd: string | null;
+    activeSeats: number;
+    distinctPrs: number;
+    managedPrs: number;
+    overagePrs: number;
+    subtotalCents: number;
+    pendingExportCents: number;
+    unresolvedPrs: number;
+    projects: ProjectUsage[];
+    diagnostics: string[];
 }
 
 export interface SubscriptionResponse {
@@ -38,11 +57,24 @@ export interface SubscriptionResponse {
     status: SubscriptionStatus;
     active: boolean;
     trialEndsAt: string | null;
+    currentPeriodStart: string | null;
     currentPeriodEnd: string | null;
+    pendingTier: SubscriptionTier | null;
     cancelAtPeriodEnd: boolean;
     usage: UsageResponse;
-    limits: LimitsResponse;
     paymentMethod: PaymentMethodResponse | null;
+    qaDocumentation: boolean;
+    managedModels: boolean;
+    paymentSyncError: string | null;
+}
+
+export interface ModelSelection { managed: boolean; modelId: string | null }
+export interface ManagedModel { id: string; label: string; minimumTier: SubscriptionTier; trial: boolean }
+export interface ManagedModelsResponse {
+    models: ManagedModel[];
+    selection: ModelSelection;
+    active: boolean;
+    qaDocumentation: boolean;
 }
 
 export interface CreateCheckoutRequest {
@@ -126,22 +158,16 @@ export interface InvoiceListResponse {
     startingAfter: string | null;
 }
 
-export interface PlanFeature {
-    name: string;
-    included: boolean;
-}
-
 export interface PlanInfo {
-    id: string;
+    id: SubscriptionTier;
     name: string;
     description: string;
-    priceMonthly: number | null;
-    priceYearly: number | null;
+    priceMonthly: number;
     currency: string;
-    maxProjects: number;
-    maxMembers: number;
-    maxPrReviews: number;
-    maxRagPipelines: number;
+    includedManagedPrs: number;
+    overageCents: number;
+    qaDocumentation: boolean;
+    managedModels: boolean;
     features: string[];
 }
 
@@ -160,6 +186,27 @@ class BillingApiService extends ApiService {
             { method: 'GET' },
             true
         );
+    }
+
+    async sync(workspaceSlug: string): Promise<SubscriptionResponse> {
+        return this.request(`/workspaces/${workspaceSlug}/billing/sync`, { method: 'POST' }, true);
+    }
+
+    async models(workspaceSlug: string): Promise<ManagedModelsResponse> {
+        return this.request(`/workspaces/${workspaceSlug}/models`, {}, true);
+    }
+
+    async selectModel(workspaceSlug: string, selection: ModelSelection, projectId?: number): Promise<void> {
+        return this.request(`/workspaces/${workspaceSlug}/models${projectId === undefined ? '' : `/projects/${projectId}`}`,
+            { method: 'PUT', body: JSON.stringify(selection) }, true);
+    }
+
+    async projectModel(workspaceSlug: string, projectId: number): Promise<ModelSelection> {
+        return this.request(`/workspaces/${workspaceSlug}/models/projects/${projectId}`, {}, true);
+    }
+
+    async inheritModel(workspaceSlug: string, projectId: number): Promise<void> {
+        return this.request(`/workspaces/${workspaceSlug}/models/projects/${projectId}`, { method: 'DELETE' }, true);
     }
 
     // ==================== Checkout ====================
@@ -193,7 +240,7 @@ class BillingApiService extends ApiService {
             `/workspaces/${workspaceSlug}/billing/plan/preview`,
             {
                 method: 'POST',
-                body: JSON.stringify({ newTier, prorate: true }),
+                body: JSON.stringify({ newTier, prorate: false }),
             },
             true
         );

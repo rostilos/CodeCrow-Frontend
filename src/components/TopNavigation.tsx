@@ -222,7 +222,7 @@ export function TopNavigation({
             }}
             className="flex items-center hover:opacity-80 transition-opacity gap-2"
           >
-            <CodeCrowLogo size="sm" />
+            <CodeCrowLogo size="sm" className="[&>span]:hidden sm:[&>span]:inline" />
           </button>
 
           {!minimal && (

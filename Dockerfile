@@ -20,6 +20,12 @@ RUN npm ci --prefer-offline
 
 COPY . .
 
+# Optional deployment features remain off in public builds.
+ARG VITE_FEATURE_BILLING=false
+ARG VITE_FEATURE_CLOUD_PLANS=false
+ARG VITE_FEATURE_USAGE_ANALYTICS=false
+ARG VITE_FEATURE_INSTANCE_ADMIN=true
+ARG VITE_API_URL
 RUN npm run build
 
 # ---------------------

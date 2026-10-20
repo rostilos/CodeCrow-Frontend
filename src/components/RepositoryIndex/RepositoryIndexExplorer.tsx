@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Graph from "graphology";
-import { buildDirectoryMap, buildFileMap, directoryLayout, directedLayout, pointFilters, relationFacet, traceDistances } from "./repositoryGraph";
+import { buildFileMap, edgeCurvatures, directedLayout, pointFilters, relationFacet, traceDistances } from "./repositoryGraph";
 import Sigma from "sigma";
+import { EdgeCurvedArrowProgram } from "@sigma/edge-curve";
 import {
   EdgeArrowProgram,
   type NodeHoverDrawingFunction,
 } from "sigma/rendering";
-import ForceAtlas2Layout from "graphology-layout-forceatlas2/worker";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,7 +14,6 @@ import {
   Code2,
   Database,
   FileCode,
-  FolderOpen,
   Filter,
   GitBranch,
   Layers,
@@ -87,14 +86,15 @@ type SigmaEdgeAttributes = {
   color: string;
   kind: string;
   raw: RepositoryIndexEdge;
-  backbone?: boolean;
   hidden?: boolean;
   type?: string;
+  curvature?: number;
 };
 
 type GraphViewMode = "files" | "symbols";
 
 type GraphCoverage = {
+  projection?: "files" | "symbols";
   eligibleRelations?: number;
   returnedRelations?: number;
   relationsTruncated?: boolean;
@@ -106,7 +106,6 @@ type MetadataRecord = Record<string, unknown>;
 
 // Colors identify a small set of structural roles, consistently across files.
 const NODE_KIND_STYLE: Record<string, { color: string; label: string }> = Object.fromEntries([
-  ["directory"].map(kind => [kind, { color: "#8b5cf6", label: "Folders" }]),
   ["file", "module", "namespace"].map(kind => [kind, { color: "#3b82f6", label: "Files / modules" }]),
   ["class", "interface", "record", "struct", "trait", "enum", "type"].map(kind => [kind, { color: "#a855f7", label: "Types" }]),
   ["method", "function", "constructor"].map(kind => [kind, { color: "#10b981", label: "Callables" }]),
@@ -124,8 +123,8 @@ const MAX_GRAPH_PAGE_SIZE = 5000;
 const OVERVIEW_GRAPH_THRESHOLD = 320;
 const DENSE_GRAPH_THRESHOLD = 500;
 const HUGE_GRAPH_THRESHOLD = 12000;
-const MAX_LAYOUT_EDGE_COUNT = 80000;
 const RELATION_BROWSER_PAGE_SIZE = 100;
+const LAYOUT_ERROR = "Layout could not finish. The graph is still available; use Rebuild relationship layout to retry.";
 
 function relationFamily(edge: RepositoryIndexEdge) {
   const value = `${edge.kind || ""} ${edge.label || ""}`.toLocaleLowerCase();
@@ -256,16 +255,7 @@ const drawRepositoryIndexNodeHover: NodeHoverDrawingFunction<SigmaNodeAttributes
   context.restore();
 };
 
-function hashIndex(value: string, modulo: number) {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash * 31 + value.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash) % modulo;
-}
-
 function colorForNode(node: RepositoryIndexNode) {
-  if (node.kind === "directory") return "#8b5cf6";
   if (node.virtual && node.recordType !== "file_aggregate") return "#94a3b8";
   return NODE_KIND_STYLE[node.kind]?.color || "#94a3b8";
 }
@@ -315,294 +305,6 @@ function colorWithOpacity(color: string | undefined, opacity: number) {
   }
 
   return value;
-}
-
-function graphClusterKey(node: RepositoryIndexNode) {
-  if (node.path) return `${node.branch || ""}:${node.path}`;
-  return node.group || node.language || node.kind || "default";
-}
-
-function layoutEdgeWeight(edge: RepositoryIndexEdge) {
-  return Number.isFinite(edge.weight) ? Math.max(0.1, edge.weight || 1) : 1;
-}
-
-type LayoutCircle = {
-  x: number;
-  y: number;
-  radius: number;
-};
-
-function relaxLayoutCircles<T extends LayoutCircle>(
-  circles: T[],
-  iterations: number,
-  padding: number,
-) {
-  if (circles.length < 2) return;
-  const maxRadius = circles.reduce((max, circle) => Math.max(max, circle.radius), 1);
-  const cellSize = Math.max(96, maxRadius * 2 + padding);
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-
-  for (let iteration = 0; iteration < iterations; iteration += 1) {
-    const grid = new Map<string, number[]>();
-    circles.forEach((circle, index) => {
-      const key = `${Math.floor(circle.x / cellSize)}:${Math.floor(circle.y / cellSize)}`;
-      const bucket = grid.get(key);
-      if (bucket) bucket.push(index);
-      else grid.set(key, [index]);
-    });
-
-    circles.forEach((circle, index) => {
-      const gridX = Math.floor(circle.x / cellSize);
-      const gridY = Math.floor(circle.y / cellSize);
-      for (let deltaX = -1; deltaX <= 1; deltaX += 1) {
-        for (let deltaY = -1; deltaY <= 1; deltaY += 1) {
-          const bucket = grid.get(`${gridX + deltaX}:${gridY + deltaY}`);
-          if (!bucket) continue;
-          bucket.forEach((otherIndex) => {
-            if (otherIndex <= index) return;
-            const other = circles[otherIndex];
-            let diffX = other.x - circle.x;
-            let diffY = other.y - circle.y;
-            let distance = Math.sqrt(diffX * diffX + diffY * diffY);
-            if (!Number.isFinite(distance) || distance < 0.001) {
-              const angle = (index + otherIndex + 1) * goldenAngle;
-              diffX = Math.cos(angle);
-              diffY = Math.sin(angle);
-              distance = 1;
-            }
-            const minDistance = circle.radius + other.radius + padding;
-            if (distance >= minDistance) return;
-
-            const overlap = (minDistance - distance) / distance;
-            const circleShare = other.radius / (circle.radius + other.radius);
-            const otherShare = circle.radius / (circle.radius + other.radius);
-            const moveX = diffX * overlap;
-            const moveY = diffY * overlap;
-            circle.x -= moveX * circleShare;
-            circle.y -= moveY * circleShare;
-            other.x += moveX * otherShare;
-            other.y += moveY * otherShare;
-          });
-        }
-      }
-    });
-
-  }
-}
-
-function computeRelationLayoutPositions(
-  nodes: RepositoryIndexNode[],
-  edges: RepositoryIndexEdge[],
-) {
-  const positions = new Map<string, { x: number; y: number }>();
-  if (nodes.length === 0) return positions;
-  if (nodes.length <= 180) return directedLayout(nodes, edges);
-
-  const nodeById = new Map(nodes.map((node) => [node.id, node]));
-  const adjacency = new Map(nodes.map((node) => [node.id, new Set<string>()]));
-  const relationDegree = new Map(nodes.map((node) => [node.id, 0]));
-  const graphEdges = edges
-    .filter((edge) =>
-      nodeById.has(edge.source) &&
-      nodeById.has(edge.target) &&
-      edge.source !== edge.target,
-    )
-    .slice(0, MAX_LAYOUT_EDGE_COUNT);
-
-  graphEdges.forEach((edge) => {
-    const weight = layoutEdgeWeight(edge);
-    adjacency.get(edge.source)?.add(edge.target);
-    adjacency.get(edge.target)?.add(edge.source);
-    relationDegree.set(edge.source, (relationDegree.get(edge.source) || 0) + weight);
-    relationDegree.set(edge.target, (relationDegree.get(edge.target) || 0) + weight);
-  });
-
-  const compareNodeIds = (left: string, right: string) => {
-    const degreeDelta = (relationDegree.get(right) || 0) - (relationDegree.get(left) || 0);
-    if (Math.abs(degreeDelta) > 0.001) return degreeDelta;
-    const leftNode = nodeById.get(left);
-    const rightNode = nodeById.get(right);
-    return (leftNode?.title || left).localeCompare(rightNode?.title || right);
-  };
-
-  const componentIds: string[][] = [];
-  const visited = new Set<string>();
-  [...nodeById.keys()].sort(compareNodeIds).forEach((startId) => {
-    if (visited.has(startId)) return;
-    const component: string[] = [];
-    const queue = [startId];
-    visited.add(startId);
-    for (let cursor = 0; cursor < queue.length; cursor += 1) {
-      const nodeId = queue[cursor];
-      component.push(nodeId);
-      (adjacency.get(nodeId) || new Set<string>()).forEach((neighborId) => {
-        if (visited.has(neighborId)) return;
-        visited.add(neighborId);
-        queue.push(neighborId);
-      });
-    }
-    componentIds.push(component);
-  });
-
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-  const componentEntries = componentIds.map((component) => {
-    const ordered = [...component].sort(compareNodeIds);
-    const componentSize = ordered.length;
-    const nodeGap =
-      componentSize <= 40 ? 82 :
-        componentSize <= 180 ? 58 :
-          componentSize <= 800 ? 38 :
-            componentSize <= 2500 ? 28 : 20;
-    const componentRadius = Math.max(
-      nodeGap * 1.4,
-      Math.sqrt(componentSize) * nodeGap * 0.72,
-    );
-    const rootId = ordered[0];
-    const rotation = (hashIndex(`${rootId}:organic-layout`, 4096) / 4096) * Math.PI * 2;
-    const aspect = 1.04 + hashIndex(`${rootId}:organic-aspect`, 256) / 1024;
-    const localPositions = new Map<string, { x: number; y: number }>();
-
-    ordered.forEach((nodeId, index) => {
-      if (index === 0) {
-        localPositions.set(nodeId, { x: 0, y: 0 });
-        return;
-      }
-      const fillRatio = Math.sqrt(index / Math.max(componentSize - 1, 1));
-      const jitter = 0.9 + hashIndex(`${nodeId}:organic-jitter`, 1000) / 6250;
-      const radius = componentRadius * fillRatio * jitter;
-      const angle = rotation + index * goldenAngle;
-      localPositions.set(nodeId, {
-        x: Math.cos(angle) * radius * aspect,
-        y: Math.sin(angle) * radius / aspect,
-      });
-    });
-
-    return {
-      component,
-      rootId,
-      localPositions,
-      radius: componentRadius,
-      weight: component.reduce((sum, nodeId) => sum + (relationDegree.get(nodeId) || 0), 0),
-      x: 0,
-      y: 0,
-    };
-  }).sort((left, right) => {
-    if (right.component.length !== left.component.length) {
-      return right.component.length - left.component.length;
-    }
-    return right.weight - left.weight || left.rootId.localeCompare(right.rootId);
-  });
-
-  const totalComponentArea = componentEntries.reduce((sum, entry) => sum + entry.radius ** 2, 0);
-  const componentStep = Math.max(
-    160,
-    Math.sqrt(totalComponentArea / Math.max(componentEntries.length, 1)) * 0.92,
-  );
-  componentEntries.forEach((entry, index) => {
-    if (index === 0) return;
-    const angle = index * goldenAngle;
-    const ring = Math.sqrt(index) * componentStep + entry.radius * 0.45;
-    entry.x = Math.cos(angle) * ring * 1.2;
-    entry.y = Math.sin(angle) * ring;
-  });
-  relaxLayoutCircles(
-    componentEntries,
-    componentEntries.length > 3000 ? 4 : componentEntries.length > 500 ? 7 : 12,
-    nodes.length >= 2500 ? 42 : 64,
-  );
-
-  let minX = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  componentEntries.forEach((entry) => {
-    minX = Math.min(minX, entry.x - entry.radius);
-    maxX = Math.max(maxX, entry.x + entry.radius);
-    minY = Math.min(minY, entry.y - entry.radius);
-    maxY = Math.max(maxY, entry.y + entry.radius);
-  });
-  const offsetX = Number.isFinite(minX) && Number.isFinite(maxX) ? (minX + maxX) / 2 : 0;
-  const offsetY = Number.isFinite(minY) && Number.isFinite(maxY) ? (minY + maxY) / 2 : 0;
-  const layoutStretchX = nodes.length >= 6000 ? 1.28 : 1.16;
-
-  componentEntries.forEach((entry) => {
-    entry.component.forEach((nodeId) => {
-      const local = entry.localPositions.get(nodeId) || { x: 0, y: 0 };
-      positions.set(nodeId, {
-        x: (entry.x - offsetX + local.x) * layoutStretchX,
-        y: entry.y - offsetY + local.y,
-      });
-    });
-  });
-
-  return positions;
-}
-
-function selectOverviewEdgeIds(
-  nodes: RepositoryIndexNode[],
-  edges: RepositoryIndexEdge[],
-) {
-  const visibleNodeIds = new Set(nodes.map((node) => node.id));
-  const validEdges = edges.filter((edge) =>
-    visibleNodeIds.has(edge.source) &&
-    visibleNodeIds.has(edge.target) &&
-    edge.source !== edge.target,
-  );
-  if (nodes.length < OVERVIEW_GRAPH_THRESHOLD || validEdges.length <= nodes.length * 1.35) {
-    return new Set(validEdges.map((edge) => edge.id));
-  }
-
-  const orderedEdges = [...validEdges].sort((left, right) =>
-    layoutEdgeWeight(right) - layoutEdgeWeight(left) || left.id.localeCompare(right.id),
-  );
-  const parent = new Map(nodes.map((node) => [node.id, node.id]));
-  const componentSize = new Map(nodes.map((node) => [node.id, 1]));
-  const findRoot = (nodeId: string): string => {
-    const currentParent = parent.get(nodeId) || nodeId;
-    if (currentParent === nodeId) return nodeId;
-    const root = findRoot(currentParent);
-    parent.set(nodeId, root);
-    return root;
-  };
-  const selected = new Set<string>();
-  const selectedDegree = new Map<string, number>();
-  const selectEdge = (edge: RepositoryIndexEdge) => {
-    if (selected.has(edge.id)) return;
-    selected.add(edge.id);
-    selectedDegree.set(edge.source, (selectedDegree.get(edge.source) || 0) + 1);
-    selectedDegree.set(edge.target, (selectedDegree.get(edge.target) || 0) + 1);
-  };
-
-  // A maximum spanning forest keeps every visible connected component intact.
-  orderedEdges.forEach((edge) => {
-    let sourceRoot = findRoot(edge.source);
-    let targetRoot = findRoot(edge.target);
-    if (sourceRoot === targetRoot) return;
-    if ((componentSize.get(sourceRoot) || 1) < (componentSize.get(targetRoot) || 1)) {
-      [sourceRoot, targetRoot] = [targetRoot, sourceRoot];
-    }
-    parent.set(targetRoot, sourceRoot);
-    componentSize.set(
-      sourceRoot,
-      (componentSize.get(sourceRoot) || 1) + (componentSize.get(targetRoot) || 1),
-    );
-    componentSize.delete(targetRoot);
-    selectEdge(edge);
-  });
-
-  const edgeBudget = Math.min(validEdges.length, Math.ceil(nodes.length * 1.12));
-  orderedEdges.forEach((edge) => {
-    if (selected.size >= edgeBudget) return;
-    if ((selectedDegree.get(edge.source) || 0) < 2 || (selectedDegree.get(edge.target) || 0) < 2) {
-      selectEdge(edge);
-    }
-  });
-  for (const edge of orderedEdges) {
-    if (selected.size >= edgeBudget) break;
-    selectEdge(edge);
-  }
-
-  return selected;
 }
 
 function formatNumber(value?: number | null) {
@@ -689,9 +391,7 @@ function mergeEdges(
 }
 
 function initialPosition(
-  node: RepositoryIndexNode,
   index: number,
-  total: number,
   cached?: { x: number; y: number },
   seeded?: { x: number; y: number },
 ) {
@@ -701,25 +401,12 @@ function initialPosition(
   if (seeded && Number.isFinite(seeded.x) && Number.isFinite(seeded.y)) {
     return seeded;
   }
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-  const clusterSeed = graphClusterKey(node);
-  const clusterIndex = hashIndex(clusterSeed, 8192);
-  const clusterAngle = clusterIndex * goldenAngle;
-  const clusterRadius =
-    18 + Math.sqrt(clusterIndex / 8192) * Math.max(92, Math.sqrt(total) * 14);
-  const localIndex = hashIndex(`${node.id}:${index}`, 2048);
-  const localAngle = localIndex * goldenAngle;
-  const localRadius = node.kind === "file"
-    ? 0
-    : 5 + Math.sqrt(localIndex % 144) * 1.15;
-  return {
-    x: Math.cos(clusterAngle) * clusterRadius + Math.cos(localAngle) * localRadius,
-    y: Math.sin(clusterAngle) * clusterRadius + Math.sin(localAngle) * localRadius,
-  };
+  const angle = index * Math.PI * (3 - Math.sqrt(5));
+  const radius = Math.sqrt(index + 1) * 24;
+  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
 }
 
 function sizeForNode(node: RepositoryIndexNode, degree: number, graphOrder: number) {
-  if (node.kind === "directory") return 9;
   if (node.recordType === "file_aggregate") return 6;
   const degreeBoost = Math.sqrt(Math.max(degree, 0));
   const smallGraphBoost = graphOrder <= 40 ? 1.16 : graphOrder <= 180 ? 1.06 : 1;
@@ -743,8 +430,8 @@ function cappedDenseNodeSize(node: RepositoryIndexNode, baseSize: number, graphO
     return Math.min(baseSize, 3);
   }
   if (graphOrder >= DENSE_GRAPH_THRESHOLD) {
-    if (node.kind === "file") return Math.min(baseSize, 4.5);
-    return Math.min(baseSize, 3.8);
+    if (node.kind === "file") return Math.min(baseSize, 2.8);
+    return Math.min(baseSize, 2.3);
   }
   if (graphOrder >= OVERVIEW_GRAPH_THRESHOLD) {
     if (node.kind === "file") return Math.min(baseSize, 6);
@@ -766,29 +453,26 @@ function buildSigmaGraph(
   });
   const nodeIds = new Set(nodes.map((node) => node.id));
   const degreeById = new Map<string, number>();
-  const layoutPositions = mapMode ? directoryLayout(nodes) : computeRelationLayoutPositions(nodes, edges);
-  const overviewEdgeIds = selectOverviewEdgeIds(nodes, edges);
+  const layoutPositions = nodes.length <= 180 ? directedLayout(nodes, edges) : new Map<string, { x: number; y: number }>();
+  const curvatures = edgeCurvatures(edges);
 
   edges.forEach((edge) => {
     if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target) || edge.source === edge.target) {
       return;
     }
-    const weight = layoutEdgeWeight(edge);
-    degreeById.set(edge.source, (degreeById.get(edge.source) || 0) + weight);
-    degreeById.set(edge.target, (degreeById.get(edge.target) || 0) + weight);
+    degreeById.set(edge.source, (degreeById.get(edge.source) || 0) + 1);
+    degreeById.set(edge.target, (degreeById.get(edge.target) || 0) + 1);
   });
 
   nodes.forEach((node, index) => {
     const position = initialPosition(
-      node,
       index,
-      nodes.length,
       positions.get(node.id),
       layoutPositions.get(node.id),
     );
     const degree = degreeById.get(node.id) || 0;
     graph.addNode(node.id, {
-      label: node.kind === "directory" ? `${node.title} · ${node.metadata?.file_count} files` : node.title || "Repository index point",
+      label: node.title || "Repository index point",
       x: position.x,
       y: position.y,
       size: sizeForNode(node, degree, nodes.length),
@@ -809,12 +493,12 @@ function buildSigmaGraph(
     graph.addDirectedEdgeWithKey(edge.id, edge.source, edge.target, {
       label: style.label,
       size: style.size,
-      weight: layoutEdgeWeight(edge),
+      weight: 1,
       color: style.color,
       kind: edge.kind,
       raw: edge,
-      backbone: overviewEdgeIds.has(edge.id),
-      type: "arrow",
+      type: curvatures.get(edge.id) ? "curvedArrow" : "arrow",
+      curvature: curvatures.get(edge.id) || 0,
     });
   });
 
@@ -856,8 +540,7 @@ export function RepositoryIndexExplorer({
   const graphHostRef = useRef<HTMLDivElement | null>(null);
   const sigmaRef = useRef<Sigma<SigmaNodeAttributes, SigmaEdgeAttributes> | null>(null);
   const graphRef = useRef<SigmaGraph | null>(null);
-  const layoutTimerRef = useRef<number | null>(null);
-  const forceLayoutRef = useRef<ForceAtlas2Layout<SigmaNodeAttributes, SigmaEdgeAttributes> | null>(null);
+  const layoutWorkerRef = useRef<Worker | null>(null);
   const positionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
   const scopeRequestRef = useRef(0);
   const pointRequestRef = useRef(0);
@@ -884,9 +567,8 @@ export function RepositoryIndexExplorer({
   const graphViewRef = useRef<GraphViewMode>("files");
   const cancelAllRef = useRef(false);
   const [loadProgress, setLoadProgress] = useState(0);
-  const [directoryScope, setDirectoryScope] = useState("");
-  const [showAllConnections, setShowAllConnections] = useState(false);
-  const [showDisconnected, setShowDisconnected] = useState(true);
+  const [neighborhoodRoot, setNeighborhoodRoot] = useState<string | null>(null);
+  const [showDisconnected, setShowDisconnected] = useState(false);
   const [showExternalEndpoints, setShowExternalEndpoints] = useState(false);
   const [hiddenRelationFacets, setHiddenRelationFacets] = useState<Set<string>>(() => new Set());
   const [graphCoverage, setGraphCoverage] = useState<GraphCoverage>({});
@@ -988,44 +670,37 @@ export function RepositoryIndexExplorer({
       return total + Number(edge.metadata?.aggregateCount || 1);
     }, 0);
   }, [fileMap.edges, fileMapProjection.nodes, showExternalEndpoints]);
-  const mapMode = graphView === "files" || (nodes.length > 250 && !filtersRef.current.path);
-  const directoryMap = useMemo(() => buildDirectoryMap({
-    ...fileMapProjection,
-    edges: fileMapProjection.edges.filter(edge => !hiddenRelationFacets.has(relationFacet(edge))),
-  }, directoryScope), [directoryScope, fileMapProjection, hiddenRelationFacets]);
+  const mapMode = graphView === "files";
   const graphProjection = useMemo(
-    () => mapMode ? directoryMap : { nodes, edges, internalRelations: 0 },
-    [directoryMap, edges, mapMode, nodes],
+    () => mapMode ? fileMapProjection : { nodes, edges, internalRelations: 0 },
+    [fileMapProjection, edges, mapMode, nodes],
   );
   const relationFilteredEdges = useMemo(
-    () => mapMode ? graphProjection.edges : graphProjection.edges.filter(edge => !hiddenRelationFacets.has(relationFacet(edge))),
-    [graphProjection.edges, hiddenRelationFacets, mapMode],
+    () => graphProjection.edges.filter(edge => !hiddenRelationFacets.has(relationFacet(edge))),
+    [graphProjection.edges, hiddenRelationFacets],
   );
-  const representedRelations = graphView === "files" ? graphCoverage.returnedRelations || 0 : edges.length;
-  const openDirectory = useCallback((path: string) => {
-    ++pointRequestRef.current;
-    setDirectoryScope(path);
-    setSelectedNode(null);
-    setSelectedEdge(null);
-    setHoveredNodeId(null);
-    positionsRef.current.clear();
-  }, []);
+  const representedRelations = graphCoverage.projection === "files" ? graphCoverage.returnedRelations || 0 : edges.length;
   const connectedNodeIds = useMemo(
     () => new Set(relationFilteredEdges.flatMap((edge) => [edge.source, edge.target])),
     [relationFilteredEdges],
   );
+  const neighborhood = useMemo(
+    () => neighborhoodRoot ? traceDistances(graphProjection.nodes, relationFilteredEdges, neighborhoodRoot, traceDepth) : null,
+    [graphProjection.nodes, relationFilteredEdges, neighborhoodRoot, traceDepth],
+  );
   const renderedNodes = useMemo(
-    () => showDisconnected || relationFilteredEdges.length === 0
-      ? graphProjection.nodes
-      : graphProjection.nodes.filter((node) => connectedNodeIds.has(node.id)),
-    [connectedNodeIds, graphProjection.nodes, relationFilteredEdges.length, showDisconnected],
+    () => graphProjection.nodes.filter(node => neighborhood
+      ? neighborhood.has(node.id)
+      : showDisconnected || connectedNodeIds.has(node.id)),
+    [connectedNodeIds, graphProjection.nodes, neighborhood, showDisconnected],
   );
   const matchingNodes = useMemo(() => {
     const query = nodeQuery.trim().toLocaleLowerCase();
     return query ? (mapMode ? fileMapProjection.nodes : nodes).filter(node => `${node.title} ${node.path || ""}`.toLocaleLowerCase().includes(query)).slice(0, 12) : [];
   }, [fileMapProjection.nodes, mapMode, nodeQuery, nodes]);
-  const renderedEdges = useMemo(() => relationFilteredEdges.filter(edge => edge.source !== edge.target), [relationFilteredEdges]);
-  const selfRelationCount = relationFilteredEdges.length - renderedEdges.length;
+  const renderedEdges = useMemo(() => relationFilteredEdges.filter(edge => edge.source !== edge.target &&
+    (!neighborhood || (neighborhood.has(edge.source) && neighborhood.has(edge.target)))), [neighborhood, relationFilteredEdges]);
+  const selfRelationCount = relationFilteredEdges.filter(edge => edge.source === edge.target).length;
   const nodeById = useMemo(
     () => new Map(graphProjection.nodes.map((node) => [node.id, node])),
     [graphProjection.nodes],
@@ -1034,7 +709,6 @@ export function RepositoryIndexExplorer({
     () => new Map(nodes.map((node) => [node.id, node])),
     [nodes],
   );
-  const overviewGraph = renderedNodes.length >= OVERVIEW_GRAPH_THRESHOLD;
   const denseGraph = renderedNodes.length >= DENSE_GRAPH_THRESHOLD;
   const hugeGraph = renderedNodes.length >= HUGE_GRAPH_THRESHOLD;
 
@@ -1080,6 +754,7 @@ export function RepositoryIndexExplorer({
       setExpansionMessage(null);
       const activeFilters = overrideFilters || filtersRef.current;
       if (!append) {
+        setNeighborhoodRoot(null);
         filtersRef.current = activeFilters;
         positionsRef.current.clear();
         setSelectedNode(null);
@@ -1147,6 +822,7 @@ export function RepositoryIndexExplorer({
         cursorRef.current = response.nextCursor || null;
         setCursor(cursorRef.current);
         setGraphCoverage({
+          projection: response.projection,
           eligibleRelations: response.eligibleRelations,
           returnedRelations: response.returnedRelations,
           relationsTruncated: response.relationsTruncated,
@@ -1237,7 +913,7 @@ export function RepositoryIndexExplorer({
     };
     graphViewRef.current = "files";
     setGraphView("files");
-    setDirectoryScope("");
+    setNeighborhoodRoot(null);
     setHiddenRelationFacets(new Set());
     applyFilters(next);
   }, [applyFilters, initialBranch, overview?.selectedBranch]);
@@ -1278,6 +954,7 @@ export function RepositoryIndexExplorer({
         setCursor(nextCursor);
         cursorRef.current = nextCursor;
         setGraphCoverage({
+          projection: response.projection,
           eligibleRelations: response.eligibleRelations,
           returnedRelations: response.returnedRelations,
           relationsTruncated: response.relationsTruncated,
@@ -1339,15 +1016,8 @@ export function RepositoryIndexExplorer({
   }, []);
 
   const stopLayout = useCallback((resetCamera = true) => {
-    if (layoutTimerRef.current) {
-      window.clearTimeout(layoutTimerRef.current);
-      layoutTimerRef.current = null;
-    }
-    if (forceLayoutRef.current) {
-      forceLayoutRef.current.stop();
-      forceLayoutRef.current.kill();
-      forceLayoutRef.current = null;
-    }
+    layoutWorkerRef.current?.terminate();
+    layoutWorkerRef.current = null;
     const graph = graphRef.current;
     if (graph) sanitizeGraphPositions(graph);
     storePositions(graph);
@@ -1358,81 +1028,47 @@ export function RepositoryIndexExplorer({
     setLayoutRunning(false);
   }, [storePositions]);
 
-  const runLayout = useCallback((duration = 2400) => {
+  const runLayout = useCallback(() => {
     const graph = graphRef.current;
     const renderer = sigmaRef.current;
-    if (!graph || !renderer || graph.order < 2 || graph.size === 0) return;
-    if (layoutTimerRef.current) {
-      window.clearTimeout(layoutTimerRef.current);
-      layoutTimerRef.current = null;
-    }
-    if (forceLayoutRef.current) {
-      forceLayoutRef.current.stop();
-      forceLayoutRef.current.kill();
-      forceLayoutRef.current = null;
-    }
-
-    const layoutNodes: RepositoryIndexNode[] = [];
-    const layoutEdges: RepositoryIndexEdge[] = [];
-    graph.forEachNode((_nodeId, attributes) => layoutNodes.push(attributes.raw));
-    graph.forEachEdge((_edgeId, attributes) => layoutEdges.push(attributes.raw));
-    const seedPositions = mapMode ? directoryLayout(layoutNodes) : computeRelationLayoutPositions(layoutNodes, layoutEdges);
-    graph.forEachNode((nodeId) => {
-      const position = seedPositions.get(nodeId);
-      if (position) graph.mergeNodeAttributes(nodeId, position);
-    });
-    sanitizeGraphPositions(graph);
-    renderer.refresh();
-
-    if (mapMode || graph.order <= 180) {
+    if (!graph || !renderer || graph.order < 2) return;
+    layoutWorkerRef.current?.terminate();
+    layoutWorkerRef.current = null;
+    if (graph.order <= 180) {
+      const positions = directedLayout(graph.mapNodes((_id, attributes) => attributes.raw), graph.mapEdges((_id, attributes) => attributes.raw));
+      graph.forEachNode(id => graph.mergeNodeAttributes(id, positions.get(id)!));
       storePositions(graph);
+      renderer.refresh();
       renderer.getCamera().animatedReset({ duration: 260 });
+      setLayoutRunning(false);
       return;
     }
-
-    let forceLayout: ForceAtlas2Layout<SigmaNodeAttributes, SigmaEdgeAttributes>;
+    setError(current => current === LAYOUT_ERROR ? null : current);
+    setLayoutRunning(true);
+    const failed = () => {
+      layoutWorkerRef.current?.terminate();
+      layoutWorkerRef.current = null;
+      setLayoutRunning(false);
+      setError(LAYOUT_ERROR);
+    };
     try {
-      forceLayout = new ForceAtlas2Layout<SigmaNodeAttributes, SigmaEdgeAttributes>(graph, {
-        getEdgeWeight: (_edgeId, attributes) => attributes.backbone ? 1 : 0.35,
-        settings: {
-          adjustSizes: false,
-          barnesHutOptimize: graph.order > 180,
-          barnesHutTheta: 0.65,
-          edgeWeightInfluence: 0.2,
-          gravity: 0.18,
-          linLogMode: true,
-          outboundAttractionDistribution: true,
-          scalingRatio: graph.order > 2500 ? 34 : graph.order > 700 ? 28 : 22,
-          slowDown: graph.order > 2500 ? 8 : graph.order > 700 ? 6 : 4,
-          strongGravityMode: false,
-        },
-      });
-      forceLayoutRef.current = forceLayout;
-      setLayoutRunning(true);
-      forceLayout.start();
-    } catch {
-      forceLayoutRef.current?.kill();
-      forceLayoutRef.current = null;
-      storePositions(graph);
-      renderer.refresh();
-      renderer.getCamera().animatedReset({ duration: 260 });
-      setLayoutRunning(false);
-      return;
-    }
-    layoutTimerRef.current = window.setTimeout(() => {
-      layoutTimerRef.current = null;
-      if (forceLayoutRef.current === forceLayout) {
-        forceLayout.stop();
-        forceLayout.kill();
-        forceLayoutRef.current = null;
-      }
-      sanitizeGraphPositions(graph);
-      storePositions(graph);
-      renderer.refresh();
-      renderer.getCamera().animatedReset({ duration: 320 });
-      setLayoutRunning(false);
-    }, duration);
-  }, [mapMode, storePositions]);
+      const worker = new Worker(new URL("./repositoryLayout.worker.ts", import.meta.url), { type: "module" });
+      layoutWorkerRef.current = worker;
+      worker.onmessage = ({ data }: MessageEvent<Map<string, { x: number; y: number }>>) => {
+        if (layoutWorkerRef.current !== worker) return;
+        data.forEach((position, id) => { if (graph.hasNode(id)) graph.mergeNodeAttributes(id, position); });
+        sanitizeGraphPositions(graph);
+        storePositions(graph);
+        renderer.refresh();
+        renderer.getCamera().animatedReset({ duration: 260 });
+        worker.terminate();
+        layoutWorkerRef.current = null;
+        setLayoutRunning(false);
+      };
+      worker.onerror = failed;
+      worker.postMessage({ nodes: graph.nodes().map(id => ({ id })), edges: graph.mapEdges((_id, _attributes, source, target) => ({ source, target })) });
+    } catch { failed(); }
+  }, [storePositions]);
 
   const focusNode = useCallback((nodeId?: string | null) => {
     const graph = graphRef.current;
@@ -1501,7 +1137,7 @@ export function RepositoryIndexExplorer({
         autoCenter: true,
         autoRescale: true,
         defaultEdgeType: "arrow",
-        edgeProgramClasses: { arrow: EdgeArrowProgram },
+        edgeProgramClasses: { arrow: EdgeArrowProgram, curvedArrow: EdgeCurvedArrowProgram },
         defaultNodeColor: "#6ee7b7",
         defaultEdgeColor: graphTheme.defaultEdgeColor,
         defaultDrawNodeHover: drawRepositoryIndexNodeHover,
@@ -1510,17 +1146,17 @@ export function RepositoryIndexExplorer({
         hideLabelsOnMove: false,
         itemSizesReference: "screen",
         labelColor: { attribute: "labelColor", color: graphTheme.labelColor },
-        labelDensity: hugeGraph ? 0 : denseGraph ? 0.008 : graph.order > 180 ? 0.2 : 1,
+        labelDensity: graph.order > 180 ? 0.2 : 1,
         labelFont: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
         labelGridCellSize: denseGraph ? 140 : 112,
-        labelRenderedSizeThreshold: hugeGraph ? 999 : denseGraph ? 20 : graph.order > 280 ? 15 : 6,
+        labelRenderedSizeThreshold: 6,
         labelSize: mapMode ? 12 : denseGraph ? 10 : 11,
         labelWeight: "500",
         minCameraRatio: 0.02,
         maxCameraRatio: 8,
         minEdgeThickness: denseGraph ? 0.35 : 0.55,
         renderEdgeLabels: false,
-        renderLabels: !hugeGraph,
+        renderLabels: true,
         stagePadding: 76,
         zIndex: true,
       },
@@ -1541,8 +1177,8 @@ export function RepositoryIndexExplorer({
       void loadPoint(raw, false);
     });
     renderer.on("doubleClickNode", ({ node, event }) => {
-      const raw = graph.getNodeAttribute(node, "raw");
-      if (raw.recordType === "directory_aggregate" && raw.path) { event.preventSigmaDefault(); openDirectory(raw.path); }
+      event.preventSigmaDefault();
+      setNeighborhoodRoot(node);
     });
     renderer.on("clickEdge", ({ edge, event }) => {
       event.preventSigmaDefault();
@@ -1557,7 +1193,6 @@ export function RepositoryIndexExplorer({
       setHoveredNodeId(null);
     });
     renderer.on("downNode", ({ node, event }) => {
-      stopLayout(false);
       draggedNode = node;
       dragMoved = false;
       graph.setNodeAttribute(node, "highlighted", true);
@@ -1568,6 +1203,7 @@ export function RepositoryIndexExplorer({
     const mouse = renderer.getMouseCaptor();
     mouse.on("mousemovebody", (event) => {
       if (!draggedNode) return;
+      if (!dragMoved) stopLayout(false);
       const position = renderer.viewportToGraph(event);
       graph.setNodeAttribute(draggedNode, "x", position.x);
       graph.setNodeAttribute(draggedNode, "y", position.y);
@@ -1589,31 +1225,17 @@ export function RepositoryIndexExplorer({
       renderer.getCamera().enable();
     });
 
-    if (topologyChanged) {
-      const layoutDuration =
-        graph.order > 4000 ? 4200 :
-          graph.order > 1200 ? 3600 :
-            graph.order > 500 ? 3000 :
-              graph.order > 180 ? 2400 : 1800;
-      runLayout(layoutDuration);
-    }
+    if (topologyChanged) runLayout();
 
     return () => {
       sanitizeGraphPositions(graph);
       storePositions(graph);
-      if (layoutTimerRef.current) {
-        window.clearTimeout(layoutTimerRef.current);
-        layoutTimerRef.current = null;
-      }
-      if (forceLayoutRef.current) {
-        forceLayoutRef.current.stop();
-        forceLayoutRef.current.kill();
-        forceLayoutRef.current = null;
-      }
+      layoutWorkerRef.current?.terminate();
+      layoutWorkerRef.current = null;
       renderer.kill();
       if (sigmaRef.current === renderer) sigmaRef.current = null;
     };
-  }, [denseGraph, graphTheme.defaultEdgeColor, graphTheme.labelColor, hugeGraph, loadPoint, mapMode, openDirectory, renderedEdges, renderedNodes, runLayout, stopLayout, storePositions]);
+  }, [denseGraph, graphTheme.defaultEdgeColor, graphTheme.labelColor, hugeGraph, loadPoint, mapMode, renderedEdges, renderedNodes, runLayout, stopLayout, storePositions]);
 
   useEffect(() => {
     const renderer = sigmaRef.current;
@@ -1621,8 +1243,7 @@ export function RepositoryIndexExplorer({
     if (!renderer || !graph) return;
 
     const activeNode = selectedNode?.id || hoveredNodeId;
-    const sparseMap = renderedNodes.length <= 25 && renderedEdges.length <= renderedNodes.length * 1.5;
-    const distances = traceDistances(renderedNodes, renderedEdges, activeNode, mapMode ? 1 : traceDepth);
+    const distances = traceDistances(renderedNodes, renderedEdges, activeNode, traceDepth);
     const neighbors = new Set([...distances.keys()].filter(id => id !== activeNode));
 
     renderer.setSettings({
@@ -1643,7 +1264,7 @@ export function RepositoryIndexExplorer({
         };
 
         if (!Number.isFinite(reduced.x) || !Number.isFinite(reduced.y)) {
-          const fallback = initialPosition(graphAttributes.raw, 0, graph.order);
+          const fallback = initialPosition(0);
           reduced.x = fallback.x;
           reduced.y = fallback.y;
         }
@@ -1654,9 +1275,6 @@ export function RepositoryIndexExplorer({
           reduced.size = Math.max(2.2, reduced.size * 0.82);
           if (graph.order > 40) reduced.label = "";
           reduced.zIndex = 0;
-        } else if (denseGraph && !isActive && !isNeighbor) {
-          reduced.label = "";
-          reduced.forceLabel = false;
         }
 
         if (isNeighbor) {
@@ -1683,18 +1301,13 @@ export function RepositoryIndexExplorer({
           reduced.hidden = false;
           return reduced;
         }
-        if (mapMode && !showAllConnections && !sparseMap) {
-          const [source, target] = graph.extremities(edge);
-          reduced.hidden = !activeNode || (source !== activeNode && target !== activeNode);
-          return reduced;
-        }
         if (!activeNode) {
           if (hugeGraph) {
             reduced.color = colorWithOpacity(data.color, graphTheme.isDark ? 0.34 : 0.42);
             reduced.size = Math.max(0.55, Math.min(reduced.size, 0.9));
           } else if (denseGraph) {
-            reduced.color = colorWithOpacity(data.color, graphTheme.isDark ? 0.44 : 0.52);
-            reduced.size = Math.max(0.65, Math.min(reduced.size, 1.15));
+            reduced.color = colorWithOpacity(data.color, graphTheme.isDark ? 0.22 : 0.3);
+            reduced.size = Math.max(0.4, Math.min(reduced.size, 0.65));
           }
           return reduced;
         }
@@ -1706,18 +1319,18 @@ export function RepositoryIndexExplorer({
 
         if (!inNeighborhood) {
           reduced.color = graphTheme.inactiveEdgeColor;
-          reduced.size = 0.9;
+          reduced.size = 0.45;
           return reduced;
         }
 
         reduced.hidden = false;
-        reduced.color = colorWithOpacity(data.color, 0.9);
-        reduced.size = data.size * (touchesActive ? 1.7 : 1.1);
+        reduced.color = colorWithOpacity(data.color, touchesActive || graph.order <= 180 ? 0.9 : 0.25);
+        reduced.size = touchesActive ? Math.min(data.size * 1.5, 2.4) : graph.order > 180 ? 0.65 : data.size;
         return reduced;
       },
     });
     renderer.refresh();
-  }, [denseGraph, graphTheme.activeLabelColor, graphTheme.inactiveEdgeColor, graphTheme.isDark, graphTheme.labelColor, hoveredNodeId, hugeGraph, mapMode, overviewGraph, showAllConnections, renderedEdges, renderedNodes, selectedEdge?.id, selectedNode?.id, traceDepth]);
+  }, [denseGraph, graphTheme.activeLabelColor, graphTheme.inactiveEdgeColor, graphTheme.isDark, graphTheme.labelColor, hoveredNodeId, hugeGraph, renderedEdges, renderedNodes, selectedEdge?.id, selectedNode?.id, traceDepth]);
 
   const metricItems = [
     {
@@ -1830,8 +1443,8 @@ export function RepositoryIndexExplorer({
       const source = rawNodeById.get(edge.source);
       const target = rawNodeById.get(edge.target);
       if (relationBrowserPair) {
-        if (relationBrowserPair.sourcePath && !(source?.path === relationBrowserPair.sourcePath || source?.path?.startsWith(`${relationBrowserPair.sourcePath}/`))) return false;
-        if (relationBrowserPair.targetPath && !(target?.path === relationBrowserPair.targetPath || target?.path?.startsWith(`${relationBrowserPair.targetPath}/`))) return false;
+        if (relationBrowserPair.sourcePath && source?.path !== relationBrowserPair.sourcePath) return false;
+        if (relationBrowserPair.targetPath && target?.path !== relationBrowserPair.targetPath) return false;
       }
       if (!query) return true;
       return [
@@ -1868,7 +1481,6 @@ export function RepositoryIndexExplorer({
 
   const filterToNode = useCallback(() => {
     if (!selectedNode) return;
-    if (selectedNode.recordType === "directory_aggregate" && selectedNode.path) { openDirectory(selectedNode.path); return; }
     const entityQuery =
       selectedNode.entity?.qualified_name || selectedNode.entity?.name;
     if (entityQuery) {
@@ -1889,7 +1501,7 @@ export function RepositoryIndexExplorer({
         languages: [],
       });
     }
-  }, [applyFilters, openDirectory, selectedNode]);
+  }, [applyFilters, selectedNode]);
 
   const setGraphViewMode = useCallback((mode: GraphViewMode) => {
     ++pointRequestRef.current;
@@ -1897,7 +1509,7 @@ export function RepositoryIndexExplorer({
     setExpansionMessage(null);
     graphViewRef.current = mode;
     setGraphView(mode);
-    setDirectoryScope("");
+    setNeighborhoodRoot(null);
     const nextFilters = mode === "files" ? { ...filtersRef.current, path: undefined } : filtersRef.current;
     setFilters(nextFilters);
     void loadGraph(false, nextFilters);
@@ -1920,17 +1532,18 @@ export function RepositoryIndexExplorer({
 
   const inspectGraphNode = useCallback((node?: RepositoryIndexNode) => {
     if (!node) return;
+    if (neighborhoodRoot || !connectedNodeIds.has(node.id)) setNeighborhoodRoot(node.id);
     setSelectedEdge(null);
     setSelectedNode(node);
     focusNode(node.id);
     if (!node.virtual) void loadPoint(node, false);
-  }, [focusNode, loadPoint]);
+  }, [connectedNodeIds, focusNode, loadPoint, neighborhoodRoot]);
 
   const openRelationBrowser = useCallback((edge?: RepositoryIndexEdge | null) => {
     setRelationBrowserPage(0);
     setRelationBrowserQuery("");
     if (edge) {
-      setRelationBrowserFacet(mapMode ? "__all__" : relationFacet(edge));
+      setRelationBrowserFacet(relationFacet(edge));
       const source = nodeById.get(edge.source) || rawNodeById.get(edge.source);
       const target = nodeById.get(edge.target) || rawNodeById.get(edge.target);
       setRelationBrowserPair({
@@ -1942,10 +1555,11 @@ export function RepositoryIndexExplorer({
       setRelationBrowserPair(null);
     }
     setRelationBrowserOpen(true);
-  }, [mapMode, nodeById, rawNodeById]);
+  }, [nodeById, rawNodeById]);
 
   const inspectRawRelation = useCallback((edge: RepositoryIndexEdge) => {
     ++pointRequestRef.current;
+    setNeighborhoodRoot(null);
     const facet = relationFacet(edge);
     setHiddenRelationFacets((current) => {
       if (!current.has(facet)) return current;
@@ -2454,13 +2068,13 @@ export function RepositoryIndexExplorer({
             <div className="flex flex-col gap-3 border-b border-slate-200 bg-white/[0.94] px-4 py-3 text-slate-900 backdrop-blur dark:border-white/10 dark:bg-[rgba(13,17,24,0.92)] dark:text-slate-100">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="tabular-nums">
-                  {formatNumber(renderedNodes.length)} {mapMode ? "folders / files" : "symbols / records"}
-                  {" · "}{formatNumber(renderedEdges.length)} {mapMode ? "connection bundles" : "directed connections"}
+                  {formatNumber(renderedNodes.length)} {mapMode ? "files / endpoints" : "symbols / records"}
+                  {" · "}{formatNumber(renderedEdges.length)} {mapMode ? "typed, directed bundles" : "directed connections"}
                   {selfRelationCount > 0 && ` · ${selfRelationCount} self-relations in Relations`}
                   {graphView === "files" && fileMap.internalRelations > 0 && ` · ${formatNumber(fileMap.internalRelations)} relations within files`}
                   {graphView === "files" && hiddenExternalRelationCount > 0 && ` · ${formatNumber(hiddenExternalRelationCount)} external hidden`}
                 </span>
-                <span>{formatNumber(representedRelations)} relations {graphView === "files" ? (loadingCompleteMap ? "in preview · building complete map…" : graphCoverage.relationsTruncated ? "in partial map · refresh to retry" : "mapped · complete file map") : `loaded${cursor || graphCoverage.relationsTruncated ? " · more pages available" : " · end of graph pages"}`}</span>
+                <span>{formatNumber(representedRelations)} relations {loadingCompleteMap ? "in preview · loading file map…" : graphCoverage.projection === "files" ? (graphCoverage.relationsTruncated ? "in partial map · refresh to retry" : "mapped · complete file map") : `loaded${cursor || graphCoverage.relationsTruncated ? " · more pages available" : " · end of graph pages"}`}</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -2473,7 +2087,7 @@ export function RepositoryIndexExplorer({
                     onClick={() => setGraphViewMode("files")}
                   >
                     <Boxes className="h-3.5 w-3.5" />
-                    Repository map
+                    File dependencies
                   </Button>
                   <Button
                     variant={graphView === "symbols" ? "secondary" : "ghost"}
@@ -2486,8 +2100,7 @@ export function RepositoryIndexExplorer({
                     AST symbols
                   </Button>
                 </div>
-                {mapMode && <Button size="sm" variant="outline" onClick={() => setShowAllConnections(value => !value)}>{showAllConnections ? "Connections: all" : "Connections: auto"}</Button>}
-                {!mapMode && <Select value={String(traceDepth)} onValueChange={value => setTraceDepth(Number(value))}>
+                <Select value={String(traceDepth)} onValueChange={value => setTraceDepth(Number(value))}>
                   <SelectTrigger aria-label="Trace depth" className="h-8 w-32 text-xs">
                     <SelectValue />
                   </SelectTrigger>
@@ -2497,7 +2110,7 @@ export function RepositoryIndexExplorer({
                     <SelectItem value="3">Trace 3 hops</SelectItem>
                     <SelectItem value="999999">Trace component</SelectItem>
                   </SelectContent>
-                </Select>}
+                </Select>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -2712,10 +2325,9 @@ export function RepositoryIndexExplorer({
               })}
             </div>
 
-            {mapMode && <div className="relative z-20 flex items-center gap-2 overflow-x-auto border-b bg-background px-4 py-2 text-xs">
-              <button className="shrink-0 font-medium text-primary hover:underline" onClick={() => openDirectory("")}>Repository</button>
-              {directoryScope.split("/").filter(Boolean).map((part, index, parts) => <span key={index} className="flex shrink-0 items-center gap-2"><span className="text-muted-foreground">/</span><button className="hover:underline" onClick={() => openDirectory(parts.slice(0, index + 1).join("/"))}>{part}</button></span>)}
-              <span className="ml-auto shrink-0 text-muted-foreground">{formatNumber(directoryMap.fileCount)} files{directoryMap.outsideRelations > 0 && ` · ${formatNumber(directoryMap.outsideRelations)} relations outside this folder`}</span>
+            {neighborhoodRoot && <div className="relative z-20 flex items-center gap-3 border-b bg-background px-4 py-2 text-xs">
+              <span className="min-w-0 truncate">Neighborhood of <strong>{nodeById.get(neighborhoodRoot)?.title}</strong> · {renderedNodes.length} of {graphProjection.nodes.length} nodes</span>
+              <Button size="sm" variant="outline" className="ml-auto shrink-0" onClick={() => setNeighborhoodRoot(null)}>Whole graph</Button>
             </div>}
             <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
               <div className="relative h-[540px] min-h-[400px] min-w-0 flex-1 lg:h-auto">
@@ -2732,7 +2344,7 @@ export function RepositoryIndexExplorer({
                   <div className="mt-1 max-h-64 overflow-auto rounded-md border bg-popover p-1 shadow-lg">
                     {matchingNodes.length === 0 && <p className="p-2 text-xs text-muted-foreground">No loaded records match. Use Filters to search the index.</p>}
                     {matchingNodes.map(node => (
-                      <button key={node.id} type="button" onClick={() => { if (mapMode && node.path) openDirectory(node.path.split("/").slice(0, -1).join("/")); inspectGraphNode(node); setNodeQuery(""); }} className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-muted focus:bg-muted">
+                      <button key={node.id} type="button" onClick={() => { inspectGraphNode(node); setNodeQuery(""); }} className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-muted focus:bg-muted">
                         <span className="block truncate font-medium">{node.title}</span>
                         <span className="block truncate text-muted-foreground">{node.path || "Unresolved endpoint"}</span>
                       </button>
@@ -2743,7 +2355,7 @@ export function RepositoryIndexExplorer({
               {!loadingGraph && renderedNodes.length > 0 && (
                 <div className="pointer-events-none absolute left-4 top-14 z-10 hidden lg:inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/[0.88] px-3 py-1.5 text-[11px] text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/75 dark:text-slate-300">
                   <MousePointer2 className="h-3.5 w-3.5 text-primary" />
-                  {mapMode ? "Select to see connections · double-click a folder to open" : "Arrows show direction · select to trace · zoom for labels"}
+                  Arrows show direction · zoom for labels · double-click for neighborhood
                 </div>
               )}
 
@@ -2901,9 +2513,9 @@ export function RepositoryIndexExplorer({
                   <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        {selectedNode?.kind === "directory" ? <FolderOpen className="h-4 w-4 text-primary" /> : <Split className="h-4 w-4 text-primary" />}
+                        <Split className="h-4 w-4 text-primary" />
                         <div className="text-sm font-medium">
-                          {selectedNode.recordType === "directory_aggregate" ? "Folder Inspector" : selectedNode.recordType === "file_aggregate" ? "File Inspector" : "Point Inspector"}
+                          {selectedNode.recordType === "file_aggregate" ? "File Inspector" : "Point Inspector"}
                         </div>
                       </div>
                       <h3 className="mt-3 break-words text-base font-semibold [overflow-wrap:anywhere]">
@@ -2972,10 +2584,10 @@ export function RepositoryIndexExplorer({
                           variant="outline"
                           size="sm"
                           className="min-w-[120px] flex-1 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/10"
-                          onClick={() => focusNode(selectedNode.id)}
+                          onClick={() => setNeighborhoodRoot(selectedNode.id)}
                         >
                           <MousePointer2 className="h-4 w-4" />
-                          Focus
+                          Show neighborhood
                         </Button>
                         {(selectedNode.path || selectedNode.entity) && (
                           <Button
@@ -2989,7 +2601,7 @@ export function RepositoryIndexExplorer({
                             ) : (
                               <Filter className="h-4 w-4" />
                             )}
-                            {selectedNode.recordType === "directory_aggregate" ? "Open folder" : selectedNode.recordType === "file_aggregate" ? "Open AST" : "Filter"}
+                            {selectedNode.recordType === "file_aggregate" ? "Open AST" : "Filter"}
                           </Button>
                         )}
                         {!selectedNode.virtual && (

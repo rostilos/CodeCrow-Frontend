@@ -55,15 +55,15 @@ export function WorkspaceSwitcher() {
             role="combobox"
             aria-expanded={open}
             aria-label="Select workspace"
-            className="w-[200px] justify-between"
+            className="w-10 justify-center px-2 sm:w-[200px] sm:justify-between sm:px-4"
           >
-            <div className="flex items-center space-x-2 text-xs md:text-sm">
-              <Building className="h-4 w-4" />
-              <span className="truncate">
+            <div className="flex min-w-0 items-center sm:space-x-2 text-xs md:text-sm">
+              <Building className="h-4 w-4 shrink-0" />
+              <span className="sr-only sm:not-sr-only sm:truncate">
                 {currentWorkspace?.name || "Select workspace"}
               </span>
             </div>
-            <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-auto hidden h-4 w-4 shrink-0 opacity-50 sm:block" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[200px] p-0" align="end">
