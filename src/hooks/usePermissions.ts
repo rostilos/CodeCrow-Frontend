@@ -46,6 +46,8 @@ export function usePermissions() {
     return hasPermission(['OWNER', 'ADMIN']);
   };
 
+  const canReview = (): boolean => hasPermission(['OWNER', 'ADMIN', 'REVIEWER']);
+
   return {
     userRole: userRole?.role || null,
     loading,
@@ -53,5 +55,6 @@ export function usePermissions() {
     isWorkspaceOwner,
     canManageWorkspace,
     canGenerateTokens,
+    canReview,
   };
 }

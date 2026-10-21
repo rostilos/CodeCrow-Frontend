@@ -8,10 +8,16 @@ import {
 
 interface QaDocTestCasesSectionProps {
   testCases: QaDocTestCase[];
+  completed?: number[];
+  onCheck?: (index: number, checked: boolean) => void;
+  disabled?: boolean;
 }
 
 export function QaDocTestCasesSection({
   testCases,
+  completed,
+  onCheck,
+  disabled,
 }: QaDocTestCasesSectionProps) {
   const headingId = useId();
 
@@ -32,7 +38,7 @@ export function QaDocTestCasesSection({
         </Badge>
       </div>
 
-      <QaDocTestCases testCases={testCases} />
+      <QaDocTestCases testCases={testCases} completed={completed} onCheck={onCheck} disabled={disabled} />
     </section>
   );
 }

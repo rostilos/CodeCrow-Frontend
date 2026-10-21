@@ -28,7 +28,7 @@ import { authUtils } from "@/lib/auth";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
-  GoogleSignInButtonCustom,
+  GoogleSignInButton,
   GoogleCredentialResponse,
 } from "@/components/GoogleSignInButton";
 import { useGoogleClientId } from "@/hooks/useGoogleClientId";
@@ -319,14 +319,12 @@ export default function Login() {
               )}
 
               {/* Google Sign-In */}
-              <GoogleSignInButtonCustom
+              <GoogleSignInButton
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
                 isLoading={isGoogleLoading}
                 disabled={isLoading}
-              >
-                Sign in with Google
-              </GoogleSignInButtonCustom>
+              />
 
               <div className="mt-6 text-center text-sm">
                 <span className="text-muted-foreground">

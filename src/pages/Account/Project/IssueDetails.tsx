@@ -86,7 +86,7 @@ export default function IssueDetails() {
   const { currentWorkspace } = useWorkspace();
   const { toast } = useToast();
   const { theme } = useTheme();
-  const { canManageWorkspace } = usePermissions();
+  const { canReview } = usePermissions();
 
   const [issue, setIssue] = useState<AnalysisIssue | null>(null);
   const [project, setProject] = useState<ProjectDTO | null>(null);
@@ -1411,7 +1411,7 @@ export default function IssueDetails() {
                     </h1>
                     <div className="flex gap-x-4 text-xs"></div>
                   </div>
-                  {canManageWorkspace() && (
+                  {canReview() && (
                     <div className="flex items-center gap-2">
                       <Select
                         value={issue.status}

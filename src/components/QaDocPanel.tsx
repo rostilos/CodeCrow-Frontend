@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { QaDocTestCasesSection } from "@/components/QaDocTestCasesSection";
+import { QaDocExecution } from "@/components/QaDocExecution";
 
 export type QaDocTab = "overview" | "test-cases" | "environment";
 
@@ -37,6 +38,8 @@ interface QaDocPanelProps {
   loading: boolean;
   error: string | null;
   initialTab?: QaDocTab;
+  workspaceSlug?: string;
+  projectNamespace?: string;
 }
 
 export function QaDocPanel({
@@ -50,6 +53,8 @@ export function QaDocPanel({
   loading,
   error,
   initialTab,
+  workspaceSlug,
+  projectNamespace,
 }: QaDocPanelProps) {
   const testCases = qaDoc?.testCases ?? [];
   const environmentContent = qaDoc?.environmentMarkdown;
@@ -182,10 +187,14 @@ export function QaDocPanel({
               forceMount
               className="m-0 p-5 data-[state=inactive]:hidden sm:p-6"
             >
-              <QaDocTestCasesSection
+              {workspaceSlug && projectNamespace && prNumber && qaDoc?.revision ? <QaDocExecution
+                key={`${workspaceSlug}-${projectNamespace}-${prNumber}-${qaDoc.revision}`}
+                workspace={workspaceSlug} project={projectNamespace} prNumber={prNumber}
+                revision={qaDoc.revision} testCases={testCases}
+              /> : <QaDocTestCasesSection
                 key={`${qaDoc?.prNumber ?? "shared"}-${qaDoc?.generatedAt ?? ""}-${qaDoc?.commitHash ?? ""}-${qaDoc?.taskId ?? ""}`}
                 testCases={testCases}
-              />
+              />}
             </TabsContent>
 
             <TabsContent value="environment" className="m-0 p-5 sm:p-6">

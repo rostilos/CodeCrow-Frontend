@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import DeveloperAccess from "@/components/Account/UserSettings/DeveloperAccess";
 
 const passwordSchema = z
   .object({
@@ -42,6 +43,7 @@ const passwordSchema = z
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
 const navItems = [
+  { id: "developer", label: "API tokens & IDE", icon: Settings },
   { id: "profile", label: "Profile", icon: User },
   { id: "security", label: "Security", icon: Shield },
   { id: "account", label: "Account", icon: Globe },
@@ -87,6 +89,8 @@ export default function UserSettings() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "developer":
+        return <DeveloperAccess />;
       case "profile":
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

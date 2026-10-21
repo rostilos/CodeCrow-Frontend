@@ -2552,6 +2552,8 @@ export default function ProjectDashboard() {
 
             {prTab === "qa-doc" && (
               <QaDocPanel
+                workspaceSlug={currentWorkspace?.slug}
+                projectNamespace={namespace}
                 projectName={project.name}
                 prNumber={selectedPR.prNumber}
                 prTitle={selectedPR.title}

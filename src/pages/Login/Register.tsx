@@ -27,7 +27,7 @@ import { authService } from "@/api_service/auth/authService.ts";
 import { authUtils } from "@/lib/auth";
 import { CodeCrowLogo } from "@/components/CodeCrowLogo";
 import {
-  GoogleSignInButtonCustom,
+  GoogleSignInButton,
   GoogleCredentialResponse,
 } from "@/components/GoogleSignInButton";
 import { useGoogleClientId } from "@/hooks/useGoogleClientId";
@@ -337,14 +337,12 @@ export default function Register() {
               )}
 
               {/* Google Sign-Up */}
-              <GoogleSignInButtonCustom
+              <GoogleSignInButton
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
                 isLoading={isGoogleLoading}
                 disabled={isLoading}
-              >
-                Sign up with Google
-              </GoogleSignInButtonCustom>
+              />
 
               <div className="mt-6 text-center text-sm">
                 <span className="text-muted-foreground">

@@ -12,8 +12,15 @@ export class ApiService {
     options: RequestInit = {},
     isSecured: boolean = false
   ): Promise<T> {
+    const isLoginRequest = [
+      API_CONFIG.ENDPOINTS.LOGIN, API_CONFIG.ENDPOINTS.LOGIN_2FA,
+      API_CONFIG.ENDPOINTS.LOGIN_2FA_RESEND, API_CONFIG.ENDPOINTS.GOOGLE_AUTH,
+      API_CONFIG.ENDPOINTS.REGISTER, API_CONFIG.ENDPOINTS.FORGOT_PASSWORD,
+      API_CONFIG.ENDPOINTS.VALIDATE_RESET_TOKEN, API_CONFIG.ENDPOINTS.RESET_PASSWORD,
+      API_CONFIG.ENDPOINTS.REFRESH_TOKEN,
+    ].some(path => path === endpoint);
     // Check if token needs refresh before making request
-    if (authUtils.shouldRefreshToken() && !isRefreshing && endpoint !== API_CONFIG.ENDPOINTS.REFRESH_TOKEN) {
+    if (!isLoginRequest && authUtils.shouldRefreshToken()) {
       await this.refreshTokenIfNeeded();
     }
 
@@ -26,7 +33,7 @@ export class ApiService {
       ...restOptions,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('codecrow_token')}`,
+        ...(!isLoginRequest ? authUtils.getAuthHeaders() : {}),
         ...(optionHeaders as Record<string, string>),
       },
     };
@@ -34,7 +41,7 @@ export class ApiService {
     let response = await fetch(url, config);
     
     // If unauthorized and we have a refresh token, try to refresh
-    if (response.status === 401 && endpoint !== API_CONFIG.ENDPOINTS.REFRESH_TOKEN) {
+    if (response.status === 401 && !isLoginRequest) {
       const refreshed = await this.refreshTokenIfNeeded();
       if (refreshed) {
         // Retry the original request with new token
@@ -118,6 +125,10 @@ export class ApiService {
         body: JSON.stringify({ refreshToken }),
       });
 
+      // A login or logout may have replaced this session while refresh was in flight.
+      if (authUtils.getRefreshToken() !== refreshToken) {
+        return authUtils.isAuthenticated();
+      }
       if (!response.ok) {
         // Refresh failed - clear auth and redirect to login
         authUtils.logout();
@@ -135,7 +146,7 @@ export class ApiService {
       }
       return false;
     } catch {
-      authUtils.logout();
+      if (authUtils.getRefreshToken() === refreshToken) authUtils.logout();
       return false;
     }
   }

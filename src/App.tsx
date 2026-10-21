@@ -127,6 +127,7 @@ const QualityGatesPage = lazy(
   () => import("./pages/QualityGates/QualityGatesPage.tsx"),
 );
 const PublicSharePreview = lazy(() => import("./pages/PublicSharePreview.tsx"));
+const IdeAuthorize = lazy(() => import("./pages/IdeAuthorize"));
 
 // Admin pages (Site Administration — community/self-hosted only)
 const AdminSettingsPage = lazy(
@@ -160,6 +161,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/ide/authorize" element={<ProtectedRoute><IdeAuthorize /></ProtectedRoute>} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />

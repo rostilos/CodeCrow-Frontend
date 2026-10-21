@@ -319,6 +319,7 @@ export interface SourceAvailabilityResponse {
 }
 
 export interface QaDocDocumentResponse {
+  revision?: string;
   available: boolean;
   prNumber: number;
   taskId?: string | null;
@@ -336,7 +337,29 @@ export interface QaDocDocumentResponse {
   generatedAt?: string | null;
 }
 
+export interface QaDocProgress {
+  revision: string;
+  environments: Record<string, number[]>;
+}
+
+export interface QaDocProgressUpdate {
+  revision: string;
+  environment: string;
+  action: "check" | "add" | "delete";
+  testCase?: number;
+  checked?: boolean;
+}
+
 class AnalysisService extends ApiService {
+  async getQaDocProgress(workspace: string, project: string, pr: number): Promise<QaDocProgress> {
+    return this.request(`/${workspace}/project/${project}/pull-requests/${pr}/qa-doc/progress`, {}, true);
+  }
+
+  async updateQaDocProgress(workspace: string, project: string, pr: number, update: QaDocProgressUpdate): Promise<QaDocProgress> {
+    return this.request(`/${workspace}/project/${project}/pull-requests/${pr}/qa-doc/progress`,
+      { method: "PATCH", body: JSON.stringify(update) }, true);
+  }
+
   async updateIssueStatus(
     workspaceSlug: string,
     namespace: string,

@@ -44,7 +44,7 @@ export const authUtils = {
 
     try {
       // Basic JWT expiration check (decode payload)
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
       const currentTime = Date.now() / 1000;
       
       return payload.exp > currentTime;
@@ -63,7 +63,7 @@ export const authUtils = {
     if (!token || !refreshToken) return false;
 
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
       const currentTime = Date.now();
       const expirationTime = payload.exp * 1000; // Convert to milliseconds
       
