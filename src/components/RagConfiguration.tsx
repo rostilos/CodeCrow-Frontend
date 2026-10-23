@@ -141,6 +141,7 @@ export default function RagConfiguration({
     project.ragConfig?.excludePatterns ?? [],
   );
   const [newPattern, setNewPattern] = useState("");
+  const [branchPatterns, setBranchPatterns] = useState<string[]>(project.ragConfig?.branchPatterns ?? []);
   const [frameworkPresetId, setFrameworkPresetId] = useState(() =>
     inferProjectFrameworkPreset(
       project.ragConfig?.includePatterns,
@@ -522,6 +523,7 @@ export default function RagConfiguration({
     setBranch(project.ragConfig?.branch ?? "");
     setIncludePatterns(project.ragConfig?.includePatterns ?? []);
     setExcludePatterns(project.ragConfig?.excludePatterns ?? []);
+    setBranchPatterns(project.ragConfig?.branchPatterns ?? []);
     setFrameworkPresetId(
       inferProjectFrameworkPreset(
         project.ragConfig?.includePatterns,
@@ -540,6 +542,7 @@ export default function RagConfiguration({
         branch: branch.trim() || null,
         includePatterns: includePatterns.length > 0 ? includePatterns : null,
         excludePatterns: excludePatterns.length > 0 ? excludePatterns : null,
+        branchPatterns,
       };
 
       const updatedProject = await projectService.updateRagConfig(
@@ -578,6 +581,7 @@ export default function RagConfiguration({
           branch: branch.trim() || null,
           includePatterns: includePatterns.length > 0 ? includePatterns : null,
           excludePatterns: excludePatterns.length > 0 ? excludePatterns : null,
+          branchPatterns,
         });
       }
       const result = await projectService.syncAnalysisScope(
@@ -931,7 +935,8 @@ export default function RagConfiguration({
     enabled !== (project.ragConfig?.enabled ?? false) ||
     branch.trim() !== (project.ragConfig?.branch ?? "") ||
     !arraysEqual(includePatterns, project.ragConfig?.includePatterns ?? []) ||
-    !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []);
+    !arraysEqual(excludePatterns, project.ragConfig?.excludePatterns ?? []) ||
+    !arraysEqual(branchPatterns, project.ragConfig?.branchPatterns ?? []);
 
   const singleBranchProgress = Object.values(branchProgress).length === 1
     ? Object.values(branchProgress)[0]
@@ -1059,6 +1064,21 @@ export default function RagConfiguration({
           <p className="text-sm text-muted-foreground">
             RAG indexing uses the project's main branch. To change this, go to
             the <strong>Branches</strong> tab.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="rag-branch-patterns">Additional branches</Label>
+          <textarea
+            id="rag-branch-patterns"
+            className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"
+            value={branchPatterns.join("\n")}
+            onChange={(event) => setBranchPatterns(event.target.value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean))}
+            placeholder={"develop\nrelease/*\nfeature/*"}
+            disabled={!enabled || updating}
+          />
+          <p className="text-sm text-muted-foreground">
+            One exact branch name or glob per line. Matching branches are eligible for RAG indexing alongside the primary branch.
           </p>
         </div>
 

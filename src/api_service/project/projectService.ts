@@ -161,6 +161,7 @@ export interface RagConfigDTO {
   branch: string | null;
   includePatterns: string[] | null;
   excludePatterns: string[] | null;
+  branchPatterns: string[] | null;
 }
 
 export interface UpdateRagConfigRequest {
@@ -168,6 +169,7 @@ export interface UpdateRagConfigRequest {
   branch?: string | null;
   includePatterns?: string[] | null;
   excludePatterns?: string[] | null;
+  branchPatterns?: string[] | null;
 }
 
 // Branch Index types
