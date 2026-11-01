@@ -1835,6 +1835,16 @@ export default function IssueDetails() {
                   </CardContent>
                 )}
               </Card>
+            ) : scopeBranch && issue.status !== "resolved" && !(issue.line > 0) ? (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-base">Current location unverified</CardTitle>
+                  <CardDescription>
+                    This issue remains open. Its previous source location no longer has a verified
+                    match; reconciliation must identify the current code or confirm a fix.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
             ) : scopeBranch &&
             issue.status === "resolved" &&
             (issue.originIssueId || issue.prNumber || issue.analysisId) ? (
@@ -1958,8 +1968,10 @@ export default function IssueDetails() {
                     <IssueCodeSnippet
                       key={issueId}
                       snippet={snippet}
-                      issueLineNumber={issue.line}
-                      activeIssue={{
+                      issueLineNumber={scopeBranch
+                        ? snippet.issues.find((item) => String(item.issueId) === issueId)?.lineNumber ?? 0
+                        : issue.line}
+                      activeIssue={scopeBranch ? undefined : {
                         issueId: issueId!,
                         lineNumber: issue.line,
                         severity: issue.severity,
@@ -2140,6 +2152,7 @@ function IssueCodeSnippet({
     (t ?? "").trim().toLowerCase();
 
   snippet.issues.forEach((issue) => {
+    if (issue.lineNumber <= 0) return;
     // Skip exact duplicate issueIds
     if (seenIssueIds.has(issue.issueId)) return;
     // Skip same line + same normalized title (catches slightly differing whitespace / case)

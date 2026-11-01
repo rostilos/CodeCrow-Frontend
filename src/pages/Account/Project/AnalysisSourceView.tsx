@@ -461,7 +461,7 @@ function FileTreeItem({
                       {issue.title}
                     </span>
                     <span className="text-[10px] text-muted-foreground/60 mt-0.5 block">
-                      Line {issue.lineNumber}
+                      {issue.lineNumber > 0 ? `Line ${issue.lineNumber}` : "Current location unverified"}
                     </span>
                   </div>
                   {issue.resolved && (
@@ -830,6 +830,7 @@ export default function AnalysisSourceView({
     if (!fileView) return new Map<number, InlineIssue[]>();
     const map = new Map<number, InlineIssue[]>();
     fileView.issues.forEach((issue) => {
+      if (issue.lineNumber <= 0) return;
       const scope = issue.issueScope;
       const hasRange =
         scope &&
