@@ -292,6 +292,7 @@ export default function ProjectConfiguration() {
   const [maxAnalysisTokenLimit, setMaxAnalysisTokenLimit] =
     useState<number>(200000);
   const [useMcpTools, setUseMcpTools] = useState(true);
+  const [composerAuditEnabled, setComposerAuditEnabled] = useState(true);
   const [taskContextAnalysisEnabled, setTaskContextAnalysisEnabled] =
     useState(true);
   const [savingAnalysisSettings, setSavingAnalysisSettings] = useState(false);
@@ -401,6 +402,7 @@ export default function ProjectConfiguration() {
         setMaxAnalysisTokenLimit(proj.maxAnalysisTokenLimit ?? 200000);
         setUseMcpTools(proj.useMcpTools ?? true);
         setTaskContextAnalysisEnabled(proj.taskContextAnalysisEnabled ?? true);
+        setComposerAuditEnabled(proj.reviewChecks?.["composer-audit"] ?? true);
       }
     } catch (err: any) {
       toast({
@@ -506,6 +508,7 @@ export default function ProjectConfiguration() {
             maxAnalysisTokenLimit,
             useMcpTools,
             taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
+            reviewChecks: { ...project?.reviewChecks, "composer-audit": composerAuditEnabled },
           },
         ),
         projectService.updateAnalysisLimits(currentWorkspace.slug, namespace, analysisLimits),
@@ -521,6 +524,7 @@ export default function ProjectConfiguration() {
           maxAnalysisTokenLimit,
           useMcpTools,
           taskContextAnalysisEnabled: effectiveTaskContextAnalysisEnabled,
+            reviewChecks: { ...project?.reviewChecks, "composer-audit": composerAuditEnabled },
         });
       }
 
@@ -1932,6 +1936,18 @@ export default function ProjectConfiguration() {
                     </AlertDescription>
                   </Alert>
                 )}
+
+                <div className="w-full flex items-center justify-between gap-4 p-4 border rounded-lg">
+                  <div>
+                    <label htmlFor="composer-audit" className="font-medium">Composer security audit</label>
+                    <div className="text-sm text-muted-foreground">
+                      Check new or changed dependencies when composer.json or composer.lock changes in a PR.
+                      Enabled by default for Composer projects, including Magento 2.
+                      Unavailable private repositories reduce audit coverage without stopping the review.
+                    </div>
+                  </div>
+                  <Switch id="composer-audit" checked={composerAuditEnabled} onCheckedChange={setComposerAuditEnabled} />
+                </div>
 
                 <Button
                   onClick={handleSaveAnalysisSettings}

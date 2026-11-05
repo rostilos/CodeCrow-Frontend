@@ -103,6 +103,7 @@ export interface ProjectDTO {
   maxAnalysisTokenLimit?: number | null;
   useMcpTools?: boolean | null;
   taskContextAnalysisEnabled?: boolean | null;
+  reviewChecks?: Record<string, boolean>;
   projectType?: string | null;
   sourceRoot?: string | null;
   taskManagementConfig?: {
@@ -207,6 +208,7 @@ export interface UpdateAnalysisSettingsRequest {
   maxAnalysisTokenLimit?: number | null;
   useMcpTools?: boolean | null;
   taskContextAnalysisEnabled?: boolean | null;
+  reviewChecks?: Record<string, boolean>;
 }
 
 export interface AnalysisLimitsConfig {
