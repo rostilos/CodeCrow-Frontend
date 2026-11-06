@@ -143,6 +143,7 @@ export default function IssueDetails() {
   const filterSeverity = searchParams.get("severity");
   const filterStatus = searchParams.get("status");
   const filterCategory = searchParams.get("category");
+  const filterReviewCheckId = searchParams.get("reviewCheckId");
 
   // Helper to build PR URL using project VCS info
   const buildPrUrl = (prNumber: number | null | undefined): string | null => {
@@ -249,6 +250,9 @@ export default function IssueDetails() {
       }
 
       // Apply additional filters if present
+      if (filterReviewCheckId) {
+        issues = issues.filter((i) => i.reviewCheckId === filterReviewCheckId);
+      }
       if (filterSeverity && filterSeverity !== "ALL") {
         issues = issues.filter(
           (i) => i.severity.toLowerCase() === filterSeverity.toLowerCase(),
@@ -742,6 +746,7 @@ export default function IssueDetails() {
     if (filterSeverity) params.set("severity", filterSeverity);
     if (filterStatus) params.set("status", filterStatus);
     if (filterCategory) params.set("category", filterCategory);
+    if (filterReviewCheckId) params.set("reviewCheckId", filterReviewCheckId);
 
     return routes.issueDetail(
       namespace!,
@@ -794,6 +799,7 @@ export default function IssueDetails() {
     params.set("subTab", returnTab || "issues");
     if (scopePrNumber) params.set("prNumber", scopePrNumber);
     if (scopePrVersion) params.set("version", scopePrVersion);
+    if (filterReviewCheckId) params.set("reviewCheckId", filterReviewCheckId);
     if (filterSeverity) params.set("severity", filterSeverity);
     if (filterStatus) params.set("status", filterStatus);
     if (filterCategory) params.set("category", filterCategory);

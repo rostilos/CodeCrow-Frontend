@@ -320,6 +320,8 @@ export default function ProjectDashboard() {
     if (categoryParam) {
       newFilters.category = categoryParam.toUpperCase();
     }
+    const reviewCheckId = searchParams.get("reviewCheckId");
+    if (reviewCheckId) newFilters.reviewCheckId = reviewCheckId;
 
     const fileParam = searchParams.get("filePath");
     if (fileParam) {
@@ -356,7 +358,7 @@ export default function ProjectDashboard() {
     } else {
       // Auto-switch to issues tab if any filter is set (e.g., from VCS severity link)
       const hasActiveFilter =
-        severityParam || statusParam || categoryParam || fileParam;
+        severityParam || statusParam || categoryParam || fileParam || reviewCheckId;
       if (hasActiveFilter) {
         // Set the tab to 'issues' for both branch and PR views
         setBranchTab("issues");
@@ -883,6 +885,12 @@ export default function ProjectDashboard() {
       // Update URL params
       const newParams = new URLSearchParams(searchParams);
 
+      if (newFilters.reviewCheckId) {
+        newParams.set("reviewCheckId", newFilters.reviewCheckId);
+      } else {
+        newParams.delete("reviewCheckId");
+      }
+
       if (newFilters.severity !== "ALL") {
         newParams.set("severity", newFilters.severity);
       } else {
@@ -1150,6 +1158,7 @@ export default function ProjectDashboard() {
 
   // Filter issues by all criteria
   const filteredIssues = analysisIssues.filter((issue) => {
+    if (filters.reviewCheckId && issue.reviewCheckId !== filters.reviewCheckId) return false;
     // Severity filter
     if (filters.severity !== "ALL") {
       const issueSeverity = issue.severity?.toUpperCase();
@@ -2571,6 +2580,7 @@ export default function ProjectDashboard() {
                 {/* Filter Sidebar - Left */}
                 <div className="w-64 shrink-0 hidden lg:block self-start">
                   <IssueFilterPanel
+                    reviewCheckIds={[...new Set(analysisIssues.map(issue => issue.reviewCheckId).filter((id): id is string => !!id))]}
                     filters={filters}
                     onFiltersChange={handleFiltersChange}
                     issueCount={currentIssuesTotalCount}
