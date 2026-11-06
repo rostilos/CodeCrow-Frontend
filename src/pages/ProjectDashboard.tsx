@@ -81,6 +81,7 @@ import {
 } from "@/api_service/analysis/analysisService";
 import { usePermissions } from "@/hooks/usePermissions";
 import BranchPRHierarchy from "@/components/BranchPRHierarchy";
+import { ReviewChecksPanel } from "@/components/ReviewChecksPanel";
 import IssuesByFileDisplay from "@/components/IssuesByFileDisplay";
 import IssueFilterPanel, { IssueFilters } from "@/components/IssueFilterPanel";
 import JobsList from "@/components/JobsList";
@@ -164,6 +165,7 @@ const DASHBOARD_SUB_TABS = [
   "activity",
   "partial",
   "qa-doc",
+  "checks",
   "graph",
   "source",
   "repository-index",
@@ -225,7 +227,7 @@ export default function ProjectDashboard() {
   const [branchIssuesTotalCount, setBranchIssuesTotalCount] = useState(0);
   const [branchIssuesPageSize] = useState(50);
   const branchIssuesLoaded = useRef(false);
-  const { canManageWorkspace } = usePermissions();
+  const { canManageWorkspace, canReview } = usePermissions();
   const [branches, setBranches] = useState<string[]>([]);
   const [prsByBranch, setPrsByBranch] = useState<PullRequestsByBranchResponse>(
     {},
@@ -235,12 +237,12 @@ export default function ProjectDashboard() {
   );
   const [selectOpen, setSelectOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectionType, setSelectionType] = useState<"branch" | "pr">("branch");
+  const [selectionType, setSelectionType] = useState<"branch" | "pr">(() => searchParams.has("prId") || searchParams.has("prNumber") ? "pr" : "branch");
   const [branchStats, setBranchStats] =
     useState<DetailedProjectStatsData | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
-  const [prTab, setPrTab] = useState<DashboardSubTab>("preview");
+  const [prTab, setPrTab] = useState<DashboardSubTab>(() => searchParams.get("reviewCheckId") || searchParams.get("subTab") === "checks" ? "checks" : "preview");
   const [branchTab, setBranchTab] = useState<DashboardSubTab>("preview");
   const [analysisSummary, setAnalysisSummary] = useState<string | null>(null);
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
@@ -321,7 +323,6 @@ export default function ProjectDashboard() {
       newFilters.category = categoryParam.toUpperCase();
     }
     const reviewCheckId = searchParams.get("reviewCheckId");
-    if (reviewCheckId) newFilters.reviewCheckId = reviewCheckId;
 
     const fileParam = searchParams.get("filePath");
     if (fileParam) {
@@ -343,8 +344,10 @@ export default function ProjectDashboard() {
     // Check if returnTab is set (coming back from issue detail page) or subTab (persisted tab)
     const returnTab =
       searchParams.get("returnTab") || searchParams.get("subTab");
-    if (isDashboardSubTab(returnTab)) {
-      setBranchTab(returnTab);
+    if (reviewCheckId) {
+      setPrTab("checks");
+    } else if (isDashboardSubTab(returnTab)) {
+      setBranchTab(returnTab === "checks" ? "preview" : returnTab);
       setPrTab(returnTab === "partial" ? "preview" : returnTab);
       // Clean up one-time returnTab param, persist as subTab for browser back
       if (searchParams.has("returnTab")) {
@@ -358,7 +361,7 @@ export default function ProjectDashboard() {
     } else {
       // Auto-switch to issues tab if any filter is set (e.g., from VCS severity link)
       const hasActiveFilter =
-        severityParam || statusParam || categoryParam || fileParam || reviewCheckId;
+        severityParam || statusParam || categoryParam || fileParam;
       if (hasActiveFilter) {
         // Set the tab to 'issues' for both branch and PR views
         setBranchTab("issues");
@@ -423,6 +426,7 @@ export default function ProjectDashboard() {
     const urlSubTab = searchParams.get("subTab") || "preview";
     if (currentSubTab !== urlSubTab) {
       const newParams = new URLSearchParams(searchParams);
+      if (currentSubTab !== "checks") newParams.delete("reviewCheckId");
       if (currentSubTab !== "preview") {
         newParams.set("subTab", currentSubTab);
       } else {
@@ -885,11 +889,6 @@ export default function ProjectDashboard() {
       // Update URL params
       const newParams = new URLSearchParams(searchParams);
 
-      if (newFilters.reviewCheckId) {
-        newParams.set("reviewCheckId", newFilters.reviewCheckId);
-      } else {
-        newParams.delete("reviewCheckId");
-      }
 
       if (newFilters.severity !== "ALL") {
         newParams.set("severity", newFilters.severity);
@@ -1158,7 +1157,6 @@ export default function ProjectDashboard() {
 
   // Filter issues by all criteria
   const filteredIssues = analysisIssues.filter((issue) => {
-    if (filters.reviewCheckId && issue.reviewCheckId !== filters.reviewCheckId) return false;
     // Severity filter
     if (filters.severity !== "ALL") {
       const issueSeverity = issue.severity?.toUpperCase();
@@ -1637,6 +1635,11 @@ export default function ProjectDashboard() {
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
                 )}
               </button>
+              {selectionType === "pr" && <button onClick={() => setPrTab("checks")}
+                className={`pb-3 text-base font-medium transition-colors relative ${prTab === "checks" ? "text-orange-500 !font-bold" : "text-muted-foreground hover:text-foreground"}`}>
+                Dependency security
+                {prTab === "checks" && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />}
+              </button>}
               <button
                 onClick={() =>
                   selectionType === "branch"
@@ -2559,6 +2562,12 @@ export default function ProjectDashboard() {
               </Card>
             )}
 
+            {prTab === "checks" && currentWorkspace && namespace && (
+              <ReviewChecksPanel key={`${currentWorkspace.slug}/${namespace}/${selectedPR.prNumber}/${selectedVersion}`}
+                workspace={currentWorkspace.slug} project={namespace} prNumber={selectedPR.prNumber}
+                version={selectedVersion} checkId={searchParams.get("reviewCheckId")} canReview={canReview()} />
+            )}
+
             {prTab === "qa-doc" && (
               <QaDocPanel
                 workspaceSlug={currentWorkspace?.slug}
@@ -2580,7 +2589,6 @@ export default function ProjectDashboard() {
                 {/* Filter Sidebar - Left */}
                 <div className="w-64 shrink-0 hidden lg:block self-start">
                   <IssueFilterPanel
-                    reviewCheckIds={[...new Set(analysisIssues.map(issue => issue.reviewCheckId).filter((id): id is string => !!id))]}
                     filters={filters}
                     onFiltersChange={handleFiltersChange}
                     issueCount={currentIssuesTotalCount}

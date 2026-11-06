@@ -40,7 +40,6 @@ interface IssuesByFileDisplayProps {
   selectionEnabled?: boolean;
   // Current filters to pass to issue detail page for sidebar filtering
   filters?: {
-    reviewCheckId?: string;
     severity?: string;
     status?: string;
     category?: string;
@@ -156,7 +155,6 @@ export default function IssuesByFileDisplay({
     if (filters?.category && filters.category !== "ALL") {
       params.set("category", filters.category);
     }
-    if (filters?.reviewCheckId) params.set("reviewCheckId", filters.reviewCheckId);
 
     // Pass the branch for sidebar scope
     if (branchName) {

@@ -13,7 +13,6 @@ import { getAllCategories } from '@/config/issueCategories';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface IssueFilters {
-  reviewCheckId?: string;
   severity: string;
   status: string;
   category: string;
@@ -24,14 +23,13 @@ export interface IssueFilters {
 }
 
 interface IssueFilterPanelProps {
-  reviewCheckIds?: string[];
   filters: IssueFilters;
   onFiltersChange: (filters: IssueFilters) => void;
   issueCount: number;
   className?: string;
 }
 
-export default function IssueFilterPanel({ filters, onFiltersChange, issueCount, className, reviewCheckIds }: IssueFilterPanelProps) {
+export default function IssueFilterPanel({ filters, onFiltersChange, issueCount, className }: IssueFilterPanelProps) {
   // Local state for debounced text inputs
   const [localFilePath, setLocalFilePath] = useState(filters.filePath);
   const [localAuthor, setLocalAuthor] = useState(filters.author);
@@ -72,7 +70,6 @@ export default function IssueFilterPanel({ filters, onFiltersChange, issueCount,
   };
 
   const hasActiveFilters = 
-    !!filters.reviewCheckId ||
     filters.severity !== 'ALL' || 
     filters.status !== 'open' || 
     filters.category !== 'ALL' ||
@@ -102,22 +99,6 @@ export default function IssueFilterPanel({ filters, onFiltersChange, issueCount,
       
       <ScrollArea className="max-h-[calc(100vh-200px)]">
         <div className="p-4 space-y-5">
-          {reviewCheckIds && (reviewCheckIds.length > 0 || filters.reviewCheckId) && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Review source</Label>
-              <RadioGroup value={filters.reviewCheckId || 'ALL'}
-                onValueChange={(value) => handleFilterChange('reviewCheckId', value === 'ALL' ? undefined : value)}>
-                {['ALL', ...new Set([...reviewCheckIds, ...(filters.reviewCheckId ? [filters.reviewCheckId] : [])])].map((id) => (
-                  <div key={id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={id} id={`review-check-${id}`} />
-                    <Label htmlFor={`review-check-${id}`} className="font-normal cursor-pointer text-sm capitalize">
-                      {id === 'ALL' ? 'All issues' : id.replace(/-/g, ' ')}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
-          )}
           {/* Severity Filter */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Severity</Label>

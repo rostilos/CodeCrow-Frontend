@@ -190,7 +190,6 @@ export interface AnalysisIssuesResponse {
 }
 
 export interface AnalysisIssue {
-  reviewCheckId?: string | null;
   id: string;
   type: string | null;
   severity: "high" | "medium" | "low" | "info";
