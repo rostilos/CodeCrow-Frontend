@@ -8,7 +8,7 @@ interface WorkspaceContextType {
   workspaces: WorkspaceDTO[];
   setCurrentWorkspace: (workspace: WorkspaceDTO | null) => void;
   setCurrentWorkspaceBySlug: (slug: string) => Promise<boolean>;
-  refreshWorkspaces: () => Promise<void>;
+  refreshWorkspaces: () => Promise<WorkspaceDTO[]>;
   loading: boolean;
   workspaceVersion: number; // Version number that changes when workspace is switched
 }

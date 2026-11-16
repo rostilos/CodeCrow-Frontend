@@ -325,7 +325,7 @@ const App = () => (
                             {/* Billing route only available when feature is enabled */}
                             {FEATURES.BILLING && (
                               <Route
-                                path="billing"
+                                path="billing/*"
                                 element={<BillingSettings />}
                               />
                             )}

@@ -342,6 +342,7 @@ export default function ImportProject() {
         externalWorkspaceSlug: null,
         repoCount: 1,
         tokenExpiresAt: null,
+        installationRequestPending: false,
         createdAt: "",
         updatedAt: "",
       });
@@ -393,6 +394,8 @@ export default function ImportProject() {
             externalWorkspaceId: conn.organizationId || null,
             externalWorkspaceSlug: conn.organizationId || null,
             repoCount: conn.repoCount || 0,
+            installationRequestPending: false,
+            tokenExpiresAt: null,
             createdAt: "",
             updatedAt: "",
           });
@@ -413,6 +416,8 @@ export default function ImportProject() {
             externalWorkspaceId: conn.groupId || null,
             externalWorkspaceSlug: conn.groupId || null,
             repoCount: conn.repoCount || 0,
+            installationRequestPending: false,
+            tokenExpiresAt: null,
             createdAt: "",
             updatedAt: "",
           });
@@ -431,6 +436,8 @@ export default function ImportProject() {
             externalWorkspaceId: conn.workspaceId || null,
             externalWorkspaceSlug: conn.workspaceId || null,
             repoCount: conn.repoCount || 0,
+            installationRequestPending: false,
+            tokenExpiresAt: null,
             createdAt: "",
             updatedAt: "",
           });

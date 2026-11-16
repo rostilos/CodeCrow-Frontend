@@ -1784,7 +1784,7 @@ export default function IssueDetails() {
                           </span>
                           {issue.provenanceConfidence && (
                             <span className="ml-2 text-xs text-muted-foreground">
-                              ({issue.provenanceConfidence.toLowerCase().replaceAll("_", " ")})
+                              ({issue.provenanceConfidence.toLowerCase().replace(/_/g, " ")})
                             </span>
                           )}
                         </div>

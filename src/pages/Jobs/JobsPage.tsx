@@ -99,6 +99,7 @@ const JobTypeBadge = ({ type }: { type: JobType }) => {
     ASK_COMMAND: "Ask",
     ANALYZE_COMMAND: "Analyze",
     REVIEW_COMMAND: "Review",
+    IGNORED_COMMENT: "Ignored Comment",
   };
 
   return <Badge variant="outline">{labels[type] || type}</Badge>;

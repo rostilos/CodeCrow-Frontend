@@ -1,3 +1,5 @@
+import { FEATURES } from "@/config/features";
+import { CloudModelSettings } from "@/components/CloudModelSettings";
 import { useState, useEffect } from "react";
 import {
   Plus,
@@ -487,13 +489,13 @@ export default function AISettings() {
                     <DialogTrigger asChild>
                       <Button className="flex items-center space-x-2">
                         <Plus className="h-4 w-4" />
-                        <span>Add AI Connection</span>
+                        <span>{FEATURES.BILLING ? "Add your own API key" : "Add AI Connection"}</span>
                       </Button>
                     </DialogTrigger>
                   )}
                   <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Create AI Connection</DialogTitle>
+                      <DialogTitle>{FEATURES.BILLING ? "Connect your own API key" : "Create AI Connection"}</DialogTitle>
                       <DialogDescription>
                         Add a new AI provider connection to your workspace
                       </DialogDescription>
@@ -902,6 +904,8 @@ export default function AISettings() {
         </div>
 
         <div className="container mx-auto px-4 lg:px-8 py-8 space-y-10">
+          {FEATURES.BILLING && currentWorkspace && <CloudModelSettings key={currentWorkspace.slug} slug={currentWorkspace.slug} />}
+          {FEATURES.BILLING && <div><h2 className="text-xl font-semibold">Your API-key connections</h2><p className="mt-1 text-muted-foreground">Bring your own key on any plan. Platform models are selected above and do not appear in this list.</p></div>}
           <div className="space-y-6">
             <div className="space-y-6">
               {connections.length > 0 && (
@@ -932,19 +936,18 @@ export default function AISettings() {
                   <CardContent className="p-12 text-center">
                     <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-xl font-semibold mb-2">
-                      No AI Connections
+                      {FEATURES.BILLING ? "No API-key connections" : "No AI Connections"}
                     </h3>
                     <p className="text-muted-foreground mb-6">
-                      Get started by creating your first AI connection to enable
-                      code analysis and review features.
+                      {FEATURES.BILLING ? "Using platform models? You do not need an API key. Add a connection here only if you want to use your own provider account." : "Get started by creating your first AI connection to enable code analysis and review features."}
                     </p>
                     {canManageWorkspace() && (
                       <Button
                         onClick={() => setShowCreateDialog(true)}
-                        className="flex items-center space-x-2"
+                        className="mx-auto flex items-center space-x-2"
                       >
                         <Plus className="h-4 w-4" />
-                        <span>Create AI Connection</span>
+                        <span>{FEATURES.BILLING ? "Add your own API key" : "Create AI Connection"}</span>
                       </Button>
                     )}
                   </CardContent>

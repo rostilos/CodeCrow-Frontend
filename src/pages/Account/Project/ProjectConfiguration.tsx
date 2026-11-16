@@ -1,3 +1,5 @@
+import { FEATURES } from "@/config/features";
+import { CloudModelSettings } from "@/components/CloudModelSettings";
 import {
   useState,
   useEffect,
@@ -2174,16 +2176,17 @@ export default function ProjectConfiguration() {
 
       case "ai":
         return (
+          <div className="space-y-6">
+          {FEATURES.BILLING && currentWorkspace && project && <CloudModelSettings key={`${currentWorkspace.slug}-${project.id}`} slug={currentWorkspace.slug} projectId={Number(project.id)} />}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Key className="mr-2 h-5 w-5" />
                   <div>
-                    <CardTitle>AI Connections</CardTitle>
+                    <CardTitle>{FEATURES.BILLING ? "Your API-key connection" : "AI Connections"}</CardTitle>
                     <CardDescription>
-                      Bind an AI connection to enable AI-powered features for
-                      this project
+                      Bind your own API-key connection for this project.
                     </CardDescription>
                   </div>
                 </div>
@@ -2195,7 +2198,7 @@ export default function ProjectConfiguration() {
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <span className="font-medium text-green-800">
-                      AI connection is currently bound to this project
+                      API-key connection is bound to this project
                     </span>
                   </div>
                   <p className="text-sm text-green-700 mt-1">
@@ -2304,7 +2307,7 @@ export default function ProjectConfiguration() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </Card></div>
         );
 
       case "rag":

@@ -71,6 +71,8 @@ export interface SubscriptionResponse {
 export interface ModelSelection { managed: boolean; modelId: string | null }
 export interface ManagedModel { id: string; label: string; minimumTier: SubscriptionTier; trial: boolean }
 export interface ManagedModelsResponse {
+    tier: SubscriptionTier;
+    trial: boolean;
     models: ManagedModel[];
     selection: ModelSelection;
     active: boolean;
@@ -150,6 +152,9 @@ export interface InvoiceResponse {
     hostedInvoiceUrl: string | null;
     pdfUrl: string | null;
     lineItems: InvoiceLineItem[];
+    subtotal: number;
+    discountAmount: number;
+    total: number;
 }
 
 export interface InvoiceListResponse {
@@ -326,6 +331,10 @@ class BillingApiService extends ApiService {
             { method: 'GET' },
             true
         );
+    }
+
+    async invoiceDelivery(workspaceSlug: string): Promise<{ enabled: boolean; deliveries: { invoiceId: string; state: string }[] }> {
+        return this.request(`/workspaces/${workspaceSlug}/billing/invoice-delivery`, {}, true);
     }
 
     async getInvoice(workspaceSlug: string, invoiceId: string): Promise<InvoiceResponse> {

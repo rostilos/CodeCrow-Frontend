@@ -2048,7 +2048,7 @@ export default function ProjectDashboard() {
                 <CardContent>
                   {project?.id ? (
                     <GitGraphViewer
-                      projectId={project.id}
+                      projectId={Number(project.id)}
                       workspaceSlug={currentWorkspace?.slug}
                       namespace={namespace}
                       branchName={selectedBranch}
@@ -2733,7 +2733,7 @@ export default function ProjectDashboard() {
                 <CardContent>
                   {project?.id ? (
                     <GitGraphViewer
-                      projectId={project.id}
+                      projectId={Number(project.id)}
                       workspaceSlug={currentWorkspace?.slug}
                       namespace={namespace}
                       branchName={selectedPR?.sourceBranchName}
@@ -2845,7 +2845,7 @@ export default function ProjectDashboard() {
                   <JobsList
                     projectNamespace={namespace || ""}
                     refreshKey={jobsRefreshKey}
-                    activeTab={selectionType === "branch" ? branchTab : prTab}
+                    activeTab="activity"
                   />
                 </CardContent>
               </Card>
@@ -2865,7 +2865,7 @@ export default function ProjectDashboard() {
                 <CardContent>
                   {project?.id ? (
                     <GitGraphViewer
-                      projectId={project.id}
+                      projectId={Number(project.id)}
                       workspaceSlug={currentWorkspace?.slug}
                       namespace={namespace}
                       branchName={

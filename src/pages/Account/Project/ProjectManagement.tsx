@@ -527,10 +527,10 @@ export default function ProjectManagement() {
       ]);
 
       const vcsConnectionsById = new Map(
-        vcsConnections.map((connection) => [connection.id, connection]),
+        vcsConnections.map((connection) => [connection.id, connection] as const),
       );
       const taskConnectionsById = new Map(
-        taskConnections.map((connection) => [connection.id, connection]),
+        taskConnections.map((connection) => [connection.id, connection] as const),
       );
 
       const ragStatuses = new Map<string, RagStatusResponse | null>();

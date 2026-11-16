@@ -276,6 +276,7 @@ export default function BranchPRHierarchy({ projectNamespace, onSelectBranch, on
             <DetailedProjectStats 
               stats={{
                 ...detailedStats,
+                infoIssues: detailedStats.infoIssues ?? 0,
                 securityIssues: detailedStats.securityIssues ?? 0,
                 qualityIssues: detailedStats.qualityIssues ?? 0,
                 performanceIssues: detailedStats.performanceIssues ?? 0,

@@ -1,3 +1,4 @@
+import { CloudSubscriptionNotice } from "@/components/CloudSubscriptionNotice";
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import {
@@ -181,6 +182,7 @@ export default function DashboardLayout() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
+        {FEATURES.BILLING && <CloudSubscriptionNotice />}
         <Outlet />
       </main>
 

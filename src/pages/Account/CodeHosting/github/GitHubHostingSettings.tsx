@@ -414,12 +414,12 @@ export default function GitHubHostingSettings({
     }
   };
 
-  const openConnectionDetails = (connection: VcsConnection) => {
+  const openConnectionDetails = (connection: { id: number; connectionType?: string }) => {
     navigate(
       routes.projectImport({
         connectionId: connection.id,
         provider: "github",
-        connectionType: connection.connectionType,
+        connectionType: connection.connectionType ?? "ACCESS_TOKEN",
       }),
     );
   };

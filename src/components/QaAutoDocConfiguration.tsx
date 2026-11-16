@@ -182,7 +182,7 @@ export default function QaAutoDocConfiguration({
       const request = buildConfigRequest(nextEnabled);
       await taskManagementService.updateQaAutoDocConfig(
         currentWorkspace.slug,
-        project.id,
+        Number(project.id),
         request,
       );
       toast({
