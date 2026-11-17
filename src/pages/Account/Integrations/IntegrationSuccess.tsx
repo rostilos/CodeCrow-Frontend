@@ -1,3 +1,4 @@
+import { OpenRouterProviderSelector } from "@/components/OpenRouterProviderSelector";
 import {
   Card,
   CardContent,
@@ -659,6 +660,7 @@ export default function IntegrationSuccess() {
                               setNewAiConnection((prev) => ({
                                 ...prev,
                                 providerKey: value as AIProviderKey,
+                                customParameters: "",
                               }))
                             }
                           >
@@ -709,6 +711,7 @@ export default function IntegrationSuccess() {
                               setNewAiConnection((prev) => ({
                                 ...prev,
                                 aiModel: e.target.value,
+                                customParameters: "",
                               }))
                             }
                             placeholder={
@@ -725,6 +728,13 @@ export default function IntegrationSuccess() {
                             }
                           />
                         </div>
+                        {newAiConnection.providerKey === "OPENROUTER" && (
+                          <OpenRouterProviderSelector
+                            model={newAiConnection.aiModel}
+                            value={newAiConnection.customParameters}
+                            onChange={(customParameters) => setNewAiConnection((prev) => ({ ...prev, customParameters }))}
+                          />
+                        )}
 
                         <div className="space-y-2">
                           <Label htmlFor="ai-api-key">

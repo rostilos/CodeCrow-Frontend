@@ -1,3 +1,4 @@
+import { OpenRouterProviderSelector } from "@/components/OpenRouterProviderSelector";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -1734,6 +1735,7 @@ export default function ImportProject() {
                               setNewAiConnection((prev) => ({
                                 ...prev,
                                 providerKey: value as AIProviderKey,
+                                customParameters: "",
                               }))
                             }
                           >
@@ -1796,6 +1798,7 @@ export default function ImportProject() {
                               setNewAiConnection((prev) => ({
                                 ...prev,
                                 aiModel: e.target.value,
+                                customParameters: "",
                               }))
                             }
                             placeholder={
@@ -1814,6 +1817,13 @@ export default function ImportProject() {
                             }
                           />
                         </div>
+                        {newAiConnection.providerKey === "OPENROUTER" && (
+                          <OpenRouterProviderSelector
+                            model={newAiConnection.aiModel}
+                            value={newAiConnection.customParameters}
+                            onChange={(customParameters) => setNewAiConnection((prev) => ({ ...prev, customParameters }))}
+                          />
+                        )}
 
                         <div className="space-y-2">
                           <Label htmlFor="ai-api-key">

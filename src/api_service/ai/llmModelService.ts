@@ -28,6 +28,13 @@ export interface LlmModelStatusResponse {
 }
 
 class LlmModelService extends ApiService {
+  async getOpenRouterProviders(modelId: string): Promise<{
+    providers: { slug: string; name: string }[];
+    syncedAt: string | null;
+  }> {
+    return this.request(`/llm-models/openrouter-providers?${new URLSearchParams({ modelId })}`, {});
+  }
+
   /**
    * Search LLM models with optional provider filter and search query.
    */

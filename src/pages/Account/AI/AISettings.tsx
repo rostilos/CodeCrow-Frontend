@@ -1,3 +1,4 @@
+import { OpenRouterProviderSelector } from "@/components/OpenRouterProviderSelector";
 import { FEATURES } from "@/config/features";
 import { CloudModelSettings } from "@/components/CloudModelSettings";
 import { useState, useEffect } from "react";
@@ -82,6 +83,7 @@ const normalizeCustomParameters = (
   provider: AIProviderKey,
   value?: string | null,
 ) => {
+  if (provider === "OPENROUTER") return value || "";
   if (!providerSupportsCustomParameters(provider)) {
     return undefined;
   }
@@ -583,10 +585,7 @@ export default function AISettings() {
                             setNewConnection({
                               ...newConnection,
                               providerKey: provider,
-                              customParameters:
-                                provider === "OPENAI_COMPATIBLE"
-                                  ? newConnection.customParameters
-                                  : "",
+                              customParameters: "",
                             });
                           }}
                         >
@@ -673,6 +672,7 @@ export default function AISettings() {
                             setNewConnection({
                               ...newConnection,
                               aiModel: value,
+                              customParameters: newConnection.providerKey === "OPENROUTER" ? "" : newConnection.customParameters,
                             })
                           }
                           provider={newConnection.providerKey}
@@ -682,6 +682,13 @@ export default function AISettings() {
                           apiKey={newConnection.apiKey}
                         />
                       </div>
+                        {newConnection.providerKey === "OPENROUTER" && (
+                          <OpenRouterProviderSelector
+                            model={newConnection.aiModel}
+                            value={newConnection.customParameters}
+                            onChange={(customParameters) => setNewConnection({ ...newConnection, customParameters })}
+                          />
+                        )}
                       <div>
                         <Label htmlFor="apiKey">
                           {getCredentialLabel(newConnection.providerKey)}
@@ -755,10 +762,7 @@ export default function AISettings() {
                               setEditingConnection({
                                 ...editingConnection,
                                 providerKey: provider,
-                                customParameters:
-                                  provider === "OPENAI_COMPATIBLE"
-                                    ? editingConnection.customParameters
-                                    : "",
+                                customParameters: "",
                               });
                             }}
                           >
@@ -849,6 +853,7 @@ export default function AISettings() {
                               setEditingConnection({
                                 ...editingConnection,
                                 aiModel: value,
+                              customParameters: editingConnection.providerKey === "OPENROUTER" ? "" : editingConnection.customParameters,
                               })
                             }
                             provider={editingConnection.providerKey}
@@ -858,6 +863,13 @@ export default function AISettings() {
                             apiKey={editingConnection.apiKey}
                           />
                         </div>
+                        {editingConnection.providerKey === "OPENROUTER" && (
+                          <OpenRouterProviderSelector
+                            model={editingConnection.aiModel}
+                            value={editingConnection.customParameters}
+                            onChange={(customParameters) => setEditingConnection({ ...editingConnection, customParameters })}
+                          />
+                        )}
                         <div>
                           <Label htmlFor="edit-apiKey">
                             {getCredentialLabel(editingConnection.providerKey)}{" "}
