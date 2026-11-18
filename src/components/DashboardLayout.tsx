@@ -177,7 +177,7 @@ export default function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-background dashboard-theme">
+    <div className="min-h-screen flex flex-col w-full bg-background">
       <TopNavigation showSearch onSearchClick={() => setSearchOpen(true)} />
 
       {/* Main Content */}

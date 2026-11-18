@@ -6,55 +6,56 @@
 
 @layer base {
   :root {
-    /* Light Theme (Default) - Clean and Professional */
-    --background: 0 0% 99%;
+    color-scheme: light;
+    --background: 348 26% 96.3%;
     --foreground: 222 47% 11%;
 
-    --card: 0 0% 100%;
+    --card: 348 24% 98.4%;
+    --card-header: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
     /* Primary - Refined Orange */
-    --primary: 24 100% 50%;
+    --primary: 22 90% 31%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 24 100% 60%;
+    --primary-glow: 20 90% 37%;
 
     /* Secondary - Neutral Gray */
-    --secondary: 220 14% 96%;
+    --secondary: 345 16% 90%;
     --secondary-foreground: 222 47% 11%;
 
     /* Muted - Soft grays */
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 345 16% 92%;
+    --muted-foreground: 228 12% 35%;
 
     /* Accent - Deep Blue */
-    --accent: 221 83% 53%;
+    --accent: 221 78% 43%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive - Red */
-    --destructive: 0 84% 60%;
+    --destructive: 0 73% 39%;
     --destructive-foreground: 0 0% 100%;
 
     /* Borders and inputs */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 24 100% 50%;
+    --border: 345 14% 83%;
+    --input: 344 9% 53%;
+    --ring: var(--primary);
 
     /* Success - Green */
-    --success: 142 71% 45%;
+    --success: 143 63% 27%;
     --success-foreground: 0 0% 100%;
 
     /* Warning - Amber */
-    --warning: 38 92% 50%;
+    --warning: 34 92% 27%;
     --warning-foreground: 0 0% 100%;
 
     /* Gradients */
     --gradient-primary: linear-gradient(
       135deg,
-      hsl(24 100% 50%),
-      hsl(24 100% 60%)
+      hsl(var(--primary)),
+      hsl(var(--primary-glow))
     );
     --gradient-secondary: linear-gradient(
       135deg,
@@ -95,12 +96,12 @@
     /* Sidebar - Light Theme */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 24 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--muted);
     --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 24 100% 50%;
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
 
     /* Festive Light Theme Variables */
     --festive-snow-color: 220 40% 60%;
@@ -112,19 +113,21 @@
 
   /* Dark Theme - High Contrast */
   .dark {
+    color-scheme: dark;
     --background: 220 13% 9%;
     --foreground: 210 20% 92%;
 
     --card: 220 13% 12%;
+    --card-header: 220 13% 17%;
     --card-foreground: 210 20% 92%;
 
-    --popover: 220 13% 12%;
+    --popover: 220 13% 16%;
     --popover-foreground: 210 20% 92%;
 
     /* Primary - Orange */
-    --primary: 24 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 24 100% 60%;
+    --primary: 25 100% 63%;
+    --primary-foreground: 220 22% 9%;
+    --primary-glow: 24 100% 56%;
 
     /* Secondary */
     --secondary: 220 13% 18%;
@@ -132,28 +135,28 @@
 
     /* Muted */
     --muted: 220 13% 18%;
-    --muted-foreground: 215 16% 60%;
+    --muted-foreground: 215 17% 72%;
 
     /* Accent */
-    --accent: 221 83% 53%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 218 90% 72%;
+    --accent-foreground: 220 22% 9%;
 
     /* Destructive */
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 86% 72%;
+    --destructive-foreground: 220 22% 9%;
 
     /* Borders - More visible */
-    --border: 220 13% 26%;
-    --input: 220 13% 20%;
-    --ring: 24 100% 50%;
+    --border: 220 13% 28%;
+    --input: 220 11% 48%;
+    --ring: var(--primary);
 
     /* Success */
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
+    --success: 145 57% 52%;
+    --success-foreground: 220 22% 9%;
 
     /* Warning */
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 39 94% 61%;
+    --warning-foreground: 220 22% 9%;
 
     /* Dark shadows */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
@@ -170,12 +173,12 @@
     /* Sidebar - Dark Theme */
     --sidebar-background: 220 13% 10%;
     --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 24 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 13% 18%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--muted);
     --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 220 13% 26%;
-    --sidebar-ring: 24 100% 50%;
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
 
     /* Festive Dark Theme Variables */
     --festive-snow-color: 0 0% 100%;
@@ -208,6 +211,7 @@
 
   /* Smooth scrolling */
   html {
+    @apply bg-background;
     scroll-behavior: smooth;
   }
 
@@ -230,6 +234,23 @@
       [cmdk-input]
     ) {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  :where([data-card] > [data-card-header]:not(:last-child)) {
+    @apply border-b;
+    background-color: hsl(var(--card-header));
+    border-start-start-radius: inherit;
+    border-start-end-radius: inherit;
+  }
+
+  :where([data-card-content], [data-card-footer]) {
+    @apply p-6 pt-0;
+  }
+
+  :where([data-card] > [data-card-header] + :is([data-card-content], [data-card-footer])) {
+    @apply pt-5;
   }
 }
 
@@ -487,71 +508,6 @@
       0 0 10px hsl(var(--primary) / 0.5),
       0 0 20px hsl(var(--primary) / 0.3);
   }
-}
-
-/* Dashboard-specific theme overrides for better contrast */
-.dashboard-theme {
-  /* Clean white background */
-  --background: 0 0% 99%;
-  --card: 0 0% 100%;
-
-  /* Primary colors - vibrant but not too bright */
-  --primary: 24 90% 45%;
-  --primary-glow: 24 90% 55%;
-
-  /* Secondary/muted - MORE VISIBLE for tabs, badges etc */
-  --secondary: 220 15% 88%;
-  --muted: 220 15% 90%;
-  --muted-foreground: 220 12% 35%;
-
-  /* Accent */
-  --accent: 221 85% 50%;
-  --accent-foreground: 0 0% 100%;
-
-  /* Status colors - richer */
-  --destructive: 0 75% 48%;
-  --success: 142 65% 35%;
-  --warning: 38 85% 45%;
-
-  /* Borders - clearly visible */
-  --border: 220 15% 78%;
-  --input: 220 15% 78%;
-  --ring: 24 90% 45%;
-}
-
-/* Dashboard badge colors - more muted for light theme */
-.dashboard-theme .badge-security {
-  @apply text-red-700 bg-red-100/70 border-red-300;
-}
-
-.dashboard-theme .badge-performance {
-  @apply text-orange-700 bg-orange-100/70 border-orange-300;
-}
-
-.dashboard-theme .badge-quality {
-  @apply text-blue-700 bg-blue-100/70 border-blue-300;
-}
-
-.dashboard-theme .badge-bug {
-  @apply text-purple-700 bg-purple-100/70 border-purple-300;
-}
-
-.dark .dashboard-theme {
-  /* Dark mode - High contrast */
-  --background: 220 13% 9%;
-  --card: 220 13% 12%;
-  --primary: 24 100% 50%;
-  --primary-glow: 24 100% 60%;
-  --secondary: 220 13% 18%;
-  --muted: 220 13% 18%;
-  --muted-foreground: 215 16% 60%;
-  --accent: 221 83% 53%;
-  --destructive: 0 72% 51%;
-  --border: 220 13% 26%;
-  --input: 220 13% 20%;
-  --ring: 24 100% 50%;
-  --success: 142 71% 45%;
-  --warning: 38 92% 50%;
 }
 
 /* Custom Scrollbars */

@@ -310,12 +310,11 @@ export default function ProjectDashboard() {
       newFilters.severity = severityParam.toUpperCase();
     }
 
-    const statusParam = searchParams.get("status");
-    if (
-      statusParam &&
-      ["open", "resolved", "ALL"].includes(statusParam.toLowerCase())
-    ) {
-      newFilters.status = statusParam.toLowerCase();
+    const statusParam = searchParams.get("status")?.toLowerCase();
+    if (statusParam === "all") {
+      newFilters.status = "ALL";
+    } else if (statusParam === "open" || statusParam === "resolved") {
+      newFilters.status = statusParam;
     }
 
     const categoryParam = searchParams.get("category");
@@ -947,6 +946,17 @@ export default function ProjectDashboard() {
     },
     [searchParams, selectionType, selectedBranch, branchTab, setSearchParams],
   );
+
+  const showAllPrIssues = () => {
+    handleFiltersChange({
+      severity: "ALL",
+      status: "ALL",
+      category: "ALL",
+      filePath: "",
+      author: "",
+    });
+    setPrTab("issues");
+  };
 
   const handlePRSelect = (pr: PullRequestDTO) => {
     const prSummary: PullRequestSummary = {
@@ -2538,13 +2548,24 @@ export default function ProjectDashboard() {
                         </div>
                       )}
 
-                      {currentFilteredIssues.length === 0 && (
+                      {currentFilteredIssues.length === 0 && analysisIssues.length > 0 && (
+                        <div className="text-center py-8">
+                          <p className="font-medium">Saved findings are hidden by the current filters</p>
+                          <Button variant="outline" size="sm" className="mt-3" onClick={showAllPrIssues}>
+                            Show all saved findings
+                          </Button>
+                        </div>
+                      )}
+
+                      {analysisIssues.length === 0 && (
                         <div className="text-center py-8">
                           {isPartialAnalysis ? <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-warning/50" /> : <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500/50" />}
-                          <p className="font-medium">{isPartialAnalysis ? "No saved findings match the current filters" : "All clear!"}</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {isPartialAnalysis ? "This incomplete run does not establish a clean result." : "No issues found in this PR"}
-                          </p>
+                          <p className="font-medium">This review has no saved findings</p>
+                          {isPartialAnalysis && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              This incomplete run does not establish a clean result.
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -2605,8 +2626,7 @@ export default function ProjectDashboard() {
                             Analysis Issues
                           </CardTitle>
                           <CardDescription className="mt-1">
-                            {currentIssuesTotalCount} issue
-                            {currentIssuesTotalCount !== 1 ? "s" : ""} found
+                            {analysisLoading ? "Loading findings…" : `Showing ${currentIssuesTotalCount} of ${analysisIssues.length} saved findings`}
                           </CardDescription>
                         </div>
                       </div>
@@ -2671,10 +2691,14 @@ export default function ProjectDashboard() {
                       ) : analysisError ? null : currentFilteredIssues.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground">
                           {isPartialAnalysis ? <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-warning/50" /> : <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success/50" />}
-                          <p className="font-medium">{isPartialAnalysis ? "No saved findings match the current filters" : "No issues found"}</p>
-                          <p className="text-sm mt-1">
-                            No analysis issues match the current filters
+                          <p className="font-medium">
+                            {analysisIssues.length > 0 ? "Saved findings are hidden by the current filters" : "This review has no saved findings"}
                           </p>
+                          {analysisIssues.length > 0 && (
+                            <Button variant="outline" size="sm" className="mt-3" onClick={showAllPrIssues}>
+                              Show all saved findings
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <IssuesByFileDisplay

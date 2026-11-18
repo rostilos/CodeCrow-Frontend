@@ -947,7 +947,7 @@ export default function HostingSettings() {
                 className="group cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1.5 border-border/50 hover:border-primary/40 flex flex-col bg-card/60 backdrop-blur-xl overflow-hidden relative animate-in fade-in slide-in-from-bottom-8"
                 style={{ animationFillMode: "both", animationDelay: `${index * 50}ms` }}
               >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500/60 via-blue-500 to-blue-500/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] transition-all duration-500 group-hover:animate-pulse" />
+                <div className="pointer-events-none absolute top-0 left-0 z-20 w-full h-1 bg-gradient-to-r from-blue-500/60 via-blue-500 to-blue-500/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] transition-all duration-500 group-hover:animate-pulse" />
                 <CardHeader className="pb-3 pt-5 px-5 relative z-10">
                   <CardTitle className="mb-2 flex items-center justify-between">
                     <div className="flex-1 min-w-0">
@@ -969,8 +969,8 @@ export default function HostingSettings() {
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
-                  <div className="space-y-2 mt-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-blue-500/20 transition-colors">
+                <CardContent className="pt-3 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
+                  <div className="space-y-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-blue-500/20 transition-colors">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground font-medium">Workspace</span>
                       <span className="font-semibold truncate max-w-[150px]">{connection.externalWorkspaceSlug || "N/A"}</span>
@@ -1080,7 +1080,7 @@ export default function HostingSettings() {
                 className="group cursor-pointer transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1.5 border-border/50 hover:border-primary/40 flex flex-col bg-card/60 backdrop-blur-xl overflow-hidden relative animate-in fade-in slide-in-from-bottom-8"
                 style={{ animationFillMode: "both", animationDelay: `${index * 50}ms` }}
               >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-gray-500/60 via-gray-500 to-gray-500/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] transition-all duration-500 group-hover:animate-pulse" />
+                <div className="pointer-events-none absolute top-0 left-0 z-20 w-full h-1 bg-gradient-to-r from-gray-500/60 via-gray-500 to-gray-500/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] transition-all duration-500 group-hover:animate-pulse" />
                 <CardHeader className="pb-3 pt-5 px-5 relative z-10">
                   <CardTitle className="mb-2 flex items-center justify-between">
                     <div className="flex-1 min-w-0">
@@ -1105,8 +1105,8 @@ export default function HostingSettings() {
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
-                  <div className="space-y-2 mt-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-gray-500/20 transition-colors">
+                <CardContent className="pt-3 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
+                  <div className="space-y-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-gray-500/20 transition-colors">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground font-medium">Repositories</span>
                       <span className="font-semibold">{connection.repoCount}</span>

@@ -987,7 +987,7 @@ export default function AISettings() {
                         animationDelay: `${index * 50}ms`,
                       }}
                     >
-                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] transition-all duration-500 group-hover:animate-pulse" />
+                      <div className="pointer-events-none absolute top-0 left-0 z-20 w-full h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60 opacity-80 group-hover:opacity-100 bg-[length:200%_auto] transition-all duration-500 group-hover:animate-pulse" />
 
                       <CardHeader className="pb-3 pt-5 px-5 relative z-10">
                         <CardTitle className="mb-2 flex items-center justify-between">
@@ -1012,8 +1012,8 @@ export default function AISettings() {
                           </div>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="pt-0 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
-                        <div className="space-y-2 mt-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-primary/20 transition-colors">
+                      <CardContent className="pt-3 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
+                        <div className="space-y-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-primary/20 transition-colors">
                           {connection.name && (
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground font-medium">

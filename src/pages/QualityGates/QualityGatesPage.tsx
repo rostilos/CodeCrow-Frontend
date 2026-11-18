@@ -285,7 +285,7 @@ export default function QualityGatesPage() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {qualityGates.map((gate, index) => (
                   <Card key={gate.id} className={`group relative flex flex-col overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-primary/10 bg-card/60 backdrop-blur-xl border-border/50 hover:border-primary/40 animate-in fade-in slide-in-from-bottom-8 ${gate.isDefault ? 'border-primary/60' : ''}`} style={{ animationFillMode: "both", animationDelay: `${index * 50}ms` }}>
-                    <div className={`absolute top-0 left-0 w-full h-1 transition-all duration-500 bg-[length:200%_auto] ${gate.isDefault ? 'bg-gradient-to-r from-primary/60 via-primary to-primary/60 opacity-100 group-hover:animate-pulse' : 'bg-gradient-to-r from-muted to-muted-foreground/30 opacity-50 group-hover:opacity-80 group-hover:from-primary/40 group-hover:to-primary/20'}`} />
+                    <div className={`pointer-events-none absolute top-0 left-0 z-20 w-full h-1 transition-all duration-500 bg-[length:200%_auto] ${gate.isDefault ? 'bg-gradient-to-r from-primary/60 via-primary to-primary/60 opacity-100 group-hover:animate-pulse' : 'bg-gradient-to-r from-muted to-muted-foreground/30 opacity-50 group-hover:opacity-80 group-hover:from-primary/40 group-hover:to-primary/20'}`} />
 
                     <CardHeader className="pb-3 pt-5 px-5 relative z-10">
                       <div className="flex items-start justify-between">
@@ -297,7 +297,7 @@ export default function QualityGatesPage() {
                             <CardTitle className="text-lg flex items-center gap-2 group-hover:text-primary transition-colors truncate">
                               <span className="truncate">{gate.name}</span>
                               {gate.isDefault && (
-                                <Badge variant="secondary" className="text-[10px] py-0 h-4 bg-primary/20 text-primary hover:bg-primary/30 border-none transition-colors shrink-0">
+                                <Badge variant="secondary" className="text-[10px] py-0 h-4 bg-primary/10 text-primary hover:bg-primary/15 border-none transition-colors shrink-0">
                                   <Star className="h-3 w-3 mr-1 fill-current" />
                                   Default
                                 </Badge>
@@ -346,7 +346,7 @@ export default function QualityGatesPage() {
                         </CardDescription>
                       )}
                     </CardHeader>
-                    <CardContent className="pt-0 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10 mt-2">
+                    <CardContent className="pt-3 pb-5 px-5 flex-1 flex flex-col gap-4 relative z-10">
                       <div className="space-y-2 px-3 py-2 rounded-lg bg-background/50 border border-border/60 group-hover:border-primary/20 transition-colors">
                         <p className="font-medium text-foreground text-xs">Conditions:</p>
                         <p className="text-xs text-muted-foreground">{getConditionSummary(gate)}</p>

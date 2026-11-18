@@ -84,7 +84,7 @@ export function TopNavigation({
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `text-sm transition-colors hover:text-foreground ${
       isActive
-        ? "text-orange-500 font-bold"
+        ? "text-primary font-bold"
         : "font-medium text-muted-foreground"
     }`;
 
@@ -94,14 +94,14 @@ export function TopNavigation({
     }`;
 
   return (
-    <header className="sticky top-0 z-50 h-14 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center justify-between px-4 lg:px-6 h-full relative z-10 w-full">
+    <header className="sticky top-0 z-50 h-14 border-b border-border bg-card/95 backdrop-blur">
+      <div className="flex items-center justify-between gap-4 px-4 lg:px-6 h-full relative z-10 w-full">
         {/* Left side - Logo, Mobile Menu and Navigation */}
-        <div className="flex items-center gap-4 lg:gap-8">
+        <div className="flex items-center gap-4 xl:gap-6">
           {/* Mobile Menu — hidden in minimal mode */}
           {!minimal && (
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild className="md:hidden">
+              <SheetTrigger asChild className="xl:hidden">
                 <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle menu</span>
@@ -226,7 +226,7 @@ export function TopNavigation({
           </button>
 
           {!minimal && (
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden xl:flex items-center gap-4 whitespace-nowrap">
               <NavLink to={routes.projects()} className={navLinkClass}>
                 Projects
               </NavLink>
@@ -260,7 +260,7 @@ export function TopNavigation({
         </div>
 
         {/* Right side - Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
           {!minimal && <WorkspaceSwitcher />}
           <ThemeToggle />
 
@@ -269,7 +269,7 @@ export function TopNavigation({
             <Button
               variant="outline"
               size="sm"
-              className="hidden sm:inline-flex gap-1.5 text-xs border-orange-500/40 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10"
+              className="hidden sm:inline-flex gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/10"
               onClick={() => navigate("/admin/settings")}
             >
               <Shield className="h-3.5 w-3.5" />
@@ -311,7 +311,7 @@ export function TopNavigation({
                     {getUserInitials(user?.username)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden lg:block text-sm font-medium">
+                <span className="hidden max-w-32 truncate text-sm font-medium 2xl:block">
                   {getDisplayName(user?.username)}
                 </span>
               </Button>

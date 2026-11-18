@@ -131,7 +131,7 @@ export default function ProfileInformation() {
                         <div className="flex items-center space-x-4">
                             <Avatar className="h-20 w-20">
                                 <AvatarImage src={avatarUrl} alt={form.watch('username')} referrerPolicy="no-referrer" />
-                                <AvatarFallback className="bg-gradient-primary text-2xl">
+                                <AvatarFallback className="bg-gradient-primary text-primary-foreground text-2xl">
                                     {form.watch('username')?.charAt(0)?.toUpperCase() || 'U'}
                                 </AvatarFallback>
                             </Avatar>

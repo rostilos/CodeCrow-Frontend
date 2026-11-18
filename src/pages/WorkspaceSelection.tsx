@@ -479,7 +479,7 @@ export default function WorkspaceSelection() {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="pt-0">
+                      <CardContent className="pt-3">
                         <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
                           <div className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md">
                             <Users className="h-4 w-4 text-primary/60" />
